@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "417966024143",
+    "project_id": "pabbible-6cce6",
+    "storage_bucket": "pabbible-6cce6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:417966024143:android:d647a5e84485df7b491eba",
+        "android_client_info": {
+          "package_name": "com.himfirstapps.exegesis"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHmeUmuLMw85_lmj9Z-o-PqIXYZsJevrA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

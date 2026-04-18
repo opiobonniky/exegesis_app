@@ -1,0 +1,343 @@
+/**
+ * bibleUtils.ts  (multi-version edition)
+ *
+ * All public helpers now accept an optional `versionData` parameter.
+ * When omitted they fall back to the active version held in the module-level
+ * cache, which is set via `setActiveVersion()`.
+ *
+ * Calling `setActiveVersion(id)` is the only thing needed when the user
+ * switches translations – the rest of the app reacts automatically.
+ */
+
+import {
+  getVersionById,
+  DEFAULT_VERSION_ID,
+} from '../assets/bibleVersion/json/bibleVersions';
+
+/* ------------------------------------------------------------------ */
+/*  Active-version cache                                               */
+/* ------------------------------------------------------------------ */
+
+let _activeVersionId: string = DEFAULT_VERSION_ID;
+let _activeData: Record<string, string> =
+  getVersionById(DEFAULT_VERSION_ID).load();
+
+/**
+ * Switch the active Bible version.
+ * Call this whenever the user picks a different translation.
+ * The search index is invalidated automatically.
+ */
+export const setActiveVersion = (versionId: string): void => {
+  if (versionId === _activeVersionId) return; // nothing to do
+  const version = getVersionById(versionId);
+  _activeVersionId = version.id;
+  _activeData = version.load();
+  // invalidate the search index so it gets rebuilt for the new version
+  indexBuilt = false;
+  Object.keys(verseIndex).forEach(k => delete verseIndex[k]);
+};
+
+/** Returns the currently active version id */
+export const getActiveVersionId = (): string => _activeVersionId;
+
+/** Helper – resolves the verse dataset to use */
+const data = (override?: Record<string, string>): Record<string, string> =>
+  override ?? _activeData;
+
+/* ------------------------------------------------------------------ */
+/*  Testament list                                                     */
+/* ------------------------------------------------------------------ */
+
+export const NEW_TESTAMENT_BOOKS = [
+  'Matthew',
+  'Mark',
+  'Luke',
+  'John',
+  'Acts',
+  'Romans',
+  '1 Corinthians',
+  '2 Corinthians',
+  'Galatians',
+  'Ephesians',
+  'Philippians',
+  'Colossians',
+  '1 Thessalonians',
+  '2 Thessalonians',
+  '1 Timothy',
+  '2 Timothy',
+  'Titus',
+  'Philemon',
+  'Hebrews',
+  'James',
+  '1 Peter',
+  '2 Peter',
+  '1 John',
+  '2 John',
+  '3 John',
+  'Jude',
+  'Revelation',
+];
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+export interface Book {
+  name: string;
+  chapters: number;
+  verses: number;
+  testament: 'Old' | 'New';
+}
+
+export interface VerseSearchResult {
+  book: string;
+  chapter: number;
+  verse: number;
+  text: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Books                                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Build all Bible books dynamically from the active (or supplied) dataset.
+ */
+export const getBibleBooks = (versionData?: Record<string, string>): Book[] => {
+  const src = data(versionData);
+  const bookMap: Record<string, { chapters: Set<number>; verses: number }> = {};
+
+  Object.keys(src).forEach(key => {
+    const lastSpace = key.lastIndexOf(' ');
+    const book = key.substring(0, lastSpace);
+    const [chapter] = key.substring(lastSpace + 1).split(':');
+
+    if (!bookMap[book]) bookMap[book] = { chapters: new Set(), verses: 0 };
+    bookMap[book].chapters.add(Number(chapter));
+    bookMap[book].verses++;
+  });
+
+  return Object.keys(bookMap).map(book => ({
+    name: book,
+    chapters: bookMap[book].chapters.size,
+    verses: bookMap[book].verses,
+    testament: NEW_TESTAMENT_BOOKS.includes(book) ? 'New' : 'Old',
+  }));
+};
+
+/* ------------------------------------------------------------------ */
+/*  Chapter verses                                                     */
+/* ------------------------------------------------------------------ */
+
+export const getVersesForChapter = (
+  book: string,
+  chapter: number,
+  versionData?: Record<string, string>,
+): Record<number, string> => {
+  const src = data(versionData);
+  const verses: Record<number, string> = {};
+
+  Object.keys(src).forEach(key => {
+    const lastSpace = key.lastIndexOf(' ');
+    const bookName = key.substring(0, lastSpace);
+    const [ch, vs] = key.substring(lastSpace + 1).split(':');
+
+    if (bookName === book && Number(ch) === chapter) {
+      verses[Number(vs)] = src[key];
+    }
+  });
+
+  return verses;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Single verse helpers                                               */
+/* ------------------------------------------------------------------ */
+
+export const getVerseText = (
+  book: string,
+  chapter: number,
+  verse: number,
+  versionData?: Record<string, string>,
+): string | null => data(versionData)[`${book} ${chapter}:${verse}`] ?? null;
+
+export const getVerseRange = (
+  book: string,
+  chapter: number,
+  startVerse: number,
+  endVerse: number,
+  versionData?: Record<string, string>,
+): Record<number, string> => {
+  const src = data(versionData);
+  const verses: Record<number, string> = {};
+
+  for (let v = startVerse; v <= endVerse; v++) {
+    const key = `${book} ${chapter}:${v}`;
+    if (src[key]) verses[v] = src[key];
+  }
+
+  return verses;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Simple search                                                      */
+/* ------------------------------------------------------------------ */
+
+export const searchVerses = (
+  query: string,
+  limit = 100,
+  versionData?: Record<string, string>,
+): VerseSearchResult[] => {
+  if (!query.trim()) return [];
+
+  const src = data(versionData);
+  const results: VerseSearchResult[] = [];
+  const q = query.toLowerCase();
+
+  Object.keys(src).some(key => {
+    const text = src[key];
+    if (text.toLowerCase().includes(q)) {
+      const lastSpace = key.lastIndexOf(' ');
+      const book = key.substring(0, lastSpace);
+      const [chapter, verse] = key
+        .substring(lastSpace + 1)
+        .split(':')
+        .map(Number);
+      results.push({ book, chapter, verse, text });
+    }
+    return results.length >= limit;
+  });
+
+  return results;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Pre-indexed instant search                                         */
+/* ------------------------------------------------------------------ */
+
+interface IndexedVerse extends VerseSearchResult {}
+
+const verseIndex: Record<string, IndexedVerse[]> = {};
+let indexBuilt = false;
+
+const tokenize = (text: string): string[] =>
+  text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 2);
+
+export const buildVerseIndex = (): void => {
+  if (indexBuilt) return;
+
+  const src = _activeData; // always index active version
+  Object.keys(src).forEach(key => {
+    const text = src[key];
+    const lastSpace = key.lastIndexOf(' ');
+    const book = key.substring(0, lastSpace);
+    const [chapter, verse] = key
+      .substring(lastSpace + 1)
+      .split(':')
+      .map(Number);
+
+    tokenize(text).forEach(token => {
+      if (!verseIndex[token]) verseIndex[token] = [];
+      verseIndex[token].push({ book, chapter, verse, text });
+    });
+  });
+
+  indexBuilt = true;
+};
+
+export const searchVersesIndexed = (
+  query: string,
+  limit = 100,
+): VerseSearchResult[] => {
+  if (!query.trim()) return [];
+
+  buildVerseIndex();
+
+  const tokens = tokenize(query);
+  if (!tokens.length) return [];
+
+  let results = verseIndex[tokens[0]] ?? [];
+
+  for (let i = 1; i < tokens.length; i++) {
+    const set = new Set(
+      (verseIndex[tokens[i]] ?? []).map(
+        v => `${v.book}-${v.chapter}-${v.verse}`,
+      ),
+    );
+    results = results.filter(v => set.has(`${v.book}-${v.chapter}-${v.verse}`));
+  }
+
+  return results.slice(0, limit);
+};
+
+/* ------------------------------------------------------------------ */
+/*  Date / time helpers (unchanged)                                    */
+/* ------------------------------------------------------------------ */
+
+export const formatWhatsAppTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isToday)
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (isYesterday) return 'Yesterday';
+
+  const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
+  if (diffDays < 7) return date.toLocaleDateString([], { weekday: 'short' });
+
+  return date.toLocaleDateString([], {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
+export const formatDateHeader = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+
+  if (date.toDateString() === now.toDateString()) return 'Today';
+
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+
+  const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
+  if (diffDays < 7) return date.toLocaleDateString([], { weekday: 'long' });
+
+  return date.toLocaleDateString([], {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+};
+
+
+
+//the text for all the verse by passing book and chapter 
+export const getVerseRangeText = (
+  book: string,
+  chapter: number,
+): string => {
+  const verses = getVersesForChapter(book, chapter);
+  return Object.keys(verses)
+    .map(v => `${v}: ${verses[Number(v)]}`)
+    .join('\n');
+};

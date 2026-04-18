@@ -1,0 +1,1077 @@
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  ActivityIndicator,
+  Platform,
+  Animated,
+  Easing,
+} from 'react-native';
+import Slider from '@react-native-community/slider';
+import LinearGradient from 'react-native-linear-gradient';
+import {
+  Volume2,
+  Mic2,
+  CheckCircle,
+  ChevronDown,
+  X,
+  Play,
+  Square,
+  ChevronRight,
+  Waves,
+  Gauge,
+  Music2,
+  RotateCcw,
+} from 'lucide-react-native';
+
+import { AppContext } from '../../common/AppContext';
+import {
+  BORDER_RADIUS,
+  getColors,
+  FONT_SIZES,
+  SPACING,
+} from '../../constants/theme';
+import ActionHeader from '../../reusable/ActionHeader';
+import { bibleTTS, DeviceVoice } from '../../utilits/bibleTTS';
+import { showToast } from '../../helpers/Toash.helper';
+import { useNavigation } from '@react-navigation/native';
+
+// ─── Preview text ─────────────────────────────────────────────────────────────
+
+const PREVIEW_TEXT =
+  'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.';
+
+// ─── Snap points ──────────────────────────────────────────────────────────────
+
+const RATE_SNAPS = [
+  { label: 'Slow', value: 0.35 },
+  { label: 'Calm', value: 0.5 },
+  { label: 'Normal', value: 0.65 },
+  { label: 'Quick', value: 0.8 },
+  { label: 'Fast', value: 1.0 },
+];
+
+const PITCH_SNAPS = [
+  { label: 'Low', value: 0.85 },
+  { label: 'Natural', value: 1.0 },
+  { label: 'High', value: 1.15 },
+];
+
+// ─── VoiceSettingsScreen ──────────────────────────────────────────────────────
+
+export default function VoiceSettingsScreen() {
+  const app = useContext(AppContext);
+  if (!app) return null;
+  const { isDark } = app;
+  const COLORS = getColors(isDark);
+  const navigation = useNavigation();
+
+  // ── TTS state ──────────────────────────────────────────────────────────────
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+
+  // ── Voice picker ───────────────────────────────────────────────────────────
+  const [deviceVoices, setDeviceVoices] = useState<DeviceVoice[]>([]);
+  const [deviceVoiceId, setDeviceVoiceId] = useState<string>(
+    bibleTTS.getCurrentVoiceId() ?? '',
+  );
+  const [deviceLoading, setDeviceLoading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  // ── Sliders ────────────────────────────────────────────────────────────────
+  // `null` means "using device default — not yet customised by user"
+  const [rate, setRateLocal] = useState<number | null>(
+    bibleTTS.isRateCustomized() ? bibleTTS.getCurrentRate() : null,
+  );
+  const [pitch, setPitchLocal] = useState<number | null>(
+    bibleTTS.isPitchCustomized() ? bibleTTS.getCurrentPitch() : null,
+  );
+
+  // Display value (slider needs a number even in device-default mode)
+  const rateDisplay = rate ?? 0.65; // midpoint shown when device-default
+  const pitchDisplay = pitch ?? 1.0;
+
+  const rateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pitchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const previewActiveRef = useRef(false);
+
+  // ── Waveform animation ─────────────────────────────────────────────────────
+  const waveAnims = useRef(
+    Array.from({ length: 7 }, () => new Animated.Value(0.3)),
+  ).current;
+  const waveLoop = useRef<Animated.CompositeAnimation | null>(null);
+
+  // ── Subscribe ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const unsub = bibleTTS.subscribe(s => {
+      setIsPlaying(s.isPlaying);
+      setIsPaused(s.isPaused);
+      if (!s.isPlaying && !s.isPaused) previewActiveRef.current = false;
+    });
+    return () => unsub();
+  }, []);
+
+  // ── Waveform ───────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (isPlaying) {
+      const anims = waveAnims.map((a, i) =>
+        Animated.loop(
+          Animated.sequence([
+            Animated.delay(i * 75),
+            Animated.timing(a, {
+              toValue: 1,
+              duration: 360 + i * 45,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+            Animated.timing(a, {
+              toValue: 0.2,
+              duration: 360 + i * 45,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+          ]),
+        ),
+      );
+      waveLoop.current = Animated.parallel(anims);
+      waveLoop.current.start();
+    } else {
+      waveLoop.current?.stop();
+      waveAnims.forEach(a =>
+        Animated.timing(a, {
+          toValue: 0.3,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(),
+      );
+    }
+    return () => {
+      waveLoop.current?.stop();
+    };
+  }, [isPlaying]);
+
+  // ── Load voices ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      setDeviceLoading(true);
+      try {
+        const voices = await bibleTTS.getDeviceVoices();
+        setDeviceVoices(voices);
+        if (!deviceVoiceId && voices[0]?.id) {
+          setDeviceVoiceId(voices[0].id);
+          await bibleTTS.setVoice(voices[0].id);
+        }
+      } catch {
+        setDeviceVoices([]);
+      } finally {
+        setDeviceLoading(false);
+      }
+    })();
+  }, []);
+
+  // ── Derived labels ─────────────────────────────────────────────────────────
+  const currentVoice = useMemo(
+    () => deviceVoices.find(v => v.id === deviceVoiceId),
+    [deviceVoices, deviceVoiceId],
+  );
+
+  const voiceLabel = useMemo(() => {
+    if (deviceLoading) return 'Loading voices…';
+    return currentVoice?.name || deviceVoiceId || 'Select a voice';
+  }, [currentVoice, deviceVoiceId, deviceLoading]);
+
+  const voiceQuality = useMemo(() => {
+    if (!currentVoice) return null;
+    return currentVoice.quality === 'neural'
+      ? 'Neural'
+      : currentVoice.quality === 'enhanced'
+        ? 'Enhanced'
+        : 'Local';
+  }, [currentVoice]);
+
+  const nearestRateLabel = useMemo(
+    () =>
+      RATE_SNAPS.reduce((a, b) =>
+        Math.abs(a.value - rateDisplay) <= Math.abs(b.value - rateDisplay)
+          ? a
+          : b,
+      ).label,
+    [rateDisplay],
+  );
+
+  const nearestPitchLabel = useMemo(
+    () =>
+      PITCH_SNAPS.reduce((a, b) =>
+        Math.abs(a.value - pitchDisplay) <= Math.abs(b.value - pitchDisplay)
+          ? a
+          : b,
+      ).label,
+    [pitchDisplay],
+  );
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
+
+  const handleRateChange = (v: number) =>
+    setRateLocal(Math.round(v * 100) / 100);
+
+  const handleRateCommit = useCallback(async (v: number) => {
+    const r = Math.round(v * 100) / 100;
+    setRateLocal(r);
+    if (rateTimer.current) clearTimeout(rateTimer.current);
+    rateTimer.current = setTimeout(async () => {
+      await bibleTTS.setRate(r);
+      if (previewActiveRef.current) await restartPreview();
+    }, 80);
+  }, []);
+
+  const handleRateReset = async () => {
+    await bibleTTS.resetRate();
+    setRateLocal(null);
+    showToast('success', 'Speed reset: Using device default speed.');
+    if (previewActiveRef.current) await restartPreview();
+  };
+
+  const handlePitchChange = (v: number) =>
+    setPitchLocal(Math.round(v * 100) / 100);
+
+  const handlePitchCommit = useCallback(async (v: number) => {
+    const p = Math.round(v * 100) / 100;
+    setPitchLocal(p);
+    if (pitchTimer.current) clearTimeout(pitchTimer.current);
+    pitchTimer.current = setTimeout(async () => {
+      await bibleTTS.setPitch(p);
+      if (previewActiveRef.current) await restartPreview();
+    }, 80);
+  }, []);
+
+  const handlePitchReset = async () => {
+    await bibleTTS.resetPitch();
+    setPitchLocal(null);
+    showToast('success', 'Pitch reset: Using device default pitch.');
+    if (previewActiveRef.current) await restartPreview();
+  };
+
+  const applyVoice = async (id: string) => {
+    setDeviceVoiceId(id);
+    await bibleTTS.setVoice(id);
+    setPickerOpen(false);
+    showToast('success', 'Voice updated');
+    if (previewActiveRef.current) await restartPreview();
+  };
+
+  const restartPreview = async () => {
+    await bibleTTS.stop();
+    await new Promise((r: any) => setTimeout(r, 100));
+    await bibleTTS.speakVerses([{ num: 16, text: PREVIEW_TEXT }], 'John', 3);
+  };
+
+  const handlePreview = async () => {
+    if (isPlaying || isPaused) {
+      previewActiveRef.current = false;
+      await bibleTTS.stop();
+      return;
+    }
+    previewActiveRef.current = true;
+    try {
+      await bibleTTS.speakVerses([{ num: 16, text: PREVIEW_TEXT }], 'John', 3);
+    } catch {
+      previewActiveRef.current = false;
+      showToast('error', 'Preview failed: Check TTS language packs.');
+    }
+  };
+
+  // ── Theme tokens ───────────────────────────────────────────────────────────
+  const gold = '#C9A84C';
+  const goldDim = '#C9A84C30';
+  const surface = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.035)';
+  const border = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
+
+  return (
+    <View style={[styles.root, { backgroundColor: COLORS.background }]}>
+      <ActionHeader
+        title="Reading Voice"
+        rightComponent={<Volume2 size={24} color={COLORS.white} />}
+        onPress={() => navigation.goBack()}
+      />
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Hero ────────────────────────────────────────────────────── */}
+        <LinearGradient
+          colors={
+            isDark
+              ? ['#1A1208', '#2C1F06', '#1A1208']
+              : ['#FDF6E3', '#F5E6C0', '#FDF6E3']
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.hero, { borderColor: gold + '28' }]}
+        >
+          <View style={[styles.heroBubble, { borderColor: gold + '14' }]} />
+          <View style={styles.heroInner}>
+            <View
+              style={[
+                styles.heroRing,
+                { borderColor: gold + '55', backgroundColor: goldDim },
+              ]}
+            >
+              <Waves size={21} color={gold} />
+            </View>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={[styles.heroTitle, { color: gold }]}>
+                Voice & Narration
+              </Text>
+              <Text
+                style={[
+                  styles.heroSub,
+                  {
+                    color: isDark
+                      ? 'rgba(255,255,255,0.50)'
+                      : 'rgba(0,0,0,0.45)',
+                  },
+                ]}
+              >
+                Configure your reading voice. Sliders marked{' '}
+                <Text style={{ color: gold, fontWeight: '700' }}>
+                  Device default
+                </Text>{' '}
+                inherit your system TTS settings.
+              </Text>
+            </View>
+          </View>
+          {/* Live waveform */}
+          <View style={styles.waveRow}>
+            {waveAnims.map((anim, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  styles.waveBar,
+                  {
+                    backgroundColor: isPlaying ? gold : gold + '45',
+                    height: 7 + (i % 3) * 5,
+                    transform: [{ scaleY: anim }],
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        </LinearGradient>
+
+        {/* ── Narrator voice ──────────────────────────────────────────── */}
+        <SectionLabel text="NARRATOR VOICE" isDark={isDark} />
+        <TouchableOpacity
+          onPress={() => setPickerOpen(true)}
+          activeOpacity={0.75}
+          style={[
+            styles.voiceBtn,
+            { backgroundColor: surface, borderColor: border },
+          ]}
+        >
+          <View
+            style={[
+              styles.voiceIcon,
+              { backgroundColor: goldDim, borderColor: gold + '55' },
+            ]}
+          >
+            <Mic2 size={18} color={gold} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[styles.voiceName, { color: COLORS.text }]}
+              numberOfLines={1}
+            >
+              {voiceLabel}
+            </Text>
+            {voiceQuality && (
+              <Text style={[styles.voiceTagText, { color: gold }]}>
+                {voiceQuality} · {currentVoice?.language ?? ''}
+              </Text>
+            )}
+          </View>
+          {deviceLoading ? (
+            <ActivityIndicator size="small" color={gold} />
+          ) : (
+            <ChevronDown size={17} color={gold} />
+          )}
+        </TouchableOpacity>
+
+        {/* ── Preview ─────────────────────────────────────────────────── */}
+        <SectionLabel text="PREVIEW" isDark={isDark} />
+        <View
+          style={[
+            styles.previewCard,
+            {
+              backgroundColor: surface,
+              borderColor: isPlaying ? gold + '65' : border,
+            },
+          ]}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.previewRef, { color: gold }]}>John 3:16</Text>
+            <Text
+              style={[
+                styles.previewSnip,
+                {
+                  color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.42)',
+                },
+              ]}
+              numberOfLines={2}
+            >
+              {PREVIEW_TEXT.slice(0, 70)}…
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={handlePreview}
+            activeOpacity={0.8}
+            style={[
+              styles.playBtn,
+              {
+                backgroundColor: isPlaying ? '#C0392B18' : gold,
+                borderColor: isPlaying ? '#C0392B55' : 'transparent',
+              },
+            ]}
+          >
+            {isPlaying ? (
+              <Square size={14} color="#C0392B" />
+            ) : (
+              <Play size={14} color="#1A1208" />
+            )}
+            <Text
+              style={[
+                styles.playBtnTxt,
+                { color: isPlaying ? '#C0392B' : '#1A1208' },
+              ]}
+            >
+              {isPlaying ? 'Stop' : 'Play'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Speech controls ──────────────────────────────────────────── */}
+        <SectionLabel text="SPEECH CONTROLS" isDark={isDark} />
+        <View
+          style={[
+            styles.controlCard,
+            { backgroundColor: surface, borderColor: border },
+          ]}
+        >
+          {/* Reading Speed */}
+          <SliderBlock
+            icon={<Gauge size={15} color={gold} />}
+            label="Reading Speed"
+            snapLabel={nearestRateLabel}
+            value={rateDisplay}
+            isDeviceDefault={rate === null}
+            min={0.35}
+            max={1.0}
+            snaps={RATE_SNAPS}
+            onValueChange={handleRateChange}
+            onSlidingComplete={handleRateCommit}
+            onReset={handleRateReset}
+            trackColor={gold}
+            isDark={isDark}
+            COLORS={COLORS}
+          />
+
+          <View style={[styles.divider, { backgroundColor: border }]} />
+
+          {/* Voice Pitch */}
+          <SliderBlock
+            icon={<Music2 size={15} color={COLORS.primary} />}
+            label="Voice Pitch"
+            snapLabel={nearestPitchLabel}
+            value={pitchDisplay}
+            isDeviceDefault={pitch === null}
+            min={0.85}
+            max={1.15}
+            snaps={PITCH_SNAPS}
+            onValueChange={handlePitchChange}
+            onSlidingComplete={handlePitchCommit}
+            onReset={handlePitchReset}
+            trackColor={COLORS.primary}
+            isDark={isDark}
+            COLORS={COLORS}
+          />
+        </View>
+
+        <View style={{ height: 48 }} />
+      </ScrollView>
+
+      {/* ── Voice picker sheet ────────────────────────────────────────────── */}
+      <Modal
+        visible={pickerOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPickerOpen(false)}
+      >
+        <View style={styles.sheetBg}>
+          <View
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: isDark ? '#141006' : '#FFFDF6',
+                borderColor: gold + '22',
+              },
+            ]}
+          >
+            <View style={[styles.handle, { backgroundColor: gold + '40' }]} />
+            <View style={styles.sheetHead}>
+              <Text style={[styles.sheetTitle, { color: COLORS.text }]}>
+                Select Voice
+              </Text>
+              <TouchableOpacity
+                onPress={() => setPickerOpen(false)}
+                style={styles.sheetClose}
+              >
+                <X
+                  size={20}
+                  color={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.38)'}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {deviceLoading ? (
+              <View
+                style={{ paddingVertical: 32, alignItems: 'center', gap: 12 }}
+              >
+                <ActivityIndicator color={gold} />
+                <Text
+                  style={{
+                    color: isDark
+                      ? 'rgba(255,255,255,0.38)'
+                      : 'rgba(0,0,0,0.38)',
+                    fontSize: 13,
+                  }}
+                >
+                  Loading voices…
+                </Text>
+              </View>
+            ) : deviceVoices.length === 0 ? (
+              <Text
+                style={[
+                  styles.emptyTxt,
+                  {
+                    color: isDark
+                      ? 'rgba(255,255,255,0.38)'
+                      : 'rgba(0,0,0,0.38)',
+                  },
+                ]}
+              >
+                No English voices found.{'\n'}Install a TTS language pack in
+                device settings.
+              </Text>
+            ) : (
+              <ScrollView
+                style={{ maxHeight: 500 }}
+                showsVerticalScrollIndicator={false}
+              >
+                {(['neural', 'enhanced', 'local'] as const).map(q => {
+                  const group = deviceVoices.filter(v => v.quality === q);
+                  if (!group.length) return null;
+                  const heading =
+                    q === 'neural'
+                      ? 'Neural · Requires internet'
+                      : q === 'enhanced'
+                        ? 'Enhanced'
+                        : 'Local · Works offline';
+                  return (
+                    <View key={q}>
+                      <Text style={[styles.groupLbl, { color: gold }]}>
+                        {heading}
+                      </Text>
+                      {group.slice(0, 20).map(v => {
+                        const sel = deviceVoiceId === v.id;
+                        return (
+                          <TouchableOpacity
+                            key={v.id}
+                            onPress={() => applyVoice(v.id)}
+                            activeOpacity={0.7}
+                            style={[
+                              styles.voiceRow,
+                              {
+                                backgroundColor: sel
+                                  ? gold + '14'
+                                  : 'transparent',
+                                borderColor: sel
+                                  ? gold + '55'
+                                  : isDark
+                                    ? 'rgba(255,255,255,0.07)'
+                                    : 'rgba(0,0,0,0.07)',
+                              },
+                            ]}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text
+                                style={[
+                                  styles.voiceRowName,
+                                  { color: COLORS.text },
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {v.name || v.id}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.voiceRowMeta,
+                                  {
+                                    color: isDark
+                                      ? 'rgba(255,255,255,0.35)'
+                                      : 'rgba(0,0,0,0.35)',
+                                  },
+                                ]}
+                              >
+                                {v.language}
+                              </Text>
+                            </View>
+                            {sel ? (
+                              <CheckCircle size={17} color={gold} />
+                            ) : (
+                              <ChevronRight
+                                size={15}
+                                color={
+                                  isDark
+                                    ? 'rgba(255,255,255,0.22)'
+                                    : 'rgba(0,0,0,0.20)'
+                                }
+                              />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  );
+                })}
+                <View style={{ height: 24 }} />
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+// ─── SliderBlock ──────────────────────────────────────────────────────────────
+
+function SliderBlock({
+  icon,
+  label,
+  snapLabel,
+  value,
+  isDeviceDefault,
+  min,
+  max,
+  snaps,
+  onValueChange,
+  onSlidingComplete,
+  onReset,
+  trackColor,
+  isDark,
+  COLORS,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  snapLabel: string;
+  value: number;
+  isDeviceDefault: boolean;
+  min: number;
+  max: number;
+  snaps: Array<{ label: string; value: number }>;
+  onValueChange: (v: number) => void;
+  onSlidingComplete: (v: number) => void;
+  onReset: () => void;
+  trackColor: string;
+  isDark: boolean;
+  COLORS: any;
+}) {
+  const mutedTrack = isDark ? 'rgba(255,255,255,0.11)' : 'rgba(0,0,0,0.09)';
+
+  return (
+    <View style={sliderStyles.block}>
+      {/* Header row */}
+      <View style={sliderStyles.header}>
+        {icon}
+        <Text style={[sliderStyles.label, { color: COLORS.text }]}>
+          {label}
+        </Text>
+
+        {isDeviceDefault ? (
+          /* Device-default badge — no reset needed, already at default */
+          <View
+            style={[
+              sliderStyles.defaultBadge,
+              {
+                backgroundColor: trackColor + '15',
+                borderColor: trackColor + '35',
+              },
+            ]}
+          >
+            <Text style={[sliderStyles.defaultBadgeTxt, { color: trackColor }]}>
+              Device default
+            </Text>
+          </View>
+        ) : (
+          /* Custom value badge + reset button */
+          <View style={sliderStyles.customRow}>
+            <View
+              style={[
+                sliderStyles.snapBadge,
+                {
+                  backgroundColor: trackColor + '18',
+                  borderColor: trackColor + '40',
+                },
+              ]}
+            >
+              <Text style={[sliderStyles.snapBadgeTxt, { color: trackColor }]}>
+                {snapLabel}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={onReset}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={[
+                sliderStyles.resetBtn,
+                {
+                  borderColor: isDark
+                    ? 'rgba(255,255,255,0.14)'
+                    : 'rgba(0,0,0,0.12)',
+                },
+              ]}
+            >
+              <RotateCcw
+                size={12}
+                color={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.40)'}
+              />
+              <Text
+                style={[
+                  sliderStyles.resetTxt,
+                  {
+                    color: isDark
+                      ? 'rgba(255,255,255,0.45)'
+                      : 'rgba(0,0,0,0.40)',
+                  },
+                ]}
+              >
+                Reset
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* Hint shown only when device default is active */}
+      {isDeviceDefault && (
+        <Text
+          style={[
+            sliderStyles.deviceHint,
+            { color: isDark ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.32)' },
+          ]}
+        >
+          Move the slider to override your device setting
+        </Text>
+      )}
+
+      <Slider
+        style={sliderStyles.slider}
+        minimumValue={min}
+        maximumValue={max}
+        step={0.01}
+        value={value}
+        onValueChange={onValueChange}
+        onSlidingComplete={onSlidingComplete}
+        minimumTrackTintColor={isDeviceDefault ? mutedTrack : trackColor}
+        maximumTrackTintColor={mutedTrack}
+        thumbTintColor={
+          isDeviceDefault
+            ? isDark
+              ? 'rgba(255,255,255,0.35)'
+              : 'rgba(0,0,0,0.28)'
+            : trackColor
+        }
+      />
+
+      <View style={sliderStyles.snapRow}>
+        {snaps.map(s => {
+          const active = !isDeviceDefault && Math.abs(value - s.value) < 0.02;
+          return (
+            <TouchableOpacity
+              key={s.value}
+              onPress={() => onSlidingComplete(s.value)}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+            >
+              <Text
+                style={[
+                  sliderStyles.snapTick,
+                  {
+                    color: active
+                      ? trackColor
+                      : isDark
+                        ? 'rgba(255,255,255,0.25)'
+                        : 'rgba(0,0,0,0.25)',
+                    fontWeight: active ? '800' : '500',
+                  },
+                ]}
+              >
+                {s.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── SectionLabel ─────────────────────────────────────────────────────────────
+
+function SectionLabel({ text, isDark }: { text: string; isDark: boolean }) {
+  return (
+    <Text
+      style={[
+        styles.sectionLbl,
+        { color: isDark ? 'rgba(255,255,255,0.27)' : 'rgba(0,0,0,0.28)' },
+      ]}
+    >
+      {text}
+    </Text>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  scroll: { padding: SPACING.lg, paddingTop: 0, paddingBottom: 32 },
+
+  sectionLbl: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: SPACING.sm,
+    marginLeft: 2,
+  },
+
+  // Hero
+  hero: {
+    borderRadius: BORDER_RADIUS.xxl,
+    borderWidth: 1,
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.xl,
+    overflow: 'hidden',
+    padding: SPACING.xl,
+  },
+  heroBubble: {
+    position: 'absolute',
+    top: -45,
+    right: -45,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 1,
+  },
+  heroInner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  heroRing: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: { fontSize: FONT_SIZES.lg, fontWeight: '800', letterSpacing: 0.4 },
+  heroSub: { fontSize: FONT_SIZES.sm, fontWeight: '500', lineHeight: 18 },
+  waveRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 26 },
+  waveBar: { width: 5, borderRadius: 3 },
+
+  // Voice button
+  voiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    padding: SPACING.lg,
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: 1,
+    marginBottom: SPACING.xl,
+  },
+  voiceIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceName: { fontSize: FONT_SIZES.md, fontWeight: '700' },
+  voiceTagText: { fontSize: FONT_SIZES.xs, fontWeight: '600', marginTop: 2 },
+
+  // Preview
+  previewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    padding: SPACING.lg,
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: 1.5,
+    marginBottom: SPACING.xl,
+  },
+  previewRef: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    marginBottom: 3,
+  },
+  previewSnip: { fontSize: FONT_SIZES.sm, fontWeight: '500', lineHeight: 17 },
+  playBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1.5,
+  },
+  playBtnTxt: { fontSize: FONT_SIZES.sm, fontWeight: '800' },
+
+  // Control card
+  controlCard: {
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: SPACING.xl,
+  },
+  divider: { height: 1, marginHorizontal: SPACING.lg },
+
+  // Sheet
+  sheetBg: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    borderTopLeftRadius: BORDER_RADIUS.xxl,
+    borderTopRightRadius: BORDER_RADIUS.xxl,
+    borderWidth: 1,
+    padding: SPACING.lg,
+    paddingBottom: Platform.OS === 'ios' ? 36 : SPACING.xl,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: SPACING.md,
+  },
+  sheetHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+  },
+  sheetTitle: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
+  sheetClose: { padding: 6 },
+  groupLbl: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginTop: SPACING.md,
+    marginBottom: SPACING.sm,
+    marginLeft: 2,
+  },
+  voiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    marginBottom: SPACING.sm,
+  },
+  voiceRowName: { fontSize: FONT_SIZES.md, fontWeight: '700' },
+  voiceRowMeta: { fontSize: FONT_SIZES.xs, fontWeight: '500', marginTop: 2 },
+  emptyTxt: {
+    textAlign: 'center',
+    paddingVertical: 28,
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+});
+
+const sliderStyles = StyleSheet.create({
+  block: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.md,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  label: { flex: 1, fontSize: FONT_SIZES.md, fontWeight: '700' },
+
+  defaultBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1,
+  },
+  defaultBadgeTxt: { fontSize: FONT_SIZES.xs, fontWeight: '700' },
+
+  customRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  snapBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1,
+  },
+  snapBadgeTxt: { fontSize: FONT_SIZES.xs, fontWeight: '800' },
+  resetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1,
+  },
+  resetTxt: { fontSize: FONT_SIZES.xs, fontWeight: '600' },
+
+  deviceHint: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '500',
+    marginBottom: 4,
+    marginTop: 2,
+  },
+
+  slider: { width: '100%', height: 36 },
+  snapRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: -4,
+    paddingHorizontal: Platform.OS === 'ios' ? 10 : 4,
+  },
+  snapTick: { fontSize: FONT_SIZES.xs },
+});
