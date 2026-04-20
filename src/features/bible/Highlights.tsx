@@ -64,7 +64,7 @@ export default function Highlights() {
       const response = await sendPostRequest('bible', 'get-highlights', {});
 
       if (response.returnCode === 200 && response.returnData) {
-        setHighlights(response.returnData);
+        setHighlights(response.returnData.highlights);
       } else {
         setModal({
           status: true,

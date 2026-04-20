@@ -75,11 +75,20 @@ export const createStyles = (COLORS: any) =>
     scrollView: { flex: 1 },
     scrollContent: { padding: SPACING.lg, paddingBottom: 100 },
     section: { marginBottom: SPACING.lg },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: SPACING.sm,
+    },
     sectionTitle: {
       fontSize: FONT_SIZES.lg,
       fontWeight: '700',
       color: COLORS.text,
-      marginBottom: SPACING.sm,
+    },
+    sectionAction: {
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '600',
     },
 
     // Verse Card

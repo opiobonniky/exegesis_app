@@ -17,7 +17,7 @@ const getBaseURL = () => {
   if (__DEV__) {
     return 'http://192.168.100.123:5001';
   } else {
-    return 'https://exegesis-ixrb.onrender.com';
+    return 'https://exegesis-new.onrender.com/';
   }
 };
 

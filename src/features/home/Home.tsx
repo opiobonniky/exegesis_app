@@ -31,6 +31,7 @@ import {
   BookMarked,
   Globe,
   HelpCircle,
+  CheckCircle,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
@@ -44,19 +45,18 @@ import ActionHeader from '../../reusable/ActionHeader';
 import { createStyles } from './homeStyle';
 import { bibleTTS } from '../../utilits/bibleTTS';
 import { connectSocket } from '../../services/socket/socketClient';
-import {
-  getLocalISODate,
-  loadDailyVerseCache,
-  loadLatestDailyVerseCache,
-  msUntilDailyVerseTime,
-  isDailyVerseTimeReached,
-} from './dailyVerseCache';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type ActivityType = 'read' | 'highlight' | 'note' | 'favorite' | 'plan';
+
 type RecentActivityItem = {
+  type: ActivityType;
+  id: number;
   book: string;
   chapter: number;
+  verse: number;
+  colorId?: number;
   time: string;
 };
 
@@ -205,23 +205,52 @@ export default function Home() {
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
+  const formatActivityTime = (act: any): string => {
+    try {
+      const timeVal = act.time;
+      if (!timeVal || typeof timeVal !== 'object') {
+        if (typeof timeVal === 'string') return formatWhatsAppTime(timeVal);
+        return 'Recent';
+      }
+      const timeStr = timeVal.createdOn || timeVal.updatedOn;
+      if (!timeStr) return 'Recent';
+      const time = new Date(timeStr);
+      if (isNaN(time.getTime())) return 'Recent';
+      return formatWhatsAppTime(timeStr);
+    } catch {
+      return 'Recent';
+    }
+  };
+
   const loadHomeStats = useCallback(async () => {
     try {
-      const response = await sendPostRequest('bible', 'get-home-stats', {});
-      if (response.returnCode === 200) {
-        const d = response.returnData;
+      const [statsRes, activityRes] = await Promise.all([
+        sendPostRequest('bible', 'get-home-stats', {}),
+        sendPostRequest('bible', 'get-recent-activity', { limit: 10 }),
+      ]);
+
+      if (statsRes.returnCode === 200) {
+        const d = statsRes.returnData;
         setStats({
-          chaptersRead: d.chaptersRead ?? 0,
-          highlights: d.highlights ?? 0,
-          notes: d.notes ?? 0,
-          bookmarks: d.favorites ?? 0,
+          chaptersRead: d.readHistoryCount ?? 0,
+          highlights: d.highlightCount ?? 0,
+          notes: d.noteCount ?? 0,
+          bookmarks: d.favoriteCount ?? 0,
         });
-        const activity = (d.recentActivity ?? []).map((x: any) => ({
-          book: x.bookName,
-          chapter: Number(x.chapter),
-          time: formatWhatsAppTime(x.updatedOn || x.createdOn),
+
+        console.log('Home Stats response:', JSON.stringify(statsRes));
+        console.log('Recent Activity response:', JSON.stringify(activityRes));
+
+        const activities = (activityRes.returnData || []).map((act: any) => ({
+          type: act.type,
+          id: act.id,
+          book: act.book,
+          chapter: act.chapter,
+          verse: act.verse,
+          colorId: act.colorId,
+          time: formatActivityTime(act),
         }));
-        setRecentActivity(activity);
+        setRecentActivity(activities);
       }
     } catch (e) {
       console.error('Error loading home stats:', e);
@@ -403,38 +432,119 @@ export default function Home() {
 
         {/* ── Recent Activity ────────────────────────────────────────────── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate(route.readHistory)}
+            >
+              <Text style={[styles.sectionAction, { color: COLORS.primary }]}>
+                See All
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {recentActivity.length === 0 ? (
-            <View style={[styles.activityItem, { justifyContent: 'center' }]}>
-              <Text style={{ color: COLORS.muted }}>
-                No recent activity yet.
+            <View
+              style={[
+                activityStyles.emptyCard,
+                { backgroundColor: COLORS.cardBackground },
+              ]}
+            >
+              <Text style={[activityStyles.emptyText, { color: COLORS.muted }]}>
+                Start reading to see your activity here
               </Text>
             </View>
           ) : (
-            recentActivity.map((act, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={styles.activityItem}
-                onPress={() =>
-                  navigation.navigate(route.bible, {
-                    bookName: act.book,
-                    chapter: act.chapter,
-                  })
-                }
-              >
-                <View style={styles.activityIcon}>
-                  <Clock size={16} color={COLORS.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.activityTitle}>
-                    {act.book} {act.chapter}
-                  </Text>
-                  <Text style={styles.activityTime}>{act.time}</Text>
-                </View>
-                <ArrowRight size={18} color={COLORS.muted} />
-              </TouchableOpacity>
-            ))
+            <View style={activityStyles.activityList}>
+              {recentActivity.map((act, idx) => {
+                const ActivityIcon =
+                  act.type === 'read'
+                    ? Clock
+                    : act.type === 'highlight'
+                      ? Star
+                      : act.type === 'note'
+                        ? MenuSquareIcon
+                        : act.type === 'plan'
+                          ? CheckCircle
+                          : Heart;
+                const iconColor =
+                  act.type === 'read'
+                    ? '#6366F1'
+                    : act.type === 'highlight'
+                      ? '#F59E0B'
+                      : act.type === 'note'
+                        ? '#10B981'
+                        : act.type === 'plan'
+                          ? '#00695C'
+                          : '#EC4899';
+                const label =
+                  act.type === 'read'
+                    ? 'Reading'
+                    : act.type === 'highlight'
+                      ? 'Highlighted'
+                      : act.type === 'note'
+                        ? 'Noted'
+                        : act.type === 'plan'
+                          ? 'Plan Progress'
+                          : 'Favorited';
+
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[
+                      activityStyles.activityCard,
+                      { backgroundColor: COLORS.cardBackground },
+                    ]}
+                    onPress={() =>
+                      act.type === 'plan'
+                        ? navigation.navigate(route.readingPlan)
+                        : navigation.navigate(route.bible, {
+                            bookName: act.book,
+                            chapter: act.chapter,
+                          })
+                    }
+                  >
+                    <View
+                      style={[
+                        activityStyles.iconBox,
+                        { backgroundColor: iconColor + '20' },
+                      ]}
+                    >
+                      <ActivityIcon size={18} color={iconColor} />
+                    </View>
+                    <View style={activityStyles.activityContent}>
+                      <View style={activityStyles.activityTop}>
+                        <Text
+                          style={[
+                            activityStyles.activityLabel,
+                            { color: iconColor },
+                          ]}
+                        >
+                          {label}
+                        </Text>
+                        <Text
+                          style={[
+                            activityStyles.activityTime,
+                            { color: COLORS.muted },
+                          ]}
+                        >
+                          {act.time}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          activityStyles.activityVerse,
+                          { color: COLORS.text },
+                        ]}
+                      >
+                        {act.book} {act.chapter}:{act.verse}
+                      </Text>
+                    </View>
+                    <ArrowRight size={16} color={COLORS.muted} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -496,5 +606,58 @@ const contentStyles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     letterSpacing: 0.1,
+  },
+});
+
+// ── Activity styles ───────────────────────────────────────────────────────────────
+
+const activityStyles = StyleSheet.create({
+  emptyCard: {
+    padding: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  activityList: {
+    gap: 8,
+  },
+  activityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+  },
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  activityLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  activityTime: {
+    fontSize: 11,
+  },
+  activityVerse: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

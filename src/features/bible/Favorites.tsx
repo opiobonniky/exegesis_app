@@ -591,7 +591,7 @@ export default function Favorites() {
     try {
       const response = await sendPostRequest('bible', 'get-favorites', {});
       if (response.returnCode === 200 && response.returnData) {
-        setFavorites(response.returnData);
+        setFavorites(response.returnData.favorites);
       } else {
         showToast(
           'error',

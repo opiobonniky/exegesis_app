@@ -225,9 +225,10 @@ export default function ReadHistory() {
         });
 
         if (response.returnCode === 200 && response.returnData) {
-          const { content, hasMore: more, totalElements } = response.returnData;
+          const { readHistories: content, totalCount: totalElements } =
+            response.returnData;
 
-          const normalised: ReadHistoryItem[] = content
+          const normalised: ReadHistoryItem[] = (content || [])
             .map(normaliseItem)
             .sort(
               (a: ReadHistoryItem, b: ReadHistoryItem) =>
@@ -235,7 +236,7 @@ export default function ReadHistory() {
             );
 
           setHistory(prev => (replace ? normalised : [...prev, ...normalised]));
-          setHasMore(more);
+          setHasMore(false);
           setTotalCount(totalElements);
           setPage(pageIndex);
         }

@@ -353,9 +353,12 @@ export function useBible() {
         bookName: currentBook,
         chapter: currentChapter,
       });
+
+      console.log('Highlights response:', JSON.stringify(res));
+
       if (res.returnCode === 200 && res.returnData) {
         const map: Record<string, Highlight> = {};
-        res.returnData.forEach((h: any) => {
+        res.returnData.highlights.forEach((h: any) => {
           const key = `${h.bookName} ${h.chapter}:${h.verseNumber}`;
           const col = HIGHLIGHT_COLORS.find(c => c.id === h.colorId);
           if (col)
@@ -379,10 +382,13 @@ export function useBible() {
   const loadFavorites = async () => {
     try {
       const res = await sendPostRequest('bible', 'get-favorites', {});
+
+      console.log('Favorites response:', JSON.stringify(res));
+
       if (res.returnCode === 200 && res.returnData) {
         setFavorites(
           new Set(
-            res.returnData.map(
+            res.returnData.favorites.map(
               (i: any) => `${i.bookName} ${i.chapter}:${i.verseNumber}`,
             ),
           ),
