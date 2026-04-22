@@ -175,12 +175,6 @@ export type VerseListProps = {
   favorites: Set<string>;
   highlightedVerse: number | null;
   activeAudioVerse: number | null;
-  /**
-   * Word-position map for the currently active audio verse.
-   * Passed as a plain array (not a ref) so VerseCard receives it as a prop.
-   * Updates once per verse start — NOT per word — so it never triggers
-   * FlatList-wide re-renders.
-   */
   activeVerseWordMap: Array<{ start: number; length: number }> | null;
   highlightAnim: Animated.Value;
   fadeAnim: Animated.Value;
@@ -197,6 +191,9 @@ export type VerseListProps = {
   scrollEventThrottle?: number;
   onVersePress: (verseNumber: number) => void;
   onRemoveHighlight: (verseNumber: number) => void;
+  onExplain?: (verseNumber: number) => void;
+  onCloseExplanation?: (verseNumber: number) => void;
+  explanationMap?: Record<number, string>;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -226,6 +223,9 @@ export default function VerseList({
   scrollEventThrottle,
   onVersePress,
   onRemoveHighlight,
+  onExplain,
+  onCloseExplanation,
+  explanationMap,
 }: VerseListProps) {
   if (loading) {
     return (
@@ -245,6 +245,10 @@ export default function VerseList({
     const highlightColor = highlight?.color;
     const isTargetHighlight = highlightedVerse === verseNumber;
     const isActiveAudio = activeAudioVerse === verseNumber;
+    const showExp = isSelected && selectedVerses.length === 1;
+    const expText = explanationMap?.[verseNumber];
+    // Show the panel if verse is selected (to show Explain button) OR has explanation text
+    const shouldShowExpPanel = showExp || !!expText;
 
     return (
       <VerseCard
@@ -256,9 +260,6 @@ export default function VerseList({
         highlightColor={highlightColor}
         isTargetHighlight={isTargetHighlight}
         isActiveAudio={isActiveAudio}
-        // Pass word map only to the active card; null for all others.
-        // VerseCard subscribes to bibleTTS internally — only 1 card re-renders
-        // per word instead of all ~15 visible cards.
         wordMap={isActiveAudio ? activeVerseWordMap : null}
         highlightAnim={highlightAnim}
         fontSize={fontSize}
@@ -266,6 +267,12 @@ export default function VerseList({
         styles={styles}
         onPress={() => onVersePress(verseNumber)}
         onRemoveHighlight={onRemoveHighlight}
+        onExplain={onExplain ? () => onExplain(verseNumber) : undefined}
+        onCloseExplanation={
+          onCloseExplanation ? () => onCloseExplanation(verseNumber) : undefined
+        }
+        showExplanation={shouldShowExpPanel}
+        explanationText={expText}
       />
     );
   };

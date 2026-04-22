@@ -70,7 +70,6 @@ import {
   SearchModal,
   DrawerMenu,
   NoteModal,
-  ExplanationModal,
 } from './modals';
 
 if (
@@ -240,7 +239,7 @@ export default function Bible() {
     handleSearch,
     goToVerse,
     closeSearch,
-    verseExplanation,
+    verseExplanationMap,
     noteText,
     setNoteText,
     noteSaving,
@@ -264,6 +263,8 @@ export default function Bible() {
     goToChapter,
     handleVersionChange,
     getverseExplanation,
+    clearVerseExplanation,
+    clearVerseExplanationForVerse,
     activeVerseWordMap,
     modal,
     dismissModal,
@@ -429,6 +430,11 @@ export default function Bible() {
               addReadHistory(verseNumber);
             }}
             onRemoveHighlight={removeHighlight}
+            onExplain={vn =>
+              getverseExplanation([vn], currentBook, currentChapter)
+            }
+            onCloseExplanation={clearVerseExplanationForVerse}
+            explanationMap={verseExplanationMap}
           />
         </View>
       ) : (
@@ -454,11 +460,16 @@ export default function Bible() {
           onScroll={handleScroll}
           scrollEventThrottle={16}
           onVersePress={verseNumber => {
-            if (isGuest) return; // guests can read but not select verses
+            if (isGuest) return;
             toggleVerseSelection(verseNumber);
             addReadHistory(verseNumber);
           }}
           onRemoveHighlight={removeHighlight}
+          onExplain={vn =>
+            getverseExplanation([vn], currentBook, currentChapter)
+          }
+          onCloseExplanation={clearVerseExplanationForVerse}
+          explanationMap={verseExplanationMap}
         />
       )}
 
@@ -541,26 +552,6 @@ export default function Bible() {
         currentBook={currentBook}
         currentChapter={currentChapter}
         isDark={isDark}
-      />
-
-      <ExplanationModal
-        visible={showExplanation}
-        onClose={() => setShowExplanation(false)}
-        verses={verses}
-        selectedVerses={selectedVerses}
-        explanation={verseExplanation}
-        currentBook={currentBook}
-        currentChapter={currentChapter}
-        isDark={isDark}
-        onReadMore={() => {
-          setShowExplanation(false);
-          clearSelection();
-          navigation.navigate(route.fullVerseExplanation, {
-            verseNumber: selectedVerses[0],
-            bookName: currentBook,
-            chapter: currentChapter,
-          });
-        }}
       />
 
       {/* ── Bottom Tab — navigation gated for guests ─────────────────────── */}

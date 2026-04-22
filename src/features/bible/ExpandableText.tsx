@@ -1,106 +1,123 @@
-import React, { useMemo, useState, useContext } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, {
+  useMemo,
+  useState,
+  useContext,
+  useCallback,
+  useEffect,
+} from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { AppContext } from '../../common/AppContext';
 import { getColors, SPACING } from '../../constants/theme';
+import { ChevronDown, ChevronUp, X } from 'lucide-react-native';
 
 type Props = {
   text?: string;
-
-  /** number of characters shown first */
-  initialChars?: number;
-
-  /** number of characters added per click */
-  stepChars?: number;
-
-  /** labels */
-  moreLabel?: string;
-  lessLabel?: string;
-
-  /** hide "Show less" when fully expanded */
-  hideCollapse?: boolean;
+  initialLines?: number;
+  stepLines?: number;
+  expandLabel?: string;
+  closeLabel?: string;
+  onClose?: () => void;
+  containerStyle?: any;
 };
 
 export default function ExpandableText({
   text = '',
-  initialChars = 500,
-  stepChars = 500,
-  moreLabel = 'Show more',
-  lessLabel = 'Show less',
-  hideCollapse = false,
+  initialLines = 8,
+  stepLines = 20,
+  expandLabel = 'Read more',
+  closeLabel = 'Close',
+  onClose,
+  containerStyle,
 }: Props) {
   const app = useContext(AppContext);
   const COLORS = useMemo(() => getColors(app?.isDark), [app?.isDark]);
 
   const cleanText = (text ?? '').trim();
-  const total = cleanText.length;
 
-  const [visibleChars, setVisibleChars] = useState(
-    Math.min(initialChars, total),
+  const [maxLines, setMaxLines] = useState(initialLines);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!expanded && maxLines > initialLines) {
+      setMaxLines(initialLines);
+    }
+  }, [expanded, maxLines, initialLines]);
+
+  const showMore = useCallback(() => {
+    setMaxLines(prev => prev + stepLines);
+    setExpanded(true);
+  }, [stepLines]);
+
+  const handleClose = useCallback(() => {
+    setMaxLines(0);
+    setExpanded(false);
+    setTimeout(() => {
+      onClose?.();
+    }, 0);
+  }, [onClose]);
+
+  const handleTextLayout = useCallback(
+    (e: any) => {
+      if (expanded || maxLines === 0) return;
+      const lines = e.nativeEvent.lines.length;
+      if (lines >= maxLines) {
+        setMaxLines(prev => Math.min(prev + 1, lines));
+      }
+    },
+    [expanded, maxLines],
   );
 
   if (!cleanText) return null;
 
-  const isFullyVisible = visibleChars >= total;
-  const displayText = cleanText.slice(0, visibleChars);
-
-  const onMore = () => setVisibleChars(p => Math.min(p + stepChars, total));
-  const onLess = () => setVisibleChars(Math.min(initialChars, total));
-
   return (
-    <View>
-      <Text style={[styles.text, { color: COLORS.text }]}>{displayText}</Text>
+    <View style={containerStyle}>
+      <Text
+        style={[styles.text, { color: COLORS.text }]}
+        numberOfLines={maxLines}
+        onTextLayout={handleTextLayout}
+      >
+        {cleanText}
+      </Text>
 
-      {!isFullyVisible && (
-        <Text style={[styles.ellipsis, { color: COLORS.text }]}>…</Text>
-      )}
-
-      {!isFullyVisible ? (
-        <Pressable onPress={onMore} style={styles.btn}>
-          <Text style={[styles.btnText, { color: COLORS.primary }]}>
-            {moreLabel}
-          </Text>
-        </Pressable>
-      ) : !hideCollapse ? (
-        <>
-          <Text
-            style={[
-              styles.btnText,
-              {
-                color: COLORS.accent,
-                marginTop: SPACING.sm,
-                fontWeight: '100',
-              },
-            ]}
-          >
-            End of text
-          </Text>
-          <Pressable onPress={onLess} style={styles.btn}>
-            <Text style={[styles.btnText, { color: COLORS.primary }]}>
-              {lessLabel}
+      <View style={styles.footer}>
+        {expanded ? (
+          <TouchableOpacity onPress={handleClose} style={styles.toggleBtn}>
+            <X size={12} color={COLORS.primary} />
+            <Text style={[styles.toggleText, { color: COLORS.primary }]}>
+              {closeLabel}
             </Text>
-          </Pressable>
-        </>
-      ) : null}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={showMore} style={styles.toggleBtn}>
+            <Text style={[styles.toggleText, { color: COLORS.primary }]}>
+              {expandLabel}
+            </Text>
+            <ChevronDown size={12} color={COLORS.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   text: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 12,
+    lineHeight: 18,
   },
-  ellipsis: {
-    fontSize: 18,
-    lineHeight: 22,
-    marginTop: -6,
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: SPACING.sm,
   },
-  btn: {
-    marginTop: SPACING?.sm ?? 10,
-    alignSelf: 'flex-start',
+  toggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
-  btnText: {
-    fontSize: 14,
-    fontWeight: '800',
+  toggleText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

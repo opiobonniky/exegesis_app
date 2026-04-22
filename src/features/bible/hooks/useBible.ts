@@ -132,7 +132,9 @@ export function useBible() {
 
   // ── Explanation ───────────────────────────────────────────────────────────
 
-  const [verseExplanation, setVerseExplanation] = useState('');
+  const [verseExplanationMap, setVerseExplanationMap] = useState<
+    Record<number, string>
+  >({});
 
   // ── Notes ─────────────────────────────────────────────────────────────────
 
@@ -428,17 +430,27 @@ export function useBible() {
     }
   };
 
-  const getverseExplanation = async () => {
-    if (selectedVerses.length > 1) {
-      return;
-    }
+  const getverseExplanation = async (
+    verseNumbers?: number[],
+    bookName?: string,
+    chapter?: number,
+  ) => {
+    const targetVerses = verseNumbers ?? selectedVerses;
+    const targetBook = bookName ?? currentBook;
+    const targetChapter = chapter ?? currentChapter;
+
+    if (targetVerses.length !== 1) return;
+
+    const verseNumber = targetVerses[0];
+
     try {
       const res = await sendPostRequest('bible', 'get-verse-explanation', {
-        bookName: currentBook,
-        chapter: currentChapter,
-        verseNumber: selectedVerses[0],
+        bookName: targetBook,
+        chapter: targetChapter,
+        verseNumber,
       });
       if (res?.returnCode === 200) {
+        console.log('Verse explanation response:', JSON.stringify(res));
         if (!res.returnData?.explanation) {
           showToast(
             'info',
@@ -446,7 +458,10 @@ export function useBible() {
           );
           return;
         }
-        setVerseExplanation(res.returnData.explanation as string);
+        setVerseExplanationMap(prev => ({
+          ...prev,
+          [verseNumber]: res.returnData.explanation as string,
+        }));
         setShowExplanation(true);
       }
     } catch (e: any) {
@@ -456,6 +471,20 @@ export function useBible() {
       );
     }
   };
+
+  const clearVerseExplanation = useCallback(() => {
+    setVerseExplanationMap({});
+    setShowExplanation(false);
+    setSelectedVerses([]);
+  }, []);
+
+  const clearVerseExplanationForVerse = useCallback((verseNumber: number) => {
+    setVerseExplanationMap(prev => {
+      const next = { ...prev };
+      delete next[verseNumber];
+      return next;
+    });
+  }, []);
 
   const addFavorite = async () => {
     try {
@@ -1083,7 +1112,10 @@ export function useBible() {
     closeSearch,
 
     // Explanation
-    verseExplanation,
+    verseExplanationMap,
+    getverseExplanation,
+    clearVerseExplanation,
+    clearVerseExplanationForVerse,
 
     // Note
     noteText,
@@ -1121,7 +1153,6 @@ export function useBible() {
     copyVerses,
     goToChapter,
     handleVersionChange,
-    getverseExplanation,
 
     // Feedback modal
     modal,

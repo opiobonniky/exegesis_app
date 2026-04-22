@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Heart, X } from 'lucide-react-native';
+import { Heart, X, Lightbulb } from 'lucide-react-native';
+import ExpandableText from '../../bible/ExpandableText';
 import { bibleTTS } from '../../../utilits/bibleTTS';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -24,12 +25,6 @@ type VerseCardProps = {
   highlightColor?: string;
   isTargetHighlight: boolean;
   isActiveAudio: boolean;
-  /**
-   * Word-position map for THIS verse: clean-text wordIndex → original-text
-   * char offset. Passed once per verse start (not per word), so it never
-   * causes FlatList-wide re-renders. Only the active VerseCard re-renders
-   * per word by subscribing to bibleTTS internally.
-   */
   wordMap: WordSpan[] | null;
   highlightAnim: Animated.Value;
   fontSize: number;
@@ -37,6 +32,10 @@ type VerseCardProps = {
   styles: any;
   onPress: () => void;
   onRemoveHighlight: (verseNumber: number) => void;
+  onExplain?: () => void;
+  onCloseExplanation?: () => void;
+  showExplanation?: boolean;
+  explanationText?: string;
 };
 
 export default function VerseCard({
@@ -55,6 +54,10 @@ export default function VerseCard({
   styles,
   onPress,
   onRemoveHighlight,
+  onExplain,
+  onCloseExplanation,
+  showExplanation,
+  explanationText,
 }: VerseCardProps) {
   const accent = colors.accent;
 
@@ -305,7 +308,45 @@ export default function VerseCard({
         )}
 
         <View style={styles.verseContent}>
-          <View style={styles.verseTextContainer}>{renderVerseText()}</View>
+          <View style={styles.verseTextContainer}>
+            {renderVerseText()}
+            {showExplanation && (
+              <View
+                style={[
+                  localStyles.inlineExpWrap,
+                  { backgroundColor: `${colors.primary}08` },
+                ]}
+              >
+                {explanationText ? (
+                  <ExpandableText
+                    text={explanationText}
+                    initialLines={8}
+                    stepLines={20}
+                    expandLabel="Read more"
+                    closeLabel="Close"
+                    onClose={onCloseExplanation}
+                    containerStyle={localStyles.expandableContainer}
+                  />
+                ) : onExplain ? (
+                  <TouchableOpacity
+                    onPress={onExplain}
+                    activeOpacity={0.7}
+                    style={localStyles.inlineExplainBtn}
+                  >
+                    <Lightbulb size={10} color={colors.primary} />
+                    <Text
+                      style={[
+                        localStyles.inlineExplainBtnText,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      Explain
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
+          </View>
           {isFavorite && (
             <View style={styles.verseRightIcons}>
               <Heart size={20} color={colors.accent} fill={colors.accent} />
@@ -315,7 +356,6 @@ export default function VerseCard({
 
         {highlightColor && (
           <TouchableOpacity
-            style={styles.removeHighlight}
             onPress={() => onRemoveHighlight(verseNumber)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -345,6 +385,23 @@ const localStyles = StyleSheet.create({
     borderColor: 'rgba(255, 193, 7, 0.85)',
     borderRadius: 8,
     pointerEvents: 'none',
+  },
+  inlineExpWrap: {
+    marginTop: 6,
+    padding: 6,
+    borderRadius: 6,
+  },
+  expandableContainer: {
+    marginTop: 0,
+  },
+  inlineExplainBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  inlineExplainBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });
 
