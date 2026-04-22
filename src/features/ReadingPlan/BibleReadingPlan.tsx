@@ -133,46 +133,56 @@ export default function BibleReadingPlan() {
 
   const getAllReadingPlans = async () => {
     try {
-      const response = await sendPostRequest('reading-plans', 'get-all', {});
-      const { returnData, returnCode, returnMessage } = response;
+      // Fetch both all plans AND user's started plans (like web does)
+      const [allResponse, userResponse] = await Promise.all([
+        sendPostRequest('reading-plans', 'get-all', {}),
+        sendPostRequest('reading-plans', 'get-user-plans', {}),
+      ]);
+
+      console.log('Get All Reading Plans response:', JSON.stringify(allResponse));
+      console.log('Get User Plans response:', JSON.stringify(userResponse));
+      
+      const { returnData, returnCode, returnMessage } = allResponse;
 
       if (returnCode === 200) {
-        setPlans(returnData);
-        console.log('Reading Plans Response here:', JSON.stringify(response));
+        const plans = returnData.plans || [];
+        setPlans(plans);
+        
+        // Build user progress from get-user-plans response
+        let userProgressMap: Record<string, UserProgress> = {};
+        let startedPlans: ReadingPlan[] = [];
+        
+        if (userResponse.returnCode === 200 && Array.isArray(userResponse.returnData)) {
+          const userPlansData = userResponse.returnData;
+          
+          userPlansData.forEach((up: any) => {
+            const plan = plans.find((p: any) => p.planId === up.planId);
+            if (plan) {
+              // Mark this plan as started
+              startedPlans.push({ ...plan, isStarted: true });
+              
+              // Build progress map
+              userProgressMap[up.planId] = {
+                planId: up.planId,
+                startDate: up.startDate || new Date().toISOString(),
+                completedDaysJson: JSON.stringify(Array.from({ length: up.completedDays || 0 }, (_, i) => i + 1)),
+                lastCompletedDate: up.lastCompletedDate || null,
+                streak: up.streak || 0,
+                isCompleted: up.isCompleted || false,
+                completedDate: up.completedDate || null,
+              };
+            }
+          });
+        }
+        
+        setMyPlans(startedPlans);
 
-        const buildCompletedDaysJson = (p: any): string => {
-          if (p.completedDaysJson) return p.completedDaysJson;
-          if (typeof p.progress === 'number' && p.progress > 0)
-            return JSON.stringify(
-              Array.from({ length: p.progress }, (_, i) => i + 1),
-            );
-          return '[]';
-        };
+        // Active (in-progress) plans - not completed
+        const active = startedPlans.filter((p: any) => !userProgressMap[p.planId]?.isCompleted);
+        setActivePlans(active);
 
-        // All started plans — both active AND completed
-        const started = returnData.filter((p: any) => p.started);
-        setMyPlans(started);
-
-        // Only in-progress — for badge count
-        setActivePlans(
-          returnData.filter((p: any) => p.started && !p.completed),
-        );
-
-        const progressArray: UserProgress[] = started.map((p: any) => ({
-          planId: p.planId,
-          startDate: p.startDate || new Date().toISOString(),
-          completedDaysJson: buildCompletedDaysJson(p),
-          lastCompletedDate: p.lastCompletedDate || null,
-          streak: p.streak || 0,
-          isCompleted: p.completed || false,
-          completedDate: p.completedDate || null,
-        }));
-
-        setUserProgress(progressArray);
-
-        const map: Record<string, UserProgress> = {};
-        progressArray.forEach(pr => (map[pr.planId] = pr));
-        setProgressMap(map);
+        setUserProgress(Object.values(userProgressMap));
+        setProgressMap(userProgressMap);
       } else {
         console.warn('Failed to load reading plans:', returnMessage);
       }
@@ -186,15 +196,22 @@ export default function BibleReadingPlan() {
       const response = await sendPostRequest('reading-plans', 'start', {
         planId: plan.planId,
       });
-      const { returnCode, returnMessage } = response;
+
+      console.log('Start Plan response:', JSON.stringify(response));
+      const { returnCode, returnMessage, returnData } = response;
       if (returnCode === 200) {
-        showToast('success', 'Reading plan started successfully!');
-        setTimeout(() => {
-          displayCustomTestNotification(
-            'Reading Plan Started',
-            `You have started "${plan.title}". Let's build that habit!`,
-          );
-        }, 500);
+        // Check if this is new or existing progress
+        if (returnMessage && returnMessage.includes('already')) {
+          showToast('info', 'You have existing progress in this plan.');
+        } else {
+          showToast('success', 'Reading plan started successfully!');
+          setTimeout(() => {
+            displayCustomTestNotification(
+              'Reading Plan Started',
+              `You have started "${plan.title}". Let's build that habit!`,
+            );
+          }, 500);
+        }
         await loadData();
         setActiveTab('progress');
       } else {

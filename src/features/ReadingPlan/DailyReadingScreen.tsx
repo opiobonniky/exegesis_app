@@ -196,16 +196,6 @@ export default function DailyReadingScreen() {
   useEffect(() => {
     loadData();
   }, [day]);
-  useEffect(() => {
-    setCurrentQ(0);
-    setSelected(null);
-    setShowResult(false);
-    setIsReviewing(false);
-    setQuizDone(false);
-    setCorrectCount(0);
-    submittedIds.current = new Set();
-    setNotYetAdded(false);
-  }, [day]);
 
   // ── data ──────────────────────────────────────
   const loadData = async () => {
@@ -273,20 +263,28 @@ export default function DailyReadingScreen() {
         setNotYetAdded(false);
         setAssignment(returnData);
         setIsCompleted(returnData.completed ?? false);
-        if (Array.isArray(returnData.quizQuestions)) {
+        
+        // Check if user has any previous answers for this specific day
+        const hasPreviousAnswers = Array.isArray(returnData.quizQuestions) && 
+          returnData.quizQuestions.some((q: QuizQuestion) => q.userAnswer !== null);
+        
+        // Always start fresh - show first question without results
+        setCurrentQ(0);
+        setSelected(null);
+        setShowResult(false);
+        setIsReviewing(false);
+        setQuizDone(false);
+        setCorrectCount(0);
+        submittedIds.current = new Set();
+        
+        if (Array.isArray(returnData.quizQuestions) && returnData.quizQuestions.length > 0) {
+          const newSubmitted = new Set<number>();
           returnData.quizQuestions.forEach((q: QuizQuestion) => {
-            if (q.userAnswer !== null) submittedIds.current.add(q.questionId);
+            if (q.userAnswer !== null) {
+              newSubmitted.add(q.questionId);
+            }
           });
-          const total = returnData.quizQuestions.length;
-          const answered = returnData.quizQuestions.filter(
-            (q: QuizQuestion) => q.isCorrect !== null,
-          );
-          if (total > 0 && answered.length === total) {
-            setCorrectCount(
-              answered.filter((q: QuizQuestion) => q.isCorrect === true).length,
-            );
-            setQuizDone(true);
-          }
+          submittedIds.current = newSubmitted;
         }
       } else if (returnCode === 404) {
         setNotYetAdded(true);
@@ -836,45 +834,11 @@ export default function DailyReadingScreen() {
                 color="#6366F1"
               />
 
-              {/* ── Progress row with tappable dots ── */}
+              {/* ── Progress row ── */}
               <View style={s.quizMeta}>
                 <Text style={[s.quizMetaText, { color: C.textSecondary }]}>
                   Question {currentQ + 1} of {quizTotal}
                 </Text>
-
-                {/* Dots — always tappable in review mode */}
-                <View style={s.dotRow}>
-                  {assignment.quizQuestions!.map((q, i) => {
-                    const done = q.userAnswer !== null;
-                    const current = i === currentQ;
-                    const correct = q.isCorrect === true;
-                    const wrong = q.isCorrect === false;
-
-                    const dotStyle = [
-                      s.dot,
-                      current && !done && s.dotActive,
-                      done && correct && s.dotCorrect,
-                      done && wrong && s.dotWrong,
-                      current && done && s.dotActiveDone,
-                    ];
-
-                    // In review mode every dot is tappable; outside review only future dots make sense
-                    const tappable =
-                      isReviewing || (!showResult && i !== currentQ);
-
-                    return tappable ? (
-                      <TouchableOpacity
-                        key={i}
-                        style={[dotStyle, s.dotTappable]}
-                        onPress={() => jumpToQuestion(i)}
-                        hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-                        activeOpacity={0.6}
-                      />
-                    ) : (
-                      <View key={i} style={dotStyle} />
-                    );
-                  })}
-                </View>
               </View>
 
               {/* Progress bar */}
@@ -1161,7 +1125,12 @@ export default function DailyReadingScreen() {
                         {isSubmitting ? (
                           <ActivityIndicator size="small" color="white" />
                         ) : (
-                          <Text style={s.actionBtnText}>Resubmit Answer</Text>
+                          <Text style={s.actionBtnText}>
+                            Resubmit Answer
+                            {assignment.quizQuestions![currentQ].numberAttempt
+                              ? ` (Try ${assignment.quizQuestions![currentQ].numberAttempt! + 1})`
+                              : ''}
+                          </Text>
                         )}
                       </TouchableOpacity>
                     </View>
