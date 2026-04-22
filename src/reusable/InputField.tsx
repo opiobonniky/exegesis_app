@@ -15,6 +15,7 @@ type Props = {
   label?: string;
   disable?: boolean;
   leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
 };
 
 export default function InputField({
@@ -28,6 +29,7 @@ export default function InputField({
   label,
   disable = false,
   leftIcon,
+  rightIcon,
   ...props
 }: Props) {
   const [showPassword, setShowPassword] = useState(false);
@@ -55,10 +57,10 @@ export default function InputField({
           borderColor: error ? COLORS.error : COLORS.border,
           borderRadius: 8,
           paddingLeft: leftIcon ? 12 : 0,
-          paddingRight: isPassword ? 10 : 0,
+          paddingRight: isPassword || rightIcon ? 10 : 0,
         }}
       >
-        {/* Left Icon - NOW RENDERING */}
+        {/* Left Icon */}
         {leftIcon && <View style={{ marginRight: 8 }}>{leftIcon}</View>}
 
         <TextInput
@@ -79,19 +81,23 @@ export default function InputField({
           {...props}
         />
 
-        {/* Eye Icon */}
-        {isPassword && (
-          <TouchableOpacity
-            onPress={() => setShowPassword(v => !v)}
-            style={{ paddingHorizontal: 6 }}
-            activeOpacity={0.7}
-          >
-            {showPassword ? (
-              <EyeOff size={20} color={COLORS.muted} />
-            ) : (
-              <Eye size={20} color={COLORS.muted} />
-            )}
-          </TouchableOpacity>
+        {/* Right Icon or Eye Toggle */}
+        {rightIcon ? (
+          <View style={{ paddingHorizontal: 6 }}>{rightIcon}</View>
+        ) : (
+          isPassword && (
+            <TouchableOpacity
+              onPress={() => setShowPassword(v => !v)}
+              style={{ paddingHorizontal: 6 }}
+              activeOpacity={0.7}
+            >
+              {showPassword ? (
+                <EyeOff size={20} color={COLORS.muted} />
+              ) : (
+                <Eye size={20} color={COLORS.muted} />
+              )}
+            </TouchableOpacity>
+          )
         )}
       </View>
 

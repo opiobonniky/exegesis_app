@@ -4,7 +4,6 @@ import axios, {
   AxiosResponse,
 } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert, Platform } from 'react-native';
 import { showToast } from '../helpers/Toash.helper';
 
 interface GenericResponse<T = any> {
@@ -15,6 +14,8 @@ interface GenericResponse<T = any> {
 
 const getBaseURL = () => {
   if (__DEV__) {
+    // For physical device on WiFi: use ur local IP (192.168.100.123)
+    // For Android emulator: use 10.0.2.2
     return 'http://192.168.100.123:5001';
   } else {
     return 'https://exegesis-new.onrender.com/';
@@ -51,7 +52,17 @@ api.interceptors.response.use(
   (response: AxiosResponse<GenericResponse>) => response,
   async error => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const url = originalRequest.url || '';
+
+    // Skip token refresh for login/register requests - let them handle the error
+    const isAuthRequest =
+      url.includes('/auth/login') || url.includes('/auth/register');
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthRequest
+    ) {
       originalRequest._retry = true;
       try {
         const token = await AsyncStorage.getItem(TOKEN_KEY);
@@ -97,6 +108,13 @@ export const sendPostRequest = async <T = any>(
     );
     return response.data;
   } catch (error: any) {
+    if (error.response?.data) {
+      const err = new Error(
+        error.response.data.returnMessage || 'Request failed',
+      );
+      (err as any).returnCode = error.response.data.returnCode;
+      throw err;
+    }
     console.error(`❌ POST ${controller}/${request} failed`, error);
     throw error;
   }

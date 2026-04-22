@@ -153,11 +153,24 @@ const Login = () => {
       } else {
         showToast('error', returnMessage || 'Unknown error');
       }
-    } catch (error) {
-      showToast(
-        'error',
-        error instanceof Error ? error.message : 'An unexpected error occurred',
-      );
+    } catch (error: any) {
+      const returnCode = error?.returnCode;
+      const returnMessage = error?.message || 'An unexpected error occurred';
+
+      if (returnCode === 405) {
+        showToast('warning', returnMessage);
+        setTimeout(() => {
+          setModal((m: any) => ({ ...m, status: false }));
+          navigation.navigate(route.register, {
+            emailVerify: email,
+            tab: 'verify',
+          });
+        }, 4000);
+      } else if (returnCode === 401) {
+        showToast('error', returnMessage);
+      } else {
+        showToast('error', returnMessage);
+      }
     } finally {
       setLoading(false);
     }
