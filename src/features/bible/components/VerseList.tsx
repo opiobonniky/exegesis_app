@@ -194,6 +194,7 @@ export type VerseListProps = {
   onExplain?: (verseNumber: number) => void;
   onCloseExplanation?: (verseNumber: number) => void;
   explanationMap?: Record<number, string>;
+  onExplainOpen?: (verseNumber: number) => void;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -226,6 +227,7 @@ export default function VerseList({
   onExplain,
   onCloseExplanation,
   explanationMap,
+  onExplainOpen,
 }: VerseListProps) {
   if (loading) {
     return (
@@ -267,9 +269,33 @@ export default function VerseList({
         styles={styles}
         onPress={() => onVersePress(verseNumber)}
         onRemoveHighlight={onRemoveHighlight}
-        onExplain={onExplain ? () => onExplain(verseNumber) : undefined}
+        onExplain={
+          onExplain
+            ? () => {
+                onExplainOpen?.(verseNumber);
+                onExplain(verseNumber);
+              }
+            : undefined
+        }
         onCloseExplanation={
-          onCloseExplanation ? () => onCloseExplanation(verseNumber) : undefined
+          onCloseExplanation
+            ? () => {
+                onCloseExplanation(verseNumber);
+                // Scroll the verse back into view after explanation collapses
+                const index = versesArray.findIndex(
+                  v => parseInt(v.verseNum, 10) === verseNumber,
+                );
+                if (index !== -1) {
+                  setTimeout(() => {
+                    flatListRef.current?.scrollToIndex({
+                      index,
+                      animated: true,
+                      viewPosition: 0.3,
+                    });
+                  }, 50);
+                }
+              }
+            : undefined
         }
         showExplanation={shouldShowExpPanel}
         explanationText={expText}

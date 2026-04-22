@@ -293,6 +293,7 @@ export default function Bible() {
   // ── Guest gate state ──────────────────────────────────────────────────────
   const [gateVisible, setGateVisible] = useState(false);
   const [gateMessage, setGateMessage] = useState('');
+  const [explanationOpen, setExplanationOpen] = useState(false);
 
   const showGate = (msg: string) => {
     clearSelection();
@@ -357,7 +358,7 @@ export default function Bible() {
       />
 
       {/* ── Selection Action Bar ─────────────────────────────────────────── */}
-      {selectedVerses.length > 0 && (
+      {selectedVerses.length > 0 && !explanationOpen && (
         <SelectionActionBar
           selectedCount={selectedVerses.length}
           isDark={isDark}
@@ -393,7 +394,10 @@ export default function Bible() {
           }
           onShare={() => guard('Sharing requires a free account.', shareVerses)}
           onCopy={() => guard('Copying requires a free account.', copyVerses)}
-          onClear={clearSelection}
+          onClear={() => {
+            clearSelection();
+            setExplanationOpen(false);
+          }}
         />
       )}
 
@@ -430,10 +434,14 @@ export default function Bible() {
               addReadHistory(verseNumber);
             }}
             onRemoveHighlight={removeHighlight}
-            onExplain={vn =>
-              getverseExplanation([vn], currentBook, currentChapter)
-            }
-            onCloseExplanation={clearVerseExplanationForVerse}
+            onExplain={vn => {
+              getverseExplanation([vn], currentBook, currentChapter);
+            }}
+            onCloseExplanation={vn => {
+              clearVerseExplanationForVerse(vn);
+              setExplanationOpen(false);
+            }}
+            onExplainOpen={() => setExplanationOpen(true)}
             explanationMap={verseExplanationMap}
           />
         </View>
@@ -465,10 +473,14 @@ export default function Bible() {
             addReadHistory(verseNumber);
           }}
           onRemoveHighlight={removeHighlight}
-          onExplain={vn =>
-            getverseExplanation([vn], currentBook, currentChapter)
-          }
-          onCloseExplanation={clearVerseExplanationForVerse}
+          onExplain={vn => {
+            getverseExplanation([vn], currentBook, currentChapter);
+          }}
+          onCloseExplanation={vn => {
+            clearVerseExplanationForVerse(vn);
+            setExplanationOpen(false);
+          }}
+          onExplainOpen={() => setExplanationOpen(true)}
           explanationMap={verseExplanationMap}
         />
       )}
