@@ -61,6 +61,7 @@ import {
   ChapterNavigation,
   SelectionActionBar,
   VerseList,
+  AudioControlBar,
 } from './components';
 
 import {
@@ -246,7 +247,6 @@ export default function Bible() {
     openNoteModal,
     closeNoteModal,
     saveNote,
-    activeAudioVerse,
     highlightedVerse,
     highlightAnim,
     fadeAnim,
@@ -274,6 +274,19 @@ export default function Bible() {
     handleAudioStop,
     refreshing,
     onRefresh,
+    activeAudioVerse,
+    audioPlaylist,
+    audioScope,
+    afterPlayBehaviour,
+    audioIsRepeat,
+    audioVerseIndex,
+    isAudioPaused,
+    handleAudioScopeChange,
+    handleAfterPlayChange,
+    handleRepeatToggle,
+    goToNextSelectedVerse,
+    goToPreviousSelectedVerse,
+    handleAudioTogglePlayPause,
   } = useBible();
 
   const handleVerseRefPress = useCallback(
@@ -509,9 +522,11 @@ export default function Bible() {
         visible={showHighlightPicker}
         onClose={() => setShowHighlightPicker(false)}
         isDark={isDark}
-        onSelectColor={(colorId, color) => {
+        selectedVerses={selectedVerses}
+        totalVerses={Object.keys(verses).length}
+        onSelectColor={(colorId, color, rangeStart, rangeEnd) => {
           setShowHighlightPicker(false);
-          highlightVerses(colorId, color);
+          highlightVerses(colorId, color, rangeStart, rangeEnd);
         }}
       />
 
@@ -556,11 +571,12 @@ export default function Bible() {
       <NoteModal
         visible={showNoteModal}
         onClose={closeNoteModal}
-        onSave={saveNote}
+        onSave={(rangeStart, rangeEnd) => saveNote(rangeStart, rangeEnd)}
         noteText={noteText}
         onNoteChange={setNoteText}
-        saving={noteSaving}
+        saving={noteSaving} 
         selectedVerses={selectedVerses}
+        totalVerses={Object.keys(verses).length}
         currentBook={currentBook}
         currentChapter={currentChapter}
         isDark={isDark}
@@ -678,6 +694,30 @@ export default function Bible() {
         triggered={gateVisible}
         triggerMessage={gateMessage}
         onTriggeredDismiss={hideGate}
+      />
+
+      {/* ── AudioControlBar ───────────────────────────────────────────────── */}
+      <AudioControlBar
+        isPlaying={showAudioPlayer}
+        isPaused={isAudioPaused}
+        nowPlayingLabel={
+          audioPlaylist.length > 0
+            ? `${currentBook} ${currentChapter}:${audioPlaylist[audioVerseIndex]?.num ?? activeAudioVerse}`
+            : `${currentBook} ${currentChapter}`
+        }
+        scope={audioScope}
+        afterPlay={afterPlayBehaviour}
+        isRepeat={audioIsRepeat}
+        verseIndex={audioVerseIndex}
+        verseCount={audioPlaylist.length}
+        isDark={isDark}
+        onPrev={goToPreviousSelectedVerse}
+        onNext={goToNextSelectedVerse}
+        onRepeatToggle={handleRepeatToggle}
+        onPlayPause={handleAudioTogglePlayPause}
+        onStop={handleAudioStop}
+        onScopeChange={handleAudioScopeChange}
+        onAfterPlayChange={handleAfterPlayChange}
       />
 
       {/* ── App feedback modal ───────────────────────────────────────────── */}

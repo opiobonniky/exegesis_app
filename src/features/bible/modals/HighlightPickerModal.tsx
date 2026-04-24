@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   BORDER_RADIUS,
 } from '../../../constants/theme';
 import { HIGHLIGHT_COLORS } from '../../../utilits/HIGHLIGHT_COLORS';
+import VerseRangeSlider from './VerseRangeSlider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -103,9 +104,56 @@ export default function HighlightPickerModal({
   onSelectColor,
   isDark,
   activeColorId,
-}: HighlightPickerModalProps & { activeColorId?: number }) {
+  selectedVerses = [],
+  totalVerses = 1,
+  onRangeChange,
+}: Omit<HighlightPickerModalProps, 'onSelectColor'> & {
+  onSelectColor: (
+    colorId: number,
+    color: string,
+    rangeStart?: number,
+    rangeEnd?: number,
+  ) => void;
+  activeColorId?: number;
+  selectedVerses?: number[];
+  totalVerses?: number;
+  onRangeChange?: (start: number, end: number) => void;
+}) {
   const COLORS = getColors(isDark);
   const styles = useMemo(() => buildStyles(isDark, COLORS), [isDark]);
+
+  // Local range state — seeded from selectedVerses when modal opens
+  const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+  const initialStart = sortedVerses[0] ?? 1;
+  const initialEnd = sortedVerses[sortedVerses.length - 1] ?? 1;
+
+  const [rangeStart, setRangeStart] = useState(initialStart);
+  const [rangeEnd, setRangeEnd] = useState(initialEnd);
+
+  // Reset range whenever modal becomes visible with new selection
+  const prevVisible = useRef(false);
+  if (visible && !prevVisible.current) {
+    prevVisible.current = true;
+    if (rangeStart !== initialStart || rangeEnd !== initialEnd) {
+      setRangeStart(initialStart);
+      setRangeEnd(initialEnd);
+    }
+  }
+  if (!visible && prevVisible.current) {
+    prevVisible.current = false;
+  }
+
+  const handleRangeChange = (start: number, end: number) => {
+    setRangeStart(start);
+    setRangeEnd(end);
+    onRangeChange?.(start, end);
+  };
+
+  // Chosen accent — mirrors the actively-selected highlight colour
+  const accentColor =
+    activeColorId != null
+      ? HIGHLIGHT_COLORS.find(c => c.id === activeColorId)?.color
+      : undefined;
 
   return (
     <Modal
@@ -146,6 +194,18 @@ export default function HighlightPickerModal({
         {/* Divider */}
         <View style={styles.divider} />
 
+        {/* Verse range slider */}
+        {totalVerses > 1 && (
+          <VerseRangeSlider
+            totalVerses={totalVerses}
+            startVerse={rangeStart}
+            endVerse={rangeEnd}
+            onRangeChange={handleRangeChange}
+            isDark={isDark}
+            accentColor={accentColor}
+          />
+        )}
+
         {/* Color groups */}
         <View style={styles.groupsContainer}>
           {COLOR_GROUPS.map(group => {
@@ -162,7 +222,9 @@ export default function HighlightPickerModal({
                       key={item.id}
                       item={item}
                       isSelected={activeColorId === item.id}
-                      onPress={() => onSelectColor(item.id, item.color)}
+                      onPress={() =>
+                        onSelectColor(item.id, item.color, rangeStart, rangeEnd)
+                      }
                       styles={styles}
                     />
                   ))}
@@ -178,7 +240,7 @@ export default function HighlightPickerModal({
         {/* Remove row */}
         <TouchableOpacity
           style={styles.removeBtn}
-          onPress={() => onSelectColor(0, '')}
+          onPress={() => onSelectColor(0, '', rangeStart, rangeEnd)}
           activeOpacity={0.65}
         >
           <View style={styles.removeIconRing}>

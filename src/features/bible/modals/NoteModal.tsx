@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { X } from 'lucide-react-native';
 import { NoteModalProps } from '../types';
 import { getColors } from '../../../constants/theme';
 import { createBibleStyles } from '../bibleStyle';
+import VerseRangeSlider from './VerseRangeSlider';
 
 export default function NoteModal({
   visible,
@@ -24,9 +25,45 @@ export default function NoteModal({
   currentBook,
   currentChapter,
   isDark,
-}: NoteModalProps) {
+  totalVerses = 1,
+  onRangeChange,
+}: NoteModalProps & {
+  totalVerses?: number;
+  onRangeChange?: (start: number, end: number) => void;
+  onSave?: (rangeStart?: number, rangeEnd?: number) => void;
+}) {
   const COLORS = getColors(isDark);
   const styles = useMemo(() => createBibleStyles(isDark), [isDark]);
+
+  const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+  const initialStart = sortedVerses[0] ?? 1;
+  const initialEnd = sortedVerses[sortedVerses.length - 1] ?? 1;
+
+  const [rangeStart, setRangeStart] = useState(initialStart);
+  const [rangeEnd, setRangeEnd] = useState(initialEnd);
+
+  // Reset range when modal opens
+  const prevVisible = useRef(false);
+  if (visible && !prevVisible.current) {
+    prevVisible.current = true;
+    if (rangeStart !== initialStart || rangeEnd !== initialEnd) {
+      setRangeStart(initialStart);
+      setRangeEnd(initialEnd);
+    }
+  }
+  if (!visible && prevVisible.current) {
+    prevVisible.current = false;
+  }
+
+  const handleRangeChange = (start: number, end: number) => {
+    setRangeStart(start);
+    setRangeEnd(end);
+    onRangeChange?.(start, end);
+  };
+
+  // Build display label from range
+  const rangeVerses: number[] = [];
+  for (let v = rangeStart; v <= rangeEnd; v++) rangeVerses.push(v);
 
   return (
     <Modal
@@ -41,7 +78,7 @@ export default function NoteModal({
             <View>
               <Text style={styles.noteModalTitle}>Add Note</Text>
               <Text style={styles.noteModalSubtitle}>
-                {currentBook} {currentChapter}:{selectedVerses.join(', ')}
+                {currentBook} {currentChapter}:{rangeVerses.join(', ')}
               </Text>
             </View>
             <TouchableOpacity
@@ -51,6 +88,16 @@ export default function NoteModal({
               <X size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
+
+          {totalVerses > 1 && (
+            <VerseRangeSlider
+              totalVerses={totalVerses}
+              startVerse={rangeStart}
+              endVerse={rangeEnd}
+              onRangeChange={handleRangeChange}
+              isDark={isDark}
+            />
+          )}
           <ScrollView
             style={styles.noteModalScrollView}
             contentContainerStyle={styles.noteModalScrollContent}
@@ -85,7 +132,7 @@ export default function NoteModal({
                 styles.noteSaveBtn,
                 (saving || !noteText.trim()) && styles.noteSaveBtnDisabled,
               ]}
-              onPress={onSave}
+              onPress={() => onSave?.(rangeStart, rangeEnd)}
               disabled={saving || !noteText.trim()}
             >
               {saving ? (

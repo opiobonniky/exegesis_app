@@ -347,19 +347,28 @@ export default function VerseCard({
               </View>
             )}
           </View>
-          {isFavorite && (
-            <View style={styles.verseRightIcons}>
-              <Heart size={20} color={colors.accent} fill={colors.accent} />
-            </View>
-          )}
+          <View style={localStyles.rightColumn}>
+            {isFavorite && (
+              <View style={styles.verseRightIcons}>
+                <Heart size={20} color={colors.accent} fill={colors.accent} />
+              </View>
+            )}
+          </View>
         </View>
 
+        {/* Remove highlight pill — bottom-left, tinted with the highlight colour */}
         {highlightColor && (
           <TouchableOpacity
             onPress={() => onRemoveHighlight(verseNumber)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.75}
+            // hitSlop={{ top: 6, bottom: 6, left: 6, right: 4 }}
+            style={[
+              localStyles.removeHighlightPill,
+              { backgroundColor: highlightColor },
+            ]}
           >
-            <X size={14} color={colors.white} />
+            <X size={10} color="#fff" strokeWidth={2.8} />
+            <Text style={localStyles.removeHighlightLabel}>Remove</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -402,6 +411,34 @@ const localStyles = StyleSheet.create({
   inlineExplainBtnText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  rightColumn: {
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+  },
+  removeHighlightPill: {
+    position: 'absolute',
+    right: 8,
+    bottom: 6,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
+
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  removeHighlightLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
   },
 });
 

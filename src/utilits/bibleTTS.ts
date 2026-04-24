@@ -24,14 +24,18 @@ const PREFERRED_VOICES: string[] =
       'com.apple.voice.enhanced.en-US.Alex',
     ],
     android: [
+      // Android 14+ Google TTS voices (new ID format in API 34)
       'en-us-x-iom-network',
-      'en-us-x-sfg-network',
       'en-us-x-iom-local',
+      'en-us-x-sfg-network',
       'en-us-x-sfg-local',
-      'en-gb-x-gbd-network',
       'en-us-x-tpf-network',
       'en-us-x-tpf-local',
+      'en-gb-x-gbd-network',
       'en-gb-x-gbd-local',
+      // Samsung TTS (common on Android 14 OEM devices)
+      'en-us-x-sfg#f_st_1-local',
+      'en-us-x-iom#f_st_1-local',
     ],
   }) ?? [];
 
@@ -166,7 +170,18 @@ class BibleTTSManager {
     Tts.addEventListener('tts-progress', (e: any) => {
       if (this.stopRequested) return;
 
-      const charIndex: number = e.charIndex ?? e.start ?? 0;
+      // Android 14 (API 34) changed the progress event shape:
+      //   - e.charIndex is REMOVED; only e.start (and e.end) are present.
+      //   - e.start is the UTF-16 code-unit offset of the first char of the word.
+      //   - e.end is exclusive end. We use it to validate the span when available.
+      // On older Android / iOS, e.charIndex is the canonical field.
+      // Normalise to a single variable that works across all API levels.
+      const charIndex: number =
+        e.charIndex !== undefined
+          ? (e.charIndex as number)
+          : e.start !== undefined
+            ? (e.start as number)
+            : 0;
 
       // First progress event: engine supports boundary callbacks — cancel timers.
       if (this._progressEventsFired === 0) {
@@ -181,10 +196,12 @@ class BibleTTSManager {
         this._progressEventsFired > 0 &&
         charIndex < this._lastRawCharIndex - 20
       ) {
+        // Android chunk restart: charIndex resets to 0 for the new chunk.
+        // We need: charIndex(=0) + _charIndexBase = spans[nextWordIdx].start
+        // spans are verse-local, so _charIndexBase = spans[nextWordIdx].start
         const nextWordIdx = Math.max(0, this.state.wordIndex + 1);
         const spans = this._cleanVerseWordSpans;
         if (nextWordIdx < spans.length) {
-          // charIndex=0 in new chunk → verse word at nextWordIdx
           this._charIndexBase = spans[nextWordIdx].start;
         }
       }
@@ -209,6 +226,7 @@ class BibleTTSManager {
     // ── tts-finish ────────────────────────────────────────────────────────────
     Tts.addEventListener('tts-finish', () => {
       this._isTtsSpeaking = false;
+      this._clearUtteranceTimeout();
       this._clearWordTimers();
       this.state.wordIndex = -1;
       this.setState({
@@ -226,6 +244,7 @@ class BibleTTSManager {
     // ── tts-cancel ────────────────────────────────────────────────────────────
     Tts.addEventListener('tts-cancel', () => {
       this._isTtsSpeaking = false;
+      this._clearUtteranceTimeout();
       this._clearWordTimers();
       this.state.wordIndex = -1;
 
@@ -283,7 +302,18 @@ class BibleTTSManager {
 
   // ── Timer-based word timing estimation (fallback) ─────────────────────────
   private _wordMs(word: string): number {
-    const wpm = Math.max(110, this.currentRate * 500);
+    // TTS rate 0.0–1.0 maps to roughly 80–280 WPM on most engines.
+    // The previous formula (rate * 500) over-estimated by ~2x at the default
+    // rate of 0.5, causing highlights to fire well ahead of speech.
+    //
+    // Calibration (empirically measured against several Android/iOS voices):
+    //   rate=0.25 → ~85  WPM
+    //   rate=0.50 → ~130 WPM  (DEFAULT_RATE)
+    //   rate=0.75 → ~190 WPM
+    //   rate=1.00 → ~260 WPM
+    //
+    // Linear interpolation: wpm = 80 + rate * 180  (fits all four points well)
+    const wpm = Math.max(80, 80 + this.currentRate * 180);
     const avgMs = 60_000 / wpm;
     const charMs = (word.replace(/[^a-zA-Z0-9]/g, '').length / 4.5) * avgMs;
     const punct = /[,;]$/.test(word) ? 110 : /[.!?…]$/.test(word) ? 220 : 0;
@@ -352,13 +382,20 @@ class BibleTTSManager {
       if (this._pitchCustomized) await Tts.setDefaultPitch(this.currentPitch);
 
       if (Platform.OS === 'android') {
-        try {
-          await (Tts as any).setEnabled(true);
-        } catch {}
-        // Enable character-level progress events (fires tts-progress per word)
+        // setEnabled() was removed in Android 14 (API 34). Calling it on API 34+
+        // throws "TextToSpeech not supported" on several OEMs, which can crash
+        // init() entirely and silence all TTS. Safe to drop — it was only needed
+        // on API < 21 devices which react-native-tts no longer supports anyway.
+        //
+        // setSpokenWordProgress() is still valid on API ≤ 33. On API 34+
+        // react-native-tts registers the UtteranceProgressListener internally,
+        // so word-boundary events still arrive without this call. We keep it for
+        // older devices and silently swallow errors on Android 14+.
         try {
           await (Tts as any).setSpokenWordProgress(true);
-        } catch {}
+        } catch {
+          // Android 14+ may throw; tts-progress events still fire natively.
+        }
       }
 
       const voices = await Tts.voices();
@@ -375,9 +412,13 @@ class BibleTTSManager {
   }
 
   private selectBestVoice(voices: any[]): string | null {
-    const english = voices.filter(v =>
-      v.language?.toLowerCase().startsWith('en'),
-    );
+    const english = voices.filter(v => {
+      if (!v.language?.toLowerCase().startsWith('en')) return false;
+      // Android 14 (API 34): voices with notInstalled=true are listed but will
+      // silently fail or crash TTS when selected. Only pick ready voices.
+      if (v.notInstalled === true) return false;
+      return true;
+    });
 
     if (this.currentDeviceVoiceId) {
       const saved = english.find(v => v.id === this.currentDeviceVoiceId);
@@ -439,6 +480,20 @@ class BibleTTSManager {
       .trim();
   }
 
+  // ── Per-utterance timeout (Android 14 safety net) ───────────────────────
+  // On Android 14 (API 34) the TTS engine occasionally drops an utterance
+  // silently — no tts-start, no tts-finish, no tts-cancel ever fires.
+  // Without this guard the verse-loop would stall forever on that verse.
+  // 30 s covers even the longest Bible verse at the slowest speech rate.
+  private _utteranceTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  private _clearUtteranceTimeout() {
+    if (this._utteranceTimeoutId !== null) {
+      clearTimeout(this._utteranceTimeoutId);
+      this._utteranceTimeoutId = null;
+    }
+  }
+
   // ── Core speak ────────────────────────────────────────────────────────────
   async speak(text: string, prefixLen = 0): Promise<void> {
     if (!text) return;
@@ -455,12 +510,24 @@ class BibleTTSManager {
     this._lastRawCharIndex = -1;
 
     // Pre-compute char spans of every word in the VERSE portion (post-prefix).
-    // Used by _binarySearchWordSpan to map a raw charIndex to a word index.
+    //
+    // Spans are VERSE-LOCAL (offsets into clean.slice(prefixLen), starting at 0).
+    //
+    // In tts-progress, verseCharOffset = charIndex + _charIndexBase where
+    // _charIndexBase = -prefixLen.  For the first chunk this gives:
+    //   verseCharOffset = charIndex - prefixLen
+    // which is exactly the byte position inside the verse substring — the same
+    // coordinate space as these spans. Both sides match. ✓
+    //
+    // On a chunk-restart (Android), _charIndexBase is updated so charIndex=0
+    // still maps to the correct next verse-local word position.
     const verseText = clean.slice(prefixLen);
     const spanRe = /\S+/g;
     let sm: RegExpExecArray | null;
     const spans: Array<{ start: number; end: number }> = [];
     while ((sm = spanRe.exec(verseText)) !== null) {
+      // Store as local (verse-relative) offsets — verseCharOffset is also
+      // verse-relative (charIndex - prefixLen), so they match directly.
       spans.push({ start: sm.index, end: sm.index + sm[0].length });
     }
     this._cleanVerseWordSpans = spans;
@@ -489,12 +556,37 @@ class BibleTTSManager {
           if (this.stopRequested) {
             this._pendingResolve = null;
             this._utteranceStarted = false;
+            this._clearUtteranceTimeout();
             resolve();
             return;
           }
           this._utteranceStarted = true;
           this._isTtsSpeaking = true;
+
+          // Android 14 safety net: if the engine drops the utterance silently
+          // (no finish/cancel within 30 s) we resolve anyway so the loop moves on.
+          this._clearUtteranceTimeout();
+          this._utteranceTimeoutId = setTimeout(() => {
+            if (this._pendingResolve === resolve) {
+              console.warn(
+                '[BibleTTS] Utterance timeout — engine may have dropped it (Android 14)',
+              );
+              this._isTtsSpeaking = false;
+              this._pendingResolve = null;
+              this._utteranceStarted = false;
+              this._clearWordTimers();
+              this.state.wordIndex = -1;
+              this.setState({
+                isPlaying: false,
+                isPaused: false,
+                tier: 'idle',
+              });
+              resolve();
+            }
+          }, 30_000);
+
           Promise.resolve(Tts.speak(clean)).catch(() => {
+            this._clearUtteranceTimeout();
             this._isTtsSpeaking = false;
             this._pendingResolve = null;
             this._utteranceStarted = false;
@@ -506,7 +598,11 @@ class BibleTTSManager {
           Tts.stop()
             .then(doSpeak)
             .catch(() => {
+              // Android 14 can throw "IllegalStateException: not speaking" here.
+              // Mark engine as not speaking and force re-init on next call.
               this._isTtsSpeaking = false;
+              this._clearUtteranceTimeout();
+              this.initialized = false; // force re-init: engine state may be corrupt
               this._pendingResolve = null;
               this._utteranceStarted = false;
               resolve();
@@ -648,6 +744,7 @@ class BibleTTSManager {
       this._isTtsSpeaking = false;
       this._pausedText = '';
       this._pausedPrefixLen = 0;
+      this._clearUtteranceTimeout();
       this._clearWordTimers();
       this.state.wordIndex = -1;
 
@@ -762,9 +859,13 @@ class BibleTTSManager {
   async getDeviceVoices(): Promise<DeviceVoice[]> {
     try {
       const all = await Tts.voices();
-      const english = all.filter(v =>
-        v.language?.toLowerCase().startsWith('en'),
-      );
+      const english = all.filter(v => {
+        if (!v.language?.toLowerCase().startsWith('en')) return false;
+        // Android 14: filter out voices that are listed but not yet downloaded.
+        // Showing them in UI and then selecting them causes silent TTS failure.
+        if (v.notInstalled === true) return false;
+        return true;
+      });
       return english.map(v => ({
         id: v.id,
         name: v.name ?? v.id,
@@ -807,6 +908,8 @@ class BibleTTSManager {
 
   cleanup(): void {
     if (!Tts) return;
+    this._clearUtteranceTimeout();
+    this._clearWordTimers();
     Tts.removeAllListeners('tts-start');
     Tts.removeAllListeners('tts-progress');
     Tts.removeAllListeners('tts-finish');

@@ -21,7 +21,8 @@ import { sendPostRequest, testConnection } from '../../services/api';
 import { AppContext, UserInfo } from '../../common/AppContext';
 import KeyboardAwareness from '../../reusable/KeyboardAwareness';
 import { showToast } from '../../helpers/Toash.helper';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 const { width } = Dimensions.get('window');
 
@@ -219,50 +220,66 @@ const Login = () => {
             ]}
           >
             {/* "Log In" heading */}
-            <Text style={[s.loginHeading, { color: C.text }]}>Log In</Text>
+            <Text style={[s.loginHeading, { color: C.text }]}>
+              Welcome Back!
+            </Text>
+
+            <Text style={[s.continueHeading, { color: C.text }]}>
+              Sign in to continue your journey.
+            </Text>
 
             {/* ── Email input ─────────────────────────────────────────────── */}
             <View style={s.fieldWrap}>
-              <View
-                style={[
-                  s.inputBox,
-                  {
-                    borderColor: errors.email ? C.error : C.border,
-                    backgroundColor: isDark ? C.surface : '#FFFFFF',
-                  },
-                ]}
-              >
-                {/* Floating Label */}
-                <Animated.Text
+              <View style={s.inputRow}>
+                <View
                   style={[
-                    s.floatingLabel,
+                    s.inputIconBox,
                     {
-                      color: emailFocused || email ? C.primaryDark : C.muted,
-                      top: emailFocused || email ? 6 : 16,
-                      fontSize: emailFocused || email ? 12 : 15,
+                      borderColor: errors.email ? C.error : C.border,
+                      backgroundColor: isDark ? C.surface : '#F5F5F5',
                     },
                   ]}
                 >
-                  Email Address
-                </Animated.Text>
-
-                <TextInput
+                  <Mail size={18} color={C.muted} />
+                </View>
+                <View
                   style={[
-                    s.textInput,
-                    { color: C.text, paddingTop: 18 }, // space for label
+                    s.inputBox,
+                    {
+                      borderColor: errors.email ? C.error : C.border,
+                      backgroundColor: isDark ? C.surface : '#F5F5F5',
+                    },
                   ]}
-                  value={email}
-                  onChangeText={text => {
-                    setEmail(text);
-                    if (errors.email)
-                      setErrors(p => ({ ...p, email: undefined }));
-                  }}
-                  onFocus={() => setEmailFocused(true)}
-                  onBlur={() => setEmailFocused(false)}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  editable={!loading}
-                />
+                >
+                  {/* Floating Label */}
+                  <Animated.Text
+                    style={[
+                      s.floatingLabel,
+                      {
+                        color: emailFocused || email ? C.primaryDark : C.muted,
+                        top: emailFocused || email ? 6 : 16,
+                        fontSize: emailFocused || email ? 12 : 15,
+                      },
+                    ]}
+                  >
+                    Email Address
+                  </Animated.Text>
+
+                  <TextInput
+                    style={[s.textInput, { color: C.text, paddingTop: 18 }]}
+                    value={email}
+                    onChangeText={text => {
+                      setEmail(text);
+                      if (errors.email)
+                        setErrors(p => ({ ...p, email: undefined }));
+                    }}
+                    onFocus={() => setEmailFocused(true)}
+                    onBlur={() => setEmailFocused(false)}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    editable={!loading}
+                  />
+                </View>
               </View>
 
               {errors.email && (
@@ -274,59 +291,75 @@ const Login = () => {
 
             {/* ── Password input ──────────────────────────────────────────── */}
             <View style={s.fieldWrap}>
-              <View
-                style={[
-                  s.inputBox,
-                  {
-                    borderColor: errors.password ? C.error : C.border,
-                    backgroundColor: isDark ? C.surface : '#FFFFFF',
-                  },
-                ]}
-              >
-                {/* Floating Label */}
-                <Animated.Text
+              <View style={s.inputRow}>
+                <View
                   style={[
-                    s.floatingLabel,
+                    s.inputIconBox,
                     {
-                      color:
-                        passwordFocused || password ? C.primaryDark : C.muted,
-                      top: passwordFocused || password ? 6 : 16,
-                      fontSize: passwordFocused || password ? 12 : 15,
+                      borderColor: errors.password ? C.error : C.border,
+                      backgroundColor: isDark ? C.surface : '#F5F5F5',
                     },
                   ]}
                 >
-                  Password
-                </Animated.Text>
-
-                <TextInput
+                  <Lock size={18} color={C.muted} />
+                </View>
+                <View
                   style={[
-                    s.textInput,
-                    { color: C.text, paddingTop: 18, paddingRight: 50 },
+                    s.inputBox,
+                    {
+                      borderColor: errors.password ? C.error : C.border,
+                      backgroundColor: isDark ? C.surface : '#F5F5F5',
+                    },
                   ]}
-                  value={password}
-                  onChangeText={text => {
-                    setPassword(text);
-                    if (errors.password)
-                      setErrors(p => ({ ...p, password: undefined }));
-                  }}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  secureTextEntry={!passwordVisible}
-                  editable={!loading}
-                />
-
-                {/* Eye Icon */}
-                <TouchableOpacity
-                  style={s.eyeIcon}
-                  onPress={() => setPasswordVisible(!passwordVisible)}
-                  activeOpacity={0.7}
                 >
-                  {passwordVisible ? (
-                    <EyeOff size={20} color={C.muted} />
-                  ) : (
-                    <Eye size={20} color={C.muted} />
-                  )}
-                </TouchableOpacity>
+                  {/* Floating Label */}
+                  <Animated.Text
+                    style={[
+                      s.floatingLabel,
+                      {
+                        color:
+                          passwordFocused || password ? C.primaryDark : C.muted,
+                        top: passwordFocused || password ? 6 : 16,
+                        fontSize: passwordFocused || password ? 12 : 15,
+                      },
+                    ]}
+                  >
+                    Password
+                  </Animated.Text>
+
+                  <TextInput
+                    style={[
+                      s.textInput,
+                      {
+                        color: C.text,
+                        paddingTop: 18,
+                      },
+                    ]}
+                    value={password}
+                    onChangeText={text => {
+                      setPassword(text);
+                      if (errors.password)
+                        setErrors(p => ({ ...p, password: undefined }));
+                    }}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
+                    secureTextEntry={!passwordVisible}
+                    editable={!loading}
+                  />
+
+                  {/* Eye Icon */}
+                  <TouchableOpacity
+                    style={s.eyeIcon}
+                    onPress={() => setPasswordVisible(!passwordVisible)}
+                    activeOpacity={0.7}
+                  >
+                    {passwordVisible ? (
+                      <EyeOff size={20} color={C.muted} />
+                    ) : (
+                      <Eye size={20} color={C.muted} />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {errors.password && (
@@ -335,6 +368,17 @@ const Login = () => {
                 </Text>
               )}
             </View>
+
+            {/* Forgot password */}
+            <TouchableOpacity
+              style={s.forgotWrap}
+              onPress={() => navigation.navigate(route.forgotPassword)}
+              activeOpacity={0.7}
+            >
+              <Text style={[s.forgotText, { color: C.text }]}>
+                Forgot password?
+              </Text>
+            </TouchableOpacity>
 
             {/* ── SIGN IN button ──────────────────────────────────────────── */}
             <TouchableOpacity
@@ -354,31 +398,49 @@ const Login = () => {
               )}
             </TouchableOpacity>
 
-            {/* Forgot password */}
+            {/* Large Create Account button */}
             <TouchableOpacity
-              style={s.forgotWrap}
-              onPress={() => navigation.navigate(route.forgotPassword)}
-              activeOpacity={0.7}
+              style={[s.createAccountBtn, { borderColor: C.border }]}
+              onPress={() => navigation.navigate(route.register)}
+              activeOpacity={0.82}
             >
-              <Text style={[s.forgotText, { color: C.text }]}>
-                Forgot password?
+              <Text style={[s.createAccountText, { color: C.text }]}>
+                Create New Account
               </Text>
             </TouchableOpacity>
 
-            {/* Sign up row */}
-            <View style={s.signUpRow}>
-              <Text style={[s.signUpPrompt, { color: C.text }]}>
-                Don't have a account?{'  '}
+            {/* ── Divider ──────────────────────────────────────────────────────── */}
+            <View style={s.dividerRow}>
+              <View style={[s.dividerLine, { backgroundColor: C.border }]} />
+              <Text style={[s.dividerText, { color: C.muted }]}>
+                or continue with
               </Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate(route.register)}
-                activeOpacity={0.7}
-              >
-                <Text style={[s.signUpLink, { color: C.primaryDark }]}>
-                  Sign Up.
-                </Text>
-              </TouchableOpacity>
+              <View style={[s.dividerLine, { backgroundColor: C.border }]} />
             </View>
+
+            {/* ── Google Login button ────────────────────────────────────────── */}
+            <TouchableOpacity
+              style={[s.googleBtn, { borderColor: C.border }]}
+              onPress={() => {}}
+              activeOpacity={0.82}
+            >
+              <Icon name="google" size={20} color="#DB4437" />
+              <Text style={[s.googleText, { color: C.text }]}>
+                Continue with Google
+              </Text>
+            </TouchableOpacity>
+
+            {/* Terms and Conditions */}
+            <Text style={[s.termsText, { color: C.muted }]}>
+              By continuing, you agree to our{' '}
+              <Text style={[s.termsLink, { color: C.primaryDark }]}>
+                Terms of Service
+              </Text>{' '}
+              and{' '}
+              <Text style={[s.termsLink, { color: C.primaryDark }]}>
+                Privacy Policy
+              </Text>
+            </Text>
 
             {/* Coming soon */}
             <Text style={[s.comingSoon, { color: C.muted }]}>
@@ -427,7 +489,7 @@ const s = StyleSheet.create({
   // LOGO SECTION
   logoSection: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
     marginTop: 10,
   },
 
@@ -444,17 +506,47 @@ const s = StyleSheet.create({
   },
 
   loginHeading: {
-    fontSize: 34,
+    fontSize: 24,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 20,
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
   },
-
+  continueHeading: {
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 20,
+    letterSpacing: 1.5,
+  },
   // INPUTS
   fieldWrap: {
     width: '100%',
     marginBottom: 14,
+  },
+
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+
+  inputIconBox: {
+    width: 48,
+    height: 56,
+    borderRightWidth: 0,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    overflow: 'hidden',
+
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
 
   floatLabel: {
@@ -482,11 +574,14 @@ const s = StyleSheet.create({
   },
 
   inputBox: {
-    borderWidth: 1,
-    borderRadius: 10,
+    borderWidth: 0,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
     height: 56,
+    flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 14,
+    paddingRight: 44,
     position: 'relative',
 
     shadowColor: '#000',
@@ -498,10 +593,17 @@ const s = StyleSheet.create({
 
   eyeIcon: {
     position: 'absolute',
-    right: 14,
-    top: '50%',
-    transform: [{ translateY: -10 }],
+    right: 10,
+    top: 20,
+    zIndex: 10,
     padding: 4,
+  },
+
+  inputIcon: {
+    position: 'absolute',
+    left: 14,
+    top: 20,
+    zIndex: 5,
   },
 
   textInput: {
@@ -509,6 +611,7 @@ const s = StyleSheet.create({
     color: '#222',
     height: '100%',
     paddingVertical: 0,
+    zIndex: 2,
   },
 
   errorText: {
@@ -541,8 +644,10 @@ const s = StyleSheet.create({
 
   // LINKS
   forgotWrap: {
-    alignSelf: 'center',
+    alignSelf: 'flex-end',
     marginBottom: 14,
+    marginVertical: 10,
+    paddingHorizontal: 4,
   },
 
   forgotText: {
@@ -569,5 +674,68 @@ const s = StyleSheet.create({
   comingSoon: {
     fontSize: 11,
     textAlign: 'center',
+  },
+
+  // DIVIDER
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 12,
+    marginHorizontal: 12,
+    fontWeight: '500',
+  },
+
+  // GOOGLE BUTTON
+  googleBtn: {
+    width: '100%',
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  googleText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  // TERMS
+  termsText: {
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 14,
+  },
+  termsLink: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+
+  // CREATE ACCOUNT BUTTON
+  createAccountBtn: {
+    width: '100%',
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  createAccountText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

@@ -29,7 +29,7 @@ export default function ExpandableText({
   onClose,
   containerStyle,
 }: Props) {
-  const app = useContext(AppContext);
+  const app:any = useContext(AppContext);
   const COLORS = useMemo(() => getColors(app?.isDark), [app?.isDark]);
 
   const cleanText = (text ?? '').trim();

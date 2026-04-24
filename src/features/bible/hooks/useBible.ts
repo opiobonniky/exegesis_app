@@ -51,6 +51,13 @@ export interface ActionModalState {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// AudioControlBar types (re-exported for convenience)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type AudioScope = 'verse' | 'selection' | 'chapter';
+export type AfterPlayBehaviour = 'continue' | 'repeat' | 'stop';
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Hook
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -109,6 +116,14 @@ export function useBible() {
     Array<{ num: number; text: string }>
   >([]);
 
+  // ── AudioControlBar state ─────────────────────────────────────────────────
+  const [audioScope, setAudioScope] = useState<AudioScope>('selection');
+  const [afterPlayBehaviour, setAfterPlayBehaviour] =
+    useState<AfterPlayBehaviour>('stop');
+  const [audioIsRepeat, setAudioIsRepeat] = useState(false);
+  const [audioVerseIndex, setAudioVerseIndex] = useState(0);
+  const [isAudioPaused, setIsAudioPaused] = useState(false);
+
   // Word-position map for the currently active verse.
   // Updated ONCE per verse (when the verse starts), not per word.
   // VerseCard subscribes to bibleTTS directly for per-word updates.
@@ -121,9 +136,13 @@ export function useBible() {
 
   // Mutable refs — no re-render on change, safe inside closures
   const audioIndexRef = useRef(0);
+  const afterPlayBehaviourRef = useRef<AfterPlayBehaviour>('stop');
+  const audioScopeRef = useRef<AudioScope>('selection');
   const audioPlaylistRef = useRef<Array<{ num: number; text: string }>>([]);
   // Set false to break the sequential reading for-loop (user tapped stop)
   const isReadingRef = useRef(false);
+  const isAudioPausedRef = useRef(false);
+  const currentVerseIndexRef = useRef(0);
 
   // ── Search ────────────────────────────────────────────────────────────────
 
@@ -671,21 +690,48 @@ export function useBible() {
     audioPlaylistRef.current = playlist;
     audioIndexRef.current = 0;
     setAudioPlaylist(playlist);
+    setAudioScope('selection');
+    setAudioVerseIndex(0);
     setShowChapterOverlay(false);
     setShowAudioPlayer(true);
+    afterPlayBehaviourRef.current = afterPlayBehaviour;
+    audioScopeRef.current = 'selection';
+    isAudioPausedRef.current = false;
+    currentVerseIndexRef.current = 0;
 
-    for (let i = 0; i < playlist.length; i++) {
-      if (!isReadingRef.current) break; // stop() was called
-      audioIndexRef.current = i;
-      await _playVerseAtIndex(i, playlist);
+    // Build full playlist including remaining verses if continue
+    let fullPlaylist = [...playlist];
+    if (afterPlayBehaviourRef.current === 'continue') {
+      const lastSelected = Math.max(...selectedVerses);
+      const maxVerse = Math.max(...Object.keys(verses).map(Number));
+      for (let v = lastSelected + 1; v <= maxVerse; v++) {
+        if (verses[v]) {
+          fullPlaylist.push({ num: v, text: verses[v] });
+        }
+      }
+    }
+    audioPlaylistRef.current = fullPlaylist;
+
+    for (let i = currentVerseIndexRef.current; i < fullPlaylist.length; i++) {
+      // Check pause BEFORE playing each verse
+      if (isAudioPausedRef.current) {
+        // Wait here while paused
+        while (isAudioPausedRef.current && isReadingRef.current) {
+          await new Promise(r => setTimeout(r, 200));
+        }
+        // If stopped, exit
+        if (!isReadingRef.current) break;
+      }
+
+      currentVerseIndexRef.current = i;
+      setAudioVerseIndex(i);
+      await _playVerseAtIndex(i, fullPlaylist);
     }
 
-    if (isReadingRef.current) {
-      isReadingRef.current = false;
-      setShowAudioPlayer(false);
-      setActiveAudioVerse(null);
-      setActiveAudioVerseText(null);
-    }
+    isReadingRef.current = false;
+    setShowAudioPlayer(false);
+    setActiveAudioVerse(null);
+    setActiveAudioVerseText(null);
   };
 
   /**
@@ -704,24 +750,58 @@ export function useBible() {
     audioPlaylistRef.current = playlist;
     audioIndexRef.current = 0;
     setAudioPlaylist(playlist);
+    setAudioScope('chapter');
+    setAudioVerseIndex(0);
     setShowAudioPlayer(true);
     setShowChapterOverlay(true);
+    afterPlayBehaviourRef.current = afterPlayBehaviour;
+    audioScopeRef.current = 'chapter';
+    isAudioPausedRef.current = false;
+    currentVerseIndexRef.current = 0;
+    audioPlaylistRef.current = playlist;
 
-    for (let i = 0; i < playlist.length; i++) {
-      if (!isReadingRef.current) break; // stop() was called
-      audioIndexRef.current = i;
-      await _playVerseAtIndex(i, playlist);
+    while (isReadingRef.current) {
+      for (let i = currentVerseIndexRef.current; i < playlist.length; i++) {
+        // Check pause BEFORE playing each verse
+        if (isAudioPausedRef.current) {
+          while (isAudioPausedRef.current && isReadingRef.current) {
+            await new Promise(r => setTimeout(r, 200));
+          }
+          if (!isReadingRef.current) break;
+        }
+
+        currentVerseIndexRef.current = i;
+        setAudioVerseIndex(i);
+        audioIndexRef.current = i;
+        await _playVerseAtIndex(i, playlist);
+      }
+
+      if (!isReadingRef.current) break;
+
+      const behaviour = afterPlayBehaviourRef.current;
+      if (behaviour === 'repeat') {
+        currentVerseIndexRef.current = 0;
+        continue;
+      } else if (behaviour === 'continue') {
+        const nextChapter = currentChapter + 1;
+        if (nextChapter <= maxChapters) {
+          setCurrentChapter(nextChapter);
+          isReadingRef.current = false;
+          return;
+        }
+        break;
+      } else {
+        break;
+      }
     }
 
-    if (isReadingRef.current) {
-      isReadingRef.current = false;
-      setShowAudioPlayer(false);
-      setShowChapterOverlay(false);
-      setActiveAudioVerse(null);
-      setActiveAudioVerseText(null);
-      audioPlaylistRef.current = [];
-      audioIndexRef.current = 0;
-    }
+    isReadingRef.current = false;
+    setShowAudioPlayer(false);
+    setShowChapterOverlay(false);
+    setActiveAudioVerse(null);
+    setActiveAudioVerseText(null);
+    audioPlaylistRef.current = [];
+    audioIndexRef.current = 0;
   };
 
   /**
@@ -737,29 +817,34 @@ export function useBible() {
   };
 
   /**
-   * Skip backward: stop current speech, the for-loop will re-read from prev.
+   * Skip backward: stop current and restart from previous verse.
    */
   const goToPreviousSelectedVerse = async () => {
-    const prev = audioIndexRef.current - 1;
+    const prev = currentVerseIndexRef.current - 1;
     if (prev < 0) return;
-    audioIndexRef.current = Math.max(0, prev - 1);
     await bibleTTS.stop();
+    currentVerseIndexRef.current = Math.max(0, prev - 1);
   };
 
   /**
-   * Pause → Resume → Restart (cycles).
+   * Pause - stops TTS immediately, stays on current verse.
+   * Resume - replays current verse from beginning.
    */
   const handleAudioTogglePlayPause = async () => {
-    const s = bibleTTS.getState();
-    if (s.isPlaying && !s.isPaused) {
-      await bibleTTS.pause();
-    } else if (s.isPaused) {
-      await bibleTTS.resume();
-    } else {
-      // Session ended or never started — restart current verse
+    if (isAudioPaused) {
+      // RESUME - restart current verse
+      setIsAudioPaused(false);
+      isAudioPausedRef.current = false;
+      const currentIdx = currentVerseIndexRef.current;
       const playlist = audioPlaylistRef.current;
-      if (playlist.length === 0) return;
-      await _playVerseAtIndex(audioIndexRef.current, playlist);
+      if (playlist[currentIdx]) {
+        await _playVerseAtIndex(currentIdx, playlist);
+      }
+    } else {
+      // PAUSE - stop immediately
+      await bibleTTS.stop();
+      setIsAudioPaused(true);
+      isAudioPausedRef.current = true;
     }
   };
 
@@ -778,6 +863,51 @@ export function useBible() {
   const collapseChapterOverlay = () => {
     setShowChapterOverlay(false);
     setShowAudioPlayer(true);
+  };
+
+  /**
+   * Change audio scope (verse/selection/chapter) and restart if playing
+   */
+  const handleAudioScopeChange = async (scope: AudioScope) => {
+    const wasPlaying = isReadingRef.current;
+    if (wasPlaying) {
+      await _stopAllAudio();
+    }
+    setAudioScope(scope);
+    setAudioIsRepeat(false);
+
+    if (scope === 'chapter') {
+      startReadingChapter();
+    } else if (scope === 'selection' && selectedVerses.length > 0) {
+      startReadingSelectedVerses();
+    } else if (scope === 'verse' && activeAudioVerse) {
+      const singleVerse = [
+        { num: activeAudioVerse, text: verses[activeAudioVerse] },
+      ];
+      isReadingRef.current = true;
+      audioPlaylistRef.current = singleVerse;
+      audioIndexRef.current = 0;
+      setAudioPlaylist(singleVerse);
+      setAudioVerseIndex(0);
+      setShowAudioPlayer(true);
+      setShowChapterOverlay(false);
+      await _playVerseAtIndex(0, singleVerse);
+    }
+  };
+
+  /**
+   * Change after-play behaviour - takes effect immediately
+   */
+  const handleAfterPlayChange = (behaviour: AfterPlayBehaviour) => {
+    setAfterPlayBehaviour(behaviour);
+    afterPlayBehaviourRef.current = behaviour;
+  };
+
+  /**
+   * Toggle repeat mode
+   */
+  const handleRepeatToggle = () => {
+    setAudioIsRepeat(prev => !prev);
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -801,17 +931,22 @@ export function useBible() {
     setNoteText('');
   };
 
-  const saveNote = async () => {
+  const saveNote = async (rangeStart?: number, rangeEnd?: number) => {
     if (!noteText.trim()) {
       showToast('warning', 'Empty Note: Please enter some text for your note.');
       return;
+    }
+    let versesToSave = selectedVerses;
+    if (rangeStart != null && rangeEnd != null) {
+      versesToSave = [];
+      for (let v = rangeStart; v <= rangeEnd; v++) versesToSave.push(v);
     }
     try {
       setNoteSaving(true);
       const res = await sendPostRequest('bible', 'add-verse-note', {
         bookName: currentBook,
         chapter: currentChapter,
-        verseNumbers: selectedVerses,
+        verseNumbers: versesToSave,
         note: noteText.trim(),
       });
       if (res.returnCode !== 200) {
@@ -844,9 +979,20 @@ export function useBible() {
   // Highlights
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const highlightVerses = async (colorId: number, color: string) => {
+  const highlightVerses = async (
+    colorId: number,
+    color: string,
+    rangeStart?: number,
+    rangeEnd?: number,
+  ) => {
+    // Build verse list: use explicit range if provided, else fall back to selectedVerses
+    let versesToHighlight = selectedVerses;
+    if (rangeStart != null && rangeEnd != null) {
+      versesToHighlight = [];
+      for (let v = rangeStart; v <= rangeEnd; v++) versesToHighlight.push(v);
+    }
     try {
-      for (const verseNum of selectedVerses) {
+      for (const verseNum of versesToHighlight) {
         const res = await sendPostRequest('bible', 'add-highlight', {
           bookName: currentBook,
           chapter: currentChapter,
@@ -1102,7 +1248,15 @@ export function useBible() {
     showChapterOverlay,
     activeAudioVerse,
     activeAudioVerseText,
-    activeVerseWordMap, // replaces activeWordOffset — updated once per verse, not per word
+    activeVerseWordMap,
+    audioPlaylist,
+
+    // AudioControlBar state
+    audioScope,
+    afterPlayBehaviour,
+    audioIsRepeat,
+    audioVerseIndex,
+    isAudioPaused,
 
     // Search
     searchQuery,
@@ -1126,13 +1280,18 @@ export function useBible() {
     saveNote,
 
     // Audio controls
-    startReadingSelectedVerses, // verse mode
-    startReadingChapter, // chapter mode  ← NEW
+    startReadingSelectedVerses,
+    startReadingChapter,
     handleAudioTogglePlayPause,
     handleAudioStop,
     goToNextSelectedVerse,
     goToPreviousSelectedVerse,
-    collapseChapterOverlay, // hides overlay, keeps audio  ← NEW
+    collapseChapterOverlay,
+
+    // AudioControlBar callbacks
+    handleAudioScopeChange,
+    handleAfterPlayChange,
+    handleRepeatToggle,
 
     // Verse search-jump animation
     highlightedVerse,
