@@ -1,5 +1,3 @@
-
-
 import React, { useContext, useEffect, useRef } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
@@ -83,11 +81,13 @@ const AppNavigation = () => {
         ) : (
           // Not logged in, not first launch → Auth hub (GuestEntry)
           // Users can read the Bible as guest OR choose to sign in / register
-          <Stack.Screen name={route.guestEntry} component={GuestEntry} />
+          // <Stack.Screen name={route.guestEntry} component={GuestEntry} />
+          <Stack.Screen name={route.login} component={Login} />
         )}
         {/* ── Auth screens ─────────────────────────────────────────────── */}
         <Stack.Screen name={route.notLogined} component={Login} />
-        <Stack.Screen name={route.login} component={Login} />
+        {/* <Stack.Screen name={route.login} component={Login} /> */}
+        <Stack.Screen name={route.guestEntry} component={GuestEntry} />
         <Stack.Screen name={route.register} component={Register} />
         <Stack.Screen name={route.forgotPassword} component={ForgotPassword} />
         <Stack.Screen name={route.bible} component={Bible} />
@@ -132,9 +132,18 @@ const AppNavigation = () => {
         {/* ── Admin screens ─────────────────────────────────────────── */}
         <Stack.Screen name={route.adminDashboard} component={AdminDashboard} />
         <Stack.Screen name={route.adminUsers} component={AdminUsersPage} />
-        <Stack.Screen name={route.adminActivity} component={AdminActivityPage} />
-        <Stack.Screen name={route.adminDailyVerse} component={AdminDailyVerseManager} />
-        <Stack.Screen name={route.adminReadingPlans} component={AdminReadingPlans} />
+        <Stack.Screen
+          name={route.adminActivity}
+          component={AdminActivityPage}
+        />
+        <Stack.Screen
+          name={route.adminDailyVerse}
+          component={AdminDailyVerseManager}
+        />
+        <Stack.Screen
+          name={route.adminReadingPlans}
+          component={AdminReadingPlans}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

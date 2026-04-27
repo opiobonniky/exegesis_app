@@ -22,11 +22,12 @@ import { AppContext, UserInfo } from '../../common/AppContext';
 import KeyboardAwareness from '../../reusable/KeyboardAwareness';
 import { showToast } from '../../helpers/Toash.helper';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-
+import GoogleIcon from '../../assets/icons/google-icon.svg'; // ← NEW
 const { width } = Dimensions.get('window');
 
 const LOGO_SIZE = Math.min(width * 0.55, 260);
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -426,7 +427,9 @@ const Login = () => {
               onPress={() => {}}
               activeOpacity={0.82}
             >
-              <Icon name="google" size={20} color="#DB4437" />
+              <View style={s.googleIconContainer}>
+                <GoogleIcon width={25} height={25} />
+              </View>
               <Text style={[s.googleText, { color: C.text }]}>
                 Continue with Google
               </Text>
@@ -706,6 +709,12 @@ const s = StyleSheet.create({
     gap: 10,
     marginBottom: 16,
     backgroundColor: '#FFFFFF',
+  },
+  googleIconContainer: {
+    width: 20,
+    height: 20,
+    position: 'absolute',
+    left: 30,
   },
   googleText: {
     fontSize: 16,

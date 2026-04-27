@@ -137,10 +137,7 @@ export default function ProfileScreen() {
     setLoggingOut(true);
     try {
       await logout();
-      navigation.reset({
-        index: 0,
-        routes: [{ name: route.login }],
-      });
+      navigation.navigate(route.login);
     } catch (err) {
       console.error('Logout failed:', err);
       setModal({
