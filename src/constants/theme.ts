@@ -27,8 +27,6 @@ const lightColors = {
   black: '#000000',
 };
 
-
-
 const darkColors = {
   // ── Backgrounds ─────────────────────────────────────────────────────────────
   background: '#080C14', // very deep navy — rich, not harsh

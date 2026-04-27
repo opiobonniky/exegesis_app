@@ -18,7 +18,7 @@ const getBaseURL = () => {
     // For Android emulator: use 10.0.2.2
     return 'http://192.168.100.123:5001';
   } else {
-    return 'https://exegesis-new.onrender.com/';
+    return 'https://exegesisbackend-production.up.railway.app/';
   }
 };
 

@@ -27,8 +27,6 @@ const { width } = Dimensions.get('window');
 
 const LOGO_SIZE = Math.min(width * 0.55, 260);
 
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 const Login = () => {
@@ -143,8 +141,12 @@ const Login = () => {
           userRole: returnData.userRole,
           roleName: returnData.roleName,
         };
+
+        const dashboardRoute =
+          info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
+
         await setUserInfo(info);
-        navigation.navigate(route.homeLogin);
+        navigation.navigate(dashboardRoute);
       } else if (returnCode === 405) {
         showToast('warning', returnMessage);
         setTimeout(() => {

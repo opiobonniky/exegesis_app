@@ -68,6 +68,9 @@ const AppNavigation = () => {
 
   if (loading) return <LoadingCard />;
 
+  const userROle = userInfo?.userRole;
+  const isAdmin = userROle === 1;
+
   return (
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator id="main" screenOptions={{ headerShown: false }}>
@@ -75,6 +78,12 @@ const AppNavigation = () => {
         {firstLaunch ? (
           // Brand new install → Welcome onboarding slides
           <Stack.Screen name={route.welcome} component={Welcome} />
+        ) : userLoggedIn && isAdmin ? (
+          // Returning authenticated user → straight to Bible
+          <Stack.Screen
+            name={route.adminDashboard}
+            component={AdminDashboard}
+          />
         ) : userLoggedIn ? (
           // Returning authenticated user → straight to Bible
           <Stack.Screen name={route.home} component={Home} />
@@ -130,7 +139,10 @@ const AppNavigation = () => {
           component={NotificationSettings}
         />
         {/* ── Admin screens ─────────────────────────────────────────── */}
-        <Stack.Screen name={route.adminDashboard} component={AdminDashboard} />
+        <Stack.Screen
+          name={route.adminDashboardLogin}
+          component={AdminDashboard}
+        />
         <Stack.Screen name={route.adminUsers} component={AdminUsersPage} />
         <Stack.Screen
           name={route.adminActivity}

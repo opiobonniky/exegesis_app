@@ -137,7 +137,8 @@ export default function ProfileScreen() {
     setLoggingOut(true);
     try {
       await logout();
-      navigation.navigate(route.login);
+      // Navigation is handled automatically by the AppNavigation conditional rendering
+      // based on auth state, so we don't need to navigate manually here
     } catch (err) {
       console.error('Logout failed:', err);
       setModal({

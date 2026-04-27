@@ -27,6 +27,7 @@ export const route = {
   planBible: 'PlanBibleScreen',
   readingSettings: 'ReadingSettings',
   adminDashboard: 'AdminDashboard',
+  adminDashboardLogin: 'AdminDashboardLogin',
   adminUsers: 'AdminUsers',
   adminActivity: 'AdminActivity',
   adminDailyVerse: 'AdminDailyVerse',
