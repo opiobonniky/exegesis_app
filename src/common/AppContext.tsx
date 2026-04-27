@@ -28,6 +28,8 @@ export interface UserInfo {
   firstName: string;
   lastName: string;
   profilePhotoUrl?: string;
+  userRole?: number;
+  roleName?: string;
 }
 
 type AppContextType = {
@@ -54,6 +56,8 @@ type AppContextType = {
    * Cleared automatically on sign-in / logout.
    */
   isGuest: boolean;
+  /** True when user has admin role (userRole === 1) */
+  isAdmin: boolean;
 };
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -244,6 +248,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         bibleVersionId,
         setBibleVersion,
         isGuest,
+        isAdmin: userInfo?.userRole === 1,
       }}
     >
       {children}

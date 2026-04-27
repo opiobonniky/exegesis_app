@@ -26,4 +26,9 @@ export const route = {
   notificationSettings: 'NotificationSettings',
   planBible: 'PlanBibleScreen',
   readingSettings: 'ReadingSettings',
+  adminDashboard: 'AdminDashboard',
+  adminUsers: 'AdminUsers',
+  adminActivity: 'AdminActivity',
+  adminDailyVerse: 'AdminDailyVerse',
+  adminReadingPlans: 'AdminReadingPlans',
 };

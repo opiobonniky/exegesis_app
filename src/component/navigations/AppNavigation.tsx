@@ -1,13 +1,4 @@
-/**
- * AppNavigation.tsx
- * ─────────────────────────────────────────────────────────────────────────────
- * Changes vs original:
- *   1. Imports GuestEntry.
- *   2. The "not logged in" initial screen is now GuestEntry (was Login).
- *      Login and Register remain reachable as regular stack screens.
- *   3. GuestEntry registered as a named stack screen.
- *   4. Everything else is identical.
- */
+
 
 import React, { useContext, useEffect, useRef } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -50,6 +41,11 @@ import {
   attachDailyVerseNotifHandlers,
   scheduleDailyVerseReminder,
 } from '../../features/home/dailyVerseNotificationService';
+import AdminDashboard from '../../features/admin/AdminDashboard';
+import AdminUsersPage from '../../features/admin/AdminUsersPage';
+import AdminActivityPage from '../../features/admin/AdminActivityPage';
+import AdminDailyVerseManager from '../../features/admin/AdminDailyVerseManager';
+import AdminReadingPlans from '../../features/admin/AdminReadingPlans';
 
 const Stack = createNativeStackNavigator();
 
@@ -133,6 +129,12 @@ const AppNavigation = () => {
           name={route.notificationSettings}
           component={NotificationSettings}
         />
+        {/* ── Admin screens ─────────────────────────────────────────── */}
+        <Stack.Screen name={route.adminDashboard} component={AdminDashboard} />
+        <Stack.Screen name={route.adminUsers} component={AdminUsersPage} />
+        <Stack.Screen name={route.adminActivity} component={AdminActivityPage} />
+        <Stack.Screen name={route.adminDailyVerse} component={AdminDailyVerseManager} />
+        <Stack.Screen name={route.adminReadingPlans} component={AdminReadingPlans} />
       </Stack.Navigator>
     </NavigationContainer>
   );

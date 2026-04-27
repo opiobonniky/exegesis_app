@@ -1,4 +1,4 @@
-package com.himfirstapps.exegesis
+package com.himfirstmedia.exegesis
 
 import android.os.Bundle
 import com.facebook.react.ReactActivity

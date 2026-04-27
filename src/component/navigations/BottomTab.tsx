@@ -14,6 +14,8 @@ import {
   LucideUserCircle,
   CalendarClockIcon,
   StarsIcon,
+  ShieldIcon,
+  Settings,
 } from 'lucide-react-native';
 import {
   SPACING,
@@ -49,44 +51,87 @@ export default function BottomTab({
   const app = useContext(AppContext);
   if (!app) return null;
 
+  const { isAdmin, userInfo } = app;
+  const userRole = userInfo?.userRole || 0;
+  const isUserAdmin = userRole === 1;
+
   const COLORS = useMemo(() => getColors(app.isDark), [app.isDark]);
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
 
   const navigation = useNavigation<any>();
 
-  const tabs: TabItem[] = [
-    {
-      id: 'home',
-      label: 'Home',
-      icon: Home,
-      onPress: () => navigation.navigate(route.home),
-    },
-    {
-      id: 'bible',
-      label: 'Bible',
-      icon: BookOpen,
-      onPress: () => navigation.navigate(route.bible),
-    },
-    {
-      id: 'favorites',
-      label: 'Favorites',
-      icon: StarsIcon,
-      onPress: () => navigation.navigate(route.favorites),
-    },
-
-    {
-      id: 'Plan',
-      label: 'Plan',
-      icon: CalendarClockIcon,
-      onPress: () => navigation.navigate(route.readingPlan),
-    },
-    {
-      id: 'profile',
-      label: 'Profile',
-      icon: LucideUserCircle,
-      onPress: () => navigation.navigate(route.profile),
-    },
-  ];
+  // Different tabs based on user role
+  let tabs: TabItem[] = [];
+  
+  if (isUserAdmin) {
+    // ADMIN TABS - only admin-related screens
+    tabs = [
+      {
+        id: 'adminDashboard',
+        label: 'Dashboard',
+        icon: ShieldIcon,
+        onPress: () => navigation.navigate(route.adminDashboard),
+      },
+      {
+        id: 'adminUsers',
+        label: 'Users',
+        icon: User,
+        onPress: () => navigation.navigate(route.adminUsers),
+      },
+      {
+        id: 'adminActivity',
+        label: 'Activity',
+        icon: ShieldIcon,
+        onPress: () => navigation.navigate(route.adminActivity),
+      },
+      {
+        id: 'adminVerse',
+        label: 'Verse',
+        icon: BookOpen,
+        onPress: () => navigation.navigate(route.adminDailyVerse),
+      },
+      {
+        id: 'adminPlans',
+        label: 'Plans',
+        icon: CalendarClockIcon,
+        onPress: () => navigation.navigate(route.adminReadingPlans),
+      },
+    ];
+  } else {
+    // REGULAR USER TABS - user-related screens
+    tabs = [
+      {
+        id: 'home',
+        label: 'Home',
+        icon: Home,
+        onPress: () => navigation.navigate(route.home),
+      },
+      {
+        id: 'bible',
+        label: 'Bible',
+        icon: BookOpen,
+        onPress: () => navigation.navigate(route.bible),
+      },
+      {
+        id: 'favorites',
+        label: 'Favorites',
+        icon: StarsIcon,
+        onPress: () => navigation.navigate(route.favorites),
+      },
+      {
+        id: 'Plan',
+        label: 'Plan',
+        icon: CalendarClockIcon,
+        onPress: () => navigation.navigate(route.readingPlan),
+      },
+      {
+        id: 'profile',
+        label: 'Profile',
+        icon: LucideUserCircle,
+        onPress: () => navigation.navigate(route.profile),
+      },
+    ];
+  }
 
   return (
     <View style={styles.container}>

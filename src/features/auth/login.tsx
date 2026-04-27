@@ -139,6 +139,8 @@ const Login = () => {
           firstName: returnData.firstName,
           lastName: returnData.lastName,
           profilePhotoUrl: returnData.profilePhotoUrl,
+          userRole: returnData.userRole,
+          roleName: returnData.roleName,
         };
         await setUserInfo(info);
         navigation.navigate(route.homeLogin);
