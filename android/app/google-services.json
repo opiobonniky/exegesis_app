@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "417966024143",
-    "project_id": "pabbible-6cce6",
-    "storage_bucket": "pabbible-6cce6.firebasestorage.app"
+    "project_number": "270479211517",
+    "project_id": "exegesis-app",
+    "storage_bucket": "exegesis-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:417966024143:android:d647a5e84485df7b491eba",
+        "mobilesdk_app_id": "1:270479211517:android:5100b45ce53ad7ea42b794",
         "android_client_info": {
           "package_name": "com.himfirstmedia.exegesis"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "270479211517-akoh3dr2rpquabcjjsndn4e02sj20n4m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.himfirstmedia.exegesis",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "270479211517-kinap7kv1bcd3dlpuodt5fkju361fdqb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyAHmeUmuLMw85_lmj9Z-o-PqIXYZsJevrA"
+          "current_key": "AIzaSyDZPREoExl5yhvGKAahyM09YFE_siijU3Y"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "270479211517-kinap7kv1bcd3dlpuodt5fkju361fdqb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

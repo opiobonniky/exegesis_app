@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import KeyboardAwareness from '../../reusable/KeyboardAwareness';
 import { showToast } from '../../helpers/Toash.helper';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
 import GoogleIcon from '../../assets/icons/google-icon.svg'; // ← NEW
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+
 const { width } = Dimensions.get('window');
 
 const LOGO_SIZE = Math.min(width * 0.55, 260);
@@ -36,6 +38,8 @@ const Login = () => {
     {},
   );
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleUser, setGoogleUser] = useState<any>(null);
 
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -67,6 +71,108 @@ const Login = () => {
       </View>
     );
   }
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId:
+        '270479211517-kinap7kv1bcd3dlpuodt5fkju361fdqb.apps.googleusercontent.com',
+      prompt: 'select_account',
+    });
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    setGoogleUser(null);
+    try {
+      await GoogleSignin.signOut();
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+      const signInResult = await GoogleSignin.signIn();
+      console.log('Google Sign-In Result:', JSON.stringify(signInResult));
+
+      const { idToken, user } = signInResult.data;
+      if (!idToken) {
+        throw new Error('No ID token found');
+      }
+      setGoogleUser(user);
+      await submitGoogleLogin(idToken, user);
+    } catch (error: any) {
+      console.log('Google Sign-In Error:', error);
+      showToast('error', error?.message || 'Google sign-in failed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const submitGoogleLogin = async (idToken: string, user?: any) => {
+    try {
+      const response = await sendPostRequest('auth', 'google-login', {
+        idToken,
+        email: user?.email,
+        firstName: user?.givenName,
+        lastName: user?.familyName,
+        photoUrl: user?.photo,
+      });
+
+      const { returnCode, returnMessage, returnData } = response;
+
+      if (returnCode === 200) {
+        const info: UserInfo = {
+          token: returnData.token,
+          tokenType: returnData.tokenType,
+          username: returnData.username,
+          email: returnData.email,
+          firstName: returnData.firstName,
+          lastName: returnData.lastName,
+          profilePhotoUrl: returnData.profilePhotoUrl,
+          userRole: returnData.userRole,
+          roleName: returnData.roleName,
+        };
+
+        const dashboardRoute =
+          info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
+
+        await setUserInfo(info);
+        navigation.navigate(dashboardRoute);
+      } else if (returnCode === 201 && returnData?.needsRegistration) {
+        navigation.navigate(route.googleRegister, {
+          googleId: returnData.googleId,
+          email: returnData.email,
+          firstName: returnData.firstName,
+          lastName: returnData.lastName,
+          photoUrl: returnData.photoUrl,
+        });
+      } else {
+        showToast('error', returnMessage || 'Google sign-in failed');
+        setGoogleUser(null);
+      }
+    } catch (error: any) {
+      console.log('Google Sign-In Error:', error);
+      showToast('error', error?.message || 'Google sign-in failed');
+      setGoogleUser(null);
+    }
+  };
+
+  const onContinueWithGoogle = async () => {
+    if (googleUser) {
+      setGoogleLoading(true);
+      try {
+        await GoogleSignin.hasPlayServices({
+          showPlayServicesUpdateDialog: true,
+        });
+        const tokens = await GoogleSignin.getTokens();
+        if (tokens.idToken) {
+          await submitGoogleLogin(tokens.idToken, googleUser);
+        }
+      } catch (error: any) {
+        console.log('Continue Google Error:', error);
+        showToast('error', error?.message || 'Sign-in failed');
+      } finally {
+        setGoogleLoading(false);
+      }
+    }
+  };
 
   const { isDark, setUserInfo, userInfo } = appContext;
   const C = getColors(isDark);
@@ -423,18 +529,29 @@ const Login = () => {
               <View style={[s.dividerLine, { backgroundColor: C.border }]} />
             </View>
 
-            {/* ── Google Login button ────────────────────────────────────────── */}
+{/* ── Google Login button ────────────────────────────────────────── */}
             <TouchableOpacity
-              style={[s.googleBtn, { borderColor: C.border }]}
-              onPress={() => {}}
-              activeOpacity={0.82}
-            >
-              <View style={s.googleIconContainer}>
-                <GoogleIcon width={25} height={25} />
-              </View>
-              <Text style={[s.googleText, { color: C.text }]}>
-                Continue with Google
-              </Text>
+                style={[
+                s.googleBtn,
+                { borderColor: C.border },
+                googleLoading && { opacity: 0.7 },
+                ]}
+                onPress={handleGoogleSignIn}
+                activeOpacity={0.82}
+                disabled={googleLoading}
+                >
+                {googleLoading ? (
+                    <ActivityIndicator size="small" color={C.text} />
+                ) : (
+                    <>
+                    <View style={s.googleIconContainer}>
+                        <GoogleIcon width={25} height={25} />
+                    </View>
+                    <Text style={[s.googleText, { color: C.text }]}>
+                        Continue with Google
+                    </Text>
+                    </>
+                )}
             </TouchableOpacity>
 
             {/* Terms and Conditions */}
@@ -712,6 +829,48 @@ const s = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: '#FFFFFF',
   },
+  googleAccountPreview: {
+    position: 'absolute',
+    left: 30,
+  },
+  googleAccountPhoto: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  googleAccountPhotoPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleAccountInitials: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  googleAccountInfo: {
+    flex: 1,
+    marginLeft: 50,
+  },
+  googleAccountName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  googleAccountEmail: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  switchAccountBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  switchAccountText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  googleText: {},
   googleIconContainer: {
     width: 20,
     height: 20,

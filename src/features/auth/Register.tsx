@@ -54,10 +54,10 @@ interface PasswordReq {
 }
 
 export default function Register() {
-  const { isDark }: any = useContext(AppContext);
+  const { isDark, setUserInfo }: any = useContext(AppContext);
   const navigation = useNavigation<any>();
   const routes = useRoute();
-  const { emailVerify, tab }: any = routes.params || {};
+  const { emailVerify, tab, googleSignUp, googleId, firstName: gFirstName, lastName: gLastName, photoUrl, email: gEmail }: any = routes.params || {};
 
   const C = getColors(isDark);
 
@@ -65,9 +65,9 @@ export default function Register() {
     tab === 'verify' ? 'verify' : 'details',
   );
   const [username, setUsername] = useState('');
-  const [email, setEmail] = useState(emailVerify || '');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState(emailVerify || gEmail || '');
+  const [firstName, setFirstName] = useState(gFirstName || '');
+  const [lastName, setLastName] = useState(gLastName || '');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [gender, setGender] = useState('Male');
@@ -249,26 +249,57 @@ export default function Register() {
 
     try {
       setLoading(true);
-      const res = await sendPostRequest('auth', 'register', {
-        username: username.trim().toLowerCase(),
-        email: email.toLowerCase().trim(),
-        password,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phoneNumber,
-        dateOfBirth: dateOfBirth || '2000-01-01',
-        gender,
-        userRole: 2,
-      });
+      
+      let res;
+      if (googleSignUp && googleId) {
+        res = await sendPostRequest('auth', 'complete-google-registration', {
+          googleId: googleId,
+          username: username.trim().toLowerCase(),
+          password,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phoneNumber,
+          gender,
+        });
+      } else {
+        res = await sendPostRequest('auth', 'register', {
+          username: username.trim().toLowerCase(),
+          email: email.toLowerCase().trim(),
+          password,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phoneNumber,
+          dateOfBirth: dateOfBirth || '2000-01-01',
+          gender,
+          userRole: 2,
+        });
+      }
 
-      const { returnCode, returnMessage } = res;
+      const { returnCode, returnMessage, returnData } = res;
 
       if (returnCode === 200) {
-        showToast(
-          'success',
-          returnMessage || 'Check your email for verification code.',
-        );
-        setTimeout(() => goToStep('verify'), 1500);
+        if (googleSignUp && returnData?.token) {
+          const info = {
+            token: returnData.token,
+            tokenType: returnData.tokenType,
+            username: returnData.username,
+            email: returnData.email,
+            firstName: returnData.firstName,
+            lastName: returnData.lastName,
+            profilePhotoUrl: returnData.profilePhotoUrl,
+            userRole: returnData.userRole,
+            roleName: returnData.roleName,
+          };
+          await setUserInfo(info);
+          showToast('success', returnMessage || 'Account created successfully!');
+          setTimeout(() => navigation.navigate(route.homeLogin), 1500);
+        } else {
+          showToast(
+            'success',
+            returnMessage || 'Check your email for verification code.',
+          );
+          setTimeout(() => goToStep('verify'), 1500);
+        }
       } else if (returnCode === 401) {
         showToast('warning', returnMessage);
       } else {
@@ -377,10 +408,12 @@ export default function Register() {
 
                 <View style={s.titleSection}>
                   <Text style={[s.title, { color: C.text }]}>
-                    Create Account
+                    {googleSignUp ? 'Complete Registration' : 'Create Account'}
                   </Text>
                   <Text style={[s.subtitle, { color: C.muted }]}>
-                    Fill in your details to get started
+                    {googleSignUp 
+                      ? 'Set up your password to complete sign-up' 
+                      : 'Fill in your details to get started'}
                   </Text>
                 </View>
 

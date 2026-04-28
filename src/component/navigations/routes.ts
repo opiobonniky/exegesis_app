@@ -3,6 +3,7 @@ export const route = {
   bibleGuest: 'BibleGuest',
   login: 'Login',
   register: 'Register',
+  googleRegister: 'GoogleRegister',
   welcome: 'Welcome',
   forgotPassword: 'ForgotPassword',
   Highlights: 'Highlights',

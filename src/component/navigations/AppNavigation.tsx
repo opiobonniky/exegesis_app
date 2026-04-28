@@ -7,6 +7,7 @@ import {
 import Login from '../../features/auth/login';
 import ForgotPassword from '../../features/auth/ForgotPassword';
 import Register from '../../features/auth/Register';
+import GoogleRegister from '../../features/auth/GoogleRegister';
 import Welcome from '../../features/auth/welcome';
 import GuestEntry from '../../features/auth/GuestEntry'; // ← NEW
 import Bible from '../../features/bible/bible';
@@ -101,6 +102,7 @@ const AppNavigation = () => {
         {/* <Stack.Screen name={route.login} component={Login} /> */}
         <Stack.Screen name={route.guestEntry} component={GuestEntry} />
         <Stack.Screen name={route.register} component={Register} />
+        <Stack.Screen name={route.googleRegister} component={GoogleRegister} />
         <Stack.Screen name={route.forgotPassword} component={ForgotPassword} />
         <Stack.Screen name={route.bible} component={Bible} />
         <Stack.Screen name={route.bibleGuest} component={Bible} />
