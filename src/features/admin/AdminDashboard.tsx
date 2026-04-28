@@ -20,14 +20,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { route } from '../../component/navigations/routes';
-import {
-  getAdminDashboardStats,
-  DashboardStats,
-} from '../../services/adminApi';
-import { useAuth } from '../../hooks/useAuth';
-import BottomTab from '../../component/navigations/BottomTab';
-import { AppContext } from '../../common/AppContext';
+import { getColors } from '../../constants/theme';
 import {
   ShieldIcon,
   Users,
@@ -41,67 +34,46 @@ import {
   LayoutDashboard,
   Bell,
 } from 'lucide-react-native';
+import { route } from '../../component/navigations/routes';
+import useAuth from '../../hooks/useAuth';
+import { AppContext } from '../../common/AppContext';
+import { DashboardStats, getAdminDashboardStats } from '../../services/adminApi';
+import BottomTab from '../../component/navigations/BottomTab';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.78;
 
-// ─── Theme ────────────────────────────────────────────────────────────────────
-const lightTheme = {
-  bg: '#f2efe9',
-  surface: '#ffffff',
-  surfaceAlt: '#f9f8f6',
-  border: '#e8e2d9',
-  text: '#1a1714',
-  textSecondary: '#6b6560',
-  textMuted: '#a09b94',
-  accent: '#2a4d8f',
-  accentLight: '#e8edf7',
-  success: '#1a7a4a',
-  successLight: '#e6f4ed',
-  warning: '#c26a00',
-  warningLight: '#fef3e2',
-  purple: '#5c3d9e',
-  purpleLight: '#eeebf8',
-  cyan: '#0a7a8f',
-  cyanLight: '#e3f4f7',
-  drawerBg: '#1a1714',
-  drawerText: '#f5f2ed',
-  drawerMuted: '#8a8580',
-  drawerActive: '#2a4d8f',
-  drawerActiveBg: 'rgba(42,77,143,0.18)',
-  shadow: '#000',
-  cardShadow: 'rgba(0,0,0,0.06)',
-  headerBadgeBg: '#fef3c7',
-  headerBadgeText: '#92400e',
-};
-
-const darkTheme = {
-  bg: '#0f0e0c',
-  surface: '#1c1a17',
-  surfaceAlt: '#252220',
-  border: '#2e2b27',
-  text: '#f0ece6',
-  textSecondary: '#9e998f',
-  textMuted: '#65605a',
-  accent: '#5b83d4',
-  accentLight: '#1a243d',
-  success: '#34c77a',
-  successLight: '#0d2a1c',
-  warning: '#f0a540',
-  warningLight: '#2a1e08',
-  purple: '#9b72ef',
-  purpleLight: '#1f1635',
-  cyan: '#2db5cc',
-  cyanLight: '#0d2530',
-  drawerBg: '#0a0908',
-  drawerText: '#f0ece6',
-  drawerMuted: '#65605a',
-  drawerActive: '#5b83d4',
-  drawerActiveBg: 'rgba(91,131,212,0.15)',
-  shadow: '#000',
-  cardShadow: 'rgba(0,0,0,0.3)',
-  headerBadgeBg: '#2a1e08',
-  headerBadgeText: '#f0a540',
+// ─── Dynamic Theme ───────────────────────────────────────────────────────────
+const getDashboardTheme = (isDark: boolean) => {
+  const colors = getColors(isDark);
+  return {
+    bg: colors.background,
+    surface: colors.surface,
+    surfaceAlt: colors.cardBackground,
+    border: colors.border,
+    text: colors.text,
+    textSecondary: colors.textSecondary,
+    textMuted: colors.muted,
+    accent: colors.primary,
+    accentLight: colors.primaryLight || `${colors.primary}33`, // approx 20% opacity
+    success: colors.success,
+    successLight: `${colors.success}33`,
+    warning: colors.warning,
+    warningLight: `${colors.warning}33`,
+    purple: '#5c3d9e', // custom, could be adjusted
+    purpleLight: '#eeebf8',
+    cyan: colors.info,
+    cyanLight: `${colors.info}33`,
+    drawerBg: colors.surface,
+    drawerText: colors.text,
+    drawerMuted: colors.muted,
+    drawerActive: colors.primary,
+    drawerActiveBg: colors.selectedItem,
+    shadow: colors.shadowColor,
+    cardShadow: 'rgba(0,0,0,0.06)',
+    headerBadgeBg: colors.accentLight,
+    headerBadgeText: colors.accentDark,
+  };
 };
 
 // ─── Drawer Nav Items ──────────────────────────────────────────────────────────
@@ -158,7 +130,7 @@ const StatCard: React.FC<StatCardProps> = ({
   const handlePressIn = () => {
     if (!onPress) return;
     Animated.spring(scale, {
-      toValue: 0.96,
+      toValue: 0.95,
       useNativeDriver: true,
       speed: 30,
     }).start();
@@ -174,7 +146,7 @@ const StatCard: React.FC<StatCardProps> = ({
   };
 
   return (
-    <Animated.View style={statStyles.wrapper}>
+    <Animated.View style={[statStyles.wrapper, { transform: [{ scale }] }]}>
       <Pressable
         onPress={onPress}
         onPressIn={handlePressIn}
@@ -182,28 +154,27 @@ const StatCard: React.FC<StatCardProps> = ({
         style={[
           statStyles.card,
           {
-            backgroundColor: theme.surface,
-            borderColor: theme.border,
+            backgroundColor: colorLight,
             shadowColor: theme.shadow,
           },
         ]}
       >
-        <View style={[statStyles.iconBadge, { backgroundColor: colorLight }]}>
-          <Text style={[statStyles.valueText, { color }]}>
+        <View style={[statStyles.iconBadge, { backgroundColor: color }]}>
+          <Text style={statStyles.iconText}>
             {value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value.toString()}
           </Text>
         </View>
-        <Text style={[statStyles.label, { color: theme.text }]}>{label}</Text>
-        {subtitle ? (
-          <Text style={[statStyles.subtitle, { color: theme.textMuted }]}>
-            {subtitle}
-          </Text>
-        ) : null}
+        <View style={statStyles.textContainer}>
+          <Text style={[statStyles.label, { color }]}>{label}</Text>
+          {subtitle ? (
+            <Text style={[statStyles.subtitle, { color: color + 'CC' }]}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
         {onPress && (
-          <View
-            style={[statStyles.arrowBadge, { backgroundColor: colorLight }]}
-          >
-            <ChevronRight size={12} color={color} strokeWidth={3} />
+          <View style={statStyles.arrowContainer}>
+            <ChevronRight size={16} color={color} strokeWidth={2.5} />
           </View>
         )}
       </Pressable>
@@ -213,53 +184,53 @@ const StatCard: React.FC<StatCardProps> = ({
 
 const statStyles = StyleSheet.create({
   wrapper: {
-    width: '48%',
-    marginBottom: 14,
+    width: '45%',
+    marginBottom: 12,
   },
   card: {
     borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 3,
-    height: 122, // Uniform height
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 0,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 80,
   },
   iconBadge: {
-    height: 42,
-    borderRadius: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
-    paddingHorizontal: 10,
-    alignSelf: 'flex-start',
-    minWidth: 42,
+    marginRight: 12,
   },
-  valueText: {
-    fontSize: 19,
+  iconText: {
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: -0.4,
+    color: '#fff',
+  },
+  textContainer: {
+    flex: 1,
   },
   label: {
-    fontSize: 12.5,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     letterSpacing: 0.1,
+    marginBottom: 2,
   },
   subtitle: {
-    fontSize: 10.5,
-    marginTop: 3,
-    fontWeight: '400',
+    fontSize: 11,
+    fontWeight: '500',
+    lineHeight: 13,
+    opacity: 0.8,
   },
-  arrowBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
+  arrowContainer: {
+    marginLeft: 8,
   },
 });
 
@@ -365,32 +336,35 @@ const QuickAction: React.FC<QuickActionProps> = ({
 
 const qaStyles = StyleSheet.create({
   card: {
-    width: '48%',
+    width: '100%',
     marginBottom: 14,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 18,
+    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     elevation: 2,
-    height: 122, // Same height as stat cards
+    minHeight: 120,
   },
   iconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+    width: 50,
+    height: 50,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginRight: 14,
   },
-  icon: { fontSize: 23 },
+  icon: { fontSize: 24 },
   label: {
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 14,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'left',
+    lineHeight: 18,
+    flex: 1,
   },
 });
 
@@ -679,7 +653,7 @@ const AdminDashboard: React.FC = () => {
   const { userInfo, logout } = useAuth();
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
-  const theme = isDark ? darkTheme : lightTheme;
+  const theme = getDashboardTheme(isDark);
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1056,49 +1030,50 @@ const s = StyleSheet.create({
     fontWeight: '700',
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 140,
+    paddingTop: 8,
   },
   heroCard: {
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 12,
-    borderRadius: 18,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderRadius: 22,
+    padding: 22,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 6,
   },
   heroGreeting: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
-    letterSpacing: -0.3,
-    marginBottom: 4,
+    letterSpacing: -0.4,
+    marginBottom: 6,
   },
   heroSub: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 12,
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
     fontWeight: '500',
   },
   heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    gap: 6,
+    marginTop: 18,
   },
   heroBadgeText: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.3,
+    marginLeft: 8,
   },
   sectionTitle: {
     fontSize: 11,
@@ -1113,11 +1088,11 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
   card: {
-    marginHorizontal: 16,
-    borderRadius: 16,
+    marginHorizontal: 0,
+    borderRadius: 18,
     padding: 18,
     borderWidth: 1,
     shadowColor: '#000',
@@ -1127,7 +1102,7 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   bottomSpacer: {
-    height: 30,
+    height: 34,
   },
 });
 
