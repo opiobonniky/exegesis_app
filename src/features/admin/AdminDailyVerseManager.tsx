@@ -1,63 +1,74 @@
 /**
  * AdminDailyVerseManager.tsx
  * ─────────────────────────────────────────────────────────────────────────────
- * Daily verse management for admins
+ * Daily verse management for admins - improved version with theme support
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useContext } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
   RefreshControl,
-  Modal,
-  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
   getAllDailyVerses,
-  addDailyVerse,
   deleteDailyVerse,
   DailyVerse,
 } from '../../services/adminApi';
+import { getColors } from '../../constants/theme';
+import { AppContext } from '../../common/AppContext';
+import {
+  ChevronLeft,
+  Plus,
+  CheckCircle2,
+  Trash2,
+  Pencil,
+  Sun,
+} from 'lucide-react-native';
 import BottomTab from '../../component/navigations/BottomTab';
+import { showToast } from '../../helpers/Toash.helper';
+
+const getTheme = (isDark: boolean) => {
+  const colors = getColors(isDark);
+  return {
+    bg: colors.background,
+    surface: colors.surface,
+    cardBackground: colors.cardBackground,
+    border: colors.border,
+    text: colors.text,
+    textSecondary: colors.textSecondary,
+    muted: colors.muted,
+    primary: colors.primary,
+    success: colors.success,
+    error: colors.error,
+  };
+};
 
 const AdminDailyVerseManager: React.FC = () => {
   const navigation = useNavigation<any>();
+  const app = useContext(AppContext);
+  const isDark = app?.isDark ?? false;
+  const theme = getTheme(isDark);
+  const styles = getStyles(theme);
+
   const [verses, setVerses] = useState<DailyVerse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingVerse, setEditingVerse] = useState<DailyVerse | null>(null);
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('adminVerse');
 
-  const [form, setForm] = useState({
-    bookName: '',
-    chapter: '',
-    verseNumber: '',
-    displayDate: new Date().toISOString().split('T')[0],
-    reflection: '',
-    published: true,
-  });
-
-  const fetchVerses = useCallback(async (pg: number = 0) => {
+  const fetchVerses = useCallback(async () => {
     try {
-      const response = await getAllDailyVerses(pg, 12, {
+      const response = await getAllDailyVerses(0, 12, {
         smartDefault: true,
         futureDays: 30,
       });
       setVerses(response.content || []);
-      setTotalPages(response.totalPages);
-      setPage(response.currentPage);
     } catch (error) {
       console.error('Failed to fetch daily verses:', error);
     } finally {
@@ -71,68 +82,16 @@ const AdminDailyVerseManager: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchVerses(page);
+    await fetchVerses();
     setRefreshing(false);
-  }, [fetchVerses, page]);
+  }, [fetchVerses]);
 
-  const openAddModal = () => {
-    setEditingVerse(null);
-    setForm({
-      bookName: '',
-      chapter: '',
-      verseNumber: '',
-      displayDate: new Date().toISOString().split('T')[0],
-      reflection: '',
-      published: true,
-    });
-    setModalVisible(true);
+  const handleAddPress = () => {
+    navigation.navigate('AddDailyVerse');
   };
 
-  const openEditModal = (verse: DailyVerse) => {
-    setEditingVerse(verse);
-    setForm({
-      bookName: verse.bookName,
-      chapter: String(verse.chapter),
-      verseNumber: String(verse.verseNumber),
-      displayDate: verse.displayDate.split('T')[0],
-      reflection: verse.reflection || '',
-      published: verse.isPublished,
-    });
-    setModalVisible(true);
-  };
-
-  const handleSave = async () => {
-    if (
-      !form.bookName ||
-      !form.chapter ||
-      !form.verseNumber ||
-      !form.displayDate
-    ) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await addDailyVerse(
-        {
-          bookName: form.bookName,
-          chapter: parseInt(form.chapter),
-          verseNumber: parseInt(form.verseNumber),
-          displayDate: form.displayDate,
-          reflection: form.reflection || undefined,
-          published: form.published,
-        },
-        editingVerse?.id,
-      );
-      setModalVisible(false);
-      fetchVerses(page);
-      Alert.alert('Success', 'Daily verse saved successfully');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save daily verse');
-    } finally {
-      setSaving(false);
-    }
+  const handleEditPress = (verse: DailyVerse) => {
+    navigation.navigate('EditDailyVerse', { verse });
   };
 
   const handleDelete = (verse: DailyVerse) => {
@@ -148,7 +107,7 @@ const AdminDailyVerseManager: React.FC = () => {
             try {
               await deleteDailyVerse(verse.id);
               setVerses(prev => prev.filter(v => v.id !== verse.id));
-              Alert.alert('Success', 'Verse deleted successfully');
+              showToast('success', 'Verse deleted successfully');
             } catch (error) {
               Alert.alert('Error', 'Failed to delete verse');
             }
@@ -159,57 +118,35 @@ const AdminDailyVerseManager: React.FC = () => {
   };
 
   const renderVerse = ({ item }: { item: DailyVerse }) => (
-    <View style={styles.verseCard}>
+    <View style={[styles.verseCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
       <View style={styles.verseHeader}>
         <View style={styles.verseRef}>
-          <Text style={styles.verseRefText}>
+          <Text style={[styles.verseRefText, { color: theme.text }]}>
             {item.bookName} {item.chapter}:{item.verseNumber}
           </Text>
-          <View
-            style={[
-              styles.verseBadge,
-              item.isPublished
-                ? styles.verseBadgePublished
-                : styles.verseBadgeDraft,
-            ]}
-          >
-            <Text
-              style={[
-                styles.verseBadgeText,
-                item.isPublished
-                  ? styles.verseBadgeTextPublished
-                  : styles.verseBadgeTextDraft,
-              ]}
-            >
-              {item.isPublished ? 'Published' : 'Draft'}
-            </Text>
-          </View>
+          {item.isPublished ? (
+            <CheckCircle2 size={14} color={theme.success} />
+          ) : null}
         </View>
-        <Text style={styles.verseDate}>
-          {item.displayDate
-            ? new Date(item.displayDate).toLocaleDateString()
-            : '—'}
+        <Text style={[styles.verseDate, { color: theme.muted }]}>
+          {item.displayDate ? new Date(item.displayDate).toLocaleDateString() : '—'}
         </Text>
       </View>
 
       {item.reflection && (
-        <Text style={styles.verseReflection} numberOfLines={2}>
+        <Text style={[styles.verseReflection, { color: theme.textSecondary }]} numberOfLines={2}>
           {item.reflection}
         </Text>
       )}
 
       <View style={styles.verseActions}>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => openEditModal(item)}
-        >
-          <Text style={styles.editButtonText}>Edit</Text>
+        <TouchableOpacity style={styles.actionButton} onPress={() => handleEditPress(item)}>
+          <Pencil size={14} color={theme.primary} />
+          <Text style={[styles.actionButtonText, { color: theme.primary }]}>Edit</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDelete(item)}
-        >
-          <Text style={styles.deleteButtonText}>Delete</Text>
+        <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item)}>
+          <Trash2 size={14} color={theme.error} />
+          <Text style={[styles.actionButtonText, { color: theme.error }]}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -217,30 +154,33 @@ const AdminDailyVerseManager: React.FC = () => {
 
   const renderEmpty = () => (
     <View style={styles.empty}>
-      <Text style={styles.emptyText}>No daily verses found</Text>
-      <TouchableOpacity style={styles.emptyButton} onPress={openAddModal}>
+      <Sun size={48} color={theme.muted} />
+      <Text style={[styles.emptyText, { color: theme.muted }]}>No daily verses found</Text>
+      <TouchableOpacity style={[styles.emptyButton, { backgroundColor: theme.primary }]} onPress={handleAddPress}>
         <Text style={styles.emptyButtonText}>Add First Verse</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
+          <ChevronLeft size={20} color={theme.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Daily Verses</Text>
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Text style={styles.addButtonText}>+ Add Verse</Text>
+        <View style={styles.headerTitle}>
+          <Sun size={20} color={theme.primary} />
+          <Text style={[styles.title, { color: theme.text }]}>Daily Verses</Text>
+        </View>
+        <TouchableOpacity style={[styles.addButton, { backgroundColor: theme.primary }]} onPress={handleAddPress}>
+          <Plus size={16} color="#fff" />
+          <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Verse List */}
       {loading ? (
         <View style={styles.loading}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : (
         <>
@@ -263,233 +203,116 @@ const AdminDailyVerseManager: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f7f5f2',
-  },
-  header: {
-    padding: 16,
-    paddingTop: 8,
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  backButton: {
-    fontSize: 14,
-    color: '#2563eb',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1c1917',
-  },
-  addButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  list: {
-    padding: 16,
-  },
-  verseCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  verseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  verseRef: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  verseRefText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1c1917',
-  },
-  verseBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  verseBadgePublished: {
-    backgroundColor: '#d1fae5',
-  },
-  verseBadgeDraft: {
-    backgroundColor: '#fef3c7',
-  },
-  verseBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  verseBadgeTextPublished: {
-    color: '#059669',
-  },
-  verseBadgeTextDraft: {
-    color: '#92400e',
-  },
-  verseDate: {
-    fontSize: 12,
-    color: '#78716c',
-  },
-  verseReflection: {
-    fontSize: 13,
-    color: '#57534e',
-    marginTop: 8,
-    lineHeight: 18,
-  },
-  verseActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f5f5f4',
-  },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  editButtonText: {
-    color: '#2563eb',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  deleteButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  deleteButtonText: {
-    color: '#dc2626',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  empty: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 15,
-    color: '#78716c',
-    marginBottom: 16,
-  },
-  emptyButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-  emptyButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#f7f5f2',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
-  modalCancel: {
-    fontSize: 14,
-    color: '#78716c',
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#1c1917',
-  },
-  modalSave: {
-    fontSize: 14,
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 16,
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#57534e',
-    marginBottom: 6,
-    marginTop: 16,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#1c1917',
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-  },
-  toggleLabel: {
-    fontSize: 15,
-    color: '#1c1917',
-  },
-  toggle: {
-    width: 50,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#d1d5db',
-    justifyContent: 'center',
-  },
-  toggleActive: {
-    backgroundColor: '#2563eb',
-  },
-  toggleKnob: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#fff',
-    marginLeft: 2,
-  },
-  toggleKnobActive: {
-    marginLeft: 'auto',
-    marginRight: 2,
-  },
-  bottomPadding: {
-    height: 80,
-  },
-});
+const getStyles = (theme: ReturnType<typeof getTheme>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+      borderBottomWidth: 1,
+    },
+    headerTitle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '700',
+    },
+    addButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      gap: 4,
+    },
+    addButtonText: {
+      color: '#fff',
+      fontWeight: '600',
+      fontSize: 13,
+    },
+    loading: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    list: {
+      padding: 16,
+    },
+    verseCard: {
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+    },
+    verseHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    verseRef: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    verseRefText: {
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    verseDate: {
+      fontSize: 12,
+    },
+    verseReflection: {
+      fontSize: 13,
+      marginTop: 8,
+    },
+    verseActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: 16,
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    actionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    actionButtonText: {
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    empty: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 48,
+    },
+    emptyText: {
+      fontSize: 15,
+      marginTop: 12,
+      marginBottom: 16,
+    },
+    emptyButton: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 10,
+    },
+    emptyButtonText: {
+      color: '#fff',
+      fontWeight: '600',
+    },
+    bottomPadding: {
+      height: 80,
+    },
+  });
 
 export default AdminDailyVerseManager;

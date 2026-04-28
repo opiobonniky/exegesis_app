@@ -43,7 +43,10 @@ import AdminDashboard from '../../features/admin/AdminDashboard';
 import AdminUsersPage from '../../features/admin/AdminUsersPage';
 import AdminActivityPage from '../../features/admin/AdminActivityPage';
 import AdminDailyVerseManager from '../../features/admin/AdminDailyVerseManager';
+import AddDailyVerse from '../../features/admin/AddDailyVerse';
 import AdminReadingPlans from '../../features/admin/AdminReadingPlans';
+import CreateReadingPlan from '../../features/admin/CreateReadingPlan';
+import EditReadingPlan from '../../features/admin/EditReadingPlan';
 
 const Stack = createNativeStackNavigator();
 
@@ -152,10 +155,14 @@ const AppNavigation = () => {
           name={route.adminDailyVerse}
           component={AdminDailyVerseManager}
         />
+        <Stack.Screen name="AddDailyVerse" component={AddDailyVerse} />
+        <Stack.Screen name="EditDailyVerse" component={AddDailyVerse} />
         <Stack.Screen
           name={route.adminReadingPlans}
           component={AdminReadingPlans}
         />
+        <Stack.Screen name="CreateReadingPlan" component={CreateReadingPlan} />
+        <Stack.Screen name="EditReadingPlan" component={EditReadingPlan} />
       </Stack.Navigator>
     </NavigationContainer>
   );

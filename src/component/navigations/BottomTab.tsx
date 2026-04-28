@@ -62,7 +62,7 @@ export default function BottomTab({
 
   // Different tabs based on user role
   let tabs: TabItem[] = [];
-  
+
   if (isUserAdmin) {
     // ADMIN TABS - only admin-related screens
     tabs = [
@@ -78,12 +78,7 @@ export default function BottomTab({
         icon: User,
         onPress: () => navigation.navigate(route.adminUsers),
       },
-      {
-        id: 'adminActivity',
-        label: 'Activity',
-        icon: ShieldIcon,
-        onPress: () => navigation.navigate(route.adminActivity),
-      },
+
       {
         id: 'adminVerse',
         label: 'Verse',

@@ -33,17 +33,25 @@ import {
   LogOut,
   LayoutDashboard,
   Bell,
+  TrendingUp,
+  TrendingDown,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  UserPlus,
 } from 'lucide-react-native';
 import { route } from '../../component/navigations/routes';
 import useAuth from '../../hooks/useAuth';
 import { AppContext } from '../../common/AppContext';
-import { DashboardStats, getAdminDashboardStats } from '../../services/adminApi';
+import {
+  DashboardStats,
+  getAdminDashboardStats,
+} from '../../services/adminApi';
 import BottomTab from '../../component/navigations/BottomTab';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.78;
 
-// ─── Dynamic Theme ───────────────────────────────────────────────────────────
 const getDashboardTheme = (isDark: boolean) => {
   const colors = getColors(isDark);
   return {
@@ -55,12 +63,12 @@ const getDashboardTheme = (isDark: boolean) => {
     textSecondary: colors.textSecondary,
     textMuted: colors.muted,
     accent: colors.primary,
-    accentLight: colors.primaryLight || `${colors.primary}33`, // approx 20% opacity
+    accentLight: colors.primaryLight || `${colors.primary}33`,
     success: colors.success,
     successLight: `${colors.success}33`,
     warning: colors.warning,
     warningLight: `${colors.warning}33`,
-    purple: '#5c3d9e', // custom, could be adjusted
+    purple: '#5c3d9e',
     purpleLight: '#eeebf8',
     cyan: colors.info,
     cyanLight: `${colors.info}33`,
@@ -70,13 +78,9 @@ const getDashboardTheme = (isDark: boolean) => {
     drawerActive: colors.primary,
     drawerActiveBg: colors.selectedItem,
     shadow: colors.shadowColor,
-    cardShadow: 'rgba(0,0,0,0.06)',
-    headerBadgeBg: colors.accentLight,
-    headerBadgeText: colors.accentDark,
   };
 };
 
-// ─── Drawer Nav Items ──────────────────────────────────────────────────────────
 const drawerItems = [
   {
     id: 'adminDashboard',
@@ -105,181 +109,110 @@ const drawerItems = [
   },
 ];
 
-// ─── Stat Card ─────────────────────────────────────────────────────────────────
-interface StatCardProps {
+const KpiCard: React.FC<{
   label: string;
-  value: number;
-  subtitle?: string;
+  value: string | number;
+  trend?: number;
   color: string;
-  colorLight: string;
-  onPress?: () => void;
-  theme: typeof lightTheme;
-}
-
-const StatCard: React.FC<StatCardProps> = ({
-  label,
-  value,
-  subtitle,
-  color,
-  colorLight,
-  onPress,
-  theme,
-}) => {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    if (!onPress) return;
-    Animated.spring(scale, {
-      toValue: 0.95,
-      useNativeDriver: true,
-      speed: 30,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    if (!onPress) return;
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 30,
-    }).start();
-  };
-
+  bgColor: string;
+  icon: React.ReactNode;
+}> = ({ label, value, trend, color, bgColor, icon }) => {
   return (
-    <Animated.View style={[statStyles.wrapper, { transform: [{ scale }] }]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={[
-          statStyles.card,
-          {
-            backgroundColor: colorLight,
-            shadowColor: theme.shadow,
-          },
-        ]}
-      >
-        <View style={[statStyles.iconBadge, { backgroundColor: color }]}>
-          <Text style={statStyles.iconText}>
-            {value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value.toString()}
-          </Text>
+    <View style={[kpiStyles.card, { backgroundColor: bgColor }]}>
+      <View style={kpiStyles.kpiHeader}>
+        <View style={[kpiStyles.iconWrap, { backgroundColor: color }]}>
+          {icon}
         </View>
-        <View style={statStyles.textContainer}>
-          <Text style={[statStyles.label, { color }]}>{label}</Text>
-          {subtitle ? (
-            <Text style={[statStyles.subtitle, { color: color + 'CC' }]}>
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
-        {onPress && (
-          <View style={statStyles.arrowContainer}>
-            <ChevronRight size={16} color={color} strokeWidth={2.5} />
+        {trend !== undefined && (
+          <View
+            style={[
+              kpiStyles.trendBadge,
+              { backgroundColor: trend >= 0 ? '#22c55e' : '#ef4444' },
+            ]}
+          >
+            {trend >= 0 ? (
+              <TrendingUp size={10} color="#fff" />
+            ) : (
+              <TrendingDown size={10} color="#fff" />
+            )}
+            <Text style={kpiStyles.trendText}>{Math.abs(trend)}%</Text>
           </View>
         )}
-      </Pressable>
-    </Animated.View>
+      </View>
+      <Text style={[kpiStyles.kpiValue, { color }]}>{value}</Text>
+      <Text style={kpiStyles.kpiLabel}>{label}</Text>
+    </View>
   );
 };
 
-const statStyles = StyleSheet.create({
-  wrapper: {
-    width: '45%',
+const kpiStyles = StyleSheet.create({
+  card: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 16,
+    marginHorizontal: 6,
+    marginBottom: 12,
+    minHeight: 140,
+  },
+  kpiHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
-  card: {
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderWidth: 0,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 80,
-  },
-  iconBadge: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  iconText: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.4,
+  trendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 2,
+  },
+  trendText: {
     color: '#fff',
-  },
-  textContainer: {
-    flex: 1,
-  },
-  label: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 0.1,
-    marginBottom: 2,
   },
-  subtitle: {
-    fontSize: 11,
+  kpiValue: {
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  kpiLabel: {
+    fontSize: 12,
     fontWeight: '500',
-    lineHeight: 13,
-    opacity: 0.8,
-  },
-  arrowContainer: {
-    marginLeft: 8,
+    opacity: 0.7,
   },
 });
 
-// ─── Health Bar ────────────────────────────────────────────────────────────────
-interface HealthBarProps {
+const StatBar: React.FC<{
   label: string;
   value: number;
+  total: number;
   color: string;
-  theme: typeof lightTheme;
-}
-
-const HealthBar: React.FC<HealthBarProps> = ({
-  label,
-  value,
-  color,
-  theme,
-}) => {
-  const widthAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(widthAnim, {
-      toValue: value,
-      duration: 900,
-      delay: 200,
-      useNativeDriver: false,
-    }).start();
-  }, [value]);
-
+}> = ({ label, value, total, color }) => {
+  const percentage = total > 0 ? (value / total) * 100 : 0;
   return (
-    <View style={healthStyles.item}>
-      <View style={healthStyles.row}>
-        <Text style={[healthStyles.label, { color: theme.textSecondary }]}>
-          {label}
-        </Text>
-        <Text style={[healthStyles.value, { color: theme.text }]}>
-          {value}%
+    <View style={barStyles.container}>
+      <View style={barStyles.header}>
+        <Text style={barStyles.label}>{label}</Text>
+        <Text style={[barStyles.value, { color }]}>
+          {value.toLocaleString()}
+          <Text style={barStyles.total}>/{total.toLocaleString()}</Text>
         </Text>
       </View>
-      <View style={[healthStyles.track, { backgroundColor: theme.surfaceAlt }]}>
-        <Animated.View
+      <View style={barStyles.track}>
+        <View
           style={[
-            healthStyles.fill,
-            {
-              backgroundColor: color,
-              width: widthAnim.interpolate({
-                inputRange: [0, 100],
-                outputRange: ['0%', '100%'],
-              }),
-            },
+            barStyles.fill,
+            { width: `${percentage}%`, backgroundColor: color },
           ]}
         />
       </View>
@@ -287,101 +220,192 @@ const HealthBar: React.FC<HealthBarProps> = ({
   );
 };
 
-const healthStyles = StyleSheet.create({
-  item: { marginBottom: 16 },
-  row: {
+const barStyles = StyleSheet.create({
+  container: {
+    marginBottom: 16,
+  },
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 7,
+    marginBottom: 6,
   },
-  label: { fontSize: 13, fontWeight: '500' },
-  value: { fontSize: 13, fontWeight: '700' },
-  track: { height: 7, borderRadius: 4, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 4 },
+  label: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  value: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  total: {
+    fontWeight: '400',
+    opacity: 0.6,
+  },
+  track: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 4,
+  },
 });
 
-// ─── Quick Action ──────────────────────────────────────────────────────────────
-interface QuickActionProps {
-  icon: string;
-  label: string;
-  color: string;
-  colorLight: string;
-  onPress: () => void;
-  theme: typeof lightTheme;
-}
+const CircleChart: React.FC<{
+  data: { label: string; value: number; color: string }[];
+  size?: number;
+}> = ({ data, size = 120 }) => {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  let cumulative = 0;
 
-const QuickAction: React.FC<QuickActionProps> = ({
-  icon,
-  label,
-  color,
-  colorLight,
-  onPress,
-  theme,
-}) => (
+  return (
+    <View style={[chartStyles.circleContainer, { width: size, height: size }]}>
+      <View
+        style={[
+          chartStyles.circleOuter,
+          { width: size, height: size, borderRadius: size / 2 },
+        ]}
+      >
+        {data.map((item, index) => {
+          const percentage = total > 0 ? (item.value / total) * 100 : 0;
+          const prevCumulative = cumulative;
+          cumulative += percentage;
+          return (
+            <View
+              key={index}
+              style={[
+                chartStyles.segment,
+                {
+                  width: size / 2,
+                  backgroundColor: item.color,
+                  transform: [
+                    { rotate: `${prevCumulative * 3.6 - 90}deg` },
+                    { translateX: size / 4 },
+                  ],
+                  borderRadius: percentage > 50 ? size / 4 : 0,
+                },
+              ]}
+            />
+          );
+        })}
+        <View
+          style={[
+            chartStyles.circleInner,
+            {
+              width: size - 40,
+              height: size - 40,
+              borderRadius: (size - 40) / 2,
+            },
+          ]}
+        >
+          <Text style={chartStyles.circleTotal}>{total}</Text>
+          <Text style={chartStyles.circleLabel}>Total</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const chartStyles = StyleSheet.create({
+  circleContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleOuter: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  segment: {
+    position: 'absolute',
+    height: '50%',
+    transformOrigin: 'left center',
+  },
+  circleInner: {
+    position: 'absolute',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleTotal: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  circleLabel: {
+    fontSize: 11,
+    opacity: 0.6,
+  },
+});
+
+const QuickAction: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  subtitle?: string;
+  color: string;
+  onPress: () => void;
+}> = ({ icon, label, subtitle, color, onPress }) => (
   <TouchableOpacity
-    style={[
-      qaStyles.card,
-      { backgroundColor: theme.surface, borderColor: theme.border },
-    ]}
+    style={[actionStyles.card, { borderLeftColor: color }]}
     onPress={onPress}
     activeOpacity={0.75}
   >
-    <View style={[qaStyles.iconWrap, { backgroundColor: colorLight }]}>
-      <Text style={qaStyles.icon}>{icon}</Text>
+    <View style={[actionStyles.iconWrap, { backgroundColor: `${color}15` }]}>
+      {icon}
     </View>
-    <Text style={[qaStyles.label, { color: theme.text }]}>{label}</Text>
-    <ChevronRight size={13} color={theme.textMuted} style={{ marginTop: 4 }} />
+    <View style={actionStyles.content}>
+      <Text style={actionStyles.label}>{label}</Text>
+      {subtitle && <Text style={actionStyles.subtitle}>{subtitle}</Text>}
+    </View>
+    <ChevronRight size={18} color="#9ca3af" />
   </TouchableOpacity>
 );
 
-const qaStyles = StyleSheet.create({
+const actionStyles = StyleSheet.create({
   card: {
-    width: '100%',
-    marginBottom: 14,
-    borderRadius: 18,
-    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-    minHeight: 120,
+    padding: 16,
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    marginBottom: 10,
+    backgroundColor: '#fff',
   },
   iconWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
-  icon: { fontSize: 24 },
-  label: {
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'left',
-    lineHeight: 18,
+  content: {
     flex: 1,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  subtitle: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginTop: 2,
   },
 });
 
-// ─── Drawer Component (unchanged) ─────────────────────────────────────────────
-interface DrawerProps {
+const Drawer: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   activeItem: string;
   onNavigate: (routeKey: string, id: string) => void;
   onLogout: () => void;
-  theme: typeof lightTheme;
+  theme: any;
   userInfo: any;
   translateX: Animated.Value;
   overlayOpacity: Animated.Value;
-}
-
-const Drawer: React.FC<DrawerProps> = ({
+}> = ({
   isOpen,
   onClose,
   activeItem,
@@ -406,7 +430,6 @@ const Drawer: React.FC<DrawerProps> = ({
       >
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
-
       <Animated.View
         style={[
           drawerStyles.panel,
@@ -417,7 +440,6 @@ const Drawer: React.FC<DrawerProps> = ({
           },
         ]}
       >
-        {/* Drawer Header */}
         <View style={drawerStyles.drawerHeader}>
           <View
             style={[
@@ -444,11 +466,9 @@ const Drawer: React.FC<DrawerProps> = ({
             <X size={20} color={theme.drawerMuted} strokeWidth={2} />
           </TouchableOpacity>
         </View>
-
         <View
           style={[drawerStyles.divider, { backgroundColor: theme.border }]}
         />
-
         <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
           <Text style={[drawerStyles.navSection, { color: theme.drawerMuted }]}>
             NAVIGATION
@@ -496,14 +516,12 @@ const Drawer: React.FC<DrawerProps> = ({
               </TouchableOpacity>
             );
           })}
-
           <View
             style={[
               drawerStyles.divider,
               { backgroundColor: theme.border, marginVertical: 16 },
             ]}
           />
-
           <Text style={[drawerStyles.navSection, { color: theme.drawerMuted }]}>
             ACCOUNT
           </Text>
@@ -524,7 +542,6 @@ const Drawer: React.FC<DrawerProps> = ({
             </Text>
           </TouchableOpacity>
         </ScrollView>
-
         <View
           style={[drawerStyles.drawerFooter, { borderTopColor: theme.border }]}
         >
@@ -566,16 +583,8 @@ const drawerStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  drawerName: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
+  avatarText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  drawerName: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -599,10 +608,7 @@ const drawerStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  divider: {
-    height: 1,
-    marginHorizontal: 16,
-  },
+  divider: { height: 1, marginHorizontal: 16 },
   navSection: {
     fontSize: 10,
     fontWeight: '700',
@@ -623,31 +629,18 @@ const drawerStyles = StyleSheet.create({
     borderLeftColor: 'transparent',
     gap: 14,
   },
-  navLabel: {
-    fontSize: 14,
-    flex: 1,
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  logoutItem: {
-    marginTop: 4,
-  },
+  navLabel: { fontSize: 14, flex: 1 },
+  activeDot: { width: 6, height: 6, borderRadius: 3 },
+  logoutItem: { marginTop: 4 },
   drawerFooter: {
     borderTopWidth: 1,
     paddingTop: 14,
     paddingHorizontal: 20,
     marginTop: 8,
   },
-  footerText: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
+  footerText: { fontSize: 11, fontWeight: '500' },
 });
 
-// ─── Main Dashboard ────────────────────────────────────────────────────────────
 const AdminDashboard: React.FC = () => {
   const navigation = useNavigation<any>();
   const { userInfo, logout } = useAuth();
@@ -740,23 +733,37 @@ const AdminDashboard: React.FC = () => {
       }),
     [],
   );
-
   const initials = userInfo
     ? `${(userInfo.firstName || '')[0] || ''}${(userInfo.lastName || '')[0] || ''}`.toUpperCase() ||
       'A'
     : 'A';
 
+  const roleData = useMemo(
+    () => [
+      { label: 'Admins', value: stats?.adminCount || 0, color: '#8b5cf6' },
+      { label: 'Members', value: stats?.memberCount || 0, color: '#06b6d4' },
+    ],
+    [stats],
+  );
+
+  const userStatusData = useMemo(
+    () => [
+      { label: 'Active', value: stats?.activeUsers || 0, color: '#22c55e' },
+      { label: 'Inactive', value: stats?.inactiveUsers || 0, color: '#f59e0b' },
+    ],
+    [stats],
+  );
+
   return (
-    <View style={[s.root, { backgroundColor: theme.bg }]}>
+    <View style={[rootStyles.root, { backgroundColor: theme.bg }]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={theme.bg}
       />
 
-      {/* Top Header Bar */}
       <View
         style={[
-          s.topBar,
+          rootStyles.topBar,
           {
             backgroundColor: theme.surface,
             borderBottomColor: theme.border,
@@ -767,25 +774,28 @@ const AdminDashboard: React.FC = () => {
       >
         <TouchableOpacity
           onPress={openDrawer}
-          style={s.menuBtn}
+          style={rootStyles.menuBtn}
           activeOpacity={0.7}
         >
           <Menu size={22} color={theme.text} strokeWidth={2} />
         </TouchableOpacity>
-        <View style={s.topBarCenter}>
-          <Text style={[s.topBarTitle, { color: theme.text }]}>Dashboard</Text>
+        <View style={rootStyles.topBarCenter}>
+          <Text style={[rootStyles.topBarTitle, { color: theme.text }]}>
+            Analytics
+          </Text>
         </View>
-        <TouchableOpacity style={s.avatarBtn} activeOpacity={0.7}>
-          <View style={[s.avatarSmall, { backgroundColor: theme.accent }]}>
-            <Text style={s.avatarSmallText}>{initials}</Text>
+        <TouchableOpacity style={rootStyles.avatarBtn} activeOpacity={0.7}>
+          <View
+            style={[rootStyles.avatarSmall, { backgroundColor: theme.accent }]}
+          >
+            <Text style={rootStyles.avatarSmallText}>{initials}</Text>
           </View>
         </TouchableOpacity>
       </View>
 
-      {/* Scrollable Content */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scrollContent}
+        contentContainerStyle={rootStyles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -794,174 +804,255 @@ const AdminDashboard: React.FC = () => {
           />
         }
       >
-        {/* Hero Card */}
-        <View style={[s.heroCard, { backgroundColor: theme.accent }]}>
+        <View style={[rootStyles.heroCard, { backgroundColor: theme.accent }]}>
           <View>
-            <Text style={s.heroGreeting}>
+            <Text style={rootStyles.heroGreeting}>
               {userInfo?.firstName
-                ? `Hey, ${userInfo.firstName} 👋`
-                : 'Welcome back 👋'}
+                ? `Hey, ${userInfo.firstName}`
+                : 'Welcome back'}
             </Text>
-            <Text style={s.heroSub}>{today}</Text>
+            <Text style={rootStyles.heroSub}>{today}</Text>
           </View>
-          <View style={s.heroBadge}>
-            <ShieldIcon size={18} color="#fff" strokeWidth={2.5} />
-            <Text style={s.heroBadgeText}>Admin</Text>
+          <View style={rootStyles.heroBadge}>
+            <ShieldIcon size={16} color="#fff" strokeWidth={2.5} />
+            <Text style={rootStyles.heroBadgeText}>Admin</Text>
           </View>
         </View>
 
-        {/* User Statistics */}
-        <Text style={[s.sectionTitle, { color: theme.textSecondary }]}>
-          User Statistics
-        </Text>
-        <View style={s.grid}>
-          <StatCard
+        <View style={rootStyles.kpiGrid}>
+          <KpiCard
             label="Total Users"
             value={stats?.totalUsers || 0}
-            subtitle={`${stats?.newUsersThisMonth || 0} new this month`}
-            color={theme.accent}
-            colorLight={theme.accentLight}
-            onPress={() => navigation.navigate(route.adminUsers)}
-            theme={theme}
+            trend={12}
+            color="#fff"
+            bgColor="#6366f1"
+            icon={<Users size={18} color="#6366f1" />}
           />
-          <StatCard
+          <KpiCard
             label="Active"
             value={stats?.activeUsers || 0}
-            subtitle={`${stats?.inactiveUsers || 0} inactive`}
-            color={theme.success}
-            colorLight={theme.successLight}
-            theme={theme}
+            trend={5}
+            color="#fff"
+            bgColor="#22c55e"
+            icon={<CheckCircle size={18} color="#22c55e" />}
           />
-          <StatCard
-            label="Verified"
-            value={stats?.verifiedUsers || 0}
-            subtitle={`${stats?.unverifiedUsers || 0} pending`}
-            color={theme.cyan}
-            colorLight={theme.cyanLight}
-            theme={theme}
-          />
-          <StatCard
-            label="Enrollments"
-            value={stats?.totalEnrollments || 0}
-            subtitle={`${stats?.completedEnrollments || 0} completed`}
-            color={theme.purple}
-            colorLight={theme.purpleLight}
-            theme={theme}
-          />
-        </View>
-
-        {/* Role Breakdown */}
-        <Text style={[s.sectionTitle, { color: theme.textSecondary }]}>
-          Role Breakdown
-        </Text>
-        <View style={s.grid}>
-          <StatCard
-            label="Admins"
-            value={stats?.adminCount || 0}
-            color={theme.purple}
-            colorLight={theme.purpleLight}
-            theme={theme}
-          />
-          <StatCard
-            label="Members"
-            value={stats?.memberCount || 0}
-            color={theme.cyan}
-            colorLight={theme.cyanLight}
-            theme={theme}
-          />
-          <StatCard
-            label="Reading Plans"
+          <KpiCard
+            label="Plans"
             value={stats?.totalPlans || 0}
-            subtitle={`${stats?.activePlans || 0} active`}
-            color={theme.success}
-            colorLight={theme.successLight}
-            theme={theme}
+            trend={-2}
+            color="#fff"
+            bgColor="#8b5cf6"
+            icon={<BookOpen size={18} color="#8b5cf6" />}
           />
-          <StatCard
-            label="New This Month"
-            value={stats?.newUsersThisMonth || 0}
-            color={theme.warning}
-            colorLight={theme.warningLight}
-            theme={theme}
+          <KpiCard
+            label="Enrolled"
+            value={stats?.totalEnrollments || 0}
+            trend={8}
+            color="#fff"
+            bgColor="#06b6d4"
+            icon={<Activity size={18} color="#06b6d4" />}
           />
         </View>
 
-        {/* Platform Health */}
-        <Text style={[s.sectionTitle, { color: theme.textSecondary }]}>
-          Platform Health
-        </Text>
         <View
-          style={[
-            s.card,
-            { backgroundColor: theme.surface, borderColor: theme.border },
-          ]}
+          style={[rootStyles.sectionCard, { backgroundColor: theme.surface }]}
         >
-          <HealthBar
-            label="Active User Rate"
-            value={stats?.activeRate || 0}
-            color={theme.success}
-            theme={theme}
-          />
-          <HealthBar
-            label="Email Verification"
-            value={stats?.verificationRate || 0}
-            color={theme.cyan}
-            theme={theme}
-          />
-          <HealthBar
-            label="Plan Completion"
-            value={stats?.completionRate || 0}
-            color={theme.purple}
-            theme={theme}
-          />
+          <Text style={[rootStyles.sectionTitle, { color: theme.text }]}>
+            User Overview
+          </Text>
+          <View style={rootStyles.overviewRow}>
+            <View style={rootStyles.barsContainer}>
+              <StatBar
+                label="Active Users"
+                value={stats?.activeUsers || 0}
+                total={stats?.totalUsers || 1}
+                color="#22c55e"
+              />
+              <StatBar
+                label="Verified"
+                value={stats?.verifiedUsers || 0}
+                total={stats?.totalUsers || 1}
+                color="#06b6d4"
+              />
+              <StatBar
+                label="Inactive"
+                value={stats?.inactiveUsers || 0}
+                total={stats?.totalUsers || 1}
+                color="#f59e0b"
+              />
+            </View>
+          </View>
         </View>
 
-        {/* Quick Actions */}
-        <Text style={[s.sectionTitle, { color: theme.textSecondary }]}>
-          Quick Actions
-        </Text>
-        <View style={s.grid}>
+        <View
+          style={[rootStyles.sectionCard, { backgroundColor: theme.surface }]}
+        >
+          <Text style={[rootStyles.sectionTitle, { color: theme.text }]}>
+            Role Distribution
+          </Text>
+          <View style={rootStyles.distributionRow}>
+            <CircleChart data={roleData} size={110} />
+            <View style={rootStyles.legendContainer}>
+              {roleData.map((item, index) => (
+                <View key={index} style={rootStyles.legendItem}>
+                  <View
+                    style={[
+                      rootStyles.legendDot,
+                      { backgroundColor: item.color },
+                    ]}
+                  />
+                  <Text style={rootStyles.legendLabel}>{item.label}</Text>
+                  <Text style={rootStyles.legendValue}>{item.value}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <View
+          style={[rootStyles.sectionCard, { backgroundColor: theme.surface }]}
+        >
+          <Text style={[rootStyles.sectionTitle, { color: theme.text }]}>
+            Platform Health
+          </Text>
+          <View style={rootStyles.healthGrid}>
+            <View style={rootStyles.healthItem}>
+              <View style={rootStyles.healthHeader}>
+                <Text style={[rootStyles.healthLabel, { color: theme.text }]}>
+                  Active Rate
+                </Text>
+                <Text
+                  style={[
+                    rootStyles.healthValuePill,
+                    { color: '#22c55e', backgroundColor: '#22c55e20' },
+                  ]}
+                >
+                  {stats?.activeRate || 0}%
+                </Text>
+              </View>
+              <View
+                style={[
+                  rootStyles.healthTrack,
+                  { backgroundColor: theme.border },
+                ]}
+              >
+                <View
+                  style={[
+                    rootStyles.healthFill,
+                    {
+                      width: `${stats?.activeRate || 0}%`,
+                      backgroundColor: '#22c55e',
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+            <View style={rootStyles.healthItem}>
+              <View style={rootStyles.healthHeader}>
+                <Text style={[rootStyles.healthLabel, { color: theme.text }]}>
+                  Verified
+                </Text>
+                <Text
+                  style={[
+                    rootStyles.healthValuePill,
+                    { color: '#06b6d4', backgroundColor: '#06b6d420' },
+                  ]}
+                >
+                  {stats?.verificationRate || 0}%
+                </Text>
+              </View>
+              <View
+                style={[
+                  rootStyles.healthTrack,
+                  { backgroundColor: theme.border },
+                ]}
+              >
+                <View
+                  style={[
+                    rootStyles.healthFill,
+                    {
+                      width: `${stats?.verificationRate || 0}%`,
+                      backgroundColor: '#06b6d4',
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+            <View style={rootStyles.healthItem}>
+              <View style={rootStyles.healthHeader}>
+                <Text style={[rootStyles.healthLabel, { color: theme.text }]}>
+                  Completion
+                </Text>
+                <Text
+                  style={[
+                    rootStyles.healthValuePill,
+                    { color: '#8b5cf6', backgroundColor: '#8b5cf620' },
+                  ]}
+                >
+                  {stats?.completionRate || 0}%
+                </Text>
+              </View>
+              <View
+                style={[
+                  rootStyles.healthTrack,
+                  { backgroundColor: theme.border },
+                ]}
+              >
+                <View
+                  style={[
+                    rootStyles.healthFill,
+                    {
+                      width: `${stats?.completionRate || 0}%`,
+                      backgroundColor: '#8b5cf6',
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View
+          style={[rootStyles.sectionCard, { backgroundColor: theme.surface }]}
+        >
+          <Text style={[rootStyles.sectionTitle, { color: theme.text }]}>
+            Quick Actions
+          </Text>
           <QuickAction
-            icon="👥"
+            icon={<Users size={20} color="#6366f1" />}
             label="Manage Users"
-            color={theme.accent}
-            colorLight={theme.accentLight}
+            subtitle="View & edit users"
+            color="#6366f1"
             onPress={() => navigation.navigate(route.adminUsers)}
-            theme={theme}
           />
           <QuickAction
-            icon="📊"
+            icon={<Activity size={20} color="#22c55e" />}
             label="View Activity"
-            color={theme.success}
-            colorLight={theme.successLight}
+            subtitle="Login sessions & events"
+            color="#22c55e"
             onPress={() => navigation.navigate(route.adminActivity)}
-            theme={theme}
           />
           <QuickAction
-            icon="📖"
+            icon={<BookOpen size={20} color="#06b6d4" />}
             label="Daily Verse"
-            color={theme.cyan}
-            colorLight={theme.cyanLight}
+            subtitle="Manage daily verses"
+            color="#06b6d4"
             onPress={() => navigation.navigate(route.adminDailyVerse)}
-            theme={theme}
           />
           <QuickAction
-            icon="📚"
+            icon={<CalendarClock size={20} color="#8b5cf6" />}
             label="Reading Plans"
-            color={theme.purple}
-            colorLight={theme.purpleLight}
+            subtitle="Manage plans"
+            color="#8b5cf6"
             onPress={() => navigation.navigate(route.adminReadingPlans)}
-            theme={theme}
           />
         </View>
 
-        <View style={s.bottomSpacer} />
+        <View style={rootStyles.bottomSpacer} />
       </ScrollView>
 
-      {/* Bottom Tab */}
       <BottomTab activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Drawer */}
       {drawerMounted && (
         <Drawer
           isOpen={drawerOpen}
@@ -982,11 +1073,8 @@ const AdminDashboard: React.FC = () => {
   );
 };
 
-// ─── Main Styles ──────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
+const rootStyles = StyleSheet.create({
+  root: { flex: 1 },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1002,15 +1090,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topBarCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  topBarTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
   avatarBtn: {
     width: 40,
     height: 40,
@@ -1024,40 +1105,27 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarSmallText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  scrollContent: {
-    paddingBottom: 140,
-    paddingTop: 8,
-  },
+  avatarSmallText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  scrollContent: { paddingBottom: 80, paddingTop: 8, paddingHorizontal: 16 },
   heroCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 12,
     borderRadius: 22,
     padding: 22,
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
   },
   heroGreeting: {
     color: '#fff',
     fontSize: 20,
     fontWeight: '800',
     letterSpacing: -0.4,
-    marginBottom: 6,
   },
   heroSub: {
     color: 'rgba(255,255,255,0.82)',
     fontSize: 13,
     fontWeight: '500',
+    marginTop: 4,
   },
   heroBadge: {
     flexDirection: 'row',
@@ -1066,44 +1134,65 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    marginTop: 18,
+    gap: 8,
   },
   heroBadgeText: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.3,
-    marginLeft: 8,
   },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.1,
-    marginHorizontal: 16,
-    marginTop: 22,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-  },
-  grid: {
+  kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    marginTop: 16,
+    marginHorizontal: -6,
   },
-  card: {
-    marginHorizontal: 0,
-    borderRadius: 18,
+  sectionCard: {
+    borderRadius: 20,
     padding: 18,
-    borderWidth: 1,
+    marginTop: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
-  bottomSpacer: {
-    height: 34,
+  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 16 },
+  overviewRow: { flexDirection: 'row', alignItems: 'center' },
+  barsContainer: { flex: 1 },
+  distributionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
   },
+  legendContainer: { flex: 1, marginLeft: 16 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  legendDot: { width: 12, height: 12, borderRadius: 6, marginRight: 10 },
+  legendLabel: { flex: 1, fontSize: 13, fontWeight: '500' },
+  legendValue: { fontSize: 13, fontWeight: '700' },
+  healthGrid: { gap: 18 },
+  healthItem: { marginBottom: 4 },
+  healthHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  healthLabel: { fontSize: 13, fontWeight: '500' },
+  healthValue: { fontSize: 13, fontWeight: '700' },
+  healthValuePill: {
+    fontSize: 12,
+    fontWeight: '700',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  healthTrack: { height: 10, borderRadius: 5, overflow: 'hidden' },
+  healthFill: { height: '100%', borderRadius: 5 },
+  bottomSpacer: { height: 34 },
 });
 
 export default AdminDashboard;

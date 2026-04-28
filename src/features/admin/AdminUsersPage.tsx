@@ -9,21 +9,26 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
+  Switch,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { route } from '../../component/navigations/routes';
 import {
   getUsersByAdmin,
   toggleUserStatusByAdmin,
   toggleUserVerificationByAdmin,
   deleteUserByAdmin,
+  updateUserByAdmin,
   SystemUser,
 } from '../../services/adminApi';
 import BottomTab from '../../component/navigations/BottomTab';
 import { getColors } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
-import { ChevronLeft, Edit } from 'lucide-react-native';
+import { ChevronLeft, Edit, User, Mail, Phone, Gender, Heart, Shield, ToggleLeft, UserPlus } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
+import ActionModal from '../../reusable/ActionModal';
+import { showToast } from '../../helpers/Toash.helper';
 
 // ─── Dynamic Theme ───────────────────────────────────────────────────────────
 const getUsersPageTheme = (isDark: boolean) => {
@@ -59,8 +64,31 @@ const AdminUsersPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [activeTab, setActiveTab] = useState('adminUsers');
-
+  const [confirmModalData, setConfirmModalData] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    cancelLabel: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
   const [togglingUsers, setTogglingUsers] = useState<Set<string>>(new Set());
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editUser, setEditUser] = useState<SystemUser | null>(null);
+  const [editForm, setEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    email: '',
+    phoneNumber: '',
+    gender: '',
+    maritalStatus: '',
+    roleName: '',
+    status: true,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const currentUsername = app?.userInfo?.username ?? '';
 
   const fetchUsers = useCallback(
     async (pg: number = 1, searchTerm: string = '') => {
@@ -120,12 +148,8 @@ const AdminUsersPage: React.FC = () => {
         text1: 'Success',
         text2: `User ${user.status ? 'deactivated' : 'activated'} successfully`,
       });
-    } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to update user status',
-      });
+    } catch (error: any) {
+      showToast('error', error.message || 'Failed to update user status');
     } finally {
       setTogglingUsers(prev => {
         const next = new Set(prev);
@@ -148,17 +172,12 @@ const AdminUsersPage: React.FC = () => {
             : u,
         ),
       );
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: `User verification ${!user.emailVerified ? 'granted' : 'revoked'} successfully`,
-      });
-    } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to update verification',
-      });
+      showToast(
+        'success',
+        `User verification ${!user.emailVerified ? 'granted' : 'revoked'} successfully`,
+      );
+    } catch (error: any) {
+      showToast('error', error.message || 'Failed to update verification');
     } finally {
       setTogglingUsers(prev => {
         const next = new Set(prev);
@@ -169,43 +188,74 @@ const AdminUsersPage: React.FC = () => {
   };
 
   const handleDeleteUser = (user: SystemUser) => {
-    Alert.alert(
-      'Delete User',
-      `Are you sure you want to delete ${user.firstName} ${user.lastName}? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteUserByAdmin(user.username);
-              setUsers(prev => prev.filter(u => u.username !== user.username));
-              Toast.show({
-                type: 'success',
-                text1: 'Success',
-                text2: 'User deleted successfully',
-              });
-            } catch (error:any) {
-              Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: error.message || 'Failed to delete user',
-              });
-            }
-          },
-        },
-      ],
-    );
+    if (user.username === currentUsername) {
+      showToast('error', "You can't delete your own account.");
+      return;
+    }
+
+    setConfirmModalData({
+      title: 'Delete User',
+      message: `Are you sure you want to delete ${user.firstName} ${user.lastName}? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      severity: 'error',
+      onConfirm: async () => {
+        setConfirmModalData(null);
+        try {
+          await deleteUserByAdmin(user.username);
+          setUsers(prev => prev.filter(u => u.username !== user.username));
+          showToast('success', 'User deleted successfully');
+        } catch (error: any) {
+          showToast('error', error.message || 'Failed to delete user');
+        }
+      },
+    });
+  };
+  const handleEditUser = (user: SystemUser) => {
+    setEditUser(user);
+    setEditForm({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      middleName: user.middleName || '',
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      gender: user.gender,
+      maritalStatus: user.maritalStatus || '',
+      roleName: user.roleName,
+      status: user.status,
+    });
+    setEditModalVisible(true);
   };
 
-  const handleEditUser = (user: SystemUser) => {
-    // Placeholder for edit functionality
-    Toast.show({
-      type: 'info',
-      text1: 'Info',
-      text2: `Edit functionality for ${user.firstName} ${user.lastName} coming soon.`,
-    });
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+
+    setSaving(true);
+    try {
+      await updateUserByAdmin(editUser.username, {
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        middleName: editForm.middleName,
+        email: editForm.email,
+        phoneNumber: editForm.phoneNumber,
+        gender: editForm.gender,
+        maritalStatus: editForm.maritalStatus,
+        roleName: editForm.roleName,
+        status: editForm.status,
+      });
+
+      // Refresh the users list
+      await fetchUsers();
+
+      setEditModalVisible(false);
+      setEditUser(null);
+      showToast('success', 'User updated successfully');
+    } catch (error) {
+      console.error('Error updating user:', error);
+      showToast('error', 'Failed to update user. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const roleColor = (role: string) => {
@@ -303,8 +353,16 @@ const AdminUsersPage: React.FC = () => {
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => handleDeleteUser(item)}
+          disabled={item.username === currentUsername}
         >
-          <Text style={styles.deleteText}>Delete</Text>
+          <Text
+            style={[
+              styles.deleteText,
+              item.username === currentUsername && { opacity: 0.5 },
+            ]}
+          >
+            Delete
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -366,9 +424,599 @@ const AdminUsersPage: React.FC = () => {
           <BottomTab activeTab={activeTab} setActiveTab={setActiveTab} />
         </>
       )}
+
+      {/* Edit Modal */}
+      <EditUserModal
+        visible={editModalVisible}
+        onClose={() => setEditModalVisible(false)}
+        user={editUser}
+        form={editForm}
+        setForm={setEditForm}
+        onSave={handleSaveEdit}
+        saving={saving}
+        theme={theme}
+        disableRoleChange={editUser?.username === currentUsername}
+      />
+      <ActionModal
+        visible={Boolean(confirmModalData)}
+        title={confirmModalData?.title ?? ''}
+        message={confirmModalData?.message ?? ''}
+        confirmLabel={confirmModalData?.confirmLabel}
+        cancelLabel={confirmModalData?.cancelLabel}
+        severity={confirmModalData?.severity ?? 'error'}
+        onConfirm={confirmModalData?.onConfirm ?? (() => {})}
+        onCancel={() => setConfirmModalData(null)}
+        showCancel={true}
+      />
     </View>
   );
 };
+
+// ─── Edit Modal ────────────────────────────────────────────────────────────
+const EditUserModal: React.FC<{
+  visible: boolean;
+  onClose: () => void;
+  user: SystemUser | null;
+  form: typeof editForm;
+  setForm: React.Dispatch<React.SetStateAction<typeof editForm>>;
+  onSave: () => void;
+  saving: boolean;
+  theme: ReturnType<typeof getUsersPageTheme>;
+  disableRoleChange: boolean;
+}> = ({
+  visible,
+  onClose,
+  user,
+  form,
+  setForm,
+  onSave,
+  saving,
+  theme,
+  disableRoleChange = false,
+}) => {
+  if (!user) return null;
+  const roleChangeDisabled = disableRoleChange;
+
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={modalStyles.overlay}>
+        <View style={[modalStyles.container, { backgroundColor: theme.surface }]}>
+          {/* Header with Avatar */}
+          <View style={[modalStyles.header, { borderBottomColor: theme.border }]}>
+            <View style={modalStyles.headerContent}>
+              <View style={[modalStyles.modalAvatar, { backgroundColor: theme.primary }]}>
+                <Text style={modalStyles.modalAvatarText}>
+                  {getInitials(user.firstName, user.lastName)}
+                </Text>
+              </View>
+              <View style={modalStyles.headerInfo}>
+                <Text style={[modalStyles.title, { color: theme.text }]}>
+                  Edit User
+                </Text>
+                <Text style={[modalStyles.subtitle, { color: theme.textSecondary }]}>
+                  @{user.username}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={onClose} style={modalStyles.closeBtn}>
+                <Text style={[modalStyles.closeText, { color: theme.muted }]}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ScrollView style={modalStyles.scroll} showsVerticalScrollIndicator={false}>
+            <View style={modalStyles.form}>
+              {/* Personal Information Section */}
+              <View style={modalStyles.section}>
+                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }]}>
+                  Personal Information
+                </Text>
+                
+                <View style={modalStyles.inputGroup}>
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
+                    First Name *
+                  </Text>
+                  <View style={[modalStyles.inputContainer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                    <User size={18} color={theme.muted} />
+                    <TextInput
+                      style={[modalStyles.input, { color: theme.text }]}
+                      value={form.firstName}
+                      onChangeText={text =>
+                        setForm(prev => ({ ...prev, firstName: text }))
+                      }
+                      placeholder="Enter first name"
+                      placeholderTextColor={theme.muted}
+                    />
+                  </View>
+                </View>
+
+                <View style={modalStyles.inputGroup}>
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
+                    Last Name *
+                  </Text>
+                  <View style={[modalStyles.inputContainer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                    <User size={18} color={theme.muted} />
+                    <TextInput
+                      style={[modalStyles.input, { color: theme.text }]}
+                      value={form.lastName}
+                      onChangeText={text =>
+                        setForm(prev => ({ ...prev, lastName: text }))
+                      }
+                      placeholder="Enter last name"
+                      placeholderTextColor={theme.muted}
+                    />
+                  </View>
+                </View>
+
+                <View style={modalStyles.inputGroup}>
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
+                    Middle Name
+                  </Text>
+                  <View style={[modalStyles.inputContainer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                    <User size={18} color={theme.muted} />
+                    <TextInput
+                      style={[modalStyles.input, { color: theme.text }]}
+                      value={form.middleName}
+                      onChangeText={text =>
+                        setForm(prev => ({ ...prev, middleName: text }))
+                      }
+                      placeholder="Optional"
+                      placeholderTextColor={theme.muted}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Contact Information Section */}
+              <View style={modalStyles.section}>
+                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }]}>
+                  Contact Information
+                </Text>
+                
+                <View style={modalStyles.inputGroup}>
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
+                    Email
+                  </Text>
+                  <View style={[modalStyles.readOnlyContainer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                    <Mail size={18} color={theme.muted} />
+                    <TextInput
+                      style={[modalStyles.readOnlyInput, { color: theme.muted }]}
+                      value={user.email}
+                      editable={false}
+                    />
+                  </View>
+                </View>
+
+                <View style={modalStyles.inputGroup}>
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
+                    Phone Number
+                  </Text>
+                  <View style={[modalStyles.inputContainer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                    <Phone size={18} color={theme.muted} />
+                    <TextInput
+                      style={[modalStyles.input, { color: theme.text }]}
+                      value={form.phoneNumber}
+                      onChangeText={text =>
+                        setForm(prev => ({ ...prev, phoneNumber: text }))
+                      }
+                      placeholder="Enter phone number"
+                      placeholderTextColor={theme.muted}
+                      keyboardType="phone-pad"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Additional Information Section */}
+              <View style={modalStyles.section}>
+                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }]}>
+                  Additional Information
+                </Text>
+                
+                <View style={modalStyles.inputGroup}>
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
+                    Gender
+                  </Text>
+                  <View style={modalStyles.genderOptions}>
+                    {['Male', 'Female', 'Other'].map((option) => (
+                      <TouchableOpacity
+                        key={option}
+                        style={[
+                          modalStyles.genderBtn,
+                          { borderColor: theme.border },
+                          form.gender === option && {
+                            backgroundColor: theme.primary,
+                            borderColor: theme.primary,
+                          },
+                        ]}
+                        onPress={() => setForm(prev => ({ ...prev, gender: option }))}
+                      >
+                        <Text
+                          style={[
+                            modalStyles.genderText,
+                            { color: theme.text },
+                            form.gender === option && { color: '#fff' },
+                          ]}
+                        >
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={modalStyles.inputGroup}>
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
+                    Marital Status
+                  </Text>
+                  <View style={modalStyles.genderOptions}>
+                    {['Single', 'Married', 'Divorced', 'Widowed'].map((option) => (
+                      <TouchableOpacity
+                        key={option}
+                        style={[
+                          modalStyles.genderBtn,
+                          { borderColor: theme.border },
+                          form.maritalStatus === option && {
+                            backgroundColor: theme.primary,
+                            borderColor: theme.primary,
+                          },
+                        ]}
+                        onPress={() => setForm(prev => ({ ...prev, maritalStatus: option }))}
+                      >
+                        <Text
+                          style={[
+                            modalStyles.genderText,
+                            { color: theme.text },
+                            form.maritalStatus === option && { color: '#fff' },
+                          ]}
+                        >
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+
+              {/* Role & Status Section */}
+              <View style={modalStyles.section}>
+                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }]}>
+                  Role & Status
+                </Text>
+                
+                <View style={modalStyles.inputGroup}>
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
+                    Role {roleChangeDisabled && '(Cannot change your own role)'}
+                  </Text>
+                  <View style={modalStyles.roleButtons}>
+                    <TouchableOpacity
+                      style={[
+                        modalStyles.roleBtn,
+                        { borderColor: theme.border },
+                        roleChangeDisabled && modalStyles.disabledRoleBtn,
+                        form.roleName === 'admin' && {
+                          backgroundColor: theme.primary,
+                          borderColor: theme.primary,
+                        },
+                      ]}
+                      onPress={() =>
+                        !roleChangeDisabled &&
+                        setForm(prev => ({ ...prev, roleName: 'admin' }))
+                      }
+                      disabled={roleChangeDisabled}
+                    >
+                      <Shield size={16} color={form.roleName === 'admin' ? '#fff' : theme.text} />
+                      <Text
+                        style={[
+                          modalStyles.roleText,
+                          { color: theme.text },
+                          form.roleName === 'admin' && { color: '#fff' },
+                        ]}
+                      >
+                        Admin
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        modalStyles.roleBtn,
+                        { borderColor: theme.border },
+                        roleChangeDisabled && modalStyles.disabledRoleBtn,
+                        form.roleName === 'Member' && {
+                          backgroundColor: theme.primary,
+                          borderColor: theme.primary,
+                        },
+                      ]}
+                      onPress={() =>
+                        !roleChangeDisabled &&
+                        setForm(prev => ({ ...prev, roleName: 'Member' }))
+                      }
+                      disabled={roleChangeDisabled}
+                    >
+                      <UserPlus size={16} color={form.roleName === 'Member' ? '#fff' : theme.text} />
+                      <Text
+                        style={[
+                          modalStyles.roleText,
+                          { color: theme.text },
+                          form.roleName === 'Member' && { color: '#fff' },
+                        ]}
+                      >
+                        Member
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={[modalStyles.statusRow, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+                  <View style={modalStyles.statusInfo}>
+                    <ToggleLeft size={20} color={form.status ? theme.success : theme.muted} />
+                    <View>
+                      <Text style={[modalStyles.statusLabel, { color: theme.text }]}>
+                        Account Status
+                      </Text>
+                      <Text style={[modalStyles.statusSubLabel, { color: form.status ? theme.success : theme.error }]}>
+                        {form.status ? 'Active' : 'Inactive'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={form.status}
+                    onValueChange={value =>
+                      setForm(prev => ({ ...prev, status: value }))
+                    }
+                    trackColor={{
+                      false: theme.inactiveBg,
+                      true: theme.successLight,
+                    }}
+                    thumbColor={form.status ? theme.success : theme.inactiveText}
+                  />
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+          
+          <View style={[modalStyles.footer, { borderTopColor: theme.border }]}>
+            <TouchableOpacity
+              style={[
+                modalStyles.btn,
+                modalStyles.cancelBtn,
+                { borderColor: theme.border },
+              ]}
+              onPress={onClose}
+              disabled={saving}
+            >
+              <Text style={[modalStyles.btnText, { color: theme.text }]}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                modalStyles.btn,
+                modalStyles.saveBtn,
+                { backgroundColor: theme.primary },
+                (saving || !form.firstName.trim() || !form.lastName.trim()) && modalStyles.disabledBtn,
+              ]}
+              onPress={onSave}
+              disabled={saving || !form.firstName.trim() || !form.lastName.trim()}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={[modalStyles.btnText, { color: '#fff' }]}>
+                  Save Changes
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  container: {
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '90%',
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalAvatarText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 18,
+  },
+  headerInfo: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  scroll: {
+    maxHeight: 480,
+  },
+  form: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+    marginLeft: 2,
+  },
+  inputGroup: {
+    marginBottom: 14,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+    marginLeft: 2,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    fontSize: 15,
+  },
+  readOnlyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    opacity: 0.7,
+  },
+  readOnlyInput: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    fontSize: 15,
+  },
+  genderOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  genderBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  genderText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  roleButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  roleBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  roleText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  statusInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  statusLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  statusSubLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  footer: {
+    flexDirection: 'row',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+  },
+  btn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  cancelBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+  },
+  saveBtn: {},
+  disabledBtn: {
+    opacity: 0.5,
+  },
+  btnText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  disabledRoleBtn: {
+    opacity: 0.5,
+  },
+});
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const getStyles = (theme: ReturnType<typeof getUsersPageTheme>) =>

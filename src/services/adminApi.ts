@@ -411,3 +411,70 @@ export const deleteReadingPlan = async (planId: string): Promise<void> => {
     throw new Error(response.returnMessage || 'Failed to delete reading plan');
   }
 };
+
+export interface Assignment {
+  id: number;
+  dayNumber: number;
+  title: string;
+  chapters: { book: string; chapter: number }[];
+  reflectionQuestions: string[];
+}
+
+export const getPlanAssignments = async (
+  planId: string,
+  dayNumber: number,
+): Promise<{ returnCode: number; returnData?: Assignment; returnMessage?: string }> => {
+  const response = await sendPostRequest<Assignment>('reading-plans', 'daily-assignment', {
+    planId,
+    dayNumber,
+  });
+  return response;
+};
+
+export const addAssignment = async (
+  assignmentData: {
+    planId: string;
+    dayNumber: number;
+    title: string;
+    chapters: { book: string; chapter: number }[];
+    reflectionQuestions?: string[];
+    assignmentId?: number;
+  },
+): Promise<{ returnCode: number; returnData?: Assignment; returnMessage?: string }> => {
+  const response = await sendPostRequest<Assignment>('reading-plans', 'add-assignment', assignmentData);
+  return response;
+};
+
+export const getPlanQuizQuestions = async (
+  planId: string,
+  dayNumber: number,
+): Promise<{ returnCode: number; returnData?: any[]; returnMessage?: string }> => {
+  const response = await sendPostRequest<any[]>('reading-plans', 'quiz-questions', {
+    planId,
+    dayNumber,
+  });
+  return response;
+};
+
+export const addQuizQuestions = async (
+  quizData: {
+    planId: string;
+    dayNumber: number;
+    questions: {
+      question: string;
+      options: [string, string, string, string];
+      correctAnswer: number;
+      explanation: string;
+    }[];
+  },
+): Promise<{ returnCode: number; returnData?: any[]; returnMessage?: string }> => {
+  const response = await sendPostRequest('reading-plans', 'add-quiz-questions', quizData);
+  return response;
+};
+
+export const deleteQuizQuestion = async (questionId: number): Promise<void> => {
+  const response = await sendPostRequest('reading-plans', 'delete-quiz-question', { questionId });
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to delete quiz question');
+  }
+};
