@@ -4,9 +4,9 @@ import { StyleSheet } from 'react-native';
 const lightColors = {
   background: '#F5F7FF',
   surface: '#FFFFFF',
-  primary: '#4A80D4',
-  primaryDark: '#0D2654',
-  primaryLight: '#2755A0',
+  primary: '#396284',
+  primaryDark: '#294670',
+  primaryLight: '#EAFFFF',
   accent: '#E8A317',
   accentDark: '#C4881A',
   accentLight: '#FDE9B8',
@@ -29,40 +29,39 @@ const lightColors = {
 
 const darkColors = {
   // ── Backgrounds ─────────────────────────────────────────────────────────────
-  background: '#080C14', // very deep navy — rich, not harsh
-  surface: '#0F1726', // one step up — used for inputs, bottom sheets
-  cardBackground: '#141E30', // cards float above the background
+  background: '#080C14',
+  surface: '#0F1726',
+  cardBackground: '#151D2D',
 
   // ── Brand ───────────────────────────────────────────────────────────────────
-  primary: '#4A80D4', // vibrant royal blue — clear & accessible on dark
-  primaryDark: '#2A5BA8', // pressed / darker variant
-  primaryLight: '#6B9DE0', // lighter hover / icon tint
+  primary: '#4A90E2',
+  primaryDark: '#2563A8',
+  primaryLight: '#6BA8E8',
 
   // ── Accent ──────────────────────────────────────────────────────────────────
-  accent: '#F0B429', // warm amber gold — pops beautifully on navy
-  accentDark: '#C8921A',
-  accentLight: '#FDE7A0',
+  accent: '#F0B429',
+  accentDark: '#C28F15',
+  accentLight: '#FFE08A',
 
   // ── Text ────────────────────────────────────────────────────────────────────
-  text: '#E8EDF5', // warm near-white — comfortable for long reading
-  textSecondary: '#B8C4D8', // slightly dimmed secondary text
-  muted: '#6E7E9A', // blue-grey muted — cohesive, not flat grey
+  text: '#E8EDF5',
+  textSecondary: '#A0AEC0',
+  muted: '#64748B',
 
-  // ── Semantic ────────────────────────────────────────────────────────────────
-  error: '#F56565', // softer red — less aggressive on dark
-  success: '#48BB78', // fresh green
-  warning: '#ECC94B', // visible amber
-  info: '#63B3ED', // sky blue
+  // ── Semantic ───────────────────────────────────────────────────────────────
+  error: '#EF5555',
+  success: '#34D399',
+  warning: '#FBBF24',
+  info: '#60A5FA',
 
   // ── Structure ───────────────────────────────────────────────────────────────
-  border: '#1E2D45', // subtle indigo-tinted border
-  overlay: 'rgba(0, 0, 0, 0.72)',
+  border: '#1E2D45',
+  overlay: 'rgba(0, 0, 0, 0.75)',
   shadowColor: '#000000',
   white: '#FFFFFF',
-  selectedItem: '#1A2D47', // selected row — clearly distinct, not jarring
+  selectedItem: '#1E2D45',
 
-  // ── Gradient ────────────────────────────────────────────────────────────────
-  // Two-stop subtle gradient gives the header depth
+  // ── Gradient ───────────────────────────────────────────────────────────────
   headgradient: ['#0D1829', '#111E35'] as string[],
 
   black: '#000000',

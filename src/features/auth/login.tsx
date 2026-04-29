@@ -291,9 +291,7 @@ const Login = () => {
   // ──────────────────────────────────────────────────────────────────────────
 
   return (
-    <View
-      style={[s.root, { backgroundColor: isDark ? C.background : '#FFFFFF' }]}
-    >
+    <View style={[s.root, { backgroundColor: C.background }]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         translucent
@@ -347,7 +345,12 @@ const Login = () => {
                     s.inputIconBox,
                     {
                       borderColor: errors.email ? C.error : C.border,
-                      backgroundColor: isDark ? C.surface : '#F0F2F5',
+                      backgroundColor: C.cardBackground,
+                      shadowColor: C.shadowColor,
+                      shadowOpacity: 0.04,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                      elevation: 2,
                     },
                   ]}
                 >
@@ -358,7 +361,12 @@ const Login = () => {
                     s.inputBox,
                     {
                       borderColor: errors.email ? C.error : C.border,
-                      backgroundColor: isDark ? C.surface : '#F0F2F5',
+                      backgroundColor: C.cardBackground,
+                      shadowColor: C.shadowColor,
+                      shadowOpacity: 0.06,
+                      shadowRadius: 8,
+                      shadowOffset: { width: 0, height: 2 },
+                      elevation: 2,
                     },
                   ]}
                 >
@@ -407,7 +415,12 @@ const Login = () => {
                     s.inputIconBox,
                     {
                       borderColor: errors.password ? C.error : C.border,
-                      backgroundColor: isDark ? C.surface : '#F0F2F5',
+                      backgroundColor: C.cardBackground,
+                      shadowColor: C.shadowColor,
+                      shadowOpacity: 0.04,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                      elevation: 2,
                     },
                   ]}
                 >
@@ -418,7 +431,12 @@ const Login = () => {
                     s.inputBox,
                     {
                       borderColor: errors.password ? C.error : C.border,
-                      backgroundColor: isDark ? C.surface : '#F0F2F5',
+                      backgroundColor: C.cardBackground,
+                      shadowColor: C.shadowColor,
+                      shadowOpacity: 0.06,
+                      shadowRadius: 8,
+                      shadowOffset: { width: 0, height: 2 },
+                      elevation: 2,
                     },
                   ]}
                 >
@@ -484,7 +502,7 @@ const Login = () => {
               onPress={() => navigation.navigate(route.forgotPassword)}
               activeOpacity={0.7}
             >
-              <Text style={[s.forgotText, { color: C.text }]}>
+              <Text style={[s.forgotText, { color: C.primary }]}>
                 Forgot password?
               </Text>
             </TouchableOpacity>
@@ -493,7 +511,14 @@ const Login = () => {
             <TouchableOpacity
               style={[
                 s.signInBtn,
-                { backgroundColor: C.primaryDark },
+                {
+                  backgroundColor: C.primary,
+                  shadowColor: C.shadowColor,
+                  shadowOpacity: 0.15,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 4 },
+                  elevation: 4,
+                },
                 loading && s.btnDisabled,
               ]}
               onPress={handleLogin}
@@ -501,9 +526,9 @@ const Login = () => {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={C.white} />
               ) : (
-                <Text style={s.signInText}>SIGN IN</Text>
+                <Text style={[s.signInText, { color: C.white }]}>SIGN IN</Text>
               )}
             </TouchableOpacity>
 
@@ -670,12 +695,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
   },
 
   floatLabel: {
@@ -683,7 +702,6 @@ const s = StyleSheet.create({
     fontStyle: 'italic',
     marginBottom: 5,
     marginLeft: 2,
-    color: '#888',
   },
 
   floatingLabel: {
@@ -699,7 +717,6 @@ const s = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 5,
     marginLeft: 2,
-    color: '#888',
   },
 
   inputBox: {
@@ -716,12 +733,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingRight: 44,
     position: 'relative',
-
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
   },
 
   eyeIcon: {
@@ -761,11 +772,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
   },
 
   btnDisabled: {
@@ -773,7 +779,6 @@ const s = StyleSheet.create({
   },
 
   signInText: {
-    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 1,
