@@ -347,7 +347,7 @@ const Login = () => {
                     s.inputIconBox,
                     {
                       borderColor: errors.email ? C.error : C.border,
-                      backgroundColor: isDark ? C.surface : '#F5F5F5',
+                      backgroundColor: isDark ? C.surface : '#F0F2F5',
                     },
                   ]}
                 >
@@ -358,16 +358,15 @@ const Login = () => {
                     s.inputBox,
                     {
                       borderColor: errors.email ? C.error : C.border,
-                      backgroundColor: isDark ? C.surface : '#F5F5F5',
+                      backgroundColor: isDark ? C.surface : '#F0F2F5',
                     },
                   ]}
                 >
-                  {/* Floating Label */}
                   <Animated.Text
                     style={[
                       s.floatingLabel,
                       {
-                        color: emailFocused || email ? C.primaryDark : C.muted,
+                        color: emailFocused || email ? C.primary : C.muted,
                         top: emailFocused || email ? 6 : 16,
                         fontSize: emailFocused || email ? 12 : 15,
                       },
@@ -408,7 +407,7 @@ const Login = () => {
                     s.inputIconBox,
                     {
                       borderColor: errors.password ? C.error : C.border,
-                      backgroundColor: isDark ? C.surface : '#F5F5F5',
+                      backgroundColor: isDark ? C.surface : '#F0F2F5',
                     },
                   ]}
                 >
@@ -419,17 +418,16 @@ const Login = () => {
                     s.inputBox,
                     {
                       borderColor: errors.password ? C.error : C.border,
-                      backgroundColor: isDark ? C.surface : '#F5F5F5',
+                      backgroundColor: isDark ? C.surface : '#F0F2F5',
                     },
                   ]}
                 >
-                  {/* Floating Label */}
                   <Animated.Text
                     style={[
                       s.floatingLabel,
                       {
                         color:
-                          passwordFocused || password ? C.primaryDark : C.muted,
+                          passwordFocused || password ? C.primary : C.muted,
                         top: passwordFocused || password ? 6 : 16,
                         fontSize: passwordFocused || password ? 12 : 15,
                       },
@@ -511,7 +509,10 @@ const Login = () => {
 
             {/* Large Create Account button */}
             <TouchableOpacity
-              style={[s.createAccountBtn, { borderColor: C.border }]}
+              style={[
+                s.createAccountBtn,
+                { borderColor: C.border, backgroundColor: C.surface },
+              ]}
               onPress={() => navigation.navigate(route.register)}
               activeOpacity={0.82}
             >
@@ -533,7 +534,7 @@ const Login = () => {
             <TouchableOpacity
               style={[
                 s.googleBtn,
-                { borderColor: C.border },
+                { borderColor: C.border, backgroundColor: C.surface },
                 googleLoading && { opacity: 0.7 },
               ]}
               onPress={handleGoogleSignIn}
@@ -630,23 +631,23 @@ const s = StyleSheet.create({
   },
 
   loginHeading: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 20,
-    letterSpacing: 1.5,
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   continueHeading: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '400',
     textAlign: 'center',
-    marginBottom: 20,
-    letterSpacing: 1.5,
+    marginBottom: 24,
+    letterSpacing: 0.3,
   },
   // INPUTS
   fieldWrap: {
     width: '100%',
-    marginBottom: 14,
+    marginBottom: 16,
   },
 
   inputRow: {
@@ -658,12 +659,16 @@ const s = StyleSheet.create({
   inputIconBox: {
     width: 48,
     height: 56,
+    borderLeftWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderRightWidth: 0,
     borderTopRightRadius: 0,
     borderBottomRightRadius: 0,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
     overflow: 'hidden',
 
     shadowColor: '#000',
@@ -698,9 +703,13 @@ const s = StyleSheet.create({
   },
 
   inputBox: {
-    borderWidth: 0,
+    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
     height: 56,
     flex: 1,
     justifyContent: 'center',
@@ -709,8 +718,8 @@ const s = StyleSheet.create({
     position: 'relative',
 
     shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
@@ -732,7 +741,6 @@ const s = StyleSheet.create({
 
   textInput: {
     fontSize: 15,
-    color: '#222',
     height: '100%',
     paddingVertical: 0,
     zIndex: 2,
@@ -747,12 +755,17 @@ const s = StyleSheet.create({
   // BUTTON
   signInBtn: {
     width: '100%',
-    height: 56,
-    borderRadius: 12,
+    height: 54,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
-    marginBottom: 16,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
 
   btnDisabled: {
@@ -761,9 +774,9 @@ const s = StyleSheet.create({
 
   signInText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 1.5,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 1,
   },
 
   // LINKS
@@ -775,8 +788,8 @@ const s = StyleSheet.create({
   },
 
   forgotText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '500',
   },
 
   signUpRow: {
@@ -811,8 +824,8 @@ const s = StyleSheet.create({
     height: 1,
   },
   dividerText: {
-    fontSize: 12,
-    marginHorizontal: 12,
+    fontSize: 13,
+    marginHorizontal: 14,
     fontWeight: '500',
   },
 
@@ -827,7 +840,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginBottom: 16,
-    backgroundColor: '#FFFFFF',
   },
   googleAccountPreview: {
     position: 'absolute',
@@ -878,8 +890,8 @@ const s = StyleSheet.create({
     left: 30,
   },
   googleText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
   },
 
   // TERMS
@@ -904,10 +916,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    backgroundColor: '#FFFFFF',
   },
   createAccountText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
