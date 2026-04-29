@@ -53,7 +53,7 @@ const Login = () => {
   });
 
   // ⚠️  Update this path to your actual logo asset
-  const logo = require('../../assets/logos/exegesis-logo.png');
+  const logo = require('../../assets/logos/exegesis_bg_rm.png');
 
   const appContext = useContext(AppContext);
   const navigation = useNavigation<any>();
@@ -529,29 +529,29 @@ const Login = () => {
               <View style={[s.dividerLine, { backgroundColor: C.border }]} />
             </View>
 
-{/* ── Google Login button ────────────────────────────────────────── */}
+            {/* ── Google Login button ────────────────────────────────────────── */}
             <TouchableOpacity
-                style={[
+              style={[
                 s.googleBtn,
                 { borderColor: C.border },
                 googleLoading && { opacity: 0.7 },
-                ]}
-                onPress={handleGoogleSignIn}
-                activeOpacity={0.82}
-                disabled={googleLoading}
-                >
-                {googleLoading ? (
-                    <ActivityIndicator size="small" color={C.text} />
-                ) : (
-                    <>
-                    <View style={s.googleIconContainer}>
-                        <GoogleIcon width={25} height={25} />
-                    </View>
-                    <Text style={[s.googleText, { color: C.text }]}>
-                        Continue with Google
-                    </Text>
-                    </>
-                )}
+              ]}
+              onPress={handleGoogleSignIn}
+              activeOpacity={0.82}
+              disabled={googleLoading}
+            >
+              {googleLoading ? (
+                <ActivityIndicator size="small" color={C.text} />
+              ) : (
+                <>
+                  <View style={s.googleIconContainer}>
+                    <GoogleIcon width={25} height={25} />
+                  </View>
+                  <Text style={[s.googleText, { color: C.text }]}>
+                    Continue with Google
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
 
             {/* Terms and Conditions */}
