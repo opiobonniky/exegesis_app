@@ -26,6 +26,7 @@ import {
   SPACING,
 } from '../../../constants/theme';
 import { SelectionActionBarProps } from '../types';
+import VerseRangeSlider from '../modals/VerseRangeSlider';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ type ActionItem = {
   label: string;
   icon: React.ReactNode;
   onPress: () => void;
-  isPrimary?: any
+  isPrimary?: any;
 };
 
 // ── Sub-component: animated action button ────────────────────────────────────
@@ -115,8 +116,10 @@ function ActionButton({
 
 export default function SelectionActionBar({
   selectedCount,
+  selectedVerses,
+  totalVerses,
+  onRangeChange,
   onListen,
-  onExplain,
   onHighlight,
   onNote,
   onFavorite,
@@ -126,6 +129,14 @@ export default function SelectionActionBar({
   isDark,
 }: SelectionActionBarProps) {
   const COLORS = getColors(isDark);
+
+  // Derive current range from selection
+  const sortedVerses = useMemo(
+    () => [...selectedVerses].sort((a, b) => a - b),
+    [selectedVerses],
+  );
+  const startVerse = sortedVerses[0] ?? 1;
+  const endVerse = sortedVerses[sortedVerses.length - 1] ?? 1;
 
   // Slide-in animation
   const slideAnim = useRef(new Animated.Value(120)).current;
@@ -146,15 +157,7 @@ export default function SelectionActionBar({
       onPress: onListen,
       isPrimary: true,
     },
-    selectedCount === 1
-      ? {
-          key: 'explain',
-          label: 'Explain',
-          icon: <Lightbulb size={22} color={COLORS.primary} strokeWidth={2} />,
-          onPress: onExplain,
-          isPrimary: true,
-        }
-      : null,
+
     {
       key: 'highlight',
       label: 'Highlight',
@@ -249,6 +252,20 @@ export default function SelectionActionBar({
           { backgroundColor: 'rgba(255,255,255,0.12)' },
         ]}
       />
+
+      {/* Verse Range Slider */}
+      {totalVerses > 1 && (
+        <View style={localStyles.sliderContainer}>
+          <VerseRangeSlider
+            totalVerses={totalVerses}
+            startVerse={startVerse}
+            endVerse={endVerse}
+            onRangeChange={onRangeChange}
+            isDark={isDark}
+            accentColor={COLORS.accent}
+          />
+        </View>
+      )}
 
       {/* Actions row */}
       <ScrollView
@@ -348,6 +365,10 @@ const localStyles = StyleSheet.create({
   divider: {
     height: 1,
     marginHorizontal: 18,
+    marginBottom: 10,
+  },
+  sliderContainer: {
+    paddingHorizontal: 18,
     marginBottom: 10,
   },
   scrollView: {

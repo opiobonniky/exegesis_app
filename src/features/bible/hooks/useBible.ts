@@ -102,6 +102,7 @@ export function useBible() {
   const [highlights, setHighlights] = useState<Record<string, Highlight>>({});
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
+  const [pendingVerses, setPendingVerses] = useState<number[]>([]);
 
   // ── UI ───────────────────────────────────────────────────────────────────
 
@@ -415,7 +416,18 @@ export function useBible() {
       prev.includes(n) ? prev.filter(v => v !== n) : [...prev, n],
     );
 
-  const clearSelection = () => setSelectedVerses([]);
+  const setVerseRangeSelection = (start: number, end: number) => {
+    const range = [];
+    for (let i = start; i <= end; i++) {
+      range.push(i);
+    }
+    setSelectedVerses(range);
+  };
+
+  const clearSelection = () => {
+    setSelectedVerses([]);
+    setPendingVerses([]);
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // History & Favorites
@@ -485,12 +497,13 @@ export function useBible() {
     });
   }, []);
 
-  const addFavorite = async () => {
+  const addFavorite = async (overrideVerses?: number[]) => {
+    const targets = overrideVerses || selectedVerses;
     try {
       const res = await sendPostRequest('bible', 'add-favorite', {
         bookName: currentBook,
         chapter: currentChapter,
-        verseNumbers: selectedVerses,
+        verseNumbers: targets,
       });
       if (res.returnCode === 200) {
         loadFavorites();
@@ -645,15 +658,32 @@ export function useBible() {
     let isFirst = true;
 
     for (let i = startIndex; i < playlist.length; i++) {
+      // ── Skip-jump check (Next/Prev button moved the index) ─────────────────
+      // If the ref was changed externally (by onNext/onPrev), we jump to that index.
+      if (currentVerseIndexRef.current !== i) {
+        i = currentVerseIndexRef.current;
+        if (i >= playlist.length || i < 0) break;
+      }
+
       // ── Pause check ────────────────────────────────────────────────────────
       if (isAudioPausedRef.current) {
         // Wait here until unpaused or stopped.
-        // We do NOT decrement i — we will resume this same verse.
         while (isAudioPausedRef.current && isReadingRef.current) {
+          // If a skip happens while paused, we break out of the wait
+          // to start the new verse immediately (once resumed).
+          if (currentVerseIndexRef.current !== i) break;
+
           await new Promise<void>(resolve => {
             resumeResolverRef.current = resolve;
           });
         }
+
+        // If a skip happened while paused, restart the loop iteration for the new index.
+        if (currentVerseIndexRef.current !== i) {
+          i--; // counteract the for-loop i++
+          continue;
+        }
+
         // If stopped while paused, exit.
         if (!isReadingRef.current) return 'stopped';
       }
@@ -662,7 +692,6 @@ export function useBible() {
       if (!isReadingRef.current) return 'stopped';
 
       // ── Update UI index ────────────────────────────────────────────────────
-      currentVerseIndexRef.current = i;
       setAudioVerseIndex(i);
       audioIndexRef.current = i;
 
@@ -673,22 +702,21 @@ export function useBible() {
       // ── Post-speak checks ──────────────────────────────────────────────────
       if (!isReadingRef.current) return 'stopped';
 
+      // ── Skip-jump (Next/Prev button moved the index while speaking) ────────
+      if (currentVerseIndexRef.current !== i) {
+        i = currentVerseIndexRef.current - 1; // for-loop will i++
+        continue;
+      }
+
       // If paused mid-verse (pause was set while speaking), loop back to same
       // index without advancing — verseCharOffsetRef holds the resume position.
       if (isAudioPausedRef.current) {
-        // Don't advance: wait loop at top of next iteration handles this.
         i--; // counteract the for-loop i++
         continue;
       }
 
       // Verse finished naturally — reset char offset for the next verse.
       verseCharOffsetRef.current = 0;
-
-      // ── Skip-jump (next/prev button moved the index) ───────────────────────
-      if (currentVerseIndexRef.current !== i) {
-        i = currentVerseIndexRef.current - 1; // for-loop will i++
-        continue;
-      }
 
       // ── Repeat one ─────────────────────────────────────────────────────────
       if (afterPlayBehaviourRef.current === 'repeat_one') {
@@ -703,8 +731,9 @@ export function useBible() {
   // Audio — public API
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const startReadingSelectedVerses = async () => {
-    if (selectedVerses.length === 0) return;
+  const startReadingSelectedVerses = async (overrideVerses?: number[]) => {
+    const targets = overrideVerses || selectedVerses;
+    if (targets.length === 0) return;
     isReadingRef.current = true;
     setAudioScope('selection');
     audioScopeRef.current = 'selection';
@@ -716,7 +745,7 @@ export function useBible() {
     verseCharOffsetRef.current = 0;
 
     while (isReadingRef.current) {
-      const playlist = [...selectedVerses]
+      const playlist = [...targets]
         .sort((a, b) => a - b)
         .map(num => ({ num, text: verses[num] }));
 
@@ -833,28 +862,31 @@ export function useBible() {
    * FIX: Also resets verseCharOffsetRef so the next verse starts from 0.
    */
   const goToNextSelectedVerse = async () => {
-    verseCharOffsetRef.current = 0;
     const next = currentVerseIndexRef.current + 1;
     if (next >= audioPlaylistRef.current.length) {
       if (afterPlayBehaviourRef.current === 'continue') {
+        verseCharOffsetRef.current = 0;
+        currentVerseIndexRef.current = next;
         await bibleTTS.stop();
       }
       return;
     }
-    currentVerseIndexRef.current = next - 1; // loop's i++ lands on `next`
+    verseCharOffsetRef.current = 0;
+    currentVerseIndexRef.current = next;
+    setAudioVerseIndex(next); // Update UI immediately
     await bibleTTS.stop();
   };
 
   /**
    * Skip backward.
-   * FIX: Also resets verseCharOffsetRef.
    */
   const goToPreviousSelectedVerse = async () => {
-    verseCharOffsetRef.current = 0;
     const prev = currentVerseIndexRef.current - 1;
     if (prev < 0) return;
+    verseCharOffsetRef.current = 0;
+    currentVerseIndexRef.current = prev;
+    setAudioVerseIndex(prev); // Update UI immediately
     await bibleTTS.stop();
-    currentVerseIndexRef.current = prev - 1; // loop's i++ lands on `prev`
   };
 
   /**
@@ -949,12 +981,14 @@ export function useBible() {
       showToast('error', 'Please select at least one verse to add a note.');
       return;
     }
+    setPendingVerses([...selectedVerses]);
     setShowNoteModal(true);
   };
 
   const closeNoteModal = () => {
     setShowNoteModal(false);
     setNoteText('');
+    setPendingVerses([]);
   };
 
   const saveNote = async (rangeStart?: number, rangeEnd?: number) => {
@@ -962,7 +996,8 @@ export function useBible() {
       showToast('warning', 'Empty Note: Please enter some text for your note.');
       return;
     }
-    let versesToSave = selectedVerses;
+    let versesToSave =
+      pendingVerses.length > 0 ? pendingVerses : selectedVerses;
     if (rangeStart != null && rangeEnd != null) {
       versesToSave = [];
       for (let v = rangeStart; v <= rangeEnd; v++) versesToSave.push(v);
@@ -1011,7 +1046,8 @@ export function useBible() {
     rangeStart?: number,
     rangeEnd?: number,
   ) => {
-    let versesToHighlight = selectedVerses;
+    let versesToHighlight =
+      pendingVerses.length > 0 ? pendingVerses : selectedVerses;
     if (rangeStart != null && rangeEnd != null) {
       versesToHighlight = [];
       for (let v = rangeStart; v <= rangeEnd; v++) versesToHighlight.push(v);
@@ -1034,6 +1070,7 @@ export function useBible() {
         }
       }
       setSelectedVerses([]);
+      setPendingVerses([]);
       setShowHighlightPicker(false);
       await loadHighlights();
     } catch (e: any) {
@@ -1080,8 +1117,9 @@ export function useBible() {
   // Share / Copy
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const shareVerses = async () => {
-    const text = selectedVerses
+  const shareVerses = async (overrideVerses?: number[]) => {
+    const targets = overrideVerses || selectedVerses;
+    const text = targets
       .sort((a, b) => a - b)
       .map(v => `${currentBook} ${currentChapter}:${v}\n${verses[v]}`)
       .join('\n\n');
@@ -1093,8 +1131,9 @@ export function useBible() {
     }
   };
 
-  const copyVerses = () => {
-    const text = selectedVerses
+  const copyVerses = (overrideVerses?: number[]) => {
+    const targets = overrideVerses || selectedVerses;
+    const text = targets
       .sort((a, b) => a - b)
       .map(v => `${currentBook} ${currentChapter}:${v}\n${verses[v]}`)
       .join('\n\n');
@@ -1228,6 +1267,8 @@ export function useBible() {
     highlights,
     favorites,
     selectedVerses,
+    pendingVerses,
+    setPendingVerses,
     activeVersion,
     bibleVersionId,
     currentBook,
@@ -1294,6 +1335,7 @@ export function useBible() {
     fadeAnim,
     flatListRef,
     toggleVerseSelection,
+    setVerseRangeSelection,
     clearSelection,
     addReadHistory,
     addFavorite,

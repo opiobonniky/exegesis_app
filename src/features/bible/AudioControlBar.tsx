@@ -9,8 +9,6 @@ import {
   View,
 } from 'react-native';
 import {
-  ChevronFirst,
-  ChevronLast,
   Repeat,
   Repeat1,
   Square,
@@ -18,9 +16,10 @@ import {
   Pause,
   SkipBack,
   SkipForward,
-  Volume2,
+  Music,
 } from 'lucide-react-native';
 import { getColors, FONT_SIZES, SPACING } from '../../constants/theme';
+import LinearGradient from 'react-native-linear-gradient';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -30,25 +29,16 @@ export type AudioScope = 'verse' | 'selection' | 'chapter';
 export type AfterPlayBehaviour = 'continue' | 'repeat' | 'repeat_one' | 'stop';
 
 export interface AudioControlBarProps {
-  /** Whether audio is actively playing (bar visible when true) */
   isPlaying: boolean;
-  /** Whether audio is paused (playing started but paused) */
   isPaused?: boolean;
-  /** Display label – e.g. "Genesis 1:3" or "Genesis 1:3–7" */
   nowPlayingLabel: string;
-  /** Current scope: play this verse / selection / whole chapter */
   scope: AudioScope;
-  /** What happens when the current unit finishes */
   afterPlay: AfterPlayBehaviour;
-  /** Is repeat mode active */
   isRepeat: boolean;
-  /** Index of the currently-playing verse inside the active set (0-based) */
   verseIndex: number;
-  /** Total verses in the active set */
   verseCount: number;
   isDark: boolean;
 
-  // ── Callbacks ──────────────────────────────────────────────────────────────
   onPrev: () => void;
   onNext: () => void;
   onRepeatToggle: () => void;
@@ -59,7 +49,7 @@ export interface AudioControlBarProps {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Small animated icon-button
+// CtrlBtn: Modernized Icon Button
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CtrlBtn({
@@ -67,8 +57,9 @@ function CtrlBtn({
   children,
   active,
   accent,
-  size = 44,
+  size = 40,
   disabled = false,
+  isDark,
 }: {
   onPress: () => void;
   children: React.ReactNode;
@@ -76,23 +67,24 @@ function CtrlBtn({
   accent: string;
   size?: number;
   disabled?: boolean;
+  isDark: boolean;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const pressIn = () =>
     Animated.spring(scale, {
-      toValue: 0.88,
+      toValue: 0.9,
       useNativeDriver: true,
-      speed: 50,
-      bounciness: 4,
+      speed: 40,
+      bounciness: 2,
     }).start();
 
   const pressOut = () =>
     Animated.spring(scale, {
       toValue: 1,
       useNativeDriver: true,
-      speed: 28,
-      bounciness: 10,
+      speed: 30,
+      bounciness: 8,
     }).start();
 
   return (
@@ -102,15 +94,20 @@ function CtrlBtn({
       onPressOut={pressOut}
       activeOpacity={1}
       disabled={disabled}
-      style={{ opacity: disabled ? 0.25 : 1 }}
+      style={{ opacity: disabled ? 0.3 : 1 }}
     >
       <Animated.View
         style={[
           ctrlStyles.btn,
-          { width: size, height: size, borderRadius: size / 2 },
-          active && {
-            backgroundColor: `${accent}22`,
-            borderColor: `${accent}55`,
+          {
+            width: size,
+            height: size,
+            borderRadius: 14,
+            backgroundColor: active
+              ? `${accent}25`
+              : isDark
+                ? 'rgba(255,255,255,0.06)'
+                : 'rgba(0,0,0,0.04)',
           },
           { transform: [{ scale }] },
         ]}
@@ -125,8 +122,6 @@ const ctrlStyles = StyleSheet.create({
   btn: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
 });
 
@@ -155,8 +150,7 @@ export default function AudioControlBar({
   const COLORS = getColors(isDark);
   const accent = COLORS.accent ?? COLORS.primary;
 
-  // ── Slide-in / slide-out animation ────────────────────────────────────────
-  const translateY = useRef(new Animated.Value(250)).current;
+  const translateY = useRef(new Animated.Value(200)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -165,27 +159,25 @@ export default function AudioControlBar({
         Animated.spring(translateY, {
           toValue: 0,
           useNativeDriver: true,
-          speed: 12,
-          bounciness: 4,
+          tension: 65,
+          friction: 10,
         }),
         Animated.timing(opacity, {
           toValue: 1,
           duration: 300,
-          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
       ]).start();
     } else {
       Animated.parallel([
         Animated.timing(translateY, {
-          toValue: 250,
-          duration: 300,
-          easing: Easing.in(Easing.quad),
+          toValue: 200,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 250,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start();
@@ -198,17 +190,13 @@ export default function AudioControlBar({
   useEffect(() => {
     Animated.timing(progressWidth, {
       toValue: progress,
-      duration: 600,
-      easing: Easing.out(Easing.quad),
+      duration: 500,
+      easing: Easing.out(Easing.exp),
       useNativeDriver: false,
     }).start();
   }, [progress]);
 
-  const surfaceChip = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)';
-  const muteColor = COLORS.muted;
-
   const toggleRepeat = () => {
-    // Cycle: stop -> repeat -> repeat_one -> stop
     if (afterPlay === 'stop') onAfterPlayChange('repeat');
     else if (afterPlay === 'repeat') onAfterPlayChange('repeat_one');
     else onAfterPlayChange('stop');
@@ -223,158 +211,171 @@ export default function AudioControlBar({
       style={[
         styles.floatingContainer,
         {
-          backgroundColor: COLORS.cardBackground,
+          backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
           transform: [{ translateY }],
           opacity,
-          borderColor: COLORS.border,
         },
       ]}
       pointerEvents={isPlaying || isPaused ? 'auto' : 'none'}
     >
-      {/* ── Progress Bar ───────────────────────────────────────────────────── */}
-      <View style={[styles.progressTrack, { backgroundColor: surfaceChip }]}>
-        <Animated.View
+      <LinearGradient
+        colors={isDark ? ['#2C2C2E', '#1C1C1E'] : ['#F2F2F7', '#FFFFFF']}
+        style={styles.gradient}
+      >
+        {/* ── Progress Bar (Integrated) ─────────────────────────────────── */}
+        <View
           style={[
-            styles.progressBar,
+            styles.progressTrack,
             {
-              backgroundColor: accent,
-              width: progressWidth.interpolate({
-                inputRange: [0, 1],
-                outputRange: ['0%', '100%'],
-              }),
+              backgroundColor: isDark
+                ? 'rgba(255,255,255,0.08)'
+                : 'rgba(0,0,0,0.05)',
             },
           ]}
-        />
-      </View>
-
-      <View style={styles.innerContent}>
-        {/* ── Info Row ─────────────────────────────────────────────────────── */}
-        <View style={styles.infoRow}>
-          <View
+        >
+          <Animated.View
             style={[
-              styles.iconBox,
-              { backgroundColor: isPaused ? surfaceChip : `${accent}15` },
+              styles.progressBar,
+              {
+                backgroundColor: accent,
+                width: progressWidth.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%'],
+                }),
+              },
             ]}
-          >
-            {isPaused ? (
-              <Pause size={18} color={muteColor} />
-            ) : (
-              <Volume2 size={18} color={accent} />
-            )}
-          </View>
+          />
+        </View>
 
-          <View style={styles.labelCol}>
-            <Text style={[styles.scopeLabel, { color: muteColor }]}>
-              {scope === 'chapter' ? 'CHAPTER MODE' : 'SELECTION'}
-            </Text>
-            <View style={styles.titleRow}>
-              <Text
-                style={[styles.nowPlayingText, { color: COLORS.text }]}
-                numberOfLines={1}
-              >
-                {nowPlayingLabel}
+        <View style={styles.innerContent}>
+          {/* ── Info & Mode Row ────────────────────────────────────────── */}
+          <View style={styles.headerRow}>
+            <View style={styles.metaInfo}>
+              <View style={[styles.iconRing, { borderColor: `${accent}40` }]}>
+                <Music size={14} color={accent} strokeWidth={2.5} />
+              </View>
+              <Text style={[styles.modeLabel, { color: accent }]}>
+                {scope === 'chapter' ? 'CHAPTER' : 'SELECTION'}
               </Text>
-              <TouchableOpacity
-                onPress={toggleContinue}
+              <View
                 style={[
-                  styles.badge,
+                  styles.dot,
                   {
-                    backgroundColor:
-                      afterPlay === 'continue' ? `${accent}15` : surfaceChip,
-                    borderColor:
-                      afterPlay === 'continue' ? `${accent}30` : 'transparent',
+                    backgroundColor: isDark
+                      ? 'rgba(255,255,255,0.2)'
+                      : 'rgba(0,0,0,0.1)',
                   },
                 ]}
-              >
-                <Text
-                  style={[
-                    styles.badgeText,
-                    {
-                      color: afterPlay === 'continue' ? accent : muteColor,
-                    },
-                  ]}
-                >
-                  {afterPlay === 'continue' ? 'CONTINUE ON' : 'AUTO-STOP'}
-                </Text>
-              </TouchableOpacity>
+              />
+              <Text style={[styles.counterLabel, { color: COLORS.muted }]}>
+                {verseIndex + 1} of {verseCount}
+              </Text>
             </View>
+
+            <TouchableOpacity
+              onPress={toggleContinue}
+              activeOpacity={0.7}
+              style={[
+                styles.autoPlayBtn,
+                {
+                  backgroundColor:
+                    afterPlay === 'continue' ? `${accent}15` : 'transparent',
+                  borderColor:
+                    afterPlay === 'continue'
+                      ? `${accent}30`
+                      : isDark
+                        ? 'rgba(255,255,255,0.1)'
+                        : 'rgba(0,0,0,0.1)',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.autoPlayText,
+                  { color: afterPlay === 'continue' ? accent : COLORS.muted },
+                ]}
+              >
+                {afterPlay === 'continue' ? 'AUTOPLAY ON' : 'AUTOPLAY OFF'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={[styles.counterBox, { backgroundColor: surfaceChip }]}>
-            <Text style={[styles.counterText, { color: COLORS.text }]}>
-              {verseIndex + 1}
-              <Text style={{ opacity: 0.4 }}>/{verseCount}</Text>
+          {/* ── Now Playing Label ────────────────────────────────────────── */}
+          <View style={styles.titleRow}>
+            <Text
+              style={[styles.nowPlayingText, { color: COLORS.text }]}
+              numberOfLines={1}
+            >
+              {nowPlayingLabel}
             </Text>
           </View>
-        </View>
 
-        {/* ── Controls Row ─────────────────────────────────────────────────── */}
-        <View style={styles.controlsRow}>
-          <View style={styles.leftGroup}>
-            {/* Repeat Cycle Button */}
-            <CtrlBtn
-              onPress={toggleRepeat}
-              accent={accent}
-              active={afterPlay === 'repeat' || afterPlay === 'repeat_one'}
-            >
-              {afterPlay === 'repeat_one' ? (
-                <Repeat1 size={20} color={accent} strokeWidth={2.5} />
-              ) : (
-                <Repeat
+          {/* ── Controls Row ────────────────────────────────────────────── */}
+          <View style={styles.controlsRow}>
+            <View style={styles.sideGroup}>
+              <CtrlBtn
+                onPress={toggleRepeat}
+                accent={accent}
+                isDark={isDark}
+                active={afterPlay === 'repeat' || afterPlay === 'repeat_one'}
+              >
+                {afterPlay === 'repeat_one' ? (
+                  <Repeat1 size={18} color={accent} strokeWidth={2.5} />
+                ) : (
+                  <Repeat
+                    size={18}
+                    color={afterPlay === 'repeat' ? accent : COLORS.muted}
+                    strokeWidth={2}
+                  />
+                )}
+              </CtrlBtn>
+
+              <CtrlBtn
+                onPress={onPrev}
+                accent={accent}
+                isDark={isDark}
+                disabled={verseIndex <= 0}
+              >
+                <SkipBack
                   size={20}
-                  color={afterPlay === 'repeat' ? accent : muteColor}
+                  color={COLORS.text}
+                  fill={isDark ? 'transparent' : 'transparent'}
                   strokeWidth={2}
                 />
-              )}
-              {afterPlay === 'repeat' && (
-                <Text style={[styles.repeatAllTag, { color: accent }]}>
-                  ALL
-                </Text>
-              )}
-            </CtrlBtn>
+              </CtrlBtn>
+            </View>
 
-            <CtrlBtn
-              onPress={onPrev}
-              accent={accent}
-              disabled={verseIndex <= 0}
+            <TouchableOpacity
+              onPress={onPlayPause}
+              activeOpacity={0.9}
+              style={[styles.mainPlayBtn, { backgroundColor: accent }]}
             >
-              <SkipBack size={22} color={muteColor} strokeWidth={2} />
-            </CtrlBtn>
-          </View>
+              {isPaused ? (
+                <Play size={26} color="#FFF" fill="#FFF" />
+              ) : (
+                <Pause size={26} color="#FFF" fill="#FFF" />
+              )}
+            </TouchableOpacity>
 
-          {/* Main Play/Pause */}
-          <TouchableOpacity
-            onPress={onPlayPause}
-            activeOpacity={0.85}
-            style={[
-              styles.playBtn,
-              { backgroundColor: accent, shadowColor: accent },
-            ]}
-          >
-            {isPaused ? (
-              <Play size={24} color="#fff" fill="#fff" />
-            ) : (
-              <Pause size={24} color="#fff" strokeWidth={3} />
-            )}
-          </TouchableOpacity>
+            <View style={styles.sideGroup}>
+              <CtrlBtn
+                onPress={onNext}
+                accent={accent}
+                isDark={isDark}
+                disabled={
+                  verseIndex >= verseCount - 1 && afterPlay !== 'continue'
+                }
+              >
+                <SkipForward size={20} color={COLORS.text} strokeWidth={2} />
+              </CtrlBtn>
 
-          <View style={styles.rightGroup}>
-            <CtrlBtn
-              onPress={onNext}
-              accent={accent}
-              disabled={
-                verseIndex >= verseCount - 1 && afterPlay !== 'continue'
-              }
-            >
-              <SkipForward size={22} color={muteColor} strokeWidth={2} />
-            </CtrlBtn>
-
-            <CtrlBtn onPress={onStop} accent={accent}>
-              <Square size={18} color="#FF4B4B" fill="#FF4B4B" />
-            </CtrlBtn>
+              <CtrlBtn onPress={onStop} accent={accent} isDark={isDark}>
+                <Square size={16} color="#FF3B30" fill="#FF3B30" />
+              </CtrlBtn>
+            </View>
           </View>
         </View>
-      </View>
+      </LinearGradient>
     </Animated.View>
   );
 }
@@ -386,120 +387,107 @@ export default function AudioControlBar({
 const styles = StyleSheet.create({
   floatingContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 100 : 90,
-    left: 12,
-    right: 12,
-    borderRadius: 24,
-    borderWidth: 1,
+    bottom: Platform.OS === 'ios' ? 92 : 82,
+    left: 14,
+    right: 14,
+    borderRadius: 28,
     zIndex: 1000,
-    // Premium shadow
+    // Modern deep shadow
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 24,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
+    elevation: 20,
     overflow: 'hidden',
   },
-
+  gradient: {
+    flex: 1,
+  },
   progressTrack: {
-    height: 3,
+    height: 4,
     width: '100%',
   },
   progressBar: {
     height: '100%',
+    borderRadius: 2,
   },
-
   innerContent: {
-    padding: 14,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
-
-  // Info Row
-  infoRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  iconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  labelCol: {
-    flex: 1,
-    gap: 2,
-  },
-  scopeLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  titleRow: {
+  metaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  nowPlayingText: {
-    fontSize: 15,
-    fontWeight: '700',
-    maxWidth: '60%',
+  iconRing: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+  modeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+  },
+  counterLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  autoPlayBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  badgeText: {
-    fontSize: 8,
+  autoPlayText: {
+    fontSize: 9,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
-  counterBox: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+  titleRow: {
+    marginBottom: 18,
   },
-  counterText: {
-    fontSize: 12,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
+  nowPlayingText: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.4,
   },
-
-  // Controls Row
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  leftGroup: {
+  sideGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 12,
   },
-  rightGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  playBtn: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+  mainPlayBtn: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
+    // Inner Glow
+    shadowColor: '#FFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 8,
-  },
-  repeatAllTag: {
-    position: 'absolute',
-    fontSize: 7,
-    fontWeight: '900',
-    bottom: 8,
   },
 });

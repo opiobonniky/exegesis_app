@@ -51,8 +51,10 @@ export interface ChapterNavigationProps {
 
 export interface SelectionActionBarProps {
   selectedCount: number;
+  selectedVerses: number[];
+  totalVerses: number;
+  onRangeChange: (start: number, end: number) => void;
   onListen: () => void;
-  onExplain: () => void;
   onHighlight: () => void;
   onNote: () => void;
   onFavorite: () => void;

@@ -38,7 +38,6 @@ export interface BibleHeaderProps {
 
 export default function BibleHeader({
   book,
-  chapter,
   version,
   isDark,
   onMenuPress,

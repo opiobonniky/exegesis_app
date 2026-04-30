@@ -211,6 +211,7 @@ export default function Bible() {
     highlights,
     favorites,
     selectedVerses,
+    setPendingVerses,
     activeVersion,
     bibleVersionId,
     currentBook,
@@ -252,6 +253,7 @@ export default function Bible() {
     fadeAnim,
     flatListRef,
     toggleVerseSelection,
+    setVerseRangeSelection,
     clearSelection,
     addReadHistory,
     addFavorite,
@@ -263,7 +265,6 @@ export default function Bible() {
     goToChapter,
     handleVersionChange,
     getverseExplanation,
-    clearVerseExplanation,
     clearVerseExplanationForVerse,
     activeVerseWordMap,
     modal,
@@ -372,39 +373,61 @@ export default function Bible() {
       {selectedVerses.length > 0 && !explanationOpen && (
         <SelectionActionBar
           selectedCount={selectedVerses.length}
+          selectedVerses={selectedVerses}
+          totalVerses={Object.keys(verses).length}
+          onRangeChange={(start, end) => setVerseRangeSelection(start, end)}
           isDark={isDark}
           onListen={() =>
-            guard(
-              'Audio narration requires a free account.',
-              startReadingSelectedVerses,
-            )
-          }
-          onExplain={() =>
-            guard(
-              'AI verse explanations require a free account.',
-              getverseExplanation,
-            )
+            guard('Audio narration requires a free account.', () => {
+              const current = [...selectedVerses];
+              clearSelection();
+              startReadingSelectedVerses(current);
+            })
           }
           onHighlight={() =>
             guard(
               'Highlights are saved to your account. Sign in to use this feature.',
-              () => setShowHighlightPicker(true),
+              () => {
+                setPendingVerses([...selectedVerses]);
+                clearSelection();
+                setShowHighlightPicker(true);
+              },
             )
           }
           onNote={() =>
             guard(
               'Notes are saved to your account. Sign in to use this feature.',
-              openNoteModal,
+              () => {
+                setPendingVerses([...selectedVerses]);
+                clearSelection();
+                openNoteModal();
+              },
             )
           }
           onFavorite={() =>
             guard(
               'Favourites are saved to your account. Sign in to use this feature.',
-              addFavorite,
+              () => {
+                const current = [...selectedVerses];
+                clearSelection();
+                addFavorite(current);
+              },
             )
           }
-          onShare={() => guard('Sharing requires a free account.', shareVerses)}
-          onCopy={() => guard('Copying requires a free account.', copyVerses)}
+          onShare={() =>
+            guard('Sharing requires a free account.', () => {
+              const current = [...selectedVerses];
+              clearSelection();
+              shareVerses(current);
+            })
+          }
+          onCopy={() =>
+            guard('Copying requires a free account.', () => {
+              const current = [...selectedVerses];
+              clearSelection();
+              copyVerses(current);
+            })
+          }
           onClear={() => {
             clearSelection();
             setExplanationOpen(false);

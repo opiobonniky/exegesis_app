@@ -34,9 +34,9 @@ const darkColors = {
   cardBackground: '#151D2D',
 
   // ── Brand ───────────────────────────────────────────────────────────────────
-  primary: '#4A90E2',
-  primaryDark: '#2563A8',
-  primaryLight: '#6BA8E8',
+  primary: '#396284',
+  primaryDark: '#294670',
+  primaryLight: '#EAFFFF',
 
   // ── Accent ──────────────────────────────────────────────────────────────────
   accent: '#F0B429',
