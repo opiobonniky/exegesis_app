@@ -30,7 +30,6 @@ export default function NoteModal({
 }: NoteModalProps & {
   totalVerses?: number;
   onRangeChange?: (start: number, end: number) => void;
-  onSave?: (rangeStart?: number, rangeEnd?: number) => void;
 }) {
   const COLORS = getColors(isDark);
   const styles = useMemo(() => createBibleStyles(isDark), [isDark]);

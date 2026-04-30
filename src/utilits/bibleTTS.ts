@@ -79,6 +79,10 @@ class BibleTTSManager {
   private currentPitch = DEFAULT_PITCH;
   private currentDeviceVoiceId: string | null = null;
 
+  // The index of the first word in the current utterance relative to the full verse.
+  // Used to ensure wordIndex remains absolute during mid-verse resumes.
+  private _baseWordIndex = 0;
+
   // Whether the user has explicitly saved a rate/pitch preference.
   // When false the engine is left at its own device default — we never push
   // our hardcoded DEFAULT_RATE / DEFAULT_PITCH onto the engine on first launch.
@@ -101,6 +105,7 @@ class BibleTTSManager {
 
   // ── Timer-based word highlighting (fallback) ──────────────────────────────
   private _wordTimers: ReturnType<typeof setTimeout>[] = [];
+  private _timersStarted = false;
   private _pendingWordData: {
     prefixWords: string[];
     verseWords: string[];
@@ -158,7 +163,9 @@ class BibleTTSManager {
 
       // Start timer-based highlighting as a fallback. Cancelled on the first
       // tts-progress event if the engine supports word-boundary callbacks.
-      this._startWordTimers();
+      if (!this._timersStarted) {
+        this._startWordTimers();
+      }
     });
 
     // ── tts-progress ──────────────────────────────────────────────────────────
@@ -212,14 +219,23 @@ class BibleTTSManager {
       // Resolve charIndex to a verse-word char offset.
       // Negative = still inside the prefix announcement → skip.
       const verseCharOffset = charIndex + this._charIndexBase;
+
+      // Notify custom progress listener if attached
+      if (this._onProgressCallback && verseCharOffset >= 0) {
+        this._onProgressCallback(verseCharOffset);
+      }
+
       if (verseCharOffset < 0) return;
 
       const spans = this._cleanVerseWordSpans;
       const wordIdx = this._binarySearchWordSpan(spans, verseCharOffset);
 
-      if (wordIdx >= 0 && wordIdx !== this.state.wordIndex) {
-        this.state.wordIndex = wordIdx;
-        this.notifyListeners();
+      if (wordIdx >= 0) {
+        const absoluteWordIdx = wordIdx + this._baseWordIndex;
+        if (absoluteWordIdx !== this.state.wordIndex) {
+          this.state.wordIndex = absoluteWordIdx;
+          this.notifyListeners();
+        }
       }
     });
 
@@ -303,51 +319,58 @@ class BibleTTSManager {
   // ── Timer-based word timing estimation (fallback) ─────────────────────────
   private _wordMs(word: string): number {
     // TTS rate 0.0–1.0 maps to roughly 80–280 WPM on most engines.
-    // The previous formula (rate * 500) over-estimated by ~2x at the default
-    // rate of 0.5, causing highlights to fire well ahead of speech.
-    //
-    // Calibration (empirically measured against several Android/iOS voices):
-    //   rate=0.25 → ~85  WPM
-    //   rate=0.50 → ~130 WPM  (DEFAULT_RATE)
-    //   rate=0.75 → ~190 WPM
-    //   rate=1.00 → ~260 WPM
-    //
-    // Linear interpolation: wpm = 80 + rate * 180  (fits all four points well)
     const wpm = Math.max(80, 80 + this.currentRate * 180);
     const avgMs = 60_000 / wpm;
-    const charMs = (word.replace(/[^a-zA-Z0-9]/g, '').length / 4.5) * avgMs;
-    const punct = /[,;]$/.test(word) ? 110 : /[.!?…]$/.test(word) ? 220 : 0;
-    return Math.max(70, charMs + punct);
+
+    // Adjust character-based estimation to be slightly more aggressive.
+    // Bible text often has short, common words that are spoken very quickly.
+    const charMs = (word.replace(/[^a-zA-Z0-9]/g, '').length / 5.2) * avgMs;
+
+    // Punctuation pauses are critical for the "rhythm" of the highlight.
+    const punct = /[,;]$/.test(word) ? 100 : /[.!?…]$/.test(word) ? 200 : 0;
+
+    return Math.max(60, charMs + punct);
   }
 
   private _clearWordTimers() {
     this._wordTimers.forEach(t => clearTimeout(t));
     this._wordTimers = [];
+    this._timersStarted = false;
   }
 
   // Called from tts-start so timers fire exactly when audio begins.
-  private _startWordTimers() {
+  private _startWordTimers(immediateResume = false) {
     this._clearWordTimers();
+    this._timersStarted = true;
     const data = this._pendingWordData;
-    this._pendingWordData = null;
     if (!data || !data.verseWords.length) return;
 
+    // Use a slightly faster estimation for the prefix words to ensure
+    // we don't "miss" the start of the verse.
     const prefixMs = data.prefixWords.reduce(
-      (sum, w) => sum + this._wordMs(w),
+      (sum, w) => sum + this._wordMs(w) * 0.92,
       0,
     );
 
-    let elapsed = prefixMs;
+    // Initial delay for the very first word of the verse.
+    // If it's an immediate resume, we ignore the prefix delay entirely.
+    let elapsed = immediateResume ? 0 : Math.max(0, prefixMs - 80); // 80ms "lead" to compensate for UI lag
+
     data.verseWords.forEach((word, i) => {
       const t = setTimeout(() => {
         if (!this.stopRequested) {
-          this.state.wordIndex = i;
+          this.state.wordIndex = i + this._baseWordIndex;
           this.notifyListeners();
         }
       }, elapsed);
       this._wordTimers.push(t);
       elapsed += this._wordMs(word);
     });
+
+    // Clear pending data only if we didn't start them early
+    if (!immediateResume) {
+      this._pendingWordData = null;
+    }
   }
 
   // ── Saved settings ────────────────────────────────────────────────────────
@@ -494,9 +517,18 @@ class BibleTTSManager {
     }
   }
 
+  private _onProgressCallback: ((charIndex: number) => void) | null = null;
+
   // ── Core speak ────────────────────────────────────────────────────────────
-  async speak(text: string, prefixLen = 0): Promise<void> {
+  async speak(
+    text: string,
+    prefixLen = 0,
+    baseWordIndex = 0,
+    onProgress?: (charIndex: number) => void,
+  ): Promise<void> {
     if (!text) return;
+    this._onProgressCallback = onProgress || null;
+    this._baseWordIndex = baseWordIndex;
 
     this.stopRequested = false;
     const clean = this.prepareText(text);
@@ -546,6 +578,21 @@ class BibleTTSManager {
     if (this.stopRequested) return;
     if (!this.initialized) await this.init();
     this.setState({ usingCloudVoice: false, tier: 'device' });
+
+    // ── Pre-highlight (Resume/Immediate) ──────────────────────────────────
+    // If this is a resume (baseWordIndex > 0) or a fresh start with no prefix,
+    // show the first word immediately. This eliminates the visual delay
+    // caused by the TTS engine's internal startup latency.
+    if (baseWordIndex > 0 || prefixLen === 0) {
+      this.state.wordIndex = baseWordIndex;
+      this.notifyListeners();
+
+      // If it's a resume (baseWordIndex > 0), start timers IMMEDIATELY
+      // instead of waiting for the engine's tts-start event.
+      if (baseWordIndex > 0) {
+        this._startWordTimers(true);
+      }
+    }
 
     try {
       await new Promise<void>(resolve => {

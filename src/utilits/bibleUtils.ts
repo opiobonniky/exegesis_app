@@ -351,7 +351,6 @@ export const formatDateHeader = (dateString: string): string => {
 };
 
 
-
 //the text for all the verse by passing book and chapter 
 export const getVerseRangeText = (
   book: string,

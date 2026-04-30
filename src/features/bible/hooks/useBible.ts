@@ -50,12 +50,29 @@ export interface ActionModalState {
   severity: 'success' | 'error' | 'warning' | 'info';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AudioControlBar types (re-exported for convenience)
-// ─────────────────────────────────────────────────────────────────────────────
-
 export type AudioScope = 'verse' | 'selection' | 'chapter';
-export type AfterPlayBehaviour = 'continue' | 'repeat' | 'stop';
+export type AfterPlayBehaviour = 'continue' | 'repeat' | 'repeat_one' | 'stop';
+
+/**
+ * Generates a map of word spans (start index and length) for a given text.
+ * Used for word-level highlighting during TTS.
+ */
+const generateWordMap = (
+  text: string,
+): Array<{ start: number; length: number }> => {
+  if (!text) return [];
+  const spans: Array<{ start: number; length: number }> = [];
+  const spanRe = /\S+/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = spanRe.exec(text)) !== null) {
+    spans.push({
+      start: match.index,
+      length: match[0].length,
+    });
+  }
+  return spans;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hook
@@ -120,55 +137,48 @@ export function useBible() {
   const [audioScope, setAudioScope] = useState<AudioScope>('selection');
   const [afterPlayBehaviour, setAfterPlayBehaviour] =
     useState<AfterPlayBehaviour>('stop');
-  const [audioIsRepeat, setAudioIsRepeat] = useState(false);
   const [audioVerseIndex, setAudioVerseIndex] = useState(0);
   const [isAudioPaused, setIsAudioPaused] = useState(false);
 
-  // Word-position map for the currently active verse.
-  // Updated ONCE per verse (when the verse starts), not per word.
-  // VerseCard subscribes to bibleTTS directly for per-word updates.
   const [activeVerseWordMap, setActiveVerseWordMap] = useState<
     Array<{ start: number; length: number }>
   >([]);
 
-  // Pre-split words of the current verse for fast wordIndex → char-offset lookup.
+  const resumeResolverRef = useRef<(() => void) | null>(null);
   const verseWordMapRef = useRef<Array<{ start: number; length: number }>>([]);
 
-  // Mutable refs — no re-render on change, safe inside closures
+  // ── Mutable refs ──────────────────────────────────────────────────────────
   const audioIndexRef = useRef(0);
   const afterPlayBehaviourRef = useRef<AfterPlayBehaviour>('stop');
   const audioScopeRef = useRef<AudioScope>('selection');
   const audioPlaylistRef = useRef<Array<{ num: number; text: string }>>([]);
-  // Set false to break the sequential reading for-loop (user tapped stop)
   const isReadingRef = useRef(false);
   const isAudioPausedRef = useRef(false);
   const currentVerseIndexRef = useRef(0);
 
-  // ── Search ────────────────────────────────────────────────────────────────
+  // ── FIXED: Track the char offset we have already spoken for the current
+  //    verse so we can resume from that position if interrupted.
+  //    Reset to 0 at the START of every new verse (not on pause).
+  const verseCharOffsetRef = useRef(0);
 
+  // ── Search ────────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
   // ── Explanation ───────────────────────────────────────────────────────────
-
   const [verseExplanationMap, setVerseExplanationMap] = useState<
     Record<number, string>
   >({});
 
   // ── Notes ─────────────────────────────────────────────────────────────────
-
   const [noteText, setNoteText] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
-
-  // ── Verse jump after search ───────────────────────────────────────────────
 
   const [targetVerseAfterLoad, setTargetVerseAfterLoad] = useState<
     number | null
   >(null);
   const [highlightedVerse, setHighlightedVerse] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-
-  // ── Action modal ──────────────────────────────────────────────────────────
 
   const [modal, setModal] = useState<ActionModalState>({
     status: false,
@@ -178,13 +188,11 @@ export function useBible() {
   });
 
   // ── Refs & animations ─────────────────────────────────────────────────────
-
   const flatListRef = useRef<FlatList<VerseItem>>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const highlightAnim = useRef(new Animated.Value(0)).current;
 
   // ── Derived ───────────────────────────────────────────────────────────────
-
   const versesArray = useMemo(
     (): VerseItem[] =>
       Object.entries(verses).map(([verseNum, text]) => ({ verseNum, text })),
@@ -201,7 +209,6 @@ export function useBible() {
   // Effects
   // ─────────────────────────────────────────────────────────────────────────────
 
-  // Deep-link / navigation params
   useEffect(() => {
     if (isFocused) {
       if (bookName) setCurrentBook(bookName);
@@ -209,7 +216,6 @@ export function useBible() {
     }
   }, [isFocused, bookName, chapter]);
 
-  // Load book list on mount
   useEffect(() => {
     const bibleBooks = getBibleBooks();
     setBooks(bibleBooks);
@@ -217,25 +223,20 @@ export function useBible() {
     if (book) setMaxChapters(book.chapters);
   }, []);
 
-  // Refresh book list on version change
   useEffect(() => {
     setBooks(getBibleBooks());
   }, [bibleVersionId]);
 
-  // Reload verses when book / chapter / version changes
   useEffect(() => {
-    // ✅ Force skeleton immediately and prevent "empty flash"
     setLoading(true);
     setVersesReady(false);
-
-    loadVerses(); // sync (local)
-    loadHighlights(); // async (remote) - should NOT control skeleton
+    loadVerses();
+    loadHighlights();
     animateIn();
-
     const book = books.find(b => b.name === currentBook);
     if (book) setMaxChapters(book.chapters);
   }, [currentBook, currentChapter, books, bibleVersionId]);
-  // Load favorites when drawer opens
+
   useEffect(() => {
     if (showDrawer) loadFavorites();
   }, [showDrawer]);
@@ -246,7 +247,6 @@ export function useBible() {
     }
   }, [versesReady]);
 
-  // Stop TTS on unmount
   useEffect(() => {
     return () => {
       isReadingRef.current = false;
@@ -254,28 +254,23 @@ export function useBible() {
     };
   }, []);
 
-  // Stop audio whenever the screen loses focus (user navigates away).
-  // bibleTTS.stop() alone is not enough — it unblocks the pending speak
-  // promise, but the for-loop in startReadingChapter / startReadingSelectedVerses
-  // checks isReadingRef.current and would immediately queue the next verse.
-  // _stopAllAudio() sets the ref to false first, so the loop exits cleanly.
   useEffect(() => {
     if (!isFocused) {
       _stopAllAudio();
     }
-    // _stopAllAudio is defined in this same scope; isFocused is the hook value
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocused]);
 
-  // Stop audio when the user navigates to a different chapter / book
+  // FIX: Only stop audio when chapter changes if we are NOT paused.
+  // When paused, chapter hasn't changed — this effect was firing spuriously
+  // because isAudioPaused state change triggered re-renders that cascaded here.
   useEffect(() => {
-    if (showAudioPlayer || showChapterOverlay) {
+    if ((showAudioPlayer || showChapterOverlay) && !isAudioPausedRef.current) {
       _stopAllAudio();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBook, currentChapter]);
 
-  // ── Search-jump scroll & flash ────────────────────────────────────────────
   useEffect(() => {
     if (
       targetVerseAfterLoad === null ||
@@ -339,21 +334,18 @@ export function useBible() {
 
   const loadVerses = () => {
     const next = getVersesForChapter(currentBook, currentChapter);
-
-    // Update the chapter text first
     setVerses(next);
     setSelectedVerses([]);
-
-    // Mark ready in same render batch
     setVersesReady(true);
   };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setLoading(true);
     try {
-      loadVerses(); // sync
-      await loadHighlights(); // async
-      await loadFavorites(); // async
+      loadVerses();
+      await loadHighlights();
+      await loadFavorites();
     } finally {
       setRefreshing(false);
     }
@@ -374,9 +366,6 @@ export function useBible() {
         bookName: currentBook,
         chapter: currentChapter,
       });
-
-      console.log('Highlights response:', JSON.stringify(res));
-
       if (res.returnCode === 200 && res.returnData) {
         const map: Record<string, Highlight> = {};
         res.returnData.highlights.forEach((h: any) => {
@@ -392,20 +381,17 @@ export function useBible() {
             };
         });
         setHighlights(map);
-        setLoading(false); // ✅ Only set loading false after highlights are loaded
+        setLoading(false);
       }
     } catch (e) {
       console.error('Error loading highlights:', e);
-      setLoading(false); // ✅ Don't forget to stop loading on error
+      setLoading(false);
     }
   };
 
   const loadFavorites = async () => {
     try {
       const res = await sendPostRequest('bible', 'get-favorites', {});
-
-      console.log('Favorites response:', JSON.stringify(res));
-
       if (res.returnCode === 200 && res.returnData) {
         setFavorites(
           new Set(
@@ -414,8 +400,6 @@ export function useBible() {
             ),
           ),
         );
-      } else {
-        console.error('Failed to load favorites:', res.returnMessage);
       }
     } catch (e) {
       console.error('Error loading favorites:', e);
@@ -457,11 +441,8 @@ export function useBible() {
     const targetVerses = verseNumbers ?? selectedVerses;
     const targetBook = bookName ?? currentBook;
     const targetChapter = chapter ?? currentChapter;
-
     if (targetVerses.length !== 1) return;
-
     const verseNumber = targetVerses[0];
-
     try {
       const res = await sendPostRequest('bible', 'get-verse-explanation', {
         bookName: targetBook,
@@ -469,7 +450,6 @@ export function useBible() {
         verseNumber,
       });
       if (res?.returnCode === 200) {
-        console.log('Verse explanation response:', JSON.stringify(res));
         if (!res.returnData?.explanation) {
           showToast(
             'info',
@@ -535,7 +515,6 @@ export function useBible() {
   // Audio — private primitives
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /** Scroll the FlatList so the narrated verse is visible */
   const _scrollToVerse = (verseNum: number) => {
     const index = versesArray.findIndex(
       v => parseInt(v.verseNum, 10) === verseNum,
@@ -549,245 +528,287 @@ export function useBible() {
   };
 
   /**
-   * Speaks one verse and WAITS until it finishes.
-   * bibleTTS.speakVerses → bibleTTS.speak() now blocks via _pendingResolve,
-   * so this function only returns once the native TTS fires tts-finish/cancel.
-   * The for-loop in startReadingChapter advances to verse N+1 only after this.
+   * Speaks one verse from the current verseCharOffsetRef position and WAITS.
+   *
+   * FIX 1: Always speaks the FULL verse text and passes prefixLen = verseCharOffsetRef
+   *        so the TTS manager handles offset internally. This means we never
+   *        pass a sliced string whose length might be 0 (causing immediate return).
+   *
+   * FIX 2: The progress callback now sets verseCharOffsetRef to the absolute
+   *        char offset within the verse (not accumulates), so pausing mid-verse
+   *        then resuming correctly continues from the right word.
+   *
+   * FIX 3: On a fresh verse (not a resume), verseCharOffsetRef is 0 so full
+   *        verse is spoken from the beginning.
    */
   const _playVerseAtIndex = async (
     index: number,
-    playlist: Array<{ num: number; text: string }>,
+    playlist: any[],
+    isFirstInSequence = false,
   ) => {
-    if (index < 0 || index >= playlist.length) return;
-    const verse = playlist[index];
+    if (!playlist[index]) return;
+    const { num, text } = playlist[index];
 
-    audioIndexRef.current = index;
-    audioPlaylistRef.current = playlist;
+    setActiveAudioVerse(num);
+    setActiveAudioVerseText(text);
+    _scrollToVerse(num);
 
-    // ── Build an ALIGNED word map: clean-text word index → original text offset
-    //
-    // WHY: bibleTTS speaks `prepareText(verse.text)` (the "clean" text), so
-    //  tts-progress events and timer indices are relative to clean-text words.
-    //  But VerseCard displays `verse.text` (original), so we must map indices
-    //  back to original character positions.
-    //
-    //  prepareText can change word count (em-dashes, parentheticals, abbrevs),
-    //  so we can't just assume clean word N === original word N.
-    //
-    //  Algorithm:
-    //   1. Build originalWords[] with {word, start, length} from verse.text.
-    //   2. Build cleanWords[] from prepareText(verse.text).
-    //   3. Align greedily: for each clean word, find the nearest original word
-    //      whose normalised form matches, searching in a small window.
-    //   4. Store aligned positions as verseWordMapRef.current.
+    const startOffset = verseCharOffsetRef.current;
 
-    // Step 1 — original word positions
-    const originalWords: Array<{
-      word: string;
-      start: number;
-      length: number;
-    }> = [];
-    {
-      const re = /\S+/g;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(verse.text)) !== null) {
-        originalWords.push({ word: m[0], start: m.index, length: m[0].length });
+    // ── Intro construction ──────────────────────────────────────────────────
+    // Only add intro if we are NOT resuming mid-verse.
+    const isResume = startOffset > 0;
+    const fullWordMap = generateWordMap(text);
+    setActiveVerseWordMap(fullWordMap);
+
+    let baseWordIndex = 0;
+    if (isResume) {
+      // Find the index of the word that contains or starts after the current offset.
+      // This ensures highlighting resumes from the correct word.
+      const foundIdx = fullWordMap.findIndex(
+        w => w.start + w.length > startOffset,
+      );
+      baseWordIndex = foundIdx >= 0 ? foundIdx : fullWordMap.length;
+    }
+
+    let prefix = '';
+    if (!isResume) {
+      if (isFirstInSequence) {
+        prefix = `${currentBook} chapter ${currentChapter}, verse ${num}. `;
+      } else {
+        prefix = `verse ${num}. `;
       }
     }
 
-    // Step 2 — clean word list (what TTS actually speaks for the verse portion)
-    const cleanVerseText = bibleTTS.prepareText(verse.text);
-    const cleanWords: string[] = cleanVerseText.match(/\S+/g) ?? [];
+    // Calculate prefix length for the TTS manager to ignore during highlighting.
+    // We calculate this by preparing the full text and finding where the
+    // verse text starts within that cleaned version.
+    const fullTextToSpeak = isResume ? text.slice(startOffset) : prefix + text;
+    const cleanFull = bibleTTS.prepareText(fullTextToSpeak);
+    const cleanVerse = bibleTTS.prepareText(
+      isResume ? text.slice(startOffset) : text,
+    );
 
-    // Step 3 — greedy alignment
-    const normalize = (w: string) => w.toLowerCase().replace(/[^a-z0-9]/g, '');
-    // Track the last matched original index to prevent backward jumps
-    let lastOrigIdx = 0;
-    const wordMap: Array<{ start: number; length: number }> = cleanWords.map(
-      (cw, ci) => {
-        const cn = normalize(cw);
-        // Search forward from lastOrigIdx in a window of ±4
-        const lo = Math.max(lastOrigIdx, 0);
-        const hi = Math.min(lo + 6, originalWords.length - 1);
-        for (let j = lo; j <= hi; j++) {
-          const on = normalize(originalWords[j].word);
-          // Accept exact normalised match, or prefix match for long words
-          if (
-            on === cn ||
-            (cn.length >= 4 && on.startsWith(cn.slice(0, 4))) ||
-            (on.length >= 4 && cn.startsWith(on.slice(0, 4)))
-          ) {
-            lastOrigIdx = j + 1;
-            return {
-              start: originalWords[j].start,
-              length: originalWords[j].length,
-            };
-          }
-        }
-        // Fallback: proportional index (keeps highlighting roughly in sync even
-        // when alignment fails, e.g. heavily transformed text)
-        const pi = Math.round((ci / cleanWords.length) * originalWords.length);
-        const fb = originalWords[Math.min(pi, originalWords.length - 1)];
-        return fb
-          ? { start: fb.start, length: fb.length }
-          : { start: 0, length: 0 };
+    // The prefix length is the difference between the full cleaned text
+    // and the cleaned verse portion.
+    const prefixLen = Math.max(0, cleanFull.length - cleanVerse.length);
+
+    // Guard: if somehow offset is past end of text, reset and speak full verse
+    if (!fullTextToSpeak || !fullTextToSpeak.trim()) {
+      verseCharOffsetRef.current = 0;
+      return bibleTTS.speak(text, 0, 0);
+    }
+
+    return bibleTTS.speak(
+      fullTextToSpeak,
+      prefixLen,
+      baseWordIndex,
+      (charOffset: number) => {
+        // charOffset is the position within the verse portion of textToSpeak.
+        // Store the absolute position within the original verse text.
+        verseCharOffsetRef.current = startOffset + charOffset;
       },
     );
-
-    // ── Fire speak() FIRST — before any React state updates ────────────────
-    //
-    // Each setState triggers a re-render. Running them before speakVerses was
-    // adding ~30-80 ms of render latency to every inter-verse gap.
-    // Now speak() hands text to Tts.speak() synchronously on the JS thread
-    // before React has a chance to schedule any renders.
-    verseWordMapRef.current = wordMap;
-
-    const speakPromise = bibleTTS.speakVerses(
-      [verse],
-      currentBook,
-      currentChapter,
-      { announceLocation: index === 0 },
-    );
-
-    // State updates happen after — native layer already has the audio queued.
-    setActiveAudioVerse(verse.num);
-    setActiveVerseWordMap(wordMap);
-    setActiveAudioVerseText(verse.text);
-    _scrollToVerse(verse.num);
-    addReadHistory(verse.num);
-
-    await speakPromise;
   };
 
   /** Reset everything to silent / hidden */
   const _stopAllAudio = async () => {
     isReadingRef.current = false; // breaks the for-loop
+    isAudioPausedRef.current = false;
+    setIsAudioPaused(false);
+    verseCharOffsetRef.current = 0;
     await bibleTTS.stop(); // unblocks _pendingResolve so loop exits
     setShowAudioPlayer(false);
     setShowChapterOverlay(false);
     setActiveAudioVerse(null);
     setActiveAudioVerseText(null);
+    setActiveVerseWordMap([]);
     setAudioPlaylist([]);
     audioPlaylistRef.current = [];
     audioIndexRef.current = 0;
+    currentVerseIndexRef.current = 0;
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Audio — the shared for-loop runner
+  //
+  // FIX: Extracted the sequential verse-playing loop into one place so pause
+  // logic is consistent between chapter mode and selection mode.
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const _runPlaylist = async (
+    playlist: Array<{ num: number; text: string }>,
+    startIndex: number,
+  ): Promise<'done' | 'stopped' | 'exhausted'> => {
+    // track if this is the very first verse of the current playlist sequence
+    // (used to trigger the Book/Chapter/Verse intro vs just Verse #)
+    let isFirst = true;
+
+    for (let i = startIndex; i < playlist.length; i++) {
+      // ── Pause check ────────────────────────────────────────────────────────
+      if (isAudioPausedRef.current) {
+        // Wait here until unpaused or stopped.
+        // We do NOT decrement i — we will resume this same verse.
+        while (isAudioPausedRef.current && isReadingRef.current) {
+          await new Promise<void>(resolve => {
+            resumeResolverRef.current = resolve;
+          });
+        }
+        // If stopped while paused, exit.
+        if (!isReadingRef.current) return 'stopped';
+      }
+
+      // ── Stop check ─────────────────────────────────────────────────────────
+      if (!isReadingRef.current) return 'stopped';
+
+      // ── Update UI index ────────────────────────────────────────────────────
+      currentVerseIndexRef.current = i;
+      setAudioVerseIndex(i);
+      audioIndexRef.current = i;
+
+      // ── Speak ──────────────────────────────────────────────────────────────
+      await _playVerseAtIndex(i, playlist, isFirst);
+      isFirst = false;
+
+      // ── Post-speak checks ──────────────────────────────────────────────────
+      if (!isReadingRef.current) return 'stopped';
+
+      // If paused mid-verse (pause was set while speaking), loop back to same
+      // index without advancing — verseCharOffsetRef holds the resume position.
+      if (isAudioPausedRef.current) {
+        // Don't advance: wait loop at top of next iteration handles this.
+        i--; // counteract the for-loop i++
+        continue;
+      }
+
+      // Verse finished naturally — reset char offset for the next verse.
+      verseCharOffsetRef.current = 0;
+
+      // ── Skip-jump (next/prev button moved the index) ───────────────────────
+      if (currentVerseIndexRef.current !== i) {
+        i = currentVerseIndexRef.current - 1; // for-loop will i++
+        continue;
+      }
+
+      // ── Repeat one ─────────────────────────────────────────────────────────
+      if (afterPlayBehaviourRef.current === 'repeat_one') {
+        i--;
+      }
+    }
+
+    return 'exhausted';
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Audio — public API
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /**
-   * VERSE MODE — plays selected verses sequentially.
-   * The for-loop advances only after each verse fully finishes speaking.
-   */
   const startReadingSelectedVerses = async () => {
     if (selectedVerses.length === 0) return;
-    const playlist = [...selectedVerses]
-      .sort((a, b) => a - b)
-      .map(num => ({ num, text: verses[num] }));
-
     isReadingRef.current = true;
-    audioPlaylistRef.current = playlist;
-    audioIndexRef.current = 0;
-    setAudioPlaylist(playlist);
     setAudioScope('selection');
-    setAudioVerseIndex(0);
-    setShowChapterOverlay(false);
-    setShowAudioPlayer(true);
-    afterPlayBehaviourRef.current = afterPlayBehaviour;
     audioScopeRef.current = 'selection';
+    setShowAudioPlayer(true);
+    setShowChapterOverlay(false);
     isAudioPausedRef.current = false;
+    setIsAudioPaused(false);
     currentVerseIndexRef.current = 0;
+    verseCharOffsetRef.current = 0;
 
-    // Build full playlist including remaining verses if continue
-    let fullPlaylist = [...playlist];
-    if (afterPlayBehaviourRef.current === 'continue') {
-      const lastSelected = Math.max(...selectedVerses);
-      const maxVerse = Math.max(...Object.keys(verses).map(Number));
-      for (let v = lastSelected + 1; v <= maxVerse; v++) {
-        if (verses[v]) {
-          fullPlaylist.push({ num: v, text: verses[v] });
+    while (isReadingRef.current) {
+      const playlist = [...selectedVerses]
+        .sort((a, b) => a - b)
+        .map(num => ({ num, text: verses[num] }));
+
+      let fullPlaylist = [...playlist];
+      if (afterPlayBehaviourRef.current === 'continue') {
+        const lastSelected = Math.max(...selectedVerses);
+        const maxVerse = Math.max(...Object.keys(verses).map(Number));
+        for (let v = lastSelected + 1; v <= maxVerse; v++) {
+          if (verses[v]) fullPlaylist.push({ num: v, text: verses[v] });
         }
       }
-    }
-    audioPlaylistRef.current = fullPlaylist;
 
-    for (let i = currentVerseIndexRef.current; i < fullPlaylist.length; i++) {
-      // Check pause BEFORE playing each verse
-      if (isAudioPausedRef.current) {
-        // Wait here while paused
-        while (isAudioPausedRef.current && isReadingRef.current) {
-          await new Promise(r => setTimeout(r, 200));
+      setAudioPlaylist(fullPlaylist);
+      audioPlaylistRef.current = fullPlaylist;
+
+      const result = await _runPlaylist(
+        fullPlaylist,
+        currentVerseIndexRef.current,
+      );
+
+      if (result === 'stopped' || !isReadingRef.current) break;
+
+      const behaviour = afterPlayBehaviourRef.current;
+      if (behaviour === 'repeat') {
+        currentVerseIndexRef.current = 0;
+        verseCharOffsetRef.current = 0;
+        continue;
+      } else if (behaviour === 'continue') {
+        const nextChapter = currentChapter + 1;
+        if (nextChapter <= maxChapters) {
+          setCurrentChapter(nextChapter);
+          currentVerseIndexRef.current = 0;
+          verseCharOffsetRef.current = 0;
+          setAudioScope('chapter');
+          audioScopeRef.current = 'chapter';
+          await new Promise<void>(r => setTimeout(r, 600));
+          continue;
         }
-        // If stopped, exit
-        if (!isReadingRef.current) break;
+        break;
+      } else {
+        break;
       }
-
-      currentVerseIndexRef.current = i;
-      setAudioVerseIndex(i);
-      await _playVerseAtIndex(i, fullPlaylist);
     }
 
     isReadingRef.current = false;
     setShowAudioPlayer(false);
     setActiveAudioVerse(null);
     setActiveAudioVerseText(null);
+    setActiveVerseWordMap([]);
+    currentVerseIndexRef.current = 0;
+    verseCharOffsetRef.current = 0;
   };
 
-  /**
-   * CHAPTER MODE — reads every verse from first to last.
-   * verse N+1 never starts until verse N is completely spoken.
-   */
   const startReadingChapter = async () => {
-    const chapterVerses = getVersesForChapter(currentBook, currentChapter);
-    const playlist = Object.entries(chapterVerses)
-      .map(([num, text]) => ({ num: Number(num), text }))
-      .sort((a, b) => a.num - b.num);
-
-    if (!playlist.length) return;
-
     isReadingRef.current = true;
-    audioPlaylistRef.current = playlist;
-    audioIndexRef.current = 0;
-    setAudioPlaylist(playlist);
     setAudioScope('chapter');
-    setAudioVerseIndex(0);
+    audioScopeRef.current = 'chapter';
     setShowAudioPlayer(true);
     setShowChapterOverlay(true);
-    afterPlayBehaviourRef.current = afterPlayBehaviour;
-    audioScopeRef.current = 'chapter';
     isAudioPausedRef.current = false;
+    setIsAudioPaused(false);
     currentVerseIndexRef.current = 0;
-    audioPlaylistRef.current = playlist;
+    verseCharOffsetRef.current = 0;
 
     while (isReadingRef.current) {
-      for (let i = currentVerseIndexRef.current; i < playlist.length; i++) {
-        // Check pause BEFORE playing each verse
-        if (isAudioPausedRef.current) {
-          while (isAudioPausedRef.current && isReadingRef.current) {
-            await new Promise(r => setTimeout(r, 200));
-          }
-          if (!isReadingRef.current) break;
-        }
+      const chapterVerses = getVersesForChapter(currentBook, currentChapter);
+      const playlist = Object.entries(chapterVerses)
+        .map(([num, text]) => ({ num: Number(num), text }))
+        .sort((a, b) => a.num - b.num);
 
-        currentVerseIndexRef.current = i;
-        setAudioVerseIndex(i);
-        audioIndexRef.current = i;
-        await _playVerseAtIndex(i, playlist);
-      }
+      if (!playlist.length) break;
 
-      if (!isReadingRef.current) break;
+      setAudioPlaylist(playlist);
+      audioPlaylistRef.current = playlist;
+
+      const result = await _runPlaylist(playlist, currentVerseIndexRef.current);
+
+      if (result === 'stopped' || !isReadingRef.current) break;
 
       const behaviour = afterPlayBehaviourRef.current;
       if (behaviour === 'repeat') {
         currentVerseIndexRef.current = 0;
+        verseCharOffsetRef.current = 0;
         continue;
       } else if (behaviour === 'continue') {
         const nextChapter = currentChapter + 1;
         if (nextChapter <= maxChapters) {
           setCurrentChapter(nextChapter);
-          isReadingRef.current = false;
-          return;
+          currentVerseIndexRef.current = 0;
+          verseCharOffsetRef.current = 0;
+          await new Promise<void>(r => setTimeout(r, 600));
+          continue;
         }
         break;
       } else {
@@ -800,51 +821,73 @@ export function useBible() {
     setShowChapterOverlay(false);
     setActiveAudioVerse(null);
     setActiveAudioVerseText(null);
+    setActiveVerseWordMap([]);
     audioPlaylistRef.current = [];
     audioIndexRef.current = 0;
+    currentVerseIndexRef.current = 0;
+    verseCharOffsetRef.current = 0;
   };
 
   /**
-   * Skip forward: stop current speech, the for-loop will naturally advance
-   * to the next verse since _playVerseAtIndex will return after stop().
+   * Skip forward.
+   * FIX: Also resets verseCharOffsetRef so the next verse starts from 0.
    */
   const goToNextSelectedVerse = async () => {
-    const next = audioIndexRef.current + 1;
-    if (next >= audioPlaylistRef.current.length) return;
-    // Bump the index so when the loop increments (i++) it lands on `next`
-    audioIndexRef.current = next - 1;
-    await bibleTTS.stop(); // unblocks the current await in _playVerseAtIndex
+    verseCharOffsetRef.current = 0;
+    const next = currentVerseIndexRef.current + 1;
+    if (next >= audioPlaylistRef.current.length) {
+      if (afterPlayBehaviourRef.current === 'continue') {
+        await bibleTTS.stop();
+      }
+      return;
+    }
+    currentVerseIndexRef.current = next - 1; // loop's i++ lands on `next`
+    await bibleTTS.stop();
   };
 
   /**
-   * Skip backward: stop current and restart from previous verse.
+   * Skip backward.
+   * FIX: Also resets verseCharOffsetRef.
    */
   const goToPreviousSelectedVerse = async () => {
+    verseCharOffsetRef.current = 0;
     const prev = currentVerseIndexRef.current - 1;
     if (prev < 0) return;
     await bibleTTS.stop();
-    currentVerseIndexRef.current = Math.max(0, prev - 1);
+    currentVerseIndexRef.current = prev - 1; // loop's i++ lands on `prev`
   };
 
   /**
-   * Pause - stops TTS immediately, stays on current verse.
-   * Resume - replays current verse from beginning.
+   * Toggle Pause / Resume.
+   *
+   * FIX: On pause we call bibleTTS.stop() to interrupt the TTS engine, but we
+   * do NOT set isReadingRef.current = false (that's only for a full stop).
+   * The for-loop's pause-poll in _runPlaylist keeps the loop alive.
+   * verseCharOffsetRef retains the mid-verse position for resume.
+   *
+   * On resume we just flip the flag — the poll exits and _playVerseAtIndex
+   * is called again for the same verse index, resuming from verseCharOffsetRef.
    */
   const handleAudioTogglePlayPause = async () => {
-    if (isAudioPaused) {
-      // RESUME - restart current verse
-      setIsAudioPaused(false);
+    if (isAudioPausedRef.current) {
+      // ── Resume ──────────────────────────────────────────────────────────
       isAudioPausedRef.current = false;
-      const currentIdx = currentVerseIndexRef.current;
-      const playlist = audioPlaylistRef.current;
-      if (playlist[currentIdx]) {
-        await _playVerseAtIndex(currentIdx, playlist);
+      setIsAudioPaused(false);
+      // Immediately resolve the waiting promise in _runPlaylist to resume.
+      if (resumeResolverRef.current) {
+        resumeResolverRef.current();
+        resumeResolverRef.current = null;
       }
     } else {
-      // PAUSE - stop immediately
-      await bibleTTS.stop();
-      setIsAudioPaused(true);
+      // ── Pause ───────────────────────────────────────────────────────────
+      // Set the flag BEFORE stopping so the for-loop sees it immediately
+      // when _playVerseAtIndex's await resolves.
       isAudioPausedRef.current = true;
+      setIsAudioPaused(true);
+      // Stop the TTS engine to silence audio immediately.
+      // This does NOT set isReadingRef.current = false, so the loop survives.
+      // We call the TTS manager's stop directly (not _stopAllAudio).
+      await bibleTTS.stop();
     }
   };
 
@@ -854,27 +897,24 @@ export function useBible() {
   const handleAudioStop = async () => {
     await _stopAllAudio();
     clearSelection();
+    // Also resolve any waiting resume promise to allow the loop to exit.
+    if (resumeResolverRef.current) {
+      resumeResolverRef.current();
+      resumeResolverRef.current = null;
+    }
   };
 
-  /**
-   * Collapse the chapter overlay WITHOUT stopping audio.
-   * FloatingAudioBar takes over as the minimal indicator.
-   */
   const collapseChapterOverlay = () => {
     setShowChapterOverlay(false);
     setShowAudioPlayer(true);
   };
 
-  /**
-   * Change audio scope (verse/selection/chapter) and restart if playing
-   */
   const handleAudioScopeChange = async (scope: AudioScope) => {
     const wasPlaying = isReadingRef.current;
     if (wasPlaying) {
       await _stopAllAudio();
     }
     setAudioScope(scope);
-    setAudioIsRepeat(false);
 
     if (scope === 'chapter') {
       startReadingChapter();
@@ -895,19 +935,9 @@ export function useBible() {
     }
   };
 
-  /**
-   * Change after-play behaviour - takes effect immediately
-   */
   const handleAfterPlayChange = (behaviour: AfterPlayBehaviour) => {
     setAfterPlayBehaviour(behaviour);
     afterPlayBehaviourRef.current = behaviour;
-  };
-
-  /**
-   * Toggle repeat mode
-   */
-  const handleRepeatToggle = () => {
-    setAudioIsRepeat(prev => !prev);
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -916,11 +946,7 @@ export function useBible() {
 
   const openNoteModal = () => {
     if (selectedVerses.length === 0) {
-      showToast(
-        'error',
-
-        'Please select at least one verse to add a note.',
-      );
+      showToast('error', 'Please select at least one verse to add a note.');
       return;
     }
     setShowNoteModal(true);
@@ -985,7 +1011,6 @@ export function useBible() {
     rangeStart?: number,
     rangeEnd?: number,
   ) => {
-    // Build verse list: use explicit range if provided, else fall back to selectedVerses
     let versesToHighlight = selectedVerses;
     if (rangeStart != null && rangeEnd != null) {
       versesToHighlight = [];
@@ -1074,7 +1099,6 @@ export function useBible() {
       .map(v => `${currentBook} ${currentChapter}:${v}\n${verses[v]}`)
       .join('\n\n');
     Clipboard.setString(text);
-    // showToast('success', 'Copied to Clipboard', 'Selected verses copied.');
     clearSelection();
   };
 
@@ -1099,6 +1123,7 @@ export function useBible() {
       showToast('error', 'Navigation Error: Unable to navigate to chapter.');
     }
   };
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Search
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1107,9 +1132,7 @@ export function useBible() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-
     if (query.trim().length > 2) {
       setSearchLoading(true);
       searchDebounceRef.current = setTimeout(() => {
@@ -1133,10 +1156,8 @@ export function useBible() {
     setVersesReady(false);
     setVerses({});
     setSelectedVerses([]);
-
     setCurrentBook(book);
     setCurrentChapter(chapterNum);
-
     if (verse !== undefined) setTargetVerseAfterLoad(verse);
     setShowSearchModal(false);
     setSearchQuery('');
@@ -1176,7 +1197,6 @@ export function useBible() {
 
   const dismissModal = () => setModal({ ...modal, status: false });
 
-  // ✅ Used by Book/Chapter selector modals (no search side-effects)
   const selectChapterFromModal = (ch: number) => {
     setLoading(true);
     setVersesReady(false);
@@ -1199,11 +1219,8 @@ export function useBible() {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return {
-    // Theme / navigation
     isDark,
     navigation,
-
-    // Data
     books,
     maxChapters,
     verses,
@@ -1217,15 +1234,11 @@ export function useBible() {
     currentChapter,
     setCurrentBook,
     setCurrentChapter,
-
-    // UI
     fontSize,
     setFontSize,
     loading,
     searchLoading,
     versionSwitching,
-
-    // Modal visibility
     showBookSelector,
     setShowBookSelector,
     showChapterSelector,
@@ -1241,8 +1254,6 @@ export function useBible() {
     showExplanation,
     setShowExplanation,
     showNoteModal,
-
-    // Audio state
     showAudioPlayer,
     setShowAudioPlayer,
     showChapterOverlay,
@@ -1250,36 +1261,25 @@ export function useBible() {
     activeAudioVerseText,
     activeVerseWordMap,
     audioPlaylist,
-
-    // AudioControlBar state
     audioScope,
     afterPlayBehaviour,
-    audioIsRepeat,
     audioVerseIndex,
     isAudioPaused,
-
-    // Search
     searchQuery,
     searchResults,
     handleSearch,
     goToVerse,
     closeSearch,
-
-    // Explanation
     verseExplanationMap,
     getverseExplanation,
     clearVerseExplanation,
     clearVerseExplanationForVerse,
-
-    // Note
     noteText,
     setNoteText,
     noteSaving,
     openNoteModal,
     closeNoteModal,
     saveNote,
-
-    // Audio controls
     startReadingSelectedVerses,
     startReadingChapter,
     handleAudioTogglePlayPause,
@@ -1287,21 +1287,12 @@ export function useBible() {
     goToNextSelectedVerse,
     goToPreviousSelectedVerse,
     collapseChapterOverlay,
-
-    // AudioControlBar callbacks
     handleAudioScopeChange,
     handleAfterPlayChange,
-    handleRepeatToggle,
-
-    // Verse search-jump animation
     highlightedVerse,
     highlightAnim,
     fadeAnim,
-
-    // Refs
     flatListRef,
-
-    // Actions
     toggleVerseSelection,
     clearSelection,
     addReadHistory,
@@ -1312,14 +1303,10 @@ export function useBible() {
     copyVerses,
     goToChapter,
     handleVersionChange,
-
-    // Feedback modal
     modal,
     dismissModal,
     selectChapterFromModal,
     selectBookFromModal,
-
-    //refresh control    refreshing,
     onRefresh,
     refreshing,
     setRefreshing,

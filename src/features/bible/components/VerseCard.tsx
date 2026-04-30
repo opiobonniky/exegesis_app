@@ -84,7 +84,12 @@ export default function VerseCard({
       return;
     }
     const unsub = bibleTTS.subscribe(s => {
-      if (s.tier === 'idle' || s.wordIndex < 0) {
+      if (s.tier === 'idle') {
+        // Paused or stopped. Keep the last activeWordOffset if we are still
+        // the active verse so the highlight persists on pause.
+        return;
+      }
+      if (s.wordIndex < 0) {
         setActiveWordOffset(null);
         return;
       }
@@ -95,6 +100,23 @@ export default function VerseCard({
     });
     return unsub;
   }, [isActiveAudio]);
+
+  // ── Word highlight animation ─────────────────────────────────────────────
+  const wordAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (activeWordOffset) {
+      wordAnim.setValue(0);
+      Animated.timing(wordAnim, {
+        toValue: 1,
+        duration: 150,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false, // backgroundColor doesn't support native driver
+      }).start();
+    } else {
+      wordAnim.setValue(0);
+    }
+  }, [activeWordOffset]);
 
   // ── Verse text — with word highlight when a word offset is provided ────────
   const renderVerseText = () => {
@@ -142,7 +164,30 @@ export default function VerseCard({
           {'  '}
         </Text>
         {before}
-        <Text style={wordStyles.highlight}>{word}</Text>
+        <Animated.Text
+          style={[
+            wordStyles.highlight,
+            {
+              backgroundColor: wordAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [
+                  'transparent',
+                  isActiveAudio ? 'rgba(255, 193, 7, 0.42)' : 'transparent',
+                ],
+              }),
+              transform: [
+                {
+                  scale: wordAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.05],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {word}
+        </Animated.Text>
         {after}
       </Text>
     );
@@ -447,5 +492,7 @@ const wordStyles = StyleSheet.create({
     fontWeight: '800',
     textDecorationLine: 'underline',
     textDecorationStyle: 'solid',
+    borderRadius: 3,
+    paddingHorizontal: 1,
   },
 });

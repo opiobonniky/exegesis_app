@@ -278,12 +278,10 @@ export default function Bible() {
     audioPlaylist,
     audioScope,
     afterPlayBehaviour,
-    audioIsRepeat,
     audioVerseIndex,
     isAudioPaused,
     handleAudioScopeChange,
     handleAfterPlayChange,
-    handleRepeatToggle,
     goToNextSelectedVerse,
     goToPreviousSelectedVerse,
     handleAudioTogglePlayPause,
@@ -574,7 +572,7 @@ export default function Bible() {
         onSave={(rangeStart, rangeEnd) => saveNote(rangeStart, rangeEnd)}
         noteText={noteText}
         onNoteChange={setNoteText}
-        saving={noteSaving} 
+        saving={noteSaving}
         selectedVerses={selectedVerses}
         totalVerses={Object.keys(verses).length}
         currentBook={currentBook}
@@ -700,20 +698,18 @@ export default function Bible() {
       <AudioControlBar
         isPlaying={showAudioPlayer}
         isPaused={isAudioPaused}
-        nowPlayingLabel={
-          audioPlaylist.length > 0
-            ? `${currentBook} ${currentChapter}:${audioPlaylist[audioVerseIndex]?.num ?? activeAudioVerse}`
-            : `${currentBook} ${currentChapter}`
-        }
+        nowPlayingLabel={`${currentBook} ${currentChapter}:${audioPlaylist[audioVerseIndex]?.num || ''}`}
         scope={audioScope}
         afterPlay={afterPlayBehaviour}
-        isRepeat={audioIsRepeat}
+        isRepeat={
+          afterPlayBehaviour === 'repeat' || afterPlayBehaviour === 'repeat_one'
+        }
         verseIndex={audioVerseIndex}
         verseCount={audioPlaylist.length}
         isDark={isDark}
         onPrev={goToPreviousSelectedVerse}
         onNext={goToNextSelectedVerse}
-        onRepeatToggle={handleRepeatToggle}
+        onRepeatToggle={() => {}}
         onPlayPause={handleAudioTogglePlayPause}
         onStop={handleAudioStop}
         onScopeChange={handleAudioScopeChange}

@@ -12,11 +12,13 @@ import {
   ChevronFirst,
   ChevronLast,
   Repeat,
+  Repeat1,
   Square,
   Play,
   Pause,
   SkipBack,
   SkipForward,
+  Volume2,
 } from 'lucide-react-native';
 import { getColors, FONT_SIZES, SPACING } from '../../constants/theme';
 
@@ -25,7 +27,7 @@ import { getColors, FONT_SIZES, SPACING } from '../../constants/theme';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type AudioScope = 'verse' | 'selection' | 'chapter';
-export type AfterPlayBehaviour = 'continue' | 'repeat' | 'stop';
+export type AfterPlayBehaviour = 'continue' | 'repeat' | 'repeat_one' | 'stop';
 
 export interface AudioControlBarProps {
   /** Whether audio is actively playing (bar visible when true) */
@@ -65,7 +67,7 @@ function CtrlBtn({
   children,
   active,
   accent,
-  size = 48,
+  size = 44,
   disabled = false,
 }: {
   onPress: () => void;
@@ -79,7 +81,7 @@ function CtrlBtn({
 
   const pressIn = () =>
     Animated.spring(scale, {
-      toValue: 0.84,
+      toValue: 0.88,
       useNativeDriver: true,
       speed: 50,
       bounciness: 4,
@@ -100,7 +102,7 @@ function CtrlBtn({
       onPressOut={pressOut}
       activeOpacity={1}
       disabled={disabled}
-      style={{ opacity: disabled ? 0.35 : 1 }}
+      style={{ opacity: disabled ? 0.25 : 1 }}
     >
       <Animated.View
         style={[
@@ -125,116 +127,6 @@ const ctrlStyles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'transparent',
-  },
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Pill chip (scope / after-play selector)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Chip({
-  label,
-  selected,
-  onPress,
-  accent,
-  textColor,
-  mutedColor,
-  surfaceColor,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  accent: string;
-  textColor: string;
-  mutedColor: string;
-  surfaceColor: string;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={[
-        chipStyles.chip,
-        selected
-          ? { backgroundColor: accent, borderColor: accent }
-          : {
-              backgroundColor: surfaceColor,
-              borderColor: 'rgba(255,255,255,0.15)',
-            },
-      ]}
-    >
-      <Text
-        style={[chipStyles.label, { color: selected ? '#fff' : mutedColor }]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-const chipStyles = StyleSheet.create({
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Verse-progress dots
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ProgressDots({
-  total,
-  current,
-  accent,
-  muted,
-}: {
-  total: number;
-  current: number;
-  accent: string;
-  muted: string;
-}) {
-  // Only render dots when the set is small enough to be useful
-  const MAX_DOTS = 12;
-  if (total <= 1 || total > MAX_DOTS) return null;
-
-  return (
-    <View style={dotStyles.row}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View
-          key={i}
-          style={[
-            dotStyles.dot,
-            i === current
-              ? { backgroundColor: accent, width: 16 }
-              : { backgroundColor: muted },
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
-
-const dotStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    justifyContent: 'center',
-    marginTop: 6,
-  },
-  dot: {
-    height: 4,
-    width: 4,
-    borderRadius: 2,
-    opacity: 0.8,
   },
 });
 
@@ -264,7 +156,7 @@ export default function AudioControlBar({
   const accent = COLORS.accent ?? COLORS.primary;
 
   // ── Slide-in / slide-out animation ────────────────────────────────────────
-  const translateY = useRef(new Animated.Value(220)).current;
+  const translateY = useRef(new Animated.Value(250)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -273,12 +165,12 @@ export default function AudioControlBar({
         Animated.spring(translateY, {
           toValue: 0,
           useNativeDriver: true,
-          speed: 16,
-          bounciness: 5,
+          speed: 12,
+          bounciness: 4,
         }),
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 220,
+          duration: 300,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
@@ -286,217 +178,202 @@ export default function AudioControlBar({
     } else {
       Animated.parallel([
         Animated.timing(translateY, {
-          toValue: 220,
-          duration: 280,
+          toValue: 250,
+          duration: 300,
           easing: Easing.in(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 200,
+          duration: 250,
           useNativeDriver: true,
         }),
       ]).start();
     }
   }, [isPlaying, isPaused]);
 
-  // ── Breathing glow behind the play button ─────────────────────────────────
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const glowLoop = useRef<Animated.CompositeAnimation | null>(null);
+  const progress = verseCount > 0 ? (verseIndex + 1) / verseCount : 0;
+  const progressWidth = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    glowLoop.current?.stop();
-    glowLoop.current = null;
+    Animated.timing(progressWidth, {
+      toValue: progress,
+      duration: 600,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+  }, [progress]);
 
-    if (isPlaying && !isPaused) {
-      glowAnim.setValue(0);
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 900,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0.3,
-            duration: 900,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ]),
-      );
-      loop.start();
-      glowLoop.current = loop;
-    } else {
-      Animated.timing(glowAnim, {
-        toValue: 0,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    }
-
-    return () => glowLoop.current?.stop();
-  }, [isPlaying, isPaused]);
-
-  const surfaceChip = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
-  const surface2 = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+  const surfaceChip = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)';
   const muteColor = COLORS.muted;
+
+  const toggleRepeat = () => {
+    // Cycle: stop -> repeat -> repeat_one -> stop
+    if (afterPlay === 'stop') onAfterPlayChange('repeat');
+    else if (afterPlay === 'repeat') onAfterPlayChange('repeat_one');
+    else onAfterPlayChange('stop');
+  };
+
+  const toggleContinue = () => {
+    onAfterPlayChange(afterPlay === 'continue' ? 'stop' : 'continue');
+  };
 
   return (
     <Animated.View
       style={[
-        styles.container,
+        styles.floatingContainer,
         {
           backgroundColor: COLORS.cardBackground,
           transform: [{ translateY }],
           opacity,
+          borderColor: COLORS.border,
         },
       ]}
       pointerEvents={isPlaying || isPaused ? 'auto' : 'none'}
     >
-      {/* Top accent stripe */}
-      <View style={[styles.topStripe, { backgroundColor: accent }]} />
+      {/* ── Progress Bar ───────────────────────────────────────────────────── */}
+      <View style={[styles.progressTrack, { backgroundColor: surfaceChip }]}>
+        <Animated.View
+          style={[
+            styles.progressBar,
+            {
+              backgroundColor: accent,
+              width: progressWidth.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0%', '100%'],
+              }),
+            },
+          ]}
+        />
+      </View>
 
-      {/* ── Now-playing label ──────────────────────────────────────────────── */}
-      <View style={styles.nowPlayingRow}>
-        <View style={[styles.liveIndicator, { backgroundColor: accent }]} />
-        <Text
-          style={[styles.nowPlayingText, { color: COLORS.text }]}
-          numberOfLines={1}
-        >
-          {nowPlayingLabel}
-        </Text>
-        {isPaused && (
-          <View style={[styles.pausedBadge, { backgroundColor: surfaceChip }]}>
-            <Text style={[styles.pausedBadgeText, { color: muteColor }]}>
-              PAUSED
+      <View style={styles.innerContent}>
+        {/* ── Info Row ─────────────────────────────────────────────────────── */}
+        <View style={styles.infoRow}>
+          <View
+            style={[
+              styles.iconBox,
+              { backgroundColor: isPaused ? surfaceChip : `${accent}15` },
+            ]}
+          >
+            {isPaused ? (
+              <Pause size={18} color={muteColor} />
+            ) : (
+              <Volume2 size={18} color={accent} />
+            )}
+          </View>
+
+          <View style={styles.labelCol}>
+            <Text style={[styles.scopeLabel, { color: muteColor }]}>
+              {scope === 'chapter' ? 'CHAPTER MODE' : 'SELECTION'}
+            </Text>
+            <View style={styles.titleRow}>
+              <Text
+                style={[styles.nowPlayingText, { color: COLORS.text }]}
+                numberOfLines={1}
+              >
+                {nowPlayingLabel}
+              </Text>
+              <TouchableOpacity
+                onPress={toggleContinue}
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor:
+                      afterPlay === 'continue' ? `${accent}15` : surfaceChip,
+                    borderColor:
+                      afterPlay === 'continue' ? `${accent}30` : 'transparent',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.badgeText,
+                    {
+                      color: afterPlay === 'continue' ? accent : muteColor,
+                    },
+                  ]}
+                >
+                  {afterPlay === 'continue' ? 'CONTINUE ON' : 'AUTO-STOP'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={[styles.counterBox, { backgroundColor: surfaceChip }]}>
+            <Text style={[styles.counterText, { color: COLORS.text }]}>
+              {verseIndex + 1}
+              <Text style={{ opacity: 0.4 }}>/{verseCount}</Text>
             </Text>
           </View>
-        )}
-      </View>
+        </View>
 
-      {/* ── Verse-progress dots ─────────────────────────────────────────────── */}
-      <ProgressDots
-        total={verseCount}
-        current={verseIndex}
-        accent={accent}
-        muted={`${muteColor}55`}
-      />
+        {/* ── Controls Row ─────────────────────────────────────────────────── */}
+        <View style={styles.controlsRow}>
+          <View style={styles.leftGroup}>
+            {/* Repeat Cycle Button */}
+            <CtrlBtn
+              onPress={toggleRepeat}
+              accent={accent}
+              active={afterPlay === 'repeat' || afterPlay === 'repeat_one'}
+            >
+              {afterPlay === 'repeat_one' ? (
+                <Repeat1 size={20} color={accent} strokeWidth={2.5} />
+              ) : (
+                <Repeat
+                  size={20}
+                  color={afterPlay === 'repeat' ? accent : muteColor}
+                  strokeWidth={2}
+                />
+              )}
+              {afterPlay === 'repeat' && (
+                <Text style={[styles.repeatAllTag, { color: accent }]}>
+                  ALL
+                </Text>
+              )}
+            </CtrlBtn>
 
-      {/* ── Playback-scope chips ────────────────────────────────────────────── */}
-      <View style={styles.chipRow}>
-        <Text style={[styles.chipSectionLabel, { color: muteColor }]}>
-          PLAY
-        </Text>
-        {(['verse', 'selection', 'chapter'] as AudioScope[]).map(s => (
-          <Chip
-            key={s}
-            label={
-              s === 'selection'
-                ? 'Selection'
-                : s === 'chapter'
-                  ? 'Chapter'
-                  : 'Verse'
-            }
-            selected={scope === s}
-            onPress={() => onScopeChange(s)}
-            accent={accent}
-            textColor={COLORS.text}
-            mutedColor={muteColor}
-            surfaceColor={surfaceChip}
-          />
-        ))}
-      </View>
+            <CtrlBtn
+              onPress={onPrev}
+              accent={accent}
+              disabled={verseIndex <= 0}
+            >
+              <SkipBack size={22} color={muteColor} strokeWidth={2} />
+            </CtrlBtn>
+          </View>
 
-      {/* ── After-play behaviour chips ──────────────────────────────────────── */}
-      <View style={styles.chipRow}>
-        <Text style={[styles.chipSectionLabel, { color: muteColor }]}>
-          THEN
-        </Text>
-        {(
-          [
-            { key: 'continue', label: 'Continue →' },
-            { key: 'repeat', label: '↺ Repeat' },
-            { key: 'stop', label: '⏹ Stop' },
-          ] as { key: AfterPlayBehaviour; label: string }[]
-        ).map(({ key, label }) => (
-          <Chip
-            key={key}
-            label={label}
-            selected={afterPlay === key}
-            onPress={() => onAfterPlayChange(key)}
-            accent={accent}
-            textColor={COLORS.text}
-            mutedColor={muteColor}
-            surfaceColor={surfaceChip}
-          />
-        ))}
-      </View>
-
-      {/* ── Divider ─────────────────────────────────────────────────────────── */}
-      <View style={[styles.divider, { backgroundColor: COLORS.border }]} />
-
-      {/* ── Transport controls ──────────────────────────────────────────────── */}
-      <View style={styles.controls}>
-        {/* Previous */}
-        <CtrlBtn
-          onPress={onPrev}
-          accent={accent}
-          disabled={verseIndex <= 0 && scope !== 'chapter'}
-        >
-          <SkipBack size={22} color={muteColor} strokeWidth={2} />
-        </CtrlBtn>
-
-        {/* Repeat toggle */}
-        <CtrlBtn onPress={onRepeatToggle} accent={accent} active={isRepeat}>
-          <Repeat
-            size={20}
-            color={isRepeat ? accent : muteColor}
-            strokeWidth={2.2}
-          />
-        </CtrlBtn>
-
-        {/* Play / Pause — large centre button */}
-        <View style={styles.playBtnWrap}>
-          {/* Breathing glow ring */}
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              StyleSheet.absoluteFillObject,
-              styles.glowRing,
-              {
-                borderColor: accent,
-                opacity: glowAnim,
-              },
-            ]}
-          />
+          {/* Main Play/Pause */}
           <TouchableOpacity
             onPress={onPlayPause}
             activeOpacity={0.85}
-            style={[styles.playBtn, { backgroundColor: accent }]}
+            style={[
+              styles.playBtn,
+              { backgroundColor: accent, shadowColor: accent },
+            ]}
           >
             {isPaused ? (
-              <Play size={28} color="#fff" fill="#fff" strokeWidth={0} />
+              <Play size={24} color="#fff" fill="#fff" />
             ) : (
-              <Pause size={26} color="#fff" strokeWidth={2.5} />
+              <Pause size={24} color="#fff" strokeWidth={3} />
             )}
           </TouchableOpacity>
+
+          <View style={styles.rightGroup}>
+            <CtrlBtn
+              onPress={onNext}
+              accent={accent}
+              disabled={
+                verseIndex >= verseCount - 1 && afterPlay !== 'continue'
+              }
+            >
+              <SkipForward size={22} color={muteColor} strokeWidth={2} />
+            </CtrlBtn>
+
+            <CtrlBtn onPress={onStop} accent={accent}>
+              <Square size={18} color="#FF4B4B" fill="#FF4B4B" />
+            </CtrlBtn>
+          </View>
         </View>
-
-        {/* Next */}
-        <CtrlBtn
-          onPress={onNext}
-          accent={accent}
-          disabled={verseIndex >= verseCount - 1 && scope !== 'chapter'}
-        >
-          <SkipForward size={22} color={muteColor} strokeWidth={2} />
-        </CtrlBtn>
-
-        {/* Stop */}
-        <CtrlBtn onPress={onStop} accent={accent}>
-          <Square size={18} color={muteColor} strokeWidth={2} />
-        </CtrlBtn>
       </View>
     </Animated.View>
   );
@@ -507,118 +384,122 @@ export default function AudioControlBar({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
+  floatingContainer: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: SPACING.xl,
-    paddingTop: 0,
-    paddingBottom: Platform.OS === 'ios' ? 36 : SPACING.xl,
-    zIndex: 200,
-    // Rich shadow
+    bottom: Platform.OS === 'ios' ? 100 : 90,
+    left: 12,
+    right: 12,
+    borderRadius: 24,
+    borderWidth: 1,
+    zIndex: 1000,
+    // Premium shadow
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 28,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 24,
     overflow: 'hidden',
   },
 
-  topStripe: {
+  progressTrack: {
     height: 3,
-    width: 48,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: SPACING.md,
-    opacity: 0.7,
+    width: '100%',
+  },
+  progressBar: {
+    height: '100%',
   },
 
-  // Now-playing
-  nowPlayingRow: {
+  innerContent: {
+    padding: 14,
+    paddingTop: 10,
+  },
+
+  // Info Row
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: 12,
+    marginBottom: 12,
   },
-  liveIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    opacity: 0.85,
+  iconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  nowPlayingText: {
+  labelCol: {
     flex: 1,
-    fontSize: FONT_SIZES.md,
-    fontWeight: '700',
-    letterSpacing: 0.1,
+    gap: 2,
   },
-  pausedBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  pausedBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-
-  // Chips
-  chipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: SPACING.sm,
-    flexWrap: 'wrap',
-  },
-  chipSectionLabel: {
+  scopeLabel: {
     fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 1.5,
-    width: 34,
+    letterSpacing: 1.2,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  nowPlayingText: {
+    fontSize: 15,
+    fontWeight: '700',
+    maxWidth: '60%',
+  },
+  badge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  counterBox: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  counterText: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
 
-  divider: {
-    height: 1,
-    opacity: 0.5,
-    marginVertical: SPACING.md,
-  },
-
-  // Controls
-  controls: {
+  // Controls Row
+  controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.sm,
   },
-
-  // Play button
-  playBtnWrap: {
-    position: 'relative',
-    width: 70,
-    height: 70,
+  leftGroup: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
   },
-  glowRing: {
-    borderRadius: 40,
-    borderWidth: 2,
-    margin: -4,
+  rightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   playBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  repeatAllTag: {
+    position: 'absolute',
+    fontSize: 7,
+    fontWeight: '900',
+    bottom: 8,
   },
 });

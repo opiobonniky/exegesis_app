@@ -117,7 +117,7 @@ export interface DrawerMenuProps {
 export interface NoteModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (rangeStart?: number, rangeEnd?: number) => void;
   noteText: string;
   onNoteChange: (text: string) => void;
   saving: boolean;
