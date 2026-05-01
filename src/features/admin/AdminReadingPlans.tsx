@@ -17,6 +17,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { route } from '../../component/navigations/routes';
 import {
   getAllReadingPlansAdmin,
   deleteReadingPlan,
@@ -35,6 +36,7 @@ import {
   ToggleLeft,
   Trash2,
   Edit2,
+  PieChart,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
 
@@ -71,7 +73,7 @@ const AdminReadingPlans: React.FC = () => {
   const isDark = app?.isDark ?? false;
   const theme = getReadingPlansTheme(isDark);
   const styles = getStyles(theme);
-  
+
   const [plans, setPlans] = useState<ReadingPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -115,7 +117,7 @@ const AdminReadingPlans: React.FC = () => {
           onPress: async () => {
             try {
               await deleteReadingPlan(plan.planId);
-              setPlans((prev) => prev.filter((p) => p.planId !== plan.planId));
+              setPlans(prev => prev.filter(p => p.planId !== plan.planId));
               showToast('success', 'Plan deleted successfully');
             } catch (error) {
               showToast('error', 'Failed to delete plan');
@@ -128,6 +130,10 @@ const AdminReadingPlans: React.FC = () => {
 
   const handleEdit = (plan: ReadingPlan) => {
     navigation.navigate('EditReadingPlan', { planId: plan.planId });
+  };
+
+  const handleViewDetails = (plan: ReadingPlan) => {
+    navigation.navigate(route.adminReadingPlanDetail, { planId: plan.planId });
   };
 
   const handleCreate = () => {
@@ -204,6 +210,13 @@ const AdminReadingPlans: React.FC = () => {
         </View>
         <View style={styles.actionButtons}>
           <TouchableOpacity
+            style={styles.statsButton}
+            onPress={() => handleViewDetails(item)}
+          >
+            <PieChart size={16} color={theme.success} />
+            <Text style={styles.statsButtonText}>Stats</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.editButton}
             onPress={() => handleEdit(item)}
           >
@@ -264,14 +277,14 @@ const AdminReadingPlans: React.FC = () => {
         <View style={styles.statCard}>
           <BookOpen size={20} color={theme.success} />
           <Text style={styles.statValue}>
-            {plans.filter((p) => p.isActive).length}
+            {plans.filter(p => p.isActive).length}
           </Text>
           <Text style={styles.statLabel}>Active</Text>
         </View>
         <View style={styles.statCard}>
           <HelpCircle size={20} color="#7c3aed" />
           <Text style={styles.statValue}>
-            {plans.filter((p) => p.questionsEnabled).length}
+            {plans.filter(p => p.questionsEnabled).length}
           </Text>
           <Text style={styles.statLabel}>With Quiz</Text>
         </View>
@@ -287,7 +300,7 @@ const AdminReadingPlans: React.FC = () => {
           <FlatList
             data={plans}
             renderItem={renderPlan}
-            keyExtractor={(item) => item.planId}
+            keyExtractor={item => item.planId}
             ListEmptyComponent={renderEmpty}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -490,6 +503,18 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
     },
     editButtonText: {
       color: theme.primary,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    statsButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    statsButtonText: {
+      color: theme.success,
       fontSize: 13,
       fontWeight: '500',
     },

@@ -24,12 +24,17 @@ import {
   Star,
   RotateCcw,
   SkipForward,
+  PlayCircle,
+  CheckCircle2,
+  HelpCircle,
+  MessageSquare,
 } from 'lucide-react-native';
 import ActionModal from '../../reusable/ActionModal';
 import ActionHeader from '../../reusable/ActionHeader';
 import { sendPostRequest } from '../../services/api';
 import { showToast } from '../../helpers/Toash.helper';
 import { route } from '../../component/navigations/routes';
+import LinearGradient from 'react-native-linear-gradient';
 import {
   scheduleDailyReminder,
   isPlanNotificationsEnabled,
@@ -143,7 +148,7 @@ export default function DailyReadingScreen() {
   const navigation = useNavigation<any>();
   const { isDark } = useContext(AppContext)!;
   const C = getColors(isDark);
-  const { planId, day } = routes.params;
+  const { planId, day, totalDays: initialTotalDays } = routes.params;
 
   // ── core state ────────────────────────────────
   const [loading, setLoading] = useState(true);
@@ -151,7 +156,7 @@ export default function DailyReadingScreen() {
   const [notYetAdded, setNotYetAdded] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [planTitle, setPlanTitle] = useState('Reading Plan');
-  const [totalDays, setTotalDays] = useState(0);
+  const [totalDays, setTotalDays] = useState(initialTotalDays || 0);
 
   // ── shimmer ───────────────────────────────────
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -183,6 +188,9 @@ export default function DailyReadingScreen() {
   const [correctCount, setCorrectCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(1));
+  const [ponderedReflections, setPonderedReflections] = useState<Set<number>>(
+    new Set(),
+  );
   const submittedIds = useRef<Set<number>>(new Set());
 
   const [modal, setModal] = useState<{
@@ -263,11 +271,14 @@ export default function DailyReadingScreen() {
         setNotYetAdded(false);
         setAssignment(returnData);
         setIsCompleted(returnData.completed ?? false);
-        
+
         // Check if user has any previous answers for this specific day
-        const hasPreviousAnswers = Array.isArray(returnData.quizQuestions) && 
-          returnData.quizQuestions.some((q: QuizQuestion) => q.userAnswer !== null);
-        
+        const hasPreviousAnswers =
+          Array.isArray(returnData.quizQuestions) &&
+          returnData.quizQuestions.some(
+            (q: QuizQuestion) => q.userAnswer !== null,
+          );
+
         // Always start fresh - show first question without results
         setCurrentQ(0);
         setSelected(null);
@@ -276,8 +287,11 @@ export default function DailyReadingScreen() {
         setQuizDone(false);
         setCorrectCount(0);
         submittedIds.current = new Set();
-        
-        if (Array.isArray(returnData.quizQuestions) && returnData.quizQuestions.length > 0) {
+
+        if (
+          Array.isArray(returnData.quizQuestions) &&
+          returnData.quizQuestions.length > 0
+        ) {
           const newSubmitted = new Set<number>();
           returnData.quizQuestions.forEach((q: QuizQuestion) => {
             if (q.userAnswer !== null) {
@@ -310,6 +324,18 @@ export default function DailyReadingScreen() {
         setIsCompleted(true);
         loadData();
         showToast('success', `🎉 Day Complete! Day ${day} marked as done!`);
+
+        // Automatically move to the next day if available
+        if (day < totalDays) {
+          setTimeout(() => {
+            navigation.replace(route.dailyReading, {
+              planId,
+              day: day + 1,
+              planTitle,
+              totalDays,
+            });
+          }, 1500); // Give user time to see the success toast
+        }
       } else showToast('error', `Error: ${r.returnMessage || 'Failed'}`);
     } catch (e: any) {
       showToast('error', `Error: ${e.message}`);
@@ -323,7 +349,25 @@ export default function DailyReadingScreen() {
       return;
     }
     const nd = dir === 'prev' ? day - 1 : day + 1;
-    if (nd >= 1 && nd <= totalDays) navigation.setParams({ day: nd });
+    if (nd >= 1 && nd <= totalDays) {
+      navigation.replace(route.dailyReading, {
+        planId,
+        day: nd,
+        planTitle,
+        totalDays,
+      });
+    }
+  };
+
+  const handleOpenBible = (book: string, chapter: number) => {
+    // Add to read history when opening
+    sendPostRequest('bible', 'add-read-history', {
+      bookName: book,
+      chapter,
+      verseNumber: 1, // Default to first verse
+    }).catch(console.error);
+
+    navigation.navigate(route.bible, { bookName: book, chapter });
   };
 
   // ── quiz: jump to a specific question index ───
@@ -679,12 +723,27 @@ export default function DailyReadingScreen() {
   if (loading || notYetAdded || !assignment) {
     return (
       <View style={[s.container, { backgroundColor: C.background }]}>
-        <ActionHeader
-          title={loading ? 'Loading…' : `Day ${day}`}
-          subtitle={planTitle}
-          onPress={() => navigation.goBack()}
-        />
-        {renderDayStrip()}
+        <LinearGradient
+          colors={isDark ? ['#1A202C', '#111827'] : ['#F8FAFF', '#F1F5F9']}
+          style={s.modernHeader}
+        >
+          <View style={s.headerTopRow}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={s.headerBackBtn}
+            >
+              <ChevronLeft size={24} color={C.text} />
+            </TouchableOpacity>
+            <Text
+              style={[s.headerPlanTitle, { color: C.text }]}
+              numberOfLines={1}
+            >
+              {loading ? 'Loading...' : planTitle}
+            </Text>
+            <View style={{ width: 40 }} />
+          </View>
+        </LinearGradient>
+
         {loading ? (
           renderSkeletonBody()
         ) : notYetAdded ? (
@@ -707,69 +766,163 @@ export default function DailyReadingScreen() {
   // ─────────────────────────────────────────────
   return (
     <View style={[s.container, { backgroundColor: C.background }]}>
-      <ActionHeader
-        title={assignment.title || `Day ${day}`}
-        subtitle={planTitle}
-        onPress={() => navigation.goBack()}
-      />
-      {renderDayStrip()}
+      <LinearGradient
+        colors={isDark ? ['#1A202C', '#111827'] : ['#F8FAFF', '#F1F5F9']}
+        style={s.modernHeader}
+      >
+        <View style={s.headerTopRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={s.headerBackBtn}
+          >
+            <ChevronLeft size={24} color={C.text} />
+          </TouchableOpacity>
+          <Text
+            style={[s.headerPlanTitle, { color: C.text }]}
+            numberOfLines={1}
+          >
+            {planTitle}
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <View style={s.headerDayRow}>
+          <View style={s.headerDayCol}>
+            <Text style={[s.headerDayLabel, { color: C.muted }]}>
+              CURRENT PROGRESS
+            </Text>
+            <Text style={[s.headerDayValue, { color: C.text }]}>
+              Day {day} of {totalDays}
+            </Text>
+          </View>
+          <View
+            style={[
+              s.headerStatusPill,
+              {
+                backgroundColor: isCompleted
+                  ? C.success + '20'
+                  : C.primary + '15',
+                borderColor: isCompleted ? C.success + '30' : C.primary + '25',
+              },
+            ]}
+          >
+            <Text
+              style={[
+                s.headerStatusText,
+                { color: isCompleted ? C.success : C.primary },
+              ]}
+            >
+              {isCompleted ? 'COMPLETED' : 'IN PROGRESS'}
+            </Text>
+          </View>
+        </View>
+
+        <View
+          style={[
+            s.headerProgressTrack,
+            {
+              backgroundColor: isDark
+                ? 'rgba(255,255,255,0.1)'
+                : 'rgba(0,0,0,0.05)',
+            },
+          ]}
+        >
+          <View
+            style={[
+              s.headerProgressFill,
+              {
+                width: `${(day / totalDays) * 100}%`,
+                backgroundColor: isCompleted ? C.success : C.primary,
+              },
+            ]}
+          />
+        </View>
+      </LinearGradient>
 
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
       >
+        <View style={s.assignmentIntro}>
+          <Text style={[s.assignmentTitle, { color: C.text }]}>
+            {assignment.title || `Reading for Day ${day}`}
+          </Text>
+          {assignment.chapters && (
+            <View style={s.assignmentMetaRow}>
+              <View
+                style={[
+                  s.assignmentBadge,
+                  { backgroundColor: C.primary + '10' },
+                ]}
+              >
+                <BookOpen size={12} color={C.primary} />
+                <Text style={[s.assignmentBadgeText, { color: C.primary }]}>
+                  {assignment.chapters.length} Chapters
+                </Text>
+              </View>
+              {hasQuiz && (
+                <View
+                  style={[s.assignmentBadge, { backgroundColor: '#8b5cf615' }]}
+                >
+                  <HelpCircle size={12} color="#8b5cf6" />
+                  <Text style={[s.assignmentBadgeText, { color: '#8b5cf6' }]}>
+                    {quizTotal} Quiz
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
         {/* ── Chapters ─────────────────────── */}
         <View style={[s.card, { backgroundColor: C.cardBackground }]}>
           <SectionHeading
-            icon={<BookOpen size={14} color={C.primary} />}
-            title="Today's Reading"
+            icon={<BookOpen size={16} color={C.primary} />}
+            title="Scripture Passages"
             color={C.primary}
           />
-          {assignment.chapters.map((ch, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={[
-                s.chapterRow,
-                { borderColor: isDark ? '#2D3748' : '#EEF0F3' },
-              ]}
-              onPress={() =>
-                navigation.navigate(route.bible, {
-                  bookName: ch.book,
-                  chapter: ch.chapter,
-                  reflectionQuestions: assignment?.reflectionQuestions ?? [],
-                  dayTitle: assignment?.title ?? `Day ${day}`,
-                  planTitle: planTitle,
-                })
-              }
-              activeOpacity={0.7}
-            >
-              <View
+          <View style={s.chaptersList}>
+            {assignment.chapters.map((ch, idx) => (
+              <TouchableOpacity
+                key={idx}
                 style={[
-                  s.chapterIconBox,
-                  { backgroundColor: C.primary + '18' },
+                  s.modernChapterCard,
+                  {
+                    borderColor: isDark
+                      ? 'rgba(255,255,255,0.08)'
+                      : 'rgba(0,0,0,0.05)',
+                    backgroundColor: isDark
+                      ? 'rgba(255,255,255,0.03)'
+                      : 'rgba(0,0,0,0.02)',
+                  },
                 ]}
+                onPress={() => handleOpenBible(ch.book, ch.chapter)}
+                activeOpacity={0.7}
               >
-                <BookOpen size={18} color={C.primary} />
-              </View>
-              <View style={s.chapterMeta}>
-                <Text style={[s.chapterName, { color: C.text }]}>
-                  {ch.book} {ch.chapter}
-                </Text>
-                <Text style={[s.chapterHint, { color: C.textSecondary }]}>
-                  Tap to read
-                </Text>
-              </View>
-              <View
-                style={[
-                  s.chapterArrow,
-                  { backgroundColor: isDark ? '#2D3748' : '#F3F4F6' },
-                ]}
-              >
-                <ChevronRight size={15} color={C.textSecondary} />
-              </View>
-            </TouchableOpacity>
-          ))}
+                <View
+                  style={[s.chapterIconCircle, { backgroundColor: C.primary }]}
+                >
+                  <PlayCircle size={20} color="#fff" />
+                </View>
+                <View style={s.chapterInfoBody}>
+                  <Text style={[s.chapterBookName, { color: C.text }]}>
+                    {ch.book}
+                  </Text>
+                  <Text style={[s.chapterNumberLabel, { color: C.muted }]}>
+                    Chapter {ch.chapter}
+                  </Text>
+                </View>
+                <View
+                  style={[s.readCta, { backgroundColor: C.primary + '15' }]}
+                >
+                  <Text style={[s.readCtaText, { color: C.primary }]}>
+                    READ
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* ── Reflection Questions (no-quiz) ── */}
@@ -778,29 +931,81 @@ export default function DailyReadingScreen() {
           assignment.reflectionQuestions.length > 0 && (
             <View style={[s.card, { backgroundColor: C.cardBackground }]}>
               <SectionHeading
-                icon={<Lightbulb size={14} color="#F59E0B" />}
-                title="Reflection Questions"
-                color="#F59E0B"
+                icon={<MessageSquare size={16} color="#f59e0b" />}
+                title="Personal Reflection"
+                color="#f59e0b"
               />
-              {assignment.reflectionQuestions.map((q, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    s.reflectionRow,
-                    {
-                      borderLeftColor: C.primary + '60',
-                      backgroundColor: isDark ? '#1A2332' : '#F8FAFF',
-                    },
-                  ]}
-                >
-                  <View
-                    style={[s.reflectionNum, { backgroundColor: C.primary }]}
+              <Text style={[s.reflectionSubtitle, { color: C.muted }]}>
+                Take a moment to meditate on these questions as you read today's
+                scripture.
+              </Text>
+              {assignment.reflectionQuestions.map((q, idx) => {
+                const isPondered = ponderedReflections.has(idx);
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      const next = new Set(ponderedReflections);
+                      if (isPondered) next.delete(idx);
+                      else next.add(idx);
+                      setPonderedReflections(next);
+                    }}
+                    style={[
+                      s.modernReflectionRow,
+                      {
+                        backgroundColor: isDark
+                          ? 'rgba(255,255,255,0.03)'
+                          : 'rgba(0,0,0,0.02)',
+                        borderColor: isPondered ? '#f59e0b40' : 'transparent',
+                        borderWidth: 1,
+                      },
+                    ]}
                   >
-                    <Text style={s.reflectionNumText}>{idx + 1}</Text>
-                  </View>
-                  <Text style={[s.reflectionText, { color: C.text }]}>{q}</Text>
-                </View>
-              ))}
+                    <View style={s.reflectionContentRow}>
+                      <View
+                        style={[
+                          s.reflectionIconBox,
+                          {
+                            backgroundColor: isPondered
+                              ? '#f59e0b'
+                              : '#f59e0b20',
+                          },
+                        ]}
+                      >
+                        {isPondered ? (
+                          <CheckCircle2 size={16} color="#fff" />
+                        ) : (
+                          <Lightbulb size={16} color="#f59e0b" />
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          s.reflectionBodyText,
+                          {
+                            color: C.text,
+                            opacity: isPondered ? 0.6 : 1,
+                            textDecorationLine: isPondered
+                              ? 'line-through'
+                              : 'none',
+                          },
+                        ]}
+                      >
+                        {q}
+                      </Text>
+                    </View>
+                    {!isPondered && (
+                      <View style={s.ponderAction}>
+                        <Text
+                          style={[s.ponderActionText, { color: '#f59e0b' }]}
+                        >
+                          PONDER
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
 
@@ -1679,4 +1884,189 @@ const s = StyleSheet.create({
   },
   emptyTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
   emptySubtitle: { fontSize: 14, lineHeight: 22, textAlign: 'center' },
+
+  // Modern Headers & Assignments
+  modernHeader: {
+    paddingTop: 50,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: 25,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  headerBackBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerPlanTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 10,
+  },
+  headerDayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  headerDayCol: {
+    flex: 1,
+  },
+  headerDayLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  headerDayValue: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  headerStatusPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  headerStatusText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  headerProgressTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  headerProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  assignmentIntro: {
+    marginBottom: 25,
+  },
+  assignmentTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    lineHeight: 32,
+    marginBottom: 10,
+  },
+  assignmentMetaRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  assignmentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  assignmentBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  // Chapters List
+  chaptersList: {
+    gap: 12,
+    marginTop: 5,
+  },
+  modernChapterCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 18,
+  },
+  chapterIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  chapterInfoBody: {
+    flex: 1,
+  },
+  chapterBookName: {
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  chapterNumberLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  readCta: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  readCtaText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+
+  // Reflections
+  reflectionSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 15,
+  },
+  modernReflectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 18,
+    marginBottom: 12,
+  },
+  reflectionContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  reflectionIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  reflectionBodyText: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+    flex: 1,
+  },
+  ponderAction: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  ponderActionText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
 });

@@ -145,9 +145,15 @@ export interface ReadingPlanResponse {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const getAdminDashboardStats = async (): Promise<DashboardStats> => {
-  const response = await sendPostRequest<DashboardStats>('admin', 'get-admin-dashboard-stats', {});
+  const response = await sendPostRequest<DashboardStats>(
+    'admin',
+    'get-admin-dashboard-stats',
+    {},
+  );
   if (response.returnCode !== 200) {
-    throw new Error(response.returnMessage || 'Failed to fetch dashboard stats');
+    throw new Error(
+      response.returnMessage || 'Failed to fetch dashboard stats',
+    );
   }
   return response.returnData as DashboardStats;
 };
@@ -161,11 +167,15 @@ export const getUsersByAdmin = async (
   page: number = 1,
   pageSize: number = 10,
 ): Promise<UsersResponse> => {
-  const response = await sendPostRequest<UsersResponse>('admin', 'get-users-by-admin', {
-    search: search || null,
-    page,
-    pageSize,
-  });
+  const response = await sendPostRequest<UsersResponse>(
+    'admin',
+    'get-users-by-admin',
+    {
+      search: search || null,
+      page,
+      pageSize,
+    },
+  );
   if (response.returnCode !== 200) {
     throw new Error(response.returnMessage || 'Failed to fetch users');
   }
@@ -226,7 +236,9 @@ export const toggleUserVerificationByAdmin = async (
     isVerified,
   });
   if (response.returnCode !== 200) {
-    throw new Error(response.returnMessage || 'Failed to toggle user verification');
+    throw new Error(
+      response.returnMessage || 'Failed to toggle user verification',
+    );
   }
 };
 
@@ -245,11 +257,15 @@ export const getAllActivity = async (
     endedOnly?: boolean;
   },
 ): Promise<ActivityResponse> => {
-  const response = await sendPostRequest<ActivityResponse>('admin', 'get-all-activity', {
-    page,
-    pageSize,
-    ...filters,
-  });
+  const response = await sendPostRequest<ActivityResponse>(
+    'admin',
+    'get-all-activity',
+    {
+      page,
+      pageSize,
+      ...filters,
+    },
+  );
   if (response.returnCode !== 200) {
     throw new Error(response.returnMessage || 'Failed to fetch activity');
   }
@@ -261,18 +277,24 @@ export const getUserActivity = async (
   page: number = 1,
   pageSize: number = 10,
 ): Promise<ActivityResponse> => {
-  const response = await sendPostRequest<ActivityResponse>('admin', 'get-user-activity', {
-    username,
-    page,
-    pageSize,
-  });
+  const response = await sendPostRequest<ActivityResponse>(
+    'admin',
+    'get-user-activity',
+    {
+      username,
+      page,
+      pageSize,
+    },
+  );
   if (response.returnCode !== 200) {
     throw new Error(response.returnMessage || 'Failed to fetch user activity');
   }
   return response.returnData as ActivityResponse;
 };
 
-export const deleteActivityByAdmin = async (activityId: number): Promise<void> => {
+export const deleteActivityByAdmin = async (
+  activityId: number,
+): Promise<void> => {
   const response = await sendPostRequest('admin', 'delete-activity', {
     activityId,
   });
@@ -322,10 +344,14 @@ export const addDailyVerse = async (
   },
   id?: number,
 ): Promise<DailyVerse> => {
-  const response = await sendPostRequest<DailyVerse>('admin', 'add-daily-verse', {
-    id,
-    ...verseData,
-  });
+  const response = await sendPostRequest<DailyVerse>(
+    'admin',
+    'add-daily-verse',
+    {
+      id,
+      ...verseData,
+    },
+  );
   if (response.returnCode !== 200) {
     throw new Error(response.returnMessage || 'Failed to add daily verse');
   }
@@ -365,18 +391,20 @@ export const getAllReadingPlansAdmin = async (
   return response.returnData as ReadingPlanResponse;
 };
 
-export const createReadingPlan = async (
-  planData: {
-    title: string;
-    description?: string;
-    totalDays: number;
-    questionsEnabled?: boolean;
-    category?: string;
-    difficulty?: string;
-    isActive?: boolean;
-  },
-): Promise<ReadingPlan> => {
-  const response = await sendPostRequest<ReadingPlan>('reading-plans', 'create', planData);
+export const createReadingPlan = async (planData: {
+  title: string;
+  description?: string;
+  totalDays: number;
+  questionsEnabled?: boolean;
+  category?: string;
+  difficulty?: string;
+  isActive?: boolean;
+}): Promise<ReadingPlan> => {
+  const response = await sendPostRequest<ReadingPlan>(
+    'reading-plans',
+    'create',
+    planData,
+  );
   if (response.returnCode !== 200) {
     throw new Error(response.returnMessage || 'Failed to create reading plan');
   }
@@ -395,10 +423,14 @@ export const updateReadingPlan = async (
     isActive?: boolean;
   },
 ): Promise<ReadingPlan> => {
-  const response = await sendPostRequest<ReadingPlan>('reading-plans', 'update', {
-    planId,
-    ...planData,
-  });
+  const response = await sendPostRequest<ReadingPlan>(
+    'reading-plans',
+    'update',
+    {
+      planId,
+      ...planData,
+    },
+  );
   if (response.returnCode !== 200) {
     throw new Error(response.returnMessage || 'Failed to update reading plan');
   }
@@ -423,58 +455,159 @@ export interface Assignment {
 export const getPlanAssignments = async (
   planId: string,
   dayNumber: number,
-): Promise<{ returnCode: number; returnData?: Assignment; returnMessage?: string }> => {
-  const response = await sendPostRequest<Assignment>('reading-plans', 'daily-assignment', {
-    planId,
-    dayNumber,
-  });
+): Promise<{
+  returnCode: number;
+  returnData?: Assignment;
+  returnMessage?: string;
+}> => {
+  const response = await sendPostRequest<Assignment>(
+    'reading-plans',
+    'daily-assignment',
+    {
+      planId,
+      dayNumber,
+    },
+  );
   return response;
 };
 
-export const addAssignment = async (
-  assignmentData: {
-    planId: string;
-    dayNumber: number;
-    title: string;
-    chapters: { book: string; chapter: number }[];
-    reflectionQuestions?: string[];
-    assignmentId?: number;
-  },
-): Promise<{ returnCode: number; returnData?: Assignment; returnMessage?: string }> => {
-  const response = await sendPostRequest<Assignment>('reading-plans', 'add-assignment', assignmentData);
+export const addAssignment = async (assignmentData: {
+  planId: string;
+  dayNumber: number;
+  title: string;
+  chapters: { book: string; chapter: number }[];
+  reflectionQuestions?: string[];
+  assignmentId?: number;
+}): Promise<{
+  returnCode: number;
+  returnData?: Assignment;
+  returnMessage?: string;
+}> => {
+  const response = await sendPostRequest<Assignment>(
+    'reading-plans',
+    'add-assignment',
+    assignmentData,
+  );
   return response;
 };
 
 export const getPlanQuizQuestions = async (
   planId: string,
   dayNumber: number,
-): Promise<{ returnCode: number; returnData?: any[]; returnMessage?: string }> => {
-  const response = await sendPostRequest<any[]>('reading-plans', 'quiz-questions', {
-    planId,
-    dayNumber,
-  });
+): Promise<{
+  returnCode: number;
+  returnData?: any[];
+  returnMessage?: string;
+}> => {
+  const response = await sendPostRequest<any[]>(
+    'reading-plans',
+    'quiz-questions',
+    {
+      planId,
+      dayNumber,
+    },
+  );
   return response;
 };
 
-export const addQuizQuestions = async (
-  quizData: {
-    planId: string;
-    dayNumber: number;
-    questions: {
-      question: string;
-      options: [string, string, string, string];
-      correctAnswer: number;
-      explanation: string;
-    }[];
-  },
-): Promise<{ returnCode: number; returnData?: any[]; returnMessage?: string }> => {
-  const response = await sendPostRequest('reading-plans', 'add-quiz-questions', quizData);
+export const addQuizQuestions = async (quizData: {
+  planId: string;
+  dayNumber: number;
+  questions: {
+    question: string;
+    options: [string, string, string, string];
+    correctAnswer: number;
+    explanation: string;
+  }[];
+}): Promise<{
+  returnCode: number;
+  returnData?: any[];
+  returnMessage?: string;
+}> => {
+  const response = await sendPostRequest(
+    'reading-plans',
+    'add-quiz-questions',
+    quizData,
+  );
   return response;
 };
 
 export const deleteQuizQuestion = async (questionId: number): Promise<void> => {
-  const response = await sendPostRequest('reading-plans', 'delete-quiz-question', { questionId });
+  const response = await sendPostRequest(
+    'reading-plans',
+    'delete-quiz-question',
+    { questionId },
+  );
   if (response.returnCode !== 200) {
     throw new Error(response.returnMessage || 'Failed to delete quiz question');
   }
+};
+
+export interface AdminPlanStats {
+  planId: string;
+  title: string;
+  totalDays: number;
+  isActive: boolean;
+  totalEnrollments: number;
+  completedEnrollments: number;
+  inProgressEnrollments: number;
+  completionRate: number;
+  totalQuizAnswers: number;
+  totalQuizCorrect: number;
+  totalQuizWrong: number;
+  globalQuizAccuracy: number;
+  description: string;
+  difficultQuestions: {
+    id: string;
+    question: string;
+    dayNumber: number;
+    totalAnswers: number;
+    accuracy: number;
+  }[];
+  assignmentsCount: number;
+  questionsCount: number;
+  enrollmentTrend: { date: string; count: number }[];
+  completionTrend: { date: string; count: number }[];
+  structure: {
+    day: number;
+    title: string;
+    chapters: { book: string; chapter: number }[];
+  }[];
+  users: {
+    userId: string;
+    name: string;
+    email: string;
+    username: string;
+    photo: string | null;
+    startDate: string;
+    lastActivity: string | null;
+    isCompleted: boolean;
+    completedDate: string | null;
+    streak: number;
+    completedDaysCount: number;
+    completionPercentage: number;
+    status: 'completed' | 'inprogress' | 'started';
+    quizStats: {
+      total: number;
+      correct: number;
+      wrong: number;
+      accuracy: number;
+    };
+  }[];
+}
+
+export const getAdminPlanStats = async (
+  planId: string,
+): Promise<AdminPlanStats> => {
+  const response = await sendPostRequest<AdminPlanStats>(
+    'reading-plans',
+    'admin-stats',
+    { planId },
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(
+      response.returnMessage || 'Failed to fetch plan statistics',
+    );
+  }
+  return response.returnData as AdminPlanStats;
 };

@@ -25,12 +25,12 @@ import {
   createThemeStyles,
 } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { route } from './routes';
 
 interface BottomTabProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  activeTab?: string;
+  setActiveTab?: (tab: string) => void;
   isGuest?: boolean;
   onGuestTabPress?: () => void;
 }
@@ -43,7 +43,7 @@ interface TabItem {
 }
 
 export default function BottomTab({
-  activeTab,
+  activeTab: manualActiveTab,
   setActiveTab,
   isGuest = false,
   onGuestTabPress,
@@ -59,6 +59,34 @@ export default function BottomTab({
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
 
   const navigation = useNavigation<any>();
+
+  // ── Sync with actual navigation state ──────────────────────────────
+  const navigationState = useNavigationState(state => state);
+  const currentRouteName = navigationState?.routes[navigationState.index]?.name;
+
+  const activeTab = useMemo(() => {
+    // Map route names to tab IDs
+    const routeToTab: Record<string, string> = {
+      [route.home]: 'home',
+      [route.bible]: 'bible',
+      [route.favorites]: 'favorites',
+      [route.readingPlan]: 'Plan',
+      [route.profile]: 'profile',
+      [route.adminDashboard]: 'adminDashboard',
+      [route.adminUsers]: 'adminUsers',
+      [route.adminDailyVerse]: 'adminVerse',
+      [route.adminReadingPlans]: 'adminPlans',
+    };
+
+    const detectedTab = currentRouteName ? routeToTab[currentRouteName] : null;
+
+    // If we detected a tab from the current route, use it!
+    // This ensures back navigation works perfectly.
+    if (detectedTab) return detectedTab;
+
+    // Fallback to manual prop if navigation state is unavailable or doesn't match
+    return manualActiveTab || '';
+  }, [manualActiveTab, currentRouteName]);
 
   // Different tabs based on user role
   let tabs: TabItem[] = [];
@@ -146,7 +174,9 @@ export default function BottomTab({
                   onGuestTabPress?.();
                   return;
                 }
-                setActiveTab(tab.id);
+                if (setActiveTab) {
+                  setActiveTab(tab.id);
+                }
                 tab.onPress();
               }}
             >

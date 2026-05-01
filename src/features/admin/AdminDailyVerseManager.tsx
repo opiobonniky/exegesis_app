@@ -15,7 +15,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
   getAllDailyVerses,
   deleteDailyVerse,
@@ -30,9 +30,18 @@ import {
   Trash2,
   Pencil,
   Sun,
+  User,
+  Clock,
+  Book,
+  Calendar,
 } from 'lucide-react-native';
 import BottomTab from '../../component/navigations/BottomTab';
 import { showToast } from '../../helpers/Toash.helper';
+import { getVerseText } from '../../utilits/bibleUtils';
+
+export interface ExtendedDailyVerse extends DailyVerse {
+  creatorName?: string;
+}
 
 const getTheme = (isDark: boolean) => {
   const colors = getColors(isDark);
@@ -57,7 +66,7 @@ const AdminDailyVerseManager: React.FC = () => {
   const theme = getTheme(isDark);
   const styles = getStyles(theme);
 
-  const [verses, setVerses] = useState<DailyVerse[]>([]);
+  const [verses, setVerses] = useState<ExtendedDailyVerse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('adminVerse');
@@ -68,7 +77,9 @@ const AdminDailyVerseManager: React.FC = () => {
         smartDefault: true,
         futureDays: 30,
       });
-      setVerses(response.content || []);
+
+      console.log('Fetched daily verses:', response.content || []);
+      setVerses((response.content as ExtendedDailyVerse[]) || []);
     } catch (error) {
       console.error('Failed to fetch daily verses:', error);
     } finally {
@@ -76,9 +87,11 @@ const AdminDailyVerseManager: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchVerses();
-  }, [fetchVerses]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchVerses();
+    }, [fetchVerses]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -117,10 +130,16 @@ const AdminDailyVerseManager: React.FC = () => {
     );
   };
 
-  const renderVerse = ({ item }: { item: DailyVerse }) => (
-    <View style={[styles.verseCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+  const renderVerse = ({ item }: { item: ExtendedDailyVerse }) => (
+    <View
+      style={[
+        styles.verseCard,
+        { backgroundColor: theme.cardBackground, borderColor: theme.border },
+      ]}
+    >
       <View style={styles.verseHeader}>
         <View style={styles.verseRef}>
+          <Book size={16} color={theme.primary} />
           <Text style={[styles.verseRefText, { color: theme.text }]}>
             {item.bookName} {item.chapter}:{item.verseNumber}
           </Text>
@@ -128,25 +147,83 @@ const AdminDailyVerseManager: React.FC = () => {
             <CheckCircle2 size={14} color={theme.success} />
           ) : null}
         </View>
-        <Text style={[styles.verseDate, { color: theme.muted }]}>
-          {item.displayDate ? new Date(item.displayDate).toLocaleDateString() : '—'}
+        <View style={styles.dateBadge}>
+          <Calendar size={12} color={theme.muted} />
+          <Text style={[styles.verseDate, { color: theme.muted }]}>
+            {item.displayDate && typeof item.displayDate === 'string'
+              ? new Date(item.displayDate).toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : '—'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.verseContentContainer}>
+        <Text style={[styles.verseText, { color: theme.textSecondary }]}>
+          "{getVerseText(item.bookName, item.chapter, item.verseNumber)}"
         </Text>
       </View>
 
       {item.reflection && (
-        <Text style={[styles.verseReflection, { color: theme.textSecondary }]} numberOfLines={2}>
-          {item.reflection}
-        </Text>
+        <View
+          style={[
+            styles.reflectionContainer,
+            { backgroundColor: isDark ? '#ffffff05' : '#f8fafc' },
+          ]}
+        >
+          <Text style={[styles.reflectionLabel, { color: theme.muted }]}>
+            REFLECTION
+          </Text>
+          <Text
+            style={[styles.verseReflection, { color: theme.textSecondary }]}
+            numberOfLines={3}
+          >
+            {item.reflection}
+          </Text>
+        </View>
       )}
 
+      <View style={styles.metaRow}>
+        <View style={styles.metaItem}>
+          <User size={12} color={theme.muted} />
+          <Text style={[styles.metaText, { color: theme.muted }]}>
+            {item.creatorName || 'System'}
+          </Text>
+        </View>
+        <View style={styles.metaItem}>
+          <Clock size={12} color={theme.muted} />
+          <Text style={[styles.metaText, { color: theme.muted }]}>
+            {item.createdOn
+              ? new Date(item.createdOn).toLocaleDateString()
+              : '—'}
+          </Text>
+        </View>
+      </View>
+
       <View style={styles.verseActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleEditPress(item)}>
+        <TouchableOpacity
+          style={[
+            styles.actionButton,
+            { backgroundColor: `${theme.primary}10` },
+          ]}
+          onPress={() => handleEditPress(item)}
+        >
           <Pencil size={14} color={theme.primary} />
-          <Text style={[styles.actionButtonText, { color: theme.primary }]}>Edit</Text>
+          <Text style={[styles.actionButtonText, { color: theme.primary }]}>
+            Edit
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item)}>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: `${theme.error}10` }]}
+          onPress={() => handleDelete(item)}
+        >
           <Trash2 size={14} color={theme.error} />
-          <Text style={[styles.actionButtonText, { color: theme.error }]}>Delete</Text>
+          <Text style={[styles.actionButtonText, { color: theme.error }]}>
+            Delete
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -155,8 +232,13 @@ const AdminDailyVerseManager: React.FC = () => {
   const renderEmpty = () => (
     <View style={styles.empty}>
       <Sun size={48} color={theme.muted} />
-      <Text style={[styles.emptyText, { color: theme.muted }]}>No daily verses found</Text>
-      <TouchableOpacity style={[styles.emptyButton, { backgroundColor: theme.primary }]} onPress={handleAddPress}>
+      <Text style={[styles.emptyText, { color: theme.muted }]}>
+        No daily verses found
+      </Text>
+      <TouchableOpacity
+        style={[styles.emptyButton, { backgroundColor: theme.primary }]}
+        onPress={handleAddPress}
+      >
         <Text style={styles.emptyButtonText}>Add First Verse</Text>
       </TouchableOpacity>
     </View>
@@ -164,15 +246,25 @@ const AdminDailyVerseManager: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.surface, borderBottomColor: theme.border },
+        ]}
+      >
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ChevronLeft size={20} color={theme.primary} />
         </TouchableOpacity>
         <View style={styles.headerTitle}>
           <Sun size={20} color={theme.primary} />
-          <Text style={[styles.title, { color: theme.text }]}>Daily Verses</Text>
+          <Text style={[styles.title, { color: theme.text }]}>
+            Daily Verses
+          </Text>
         </View>
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: theme.primary }]} onPress={handleAddPress}>
+        <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: theme.primary }]}
+          onPress={handleAddPress}
+        >
           <Plus size={16} color="#fff" />
           <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
@@ -275,7 +367,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     verseActions: {
       flexDirection: 'row',
       justifyContent: 'flex-end',
-      gap: 16,
+      gap: 12,
       marginTop: 12,
       paddingTop: 12,
       borderTopWidth: 1,
@@ -285,10 +377,13 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 6,
     },
     actionButtonText: {
       fontSize: 13,
-      fontWeight: '500',
+      fontWeight: '600',
     },
     empty: {
       flex: 1,
@@ -312,6 +407,51 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     bottomPadding: {
       height: 80,
+    },
+    verseText: {
+      fontSize: 15,
+      fontStyle: 'italic',
+      lineHeight: 22,
+    },
+    dateBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: 'rgba(0,0,0,0.03)',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
+    verseContentContainer: {
+      marginTop: 12,
+      paddingHorizontal: 4,
+    },
+    reflectionContainer: {
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      gap: 4,
+    },
+    reflectionLabel: {
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+      marginTop: 12,
+      paddingHorizontal: 4,
+    },
+    metaItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    metaText: {
+      fontSize: 11,
+      fontWeight: '500',
     },
   });
 

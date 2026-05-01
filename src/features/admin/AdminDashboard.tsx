@@ -894,15 +894,45 @@ const AdminDashboard: React.FC = () => {
             <CircleChart data={roleData} size={110} />
             <View style={rootStyles.legendContainer}>
               {roleData.map((item, index) => (
-                <View key={index} style={rootStyles.legendItem}>
+                <View
+                  key={index}
+                  style={[
+                    rootStyles.legendItem,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(255,255,255,0.05)'
+                        : 'rgba(0,0,0,0.02)',
+                    },
+                  ]}
+                >
+                  <View style={rootStyles.legendLabelGroup}>
+                    <View
+                      style={[
+                        rootStyles.legendDot,
+                        { backgroundColor: item.color },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        rootStyles.legendLabel,
+                        { color: isDark ? theme.textSecondary : '#4b5563' },
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </View>
                   <View
                     style={[
-                      rootStyles.legendDot,
-                      { backgroundColor: item.color },
+                      rootStyles.legendValueBadge,
+                      { backgroundColor: `${item.color}15` },
                     ]}
-                  />
-                  <Text style={rootStyles.legendLabel}>{item.label}</Text>
-                  <Text style={rootStyles.legendValue}>{item.value}</Text>
+                  >
+                    <Text
+                      style={[rootStyles.legendValue, { color: item.color }]}
+                    >
+                      {item.value}
+                    </Text>
+                  </View>
                 </View>
               ))}
             </View>
@@ -1165,13 +1195,47 @@ const rootStyles = StyleSheet.create({
   distributionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    paddingVertical: 10,
   },
-  legendContainer: { flex: 1, marginLeft: 16 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  legendDot: { width: 12, height: 12, borderRadius: 6, marginRight: 10 },
-  legendLabel: { flex: 1, fontSize: 13, fontWeight: '500' },
-  legendValue: { fontSize: 13, fontWeight: '700' },
+  legendContainer: {
+    flex: 1,
+    marginLeft: 24,
+    gap: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    padding: 10,
+    borderRadius: 12,
+  },
+  legendLabelGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 10,
+  },
+  legendLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  legendValueBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  legendValue: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
   healthGrid: { gap: 18 },
   healthItem: { marginBottom: 4 },
   healthHeader: {

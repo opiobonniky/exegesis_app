@@ -33,4 +33,5 @@ export const route = {
   adminActivity: 'AdminActivity',
   adminDailyVerse: 'AdminDailyVerse',
   adminReadingPlans: 'AdminReadingPlans',
+  adminReadingPlanDetail: 'AdminReadingPlanDetail',
 };
