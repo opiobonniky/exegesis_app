@@ -1,16 +1,4 @@
-/**
- * GuestBanner.tsx
- *
- * Two modes:
- *   1. Auto mode  — appears 1.2s after mount when isGuest=true (slim nudge bar)
- *   2. Triggered  — shown immediately when a gated action is attempted,
- *                   displays a custom contextual message
- *
- * Props:
- *   triggered?     boolean  — force the banner open (from a gated action)
- *   triggerMessage? string  — message to show when triggered
- *   onTriggeredDismiss? ()=>void — called when user dismisses a triggered banner
- */
+
 
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import {

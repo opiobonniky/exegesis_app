@@ -22,6 +22,22 @@
           }
         },
         {
+          "client_id": "270479211517-g5vnbnaum00j8gav0jlqts07aldpe7uu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.himfirstmedia.exegesis",
+            "certificate_hash": "7120f4521ac182e881bedcd236138376cfd20e55"
+          }
+        },
+        {
+          "client_id": "270479211517-qp1bdrg1iv4odtv83cgdavblqalvija2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.himfirstmedia.exegesis",
+            "certificate_hash": "b9a0eb79ec6f9d139c7bb23592a7adee8de2a1e5"
+          }
+        },
+        {
           "client_id": "270479211517-kinap7kv1bcd3dlpuodt5fkju361fdqb.apps.googleusercontent.com",
           "client_type": 3
         }

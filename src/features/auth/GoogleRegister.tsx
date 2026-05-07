@@ -19,58 +19,130 @@ import { sendPostRequest } from '../../services/api';
 import { AppContext, UserInfo } from '../../common/AppContext';
 import { route } from '../../component/navigations/routes';
 import { showToast } from '../../helpers/Toash.helper';
-import { Eye, EyeOff, Lock, ArrowRight, Check } from 'lucide-react-native';
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  ArrowRight,
+  Check,
+  User2,
+  X,
+} from 'lucide-react-native';
 import GoogleIcon from '../../assets/icons/google-icon.svg';
 
+// ─── Password requirement definition ─────────────────────────────────────────
+const REQUIREMENTS = [
+  { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
+  { label: 'Lowercase letter', test: (p: string) => /[a-z]/.test(p) },
+  { label: 'Uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
+  { label: 'Number', test: (p: string) => /[0-9]/.test(p) },
+  {
+    label: 'Special character',
+    test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),
+  },
+];
+
+// ─── Requirement row ──────────────────────────────────────────────────────────
+const RequirementRow = ({
+  label,
+  met,
+  colors,
+}: {
+  label: string;
+  met: boolean;
+  colors: any;
+}) => (
+  <View style={s.reqRow}>
+    <View
+      style={[
+        s.reqIcon,
+        {
+          backgroundColor: met ? colors.success : 'transparent',
+          borderColor: met ? colors.success : colors.border,
+        },
+      ]}
+    >
+      {met ? (
+        <Check size={10} color="#fff" strokeWidth={3} />
+      ) : (
+        <X size={10} color={colors.muted} strokeWidth={3} />
+      )}
+    </View>
+    <Text style={[s.reqLabel, { color: met ? colors.success : colors.muted }]}>
+      {label}
+    </Text>
+  </View>
+);
+
+// ─── Main component ───────────────────────────────────────────────────────────
 const GoogleRegister: React.FC = () => {
   const navigation = useNavigation<any>();
   const appContext = useContext(AppContext);
 
-  if (!appContext) {
-    return null;
-  }
+  if (!appContext) return null;
 
   const { isDark, setUserInfo } = appContext;
   const routes = useRoute();
   const { googleId, email, firstName, lastName, photoUrl }: any =
     routes.params || {};
 
-  console.log('Received Google data:', {
-    googleId,
-    email,
-    firstName,
-    lastName,
-    photoUrl,
-  });
   const C = getColors(isDark);
+
+  // ── Animations ───────────────────────────────────────────────────────────
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
   const strengthAnim = useRef(new Animated.Value(0)).current;
 
+  // ── State ─────────────────────────────────────────────────────────────────
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
-  const getStrength = () => {
-    let score = 0;
-    if (password.length >= 8) score++;
-    if (/[a-z]/.test(password)) score++;
-    if (/[A-Z]/.test(password)) score++;
-    if (/[0-9]/.test(password)) score++;
-    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score++;
-    return score;
-  };
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const username =
+    `${firstName?.toLowerCase() || 'user'}${lastName?.toLowerCase() || ''}`.replace(
+      /\s/g,
+      '',
+    ) || 'google_user';
 
-  const strength = getStrength();
-  const allReqsMet = strength >= 5;
+  const reqResults = REQUIREMENTS.map(r => r.test(password));
+  const strength = reqResults.filter(Boolean).length;
+  const allReqsMet = strength === REQUIREMENTS.length;
   const passwordsMatch = password === confirmPassword && password.length > 0;
 
+  const getStrengthColor = () => {
+    if (strength <= 1) return C.error;
+    if (strength <= 3) return '#F59E0B';
+    return C.success;
+  };
+
+  const getStrengthLabel = () => {
+    if (strength === 0) return '';
+    if (strength <= 1) return 'Very Weak';
+    if (strength === 2) return 'Weak';
+    if (strength === 3) return 'Fair';
+    if (strength === 4) return 'Good';
+    return 'Strong';
+  };
+
+  // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 9,
+        tension: 55,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
   useEffect(() => {
@@ -81,35 +153,16 @@ const GoogleRegister: React.FC = () => {
     }).start();
   }, [strength]);
 
-  const getStrengthColor = () => {
-    if (strength <= 1) return C.error;
-    if (strength <= 3) return C.warning;
-    return C.success;
-  };
-
-  const getStrengthLabel = () => {
-    if (strength === 0) return 'Very Weak';
-    if (strength === 1) return 'Very Weak';
-    if (strength === 2) return 'Weak';
-    if (strength === 3) return 'Fair';
-    if (strength === 4) return 'Good';
-    return 'Strong';
-  };
-
-  const validate = () => {
+  // ── Submit ────────────────────────────────────────────────────────────────
+  const handleRegister = async () => {
     if (!allReqsMet) {
-      showToast('error', 'Password is too weak');
-      return false;
+      showToast('error', 'Password does not meet all requirements');
+      return;
     }
     if (!passwordsMatch) {
       showToast('error', 'Passwords do not match');
-      return false;
+      return;
     }
-    return true;
-  };
-
-  const handleRegister = async () => {
-    if (!validate()) return;
 
     setLoading(true);
     try {
@@ -118,17 +171,13 @@ const GoogleRegister: React.FC = () => {
         'complete-google-registration',
         {
           googleId,
-          username:
-            `${firstName?.toLowerCase() || 'user'}${lastName?.toLowerCase() || ''}`.replace(
-              /\s/g,
-              '',
-            ) || 'google_user',
+          username,
           password,
           firstName: firstName || 'Google',
           lastName: lastName || 'User',
           phoneNumber: '',
           gender: 'Not specified',
-          email: email,
+          email,
           photoUrl: photoUrl || null,
         },
       );
@@ -160,25 +209,31 @@ const GoogleRegister: React.FC = () => {
     }
   };
 
-  const strengthPercent = (strength / 5) * 100;
   const strengthColor = getStrengthColor();
+  const canSubmit = allReqsMet && passwordsMatch && !loading;
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <View
-      style={[s.root, { backgroundColor: isDark ? C.background : '#FFFFFF' }]}
-    >
+    <View style={[s.root, { backgroundColor: C.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={s.keyboardView}
+        style={s.flex}
       >
         <ScrollView
           contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Animated.View style={[s.container, { opacity: fadeAnim }]}>
-            <View style={s.logoWrapper}>
+          <Animated.View
+            style={[
+              s.container,
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            ]}
+          >
+            {/* ── Avatar ──────────────────────────────────────────────── */}
+            <View style={s.avatarWrap}>
               {photoUrl ? (
                 <Image source={{ uri: photoUrl }} style={s.avatar} />
               ) : (
@@ -191,28 +246,71 @@ const GoogleRegister: React.FC = () => {
                   </Text>
                 </View>
               )}
+              {/* Google badge */}
+              <View
+                style={[
+                  s.googleBadge,
+                  { backgroundColor: C.surface, borderColor: C.border },
+                ]}
+              >
+                <GoogleIcon width={14} height={14} />
+              </View>
             </View>
 
+            {/* ── Header ──────────────────────────────────────────────── */}
             <Text style={[s.welcomeText, { color: C.text }]}>
               Welcome, {firstName}!
             </Text>
             <Text style={[s.subText, { color: C.muted }]}>
-              Complete registration to continue
+              Set a password to complete your account
             </Text>
 
-            <View style={[s.emailCard, { backgroundColor: C.surface }]}>
-              <View style={s.emailRow}>
-                <GoogleIcon width={18} height={18} />
-                <Text style={[s.emailText, { color: C.text }]}>{email}</Text>
+            {/* ── Email card ───────────────────────────────────────────── */}
+            <View
+              style={[
+                s.emailCard,
+                { backgroundColor: C.surface, borderColor: C.border },
+              ]}
+            >
+              <GoogleIcon width={16} height={16} />
+              <Text style={[s.emailText, { color: C.text }]} numberOfLines={1}>
+                {email}
+              </Text>
+            </View>
+
+            {/* ── Username (read-only info) ────────────────────────────── */}
+            <View style={s.field}>
+              <Text style={[s.label, { color: C.text }]}>Username</Text>
+              <View
+                style={[
+                  s.inputRow,
+                  s.readonlyRow,
+                  {
+                    borderColor: C.border,
+                    backgroundColor: isDark ? C.surface : '#F5F5F5',
+                  },
+                ]}
+              >
+                <User2 size={17} color={C.muted} />
+                <Text style={[s.readonlyText, { color: C.muted }]}>
+                  {username}
+                </Text>
               </View>
             </View>
 
-            <View style={s.inputSection}>
-              <Text style={[s.inputLabel, { color: C.text }]}>
-                Create Password
-              </Text>
-              <View style={[s.inputContainer, { borderColor: C.border }]}>
-                <Lock size={18} color={C.muted} />
+            {/* ── Password ─────────────────────────────────────────────── */}
+            <View style={s.field}>
+              <Text style={[s.label, { color: C.text }]}>Create Password</Text>
+              <View
+                style={[
+                  s.inputRow,
+                  {
+                    borderColor: passwordFocused ? C.primary : C.border,
+                    backgroundColor: isDark ? C.surface : '#F5F5F5',
+                  },
+                ]}
+              >
+                <Lock size={17} color={C.muted} />
                 <TextInput
                   style={[s.input, { color: C.text }]}
                   placeholder="Enter password"
@@ -221,24 +319,33 @@ const GoogleRegister: React.FC = () => {
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
                 />
                 <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
+                  onPress={() => setShowPassword(v => !v)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   {showPassword ? (
-                    <EyeOff size={18} color={C.muted} />
+                    <EyeOff size={17} color={C.muted} />
                   ) : (
-                    <Eye size={18} color={C.muted} />
+                    <Eye size={17} color={C.muted} />
                   )}
                 </TouchableOpacity>
               </View>
 
+              {/* Strength bar */}
               {password.length > 0 && (
-                <View style={s.strengthContainer}>
-                  <View style={s.strengthBarBg}>
+                <View style={s.strengthWrap}>
+                  <View
+                    style={[
+                      s.strengthTrack,
+                      { backgroundColor: isDark ? '#333' : '#E5E5E5' },
+                    ]}
+                  >
                     <Animated.View
                       style={[
-                        s.strengthBarFill,
+                        s.strengthFill,
                         {
                           backgroundColor: strengthColor,
                           width: strengthAnim.interpolate({
@@ -261,57 +368,118 @@ const GoogleRegister: React.FC = () => {
                   </Text>
                 </View>
               )}
+
+              {/* Single next unmet requirement — shown when focused or has input */}
+              {(passwordFocused || password.length > 0) && !allReqsMet && (
+                <View
+                  style={[
+                    s.reqContainer,
+                    {
+                      backgroundColor: isDark ? C.surface : '#FAFAFA',
+                      borderColor: C.border,
+                    },
+                  ]}
+                >
+                  {(() => {
+                    const nextIndex = reqResults.findIndex(met => !met);
+                    if (nextIndex === -1) return null;
+                    return (
+                      <RequirementRow
+                        label={REQUIREMENTS[nextIndex].label}
+                        met={false}
+                        colors={C}
+                      />
+                    );
+                  })()}
+                  <Text style={[s.reqProgress, { color: C.muted }]}>
+                    {strength} of {REQUIREMENTS.length} requirements met
+                  </Text>
+                </View>
+              )}
             </View>
 
-            <View style={s.inputSection}>
-              <Text style={[s.inputLabel, { color: C.text }]}>
-                Confirm Password
-              </Text>
-              <View style={[s.inputContainer, { borderColor: C.border }]}>
-                <Lock size={18} color={C.muted} />
+            {/* ── Confirm Password ─────────────────────────────────────── */}
+            <View style={s.field}>
+              <Text style={[s.label, { color: C.text }]}>Confirm Password</Text>
+              <View
+                style={[
+                  s.inputRow,
+                  {
+                    borderColor:
+                      confirmPassword.length > 0
+                        ? passwordsMatch
+                          ? C.success
+                          : C.error
+                        : C.border,
+                    backgroundColor: isDark ? C.surface : '#F5F5F5',
+                  },
+                ]}
+              >
+                <Lock size={17} color={C.muted} />
                 <TextInput
                   style={[s.input, { color: C.text }]}
                   placeholder="Confirm password"
                   placeholderTextColor={C.muted}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
-                  secureTextEntry={!showPassword}
+                  secureTextEntry={!showConfirm}
                   autoCapitalize="none"
                 />
+                <TouchableOpacity
+                  onPress={() => setShowConfirm(v => !v)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  {showConfirm ? (
+                    <EyeOff size={17} color={C.muted} />
+                  ) : (
+                    <Eye size={17} color={C.muted} />
+                  )}
+                </TouchableOpacity>
               </View>
-              {confirmPassword.length > 0 && !passwordsMatch && (
-                <Text style={[s.errorText, { color: C.error }]}>
-                  Passwords do not match
+
+              {confirmPassword.length > 0 && (
+                <Text
+                  style={[
+                    s.matchText,
+                    { color: passwordsMatch ? C.success : C.error },
+                  ]}
+                >
+                  {passwordsMatch
+                    ? '✓ Passwords match'
+                    : 'Passwords do not match'}
                 </Text>
               )}
             </View>
 
+            {/* ── Submit ───────────────────────────────────────────────── */}
             <TouchableOpacity
               style={[
                 s.submitBtn,
                 { backgroundColor: C.primaryDark },
-                (!allReqsMet || !passwordsMatch || loading) && s.btnDisabled,
+                !canSubmit && s.btnDisabled,
               ]}
               onPress={handleRegister}
-              disabled={!allReqsMet || !passwordsMatch || loading}
-              activeOpacity={0.8}
+              disabled={!canSubmit}
+              activeOpacity={0.85}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Text style={s.submitBtnText}>Continue</Text>
-                  <ArrowRight size={20} color="#FFFFFF" />
+                  <Text style={s.submitText}>Create Account</Text>
+                  <ArrowRight size={18} color="#FFFFFF" />
                 </>
               )}
             </TouchableOpacity>
 
+            {/* ── Back ─────────────────────────────────────────────────── */}
             <TouchableOpacity
-              style={s.skipBtn}
+              style={s.backBtn}
               onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
             >
-              <Text style={[s.skipText, { color: C.muted }]}>
-                Use different account
+              <Text style={[s.backText, { color: C.muted }]}>
+                Use a different account
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -321,86 +489,152 @@ const GoogleRegister: React.FC = () => {
   );
 };
 
+export default GoogleRegister;
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root: { flex: 1 },
-  keyboardView: { flex: 1 },
-  scrollContent: { flexGrow: 1, justifyContent: 'center' },
-  container: { padding: 24, alignItems: 'center' },
-  logoWrapper: { marginBottom: 16 },
-  avatar: { width: 80, height: 80, borderRadius: 40 },
+  flex: { flex: 1 },
+
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: 32,
+  },
+
+  container: {
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+
+  // Avatar
+  avatarWrap: { marginBottom: 20, position: 'relative' },
+  avatar: { width: 84, height: 84, borderRadius: 42 },
   avatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitials: { color: '#FFFFFF', fontSize: 28, fontWeight: '700' },
+  avatarInitials: { color: '#FFFFFF', fontSize: 30, fontWeight: '700' },
+  googleBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Header
   welcomeText: {
     fontSize: 24,
     fontWeight: '800',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  subText: { fontSize: 14, textAlign: 'center', marginBottom: 24 },
+  subText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+
+  // Email card
   emailCard: {
     width: '100%',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  emailRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  emailText: { fontSize: 15, fontWeight: '500', flex: 1, color: '#000' },
-  inputSection: { width: '100%', marginBottom: 16 },
-  inputLabel: { fontSize: 13, fontWeight: '600', marginBottom: 8 },
-  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
     borderWidth: 1,
+    marginBottom: 24,
+  },
+  emailText: { fontSize: 14, fontWeight: '500', flex: 1 },
+
+  // Fields
+  field: { width: '100%', marginBottom: 18 },
+  label: { fontSize: 13, fontWeight: '600', marginBottom: 8 },
+
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 14,
     height: 52,
     gap: 10,
-    backgroundColor: '#F5F5F5',
   },
-  input: { flex: 1, fontSize: 15, color: '#222' },
-  strengthContainer: {
+  input: { flex: 1, fontSize: 15 },
+
+  // Read-only username row
+  readonlyRow: { borderStyle: 'dashed' },
+  readonlyText: { flex: 1, fontSize: 15 },
+
+  // Strength bar
+  strengthWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
     gap: 10,
   },
-  strengthBarBg: {
+  strengthTrack: {
     flex: 1,
-    height: 6,
+    height: 5,
     borderRadius: 3,
-    backgroundColor: '#E5E5E5',
     overflow: 'hidden',
   },
-  strengthBarFill: { height: '100%', borderRadius: 3 },
+  strengthFill: { height: '100%', borderRadius: 3 },
   strengthLabel: {
     fontSize: 12,
     fontWeight: '600',
-    minWidth: 60,
+    minWidth: 65,
     textAlign: 'right',
   },
-  errorText: { fontSize: 12, marginTop: 6 },
+
+  // Requirements
+  reqContainer: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+  },
+  reqRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  reqIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reqLabel: { fontSize: 12, fontWeight: '500' },
+  reqProgress: { fontSize: 11, marginTop: 6, textAlign: 'right' },
+
+  // Match text
+  matchText: { fontSize: 12, fontWeight: '500', marginTop: 6, marginLeft: 2 },
+
+  // Submit
   submitBtn: {
     width: '100%',
-    height: 52,
+    height: 54,
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 16,
+    marginTop: 8,
   },
-  btnDisabled: { opacity: 0.6 },
-  submitBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  skipBtn: { marginTop: 20, padding: 10 },
-  skipText: { fontSize: 14, fontWeight: '500' },
-});
+  btnDisabled: { opacity: 0.5 },
+  submitText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 
-export default GoogleRegister;
+  // Back
+  backBtn: { marginTop: 18, paddingVertical: 10, paddingHorizontal: 16 },
+  backText: { fontSize: 14, fontWeight: '500' },
+});
