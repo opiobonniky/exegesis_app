@@ -195,6 +195,8 @@ export type VerseListProps = {
   onCloseExplanation?: (verseNumber: number) => void;
   explanationMap?: Record<number, string>;
   onExplainOpen?: (verseNumber: number) => void;
+  verseJournalPrompts?: Record<number, any[]>;
+  navigation?: any;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -228,6 +230,8 @@ export default function VerseList({
   onCloseExplanation,
   explanationMap,
   onExplainOpen,
+  verseJournalPrompts = {},
+  navigation,
 }: VerseListProps) {
   if (loading) {
     return (
@@ -299,6 +303,10 @@ export default function VerseList({
         }
         showExplanation={shouldShowExpPanel}
         explanationText={expText}
+        journalPrompts={verseJournalPrompts[verseNumber] || []}
+        navigation={navigation}
+        currentBook={currentBook}
+        currentChapter={currentChapter}
       />
     );
   };

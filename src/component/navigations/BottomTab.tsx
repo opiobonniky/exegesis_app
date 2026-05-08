@@ -16,6 +16,8 @@ import {
   StarsIcon,
   ShieldIcon,
   Settings,
+  BookText,
+  Lightbulb,
 } from 'lucide-react-native';
 import {
   SPACING,
@@ -72,10 +74,13 @@ export default function BottomTab({
       [route.favorites]: 'favorites',
       [route.readingPlan]: 'Plan',
       [route.profile]: 'profile',
+      [route.journal]: 'journal',
       [route.adminDashboard]: 'adminDashboard',
       [route.adminUsers]: 'adminUsers',
       [route.adminDailyVerse]: 'adminVerse',
       [route.adminReadingPlans]: 'adminPlans',
+      [route.adminJournalPrompts]: 'adminJournalPrompts',
+      [route.adminJournalTemplates]: 'adminJournalTemplates',
     };
 
     const detectedTab = currentRouteName ? routeToTab[currentRouteName] : null;
@@ -119,7 +124,19 @@ export default function BottomTab({
         icon: CalendarClockIcon,
         onPress: () => navigation.navigate(route.adminReadingPlans),
       },
-    ];
+       {
+         id: 'adminJournalPrompts',
+         label: 'Prompts',
+         icon: BookText,
+         onPress: () => navigation.navigate(route.adminJournalPrompts),
+       },
+       {
+         id: 'adminDevotion',
+         label: 'Devotion',
+         icon: Lightbulb,
+         onPress: () => navigation.navigate(route.adminDailyDevotion),
+       },
+     ];
   } else {
     // REGULAR USER TABS - user-related screens
     tabs = [
@@ -146,6 +163,12 @@ export default function BottomTab({
         label: 'Plan',
         icon: CalendarClockIcon,
         onPress: () => navigation.navigate(route.readingPlan),
+      },
+      {
+        id: 'journal',
+        label: 'Journal',
+        icon: BookText,
+        onPress: () => navigation.navigate(route.journal),
       },
       {
         id: 'profile',

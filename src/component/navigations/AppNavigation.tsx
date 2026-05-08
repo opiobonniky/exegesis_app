@@ -19,7 +19,7 @@ import Profile from '../../features/Setting/Profile';
 import DailyDevotional from '../../features/bible/DailyDevotional';
 import Home from '../../features/home/Home';
 import Favorites from '../../features/bible/Favorites';
-import FullVerseExplanation from '../../features/bible/FullVerseExplanation';
+
 import LoadingCard from '../../common/LoadingCard';
 import Notes from '../../features/bible/Notes';
 import EditProfile from '../../features/Setting/EditProfile';
@@ -45,10 +45,17 @@ import AdminUsersPage from '../../features/admin/AdminUsersPage';
 import AdminActivityPage from '../../features/admin/AdminActivityPage';
 import AdminDailyVerseManager from '../../features/admin/AdminDailyVerseManager';
 import AddDailyVerse from '../../features/admin/AddDailyVerse';
+import AdminDailyDevotionManager from '../../features/admin/AdminDailyDevotionManager';
+import AddDailyDevotion from '../../features/admin/AddDailyDevotion';
 import AdminReadingPlans from '../../features/admin/AdminReadingPlans';
 import CreateReadingPlan from '../../features/admin/CreateReadingPlan';
 import EditReadingPlan from '../../features/admin/EditReadingPlan';
 import AdminReadingPlanDetail from '../../features/admin/AdminReadingPlanDetail';
+import JournalList from '../../features/journal/JournalList';
+import JournalEntry from '../../features/journal/JournalEntry';
+import JournalDetail from '../../features/journal/JournalDetail';
+import AdminJournalPrompts from '../../features/journal/AdminJournalPrompts';
+import AdminJournalTemplates from '../../features/journal/AdminJournalTemplates';
 
 const Stack = createNativeStackNavigator();
 
@@ -118,10 +125,6 @@ const AppNavigation = () => {
           component={DailyDevotional}
         />
         <Stack.Screen name={route.favorites} component={Favorites} />
-        <Stack.Screen
-          name={route.fullVerseExplanation}
-          component={FullVerseExplanation}
-        />
         <Stack.Screen name={route.notes} component={Notes} />
         <Stack.Screen name={route.editProfile} component={EditProfile} />
         <Stack.Screen
@@ -161,6 +164,12 @@ const AppNavigation = () => {
         <Stack.Screen name="AddDailyVerse" component={AddDailyVerse} />
         <Stack.Screen name="EditDailyVerse" component={AddDailyVerse} />
         <Stack.Screen
+          name={route.adminDailyDevotion}
+          component={AdminDailyDevotionManager}
+        />
+        <Stack.Screen name="AddDailyDevotion" component={AddDailyDevotion} />
+        <Stack.Screen name="EditDailyDevotion" component={AddDailyDevotion} />
+        <Stack.Screen
           name={route.adminReadingPlans}
           component={AdminReadingPlans}
         />
@@ -169,6 +178,18 @@ const AppNavigation = () => {
         <Stack.Screen
           name={route.adminReadingPlanDetail}
           component={AdminReadingPlanDetail}
+        />
+        {/* ── Journal screens ────────────────────────────────────────────── */}
+        <Stack.Screen name={route.journal} component={JournalList} />
+        <Stack.Screen name={route.journalEntry} component={JournalEntry} />
+        <Stack.Screen name={route.journalDetail} component={JournalDetail} />
+        <Stack.Screen
+          name={route.adminJournalPrompts}
+          component={AdminJournalPrompts}
+        />
+        <Stack.Screen
+          name={route.adminJournalTemplates}
+          component={AdminJournalTemplates}
         />
       </Stack.Navigator>
     </NavigationContainer>

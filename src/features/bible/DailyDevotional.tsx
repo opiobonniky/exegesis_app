@@ -6,8 +6,8 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { AppContext } from '../../common/AppContext';
 import {
   getColors,
@@ -16,66 +16,148 @@ import {
   FONT_SIZES,
   BORDER_RADIUS,
 } from '../../constants/theme';
-import { Calendar } from 'lucide-react-native';
+import {
+  Calendar,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react-native';
 import { sendPostRequest } from '../../services/api';
-import ActionModal from '../../reusable/ActionModal';
 import { getVerseText } from '../../utilits/bibleUtils';
 import ActionHeader from '../../reusable/ActionHeader';
-import { useNavigation } from '@react-navigation/native';
-import ExpandableText from './ExpandableText';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
-// Type based on your real backend response
+
 type DailyVerse = {
   id: number;
   bookName: string;
   chapter: number;
   verseNumber: number;
-  reflection: string;
-  displayDate: string; // ISO string
-  displayTime: string; // ISO string
-  published: boolean;
-  bookmarked?: boolean; // local state only for now
+  reflection?: string;
+  title?: string;
+  content?: string;
+  displayDate: string | object;
+  displayTime: string | null;
+  published?: boolean;
+  isPublished?: boolean;
 };
+
+type RouteParams = {
+  date?: string;
+  mode?: 'verse' | 'devotion';
+};
+
+function parseContent(content: string): {
+  verseRef: string;
+  verseText: string;
+  sectionTitle: string;
+  paragraphs: string[];
+} {
+  const lines = content.split('\n');
+  const verseRef = lines[0]?.trim() ?? '';
+  const verseText = lines[1]?.trim() ?? '';
+
+  let sectionTitle = '';
+  let bodyStart = 2;
+  for (let i = 2; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed.length > 0 && sectionTitle === '') {
+      sectionTitle = trimmed;
+      bodyStart = i + 1;
+      break;
+    }
+  }
+
+  const bodyRaw = lines.slice(bodyStart).join('\n');
+  const paragraphs = bodyRaw
+    .split(/\n\n+/)
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
+
+  return { verseRef, verseText, sectionTitle, paragraphs };
+}
+
+function parseDisplayDate(displayDate: string | object): string {
+  if (!displayDate) return new Date().toISOString();
+  if (typeof displayDate === 'string') return displayDate;
+  try {
+    const obj = displayDate as any;
+    if (obj.seconds) return new Date(obj.seconds * 1000).toISOString();
+    if (obj._seconds) return new Date(obj._seconds * 1000).toISOString();
+  } catch {}
+  return new Date().toISOString();
+}
+
+function DevotionBody({
+  paragraphs,
+  COLORS,
+  dynamicStyles,
+}: {
+  paragraphs: string[];
+  COLORS: any;
+  dynamicStyles: any;
+}) {
+  const INITIAL_COUNT = 3;
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? paragraphs : paragraphs.slice(0, INITIAL_COUNT);
+  const hasMore = paragraphs.length > INITIAL_COUNT;
+
+  return (
+    <View>
+      {visible.map((para, idx) => (
+        <Text key={idx} style={dynamicStyles.paragraph}>
+          {para}
+        </Text>
+      ))}
+      {hasMore && (
+        <TouchableOpacity
+          style={dynamicStyles.expandBtn}
+          onPress={() => setExpanded(e => !e)}
+          activeOpacity={0.7}
+        >
+          <Text style={dynamicStyles.expandBtnText}>
+            {expanded ? 'Show less' : 'Continue reading'}
+          </Text>
+          {expanded ? (
+            <ChevronUp size={16} color={COLORS.primary} />
+          ) : (
+            <ChevronDown size={16} color={COLORS.primary} />
+          )}
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
 
 export default function DailyDevotionalScreen() {
   const app = useContext(AppContext);
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { date } = (route.params as RouteParams) || {};
+
   const [loading, setLoading] = useState(true);
-  const [verse, setVerse] = useState<DailyVerse | null>(null);
-  const [showBookmarkModal, setShowBookmarkModal] = useState(false);
+  const [devotion, setDevotion] = useState<DailyVerse | null>(null);
 
   if (!app) return null;
-
   const { isDark } = app;
   const COLORS = getColors(isDark);
   const themeStyle = createThemeStyles(COLORS);
 
   useEffect(() => {
-    fetchTodaysDevotional();
-  }, []);
+    fetchDailyDevotional();
+  }, [date]);
 
-  const fetchTodaysDevotional = async () => {
+  const fetchDailyDevotional = async () => {
     setLoading(true);
     try {
-      // Use your real API endpoint
-      const response = await sendPostRequest('bible', 'get-todays-verse', {});
-
+      const response = await sendPostRequest(
+        'bible',
+        'get-todays-devotion',
+        {},
+      );
       if (response.returnCode === 200 && response.returnData) {
-        const raw = response.returnData;
-
-        const formatted: DailyVerse = {
-          id: raw.id,
-          bookName: raw.bookName,
-          chapter: raw.chapter,
-          verseNumber: raw.verseNumber,
-          reflection: raw.reflection,
-          displayDate: raw.displayDate,
-          displayTime: raw.displayTime,
-          published: raw.published,
-        };
-
-        setVerse(formatted);
+        setDevotion(response.returnData as DailyVerse);
       } else {
-        // Show fallback/demo data if API fails
         useFallbackDevotional();
       }
     } catch (err) {
@@ -86,197 +168,337 @@ export default function DailyDevotionalScreen() {
     }
   };
 
-  // Nice fallback/demo data – looks real
   const useFallbackDevotional = () => {
-    setVerse({
+    setDevotion({
       id: 999,
       bookName: 'Jeremiah',
       chapter: 29,
       verseNumber: 11,
-      reflection:
-        "God's plans for you are filled with hope and a future. Even in uncertainty, trust that He is working all things for your good. Take time today to rest in His promises and surrender your worries to Him.",
+      title: 'Hope in Every Season',
+      content:
+        "Jeremiah 29:11 (NKJV)\nFor I know the plans I have for you, declares the Lord, plans for welfare and not for evil, to give you a future and a hope.\n\n Trusting God's Perfect Plan \n\nEven in the darkest seasons of life, God's intentions toward us remain good. Jeremiah wrote these words to a people in exile — far from home, uncertain of their future.\n\nYet into that uncertainty, God spoke a word of promise. Not because their circumstances were easy, but because His character is faithful.\n\nToday, you may be in your own kind of exile — a season of waiting, loss, or confusion. This verse invites you to anchor your hope not in your current situation, but in the One who holds your future.\n\nMeditate on this truth: God's plans for you are deliberate and good. Surrender your anxieties and trust Him today.",
       displayDate: new Date().toISOString(),
       displayTime: new Date().toISOString(),
-      published: true,
-      bookmarked: false,
+      isPublished: true,
     });
   };
 
-  if (!verse) {
-    return (
-      <View
-        style={[
-          themeStyle.center,
-          { flex: 1, backgroundColor: COLORS.background },
-        ]}
-      >
-        <Text style={{ color: COLORS.muted, fontSize: FONT_SIZES.lg }}>
-          No devotional available today
-        </Text>
-      </View>
-    );
-  }
+  const isToday = (dateVal: string | object): boolean => {
+    try {
+      const d = new Date(parseDisplayDate(dateVal));
+      return d.toDateString() === new Date().toDateString();
+    } catch {
+      return false;
+    }
+  };
 
-  const verseReference = `${verse.bookName} ${verse.chapter}:${verse.verseNumber}`;
+  const formatDate = (dateVal: string | object): string => {
+    try {
+      const d = new Date(parseDisplayDate(dateVal));
+      return d.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return 'Today';
+    }
+  };
 
-  const dynamicStyles = StyleSheet.create({
-    container: {
+  const accent = COLORS.primary;
+  const cardBg = COLORS.cardBackground;
+  const borderColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  const dividerColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+
+  const s = StyleSheet.create({
+    // ── Outer wrapper (fixed header + scrollable body) ──
+    outer: {
       flex: 1,
       backgroundColor: COLORS.background,
     },
-    scrollContent: {
-      padding: SPACING.sm,
+
+    // ── ScrollView ──
+    container: {
+      flex: 1,
     },
-    headerGradient: {
-      padding: SPACING.xl,
-      borderRadius: BORDER_RADIUS.xl,
+    scroll: {
+      padding: SPACING.md,
+      paddingBottom: SPACING.xl,
+    },
+
+    // ── Date row ──
+    dateRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: 6,
+      marginBottom: SPACING.lg,
     },
-    headerTitle: {
-      color: '#fff',
-      fontSize: FONT_SIZES.xxl,
-      fontWeight: '700',
-      marginLeft: SPACING.md,
+    dateText: {
+      color: accent,
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '600',
+      letterSpacing: 0.3,
     },
-    card: {
-      padding: SPACING.xl,
+
+    // ── Verse card ──
+    verseCard: {
       borderRadius: BORDER_RADIUS.xl,
-      backgroundColor: COLORS.cardBackground,
-      marginBottom: SPACING.xl,
+      backgroundColor: cardBg,
+      borderWidth: 1,
+      borderColor,
+      marginBottom: SPACING.lg,
+      overflow: 'hidden',
       shadowColor: COLORS.shadowColor,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.18,
-      shadowRadius: 16,
-      elevation: 8,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+      elevation: 5,
+    },
+    verseAccentBar: {
+      height: 4,
+      backgroundColor: accent,
+      width: '100%',
+    },
+    verseCardInner: {
+      padding: SPACING.xl,
+    },
+    verseLabel: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+      letterSpacing: 1.4,
+      textTransform: 'uppercase',
+      color: accent,
+      marginBottom: SPACING.md,
+      opacity: 0.85,
+    },
+    openQuote: {
+      fontSize: 64,
+      lineHeight: 52,
+      color: accent,
+      opacity: 0.25,
+      fontStyle: 'italic',
+      marginBottom: -SPACING.sm,
     },
     verseText: {
       fontSize: FONT_SIZES.xl,
       fontStyle: 'italic',
       color: COLORS.text,
+      lineHeight: 34,
       marginBottom: SPACING.lg,
-      lineHeight: 32,
     },
-    reference: {
-      fontSize: FONT_SIZES.lg,
-      fontWeight: '600',
-      color: COLORS.primary,
+    divider: {
+      height: 1,
+      backgroundColor: dividerColor,
       marginBottom: SPACING.md,
     },
-    reflection: {
-      fontSize: FONT_SIZES.md,
-      lineHeight: 26,
-      color: COLORS.textSecondary,
-      marginBottom: SPACING.xl,
-    },
-    bookmarkButton: {
+    referenceRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: SPACING.md,
-      paddingHorizontal: SPACING.xl,
-      borderRadius: BORDER_RADIUS.lg,
-      backgroundColor: verse.bookmarked ? COLORS.success : COLORS.primary,
+      gap: 8,
     },
-    bookmarkText: {
-      color: '#fff',
-      fontWeight: '600',
-      marginLeft: SPACING.sm,
+    referenceDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: accent,
+    },
+    referenceText: {
       fontSize: FONT_SIZES.md,
+      fontWeight: '700',
+      color: accent,
+      letterSpacing: 0.3,
     },
-    dateBadge: {
-      alignSelf: 'flex-start',
-      backgroundColor: COLORS.primary + '20',
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.xs,
-      borderRadius: BORDER_RADIUS.md,
+
+    // ── Devotion card ──
+    devotionCard: {
+      borderRadius: BORDER_RADIUS.xl,
+      backgroundColor: cardBg,
+      borderWidth: 1,
+      borderColor,
+      marginBottom: SPACING.xl,
+      overflow: 'hidden',
+      shadowColor: COLORS.shadowColor,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      elevation: 4,
+    },
+    devotionCardInner: {
+      padding: SPACING.xl,
+    },
+    devotionLabel: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+      letterSpacing: 1.4,
+      textTransform: 'uppercase',
+      color: COLORS.muted,
+      marginBottom: SPACING.sm,
+    },
+    sectionTitle: {
+      fontSize: FONT_SIZES.xl,
+      fontWeight: '800',
+      color: COLORS.text,
+      lineHeight: 30,
+      marginBottom: SPACING.lg,
+      letterSpacing: -0.3,
+    },
+    devotionDivider: {
+      height: 1,
+      backgroundColor: dividerColor,
       marginBottom: SPACING.lg,
     },
-    dateText: {
-      color: COLORS.primary,
-      fontWeight: '600',
+    paragraph: {
+      fontSize: FONT_SIZES.md,
+      lineHeight: 27,
+      color: COLORS.textSecondary,
+      marginBottom: SPACING.md,
+    },
+    expandBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: SPACING.xs,
+      paddingVertical: SPACING.sm,
+      alignSelf: 'flex-start',
+    },
+    expandBtnText: {
+      color: accent,
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '700',
+      letterSpacing: 0.2,
+    },
+
+    // ── Footer ──
+    footer: {
+      paddingHorizontal: SPACING.md,
+      paddingBottom: SPACING.xl,
+      alignItems: 'center',
+    },
+    footerText: {
+      color: COLORS.muted,
+      fontSize: FONT_SIZES.sm,
+      textAlign: 'center',
+      lineHeight: 20,
+      fontStyle: 'italic',
     },
   });
 
-  const navigation = useNavigation();
+  // ── Loading state ──
+  if (loading) {
+    return (
+      <View style={[s.outer, themeStyle.center]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text
+          style={{
+            color: COLORS.muted,
+            marginTop: SPACING.md,
+            fontSize: FONT_SIZES.sm,
+          }}
+        >
+          Loading devotional…
+        </Text>
+      </View>
+    );
+  }
+
+  // ── Empty state ──
+  if (!devotion) {
+    return (
+      <View style={[s.outer, themeStyle.center]}>
+        <BookOpen size={48} color={COLORS.muted} />
+        <Text
+          style={{
+            color: COLORS.muted,
+            fontSize: FONT_SIZES.lg,
+            marginTop: SPACING.md,
+          }}
+        >
+          No devotional available {date ? 'for this date' : 'today'}
+        </Text>
+      </View>
+    );
+  }
+
+  const parsed = devotion.content ? parseContent(devotion.content) : null;
+
+  const verseBody =
+    parsed?.verseText ||
+    getVerseText(devotion.bookName, devotion.chapter, devotion.verseNumber) ||
+    '';
+
+  const verseReference = `${devotion.bookName} ${devotion.chapter}:${devotion.verseNumber}`;
+  const sectionTitle = parsed?.sectionTitle || devotion.title || '';
+  const paragraphs = parsed?.paragraphs.length
+    ? parsed.paragraphs
+    : devotion.reflection
+      ? [devotion.reflection]
+      : [];
 
   return (
-    <>
+    // ── Outer View keeps ActionHeader fixed ──
+    <View style={s.outer}>
       <ActionHeader
-        title={`Daily Devotional`}
+        title={
+          isToday(devotion.displayDate) ? sectionTitle : 'Daily Devotional'
+        }
         onPress={() => navigation.goBack()}
       />
+
+      {/* Only this ScrollView scrolls */}
       <ScrollView
-        style={dynamicStyles.container}
-        contentContainerStyle={dynamicStyles.scrollContent}
+        style={s.container}
+        contentContainerStyle={s.scroll}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Beautiful Header */}
-
-        {/* Main Devotional Card */}
-        <View style={dynamicStyles.card}>
-          {/* Date Badge */}
-          <View style={dynamicStyles.dateBadge}>
-            <Text style={dynamicStyles.dateText}>
-              <Calendar size={14} color={COLORS.primary} />{' '}
-              {new Date(verse.displayDate).toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </Text>
-          </View>
-
-          {/* Verse */}
-          <Text style={dynamicStyles.verseText}>
-            "
-            {getVerseText(verse.bookName, verse.chapter, verse.verseNumber) ||
-              'Loading verse text...'}
-            "
-          </Text>
-
-          {/* Reference */}
-          <Text style={dynamicStyles.reference}>— {verseReference}</Text>
-
-          <ExpandableText
-            text={verse.reflection ?? ''}
-            initialChars={500}
-            stepChars={800}
-          />
-
-          {/* Bookmark Button */}
+        {/* Date badge */}
+        <View style={s.dateRow}>
+          <Calendar size={14} color={accent} />
+          <Text style={s.dateText}>{formatDate(devotion.displayDate)}</Text>
         </View>
 
-        {/* Optional: More content / explanation */}
-        <View style={{ padding: SPACING.md, opacity: 0.8 }}>
-          <Text
-            style={{
-              color: COLORS.muted,
-              fontSize: FONT_SIZES.sm,
-              textAlign: 'center',
-            }}
-          >
-            Meditate on this verse today. Let it guide your thoughts and
+        {/* ── Verse card ── */}
+        <View style={s.verseCard}>
+          <View style={s.verseAccentBar} />
+          <View style={s.verseCardInner}>
+            <Text style={s.verseLabel}>Verse of the Day</Text>
+            <Text style={s.openQuote}>"</Text>
+            <Text style={s.verseText}>
+              {verseBody ||
+                'But David said to Abishai, "Do not destroy him; for who can stretch out his hand against the Lord\'s anointed, and be guiltless?"'}
+            </Text>
+            <View style={s.divider} />
+            <View style={s.referenceRow}>
+              <View style={s.referenceDot} />
+              <Text style={s.referenceText}>{verseReference}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Devotion card ── */}
+        <View style={s.devotionCard}>
+          <View style={s.devotionCardInner}>
+            <Text style={s.devotionLabel}>Today's devotion</Text>
+            {sectionTitle ? (
+              <Text style={s.sectionTitle}>{sectionTitle}</Text>
+            ) : null}
+            <View style={s.devotionDivider} />
+            <DevotionBody
+              paragraphs={paragraphs}
+              COLORS={COLORS}
+              dynamicStyles={s}
+            />
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={s.footer}>
+          <Text style={s.footerText}>
+            Meditate on this word today.{'\n'}Let it guide your thoughts and
             actions.
           </Text>
         </View>
-
-        {/* Bookmark Confirmation Modal */}
-        <ActionModal
-          visible={showBookmarkModal}
-          severity="success"
-          title={
-            verse.bookmarked ? 'Added to Bookmarks' : 'Removed from Bookmarks'
-          }
-          message={
-            verse.bookmarked
-              ? 'This devotional has been saved to your bookmarks.'
-              : 'This devotional has been removed from your bookmarks.'
-          }
-          confirmLabel="OK"
-          onConfirm={() => setShowBookmarkModal(false)}
-        />
       </ScrollView>
-    </>
+    </View>
   );
 }

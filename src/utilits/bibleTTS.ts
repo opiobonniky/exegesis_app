@@ -241,6 +241,7 @@ class BibleTTSManager {
 
     // ── tts-finish ────────────────────────────────────────────────────────────
     Tts.addEventListener('tts-finish', () => {
+      console.log('[BibleTTS] tts-finish event fired');
       this._isTtsSpeaking = false;
       this._clearUtteranceTimeout();
       this._clearWordTimers();
@@ -259,6 +260,7 @@ class BibleTTSManager {
 
     // ── tts-cancel ────────────────────────────────────────────────────────────
     Tts.addEventListener('tts-cancel', () => {
+      console.log('[BibleTTS] tts-cancel event fired');
       this._isTtsSpeaking = false;
       this._clearUtteranceTimeout();
       this._clearWordTimers();
@@ -397,6 +399,13 @@ class BibleTTSManager {
 
   // ── Init ──────────────────────────────────────────────────────────────────
   async init(): Promise<void> {
+    if (this.initialized) return;
+    
+    if (!Tts) {
+      console.warn('[BibleTTS] Tts module not available - native module may not be linked');
+      return;
+    }
+    
     try {
       await Tts.setDefaultLanguage('en-US');
       // Only override the engine's native defaults when the user has explicitly
@@ -526,12 +535,24 @@ class BibleTTSManager {
     baseWordIndex = 0,
     onProgress?: (charIndex: number) => void,
   ): Promise<void> {
-    if (!text) return;
+    if (!text) {
+      console.warn('[BibleTTS] speak called with empty text');
+      return Promise.resolve();
+    }
+    
+    if (!Tts) {
+      console.error('[BibleTTS] Tts module not available - cannot speak');
+      return Promise.resolve();
+    }
+    
+    console.log('[BibleTTS] speak called with text length:', text.length, 'prefixLen:', prefixLen);
+    
     this._onProgressCallback = onProgress || null;
     this._baseWordIndex = baseWordIndex;
 
     this.stopRequested = false;
     const clean = this.prepareText(text);
+    console.log('[BibleTTS] prepared text:', clean.substring(0, 50), '...');
     this.state.currentText = clean;
     this.state.wordIndex = -1;
 
@@ -595,11 +616,15 @@ class BibleTTSManager {
     }
 
     try {
+      console.log('[BibleTTS] _isTtsSpeaking before speak:', this._isTtsSpeaking);
+      
       await new Promise<void>(resolve => {
         this._pendingResolve = resolve;
         this._utteranceStarted = false;
 
         const doSpeak = () => {
+          console.log('[BibleTTS] doSpeak called, stopRequested:', this.stopRequested);
+          
           if (this.stopRequested) {
             this._pendingResolve = null;
             this._utteranceStarted = false;
@@ -609,6 +634,7 @@ class BibleTTSManager {
           }
           this._utteranceStarted = true;
           this._isTtsSpeaking = true;
+          console.log('[BibleTTS] Calling Tts.speak with text:', clean.substring(0, 30), '...');
 
           // Android 14 safety net: if the engine drops the utterance silently
           // (no finish/cancel within 30 s) we resolve anyway so the loop moves on.
@@ -632,12 +658,15 @@ class BibleTTSManager {
             }
           }, 30_000);
 
-          Promise.resolve(Tts.speak(clean)).catch(() => {
-            this._clearUtteranceTimeout();
-            this._isTtsSpeaking = false;
-            this._pendingResolve = null;
-            this._utteranceStarted = false;
-            resolve();
+          Promise.resolve(Tts.speak(clean))
+            .then(() => console.log('[BibleTTS] Tts.speak resolved'))
+            .catch((err) => {
+              console.error('[BibleTTS] Tts.speak error:', err);
+              this._clearUtteranceTimeout();
+              this._isTtsSpeaking = false;
+              this._pendingResolve = null;
+              this._utteranceStarted = false;
+              resolve();
           });
         };
 

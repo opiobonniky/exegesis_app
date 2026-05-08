@@ -123,10 +123,10 @@ export default function Home() {
       },
       {
         id: '2',
-        label: 'Prayer Wall',
+        label: 'Daily Devotions',
         icon: HandHeart,
         color: '#2E7D32',
-        onPress: () => navigation.navigate(route.home), // replace with your prayer wall route
+        onPress: () => navigation.navigate(route.dailyDevotional), // replace with your prayer wall route
       },
       {
         id: '3',

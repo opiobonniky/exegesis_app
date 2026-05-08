@@ -94,6 +94,7 @@ export interface DailyVerse {
   bookName: string;
   chapter: number;
   verseNumber: number;
+  verseText?: string | null;
   displayDate: string;
   displayTime?: string;
   reflection?: string;
@@ -106,6 +107,34 @@ export interface DailyVerse {
 
 export interface DailyVerseResponse {
   content: DailyVerse[];
+  currentPage: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+}
+
+export interface DailyDevotion {
+  id: number;
+  title: string;
+  content: string;
+  bookName?: string | null;
+  chapter?: number | null;
+  verseNumber?: number | null;
+  displayDate: string;
+  displayTime?: string;
+  createdBy: string;
+  createdOn: string;
+  updatedBy?: string;
+  updatedOn?: string;
+  isPublished: boolean;
+}
+
+export interface DailyDevotionResponse {
+  content: DailyDevotion[];
   currentPage: number;
   pageSize: number;
   totalElements: number;
@@ -368,7 +397,110 @@ export const deleteDailyVerse = async (verseId: number): Promise<void> => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Reading Plans API
+// Daily Devotions API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getAllDailyDevotions = async (
+  page: number = 0,
+  size: number = 12,
+  filters?: {
+    startDate?: string;
+    endDate?: string;
+    smartDefault?: boolean;
+    futureDays?: number;
+  },
+): Promise<DailyDevotionResponse> => {
+  const response = await sendPostRequest<DailyDevotionResponse>(
+    'admin',
+    'get-all-daily-devotions',
+    {
+      page,
+      size,
+      ...filters,
+    },
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to fetch daily devotions');
+  }
+  return response.returnData as DailyDevotionResponse;
+};
+
+export const addDailyDevotion = async (
+  devotionData: {
+    title: string;
+    content: string;
+    bookName?: string | null;
+    chapter?: number | null;
+    verseNumber?: number | null;
+    displayDate: string;
+    displayTime?: string;
+    published?: boolean;
+  },
+  id?: number,
+): Promise<DailyDevotion> => {
+  const response = await sendPostRequest<DailyDevotion>(
+    'admin',
+    'add-daily-devotion',
+    {
+      id,
+      ...devotionData,
+    },
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to add daily devotion');
+  }
+  return response.returnData as DailyDevotion;
+};
+
+export const deleteDailyDevotion = async (devotionId: number): Promise<void> => {
+  const response = await sendPostRequest('admin', 'delete-daily-devotion', {
+    id: devotionId,
+  });
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to delete daily devotion');
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User-facing Daily Devotions API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getTodaysDevotion = async (): Promise<DailyDevotion> => {
+  const response = await sendPostRequest<DailyDevotion>(
+    'bible',
+    'get-todays-devotion',
+    {},
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to fetch today\'s devotion');
+  }
+  return response.returnData as DailyDevotion;
+};
+
+export const getAllDailyDevotionsPublic = async (
+  page: number = 0,
+  size: number = 12,
+  filters?: {
+    startDate?: string;
+    endDate?: string;
+    smartDefault?: boolean;
+    futureDays?: number;
+  },
+): Promise<DailyDevotionResponse> => {
+  const response = await sendPostRequest<DailyDevotionResponse>(
+    'bible',
+    'get-all-daily-devotions',
+    {
+      page,
+      size,
+      ...filters,
+    },
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to fetch daily devotions');
+  }
+  return response.returnData as DailyDevotionResponse;
+};
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const getAllReadingPlansAdmin = async (

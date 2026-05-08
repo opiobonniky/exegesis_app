@@ -47,7 +47,7 @@ type Props = StandardProps | HomeProps;
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ANDROID_TOP =
-  Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 28 : 44;
+  Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 12 : 24;
 
 // ── Logo lockup ───────────────────────────────────────────────────────────────
 
@@ -199,11 +199,11 @@ const ActionHeader = (props: Props) => {
             end={{ x: 1, y: 0 }}
             style={styles.container}
           >
-            <View style={styles.shimmerLine} />
-            <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
-              <View style={{ paddingTop: 10 }}>
-                <LogoLockup compact isLight={false} />
-              </View>
+             <View style={styles.shimmerLine} />
+             <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
+               <View style={{ paddingTop: 6 }}>
+                 <LogoLockup compact isLight={false} />
+               </View>
               <View style={styles.homeControls}>
                 <TouchableOpacity
                   style={styles.iconBtn}
@@ -247,19 +247,19 @@ const ActionHeader = (props: Props) => {
             </Animated.View>
           </LinearGradient>
         ) : (
-          <View
-            style={[styles.container, { backgroundColor: COLORS.background }]}
-          >
-            <View
-              style={[
-                styles.shimmerLine,
-                { backgroundColor: COLORS.primary + '20' },
-              ]}
-            />
-            <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
-              <View style={{ paddingTop: 10 }}>
-                <LogoLockup compact isLight={true} />
-              </View>
+           <View
+             style={[styles.container, { backgroundColor: COLORS.background }]}
+           >
+             <View
+               style={[
+                 styles.shimmerLine,
+                 { backgroundColor: COLORS.primary + '20' },
+               ]}
+             />
+             <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
+               <View style={{ paddingTop: 6 }}>
+                 <LogoLockup compact isLight={true} />
+               </View>
               <View style={styles.homeControls}>
                 <TouchableOpacity
                   style={[

@@ -1,18 +1,7 @@
-/**
- * bible.tsx
- * ─────────────────────────────────────────────────────────────────────────────
- * Guest mode rules:
- *   ✅ Allowed  — read verses, change book/chapter, change Bible version, prev/next chapter
- *   🔒 Gated   — search, audio, verse selection actions (listen/explain/highlight/note
- *                  /favorite/share/copy), bottom-tab navigation, drawer nav items
- *
- * Gated actions show a bottom-sheet style "Sign In Required" banner instead of
- * proceeding. The banner is the same GuestBanner component already used.
- */
-
 import React, {
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -281,12 +270,29 @@ export default function Bible() {
     afterPlayBehaviour,
     audioVerseIndex,
     isAudioPaused,
+    speechRate,
+    sleepTimerRemaining,
+    onSpeedToggle,
+    onSleepTimerToggle,
     handleAudioScopeChange,
     handleAfterPlayChange,
     goToNextSelectedVerse,
     goToPreviousSelectedVerse,
     handleAudioTogglePlayPause,
+    verseJournalPrompts,
+    chapterJournalPrompts,
+    loadChapterPrompts,
   } = useBible();
+
+  // ── Load chapter journal prompts whenever book/chapter/auth changes ─────────
+  // (must live here — after useBible() — so currentBook, currentChapter,
+  //  loadChapterPrompts, and isGuest are all initialised before the deps array
+  //  is evaluated, avoiding the Hermes TDZ ReferenceError)
+  useEffect(() => {
+    if (!isGuest) {
+      loadChapterPrompts();
+    }
+  }, [currentBook, currentChapter, isGuest]);
 
   const handleVerseRefPress = useCallback(
     (ref: VerseRef) => {
@@ -369,6 +375,68 @@ export default function Bible() {
         }
       />
 
+      {/* ── Chapter Journal Prompts ───────────────────────────────────────── */}
+      {chapterJournalPrompts.length > 0 && !isGuest && (
+        <View
+          style={[
+            styles.chapterPromptsContainer,
+            { backgroundColor: COLORS.surface },
+          ]}
+        >
+          <View style={styles.chapterPromptsHeader}>
+            <Text
+              style={[styles.chapterPromptsTitle, { color: COLORS.primary }]}
+            >
+              Chapter Reflections
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                navigation.navigate(route.journalEntry, {
+                  bookName: currentBook,
+                  chapter: currentChapter,
+                });
+              }}
+              style={[
+                styles.addJournalBtn,
+                { backgroundColor: COLORS.primary },
+              ]}
+            >
+              <Text style={styles.addJournalBtnText}>+ Add</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.promptsScroll}
+          >
+            {chapterJournalPrompts.map((prompt, idx) => (
+              <TouchableOpacity
+                key={prompt.id || idx}
+                style={[
+                  styles.chapterPromptChip,
+                  { borderColor: COLORS.border },
+                ]}
+                onPress={() => {
+                  navigation.navigate(route.journalEntry, {
+                    bookName: currentBook,
+                    chapter: currentChapter,
+                    promptText: prompt.prompt,
+                  });
+                }}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[styles.chapterPromptText, { color: COLORS.text }]}
+                  numberOfLines={2}
+                >
+                  {prompt.prompt}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* ── Selection Action Bar ─────────────────────────────────────────── */}
       {selectedVerses.length > 0 && !explanationOpen && (
         <SelectionActionBar
@@ -432,6 +500,23 @@ export default function Bible() {
             clearSelection();
             setExplanationOpen(false);
           }}
+          onJournal={() =>
+            guard(
+              'Journal entries are saved to your account. Sign in to use this feature.',
+              () => {
+                const current = [...selectedVerses];
+                const startVerse = Math.min(...current);
+                const endVerse = Math.max(...current);
+                clearSelection();
+                navigation.navigate(route.journalEntry, {
+                  bookName: currentBook,
+                  chapter: currentChapter,
+                  verseStart: startVerse,
+                  verseEnd: current.length > 1 ? endVerse : startVerse,
+                });
+              },
+            )
+          }
         />
       )}
 
@@ -477,6 +562,8 @@ export default function Bible() {
             }}
             onExplainOpen={() => setExplanationOpen(true)}
             explanationMap={verseExplanationMap}
+            verseJournalPrompts={verseJournalPrompts}
+            navigation={navigation}
           />
         </View>
       ) : (
@@ -491,6 +578,7 @@ export default function Bible() {
           highlightAnim={highlightAnim}
           fadeAnim={fadeAnim}
           fontSize={fontSize}
+          navigation={navigation}
           currentBook={currentBook}
           currentChapter={currentChapter}
           colors={COLORS}
@@ -516,6 +604,8 @@ export default function Bible() {
           }}
           onExplainOpen={() => setExplanationOpen(true)}
           explanationMap={verseExplanationMap}
+          verseJournalPrompts={verseJournalPrompts}
+          navigation={navigation}
         />
       )}
 
@@ -635,81 +725,6 @@ export default function Bible() {
         </Animated.View>
       )}
 
-      {/* ── Reflection Panel (Reading Plan Mode) ──────────────────────────── */}
-      {hasReflections && isFromReadingPlan && (
-        <Animated.View
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            transform: [
-              {
-                translateY: tabBarAnimation.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [150, 0],
-                }),
-              },
-            ],
-            opacity: tabBarAnimation,
-          }}
-        >
-          <View style={rpStyles.wrapper}>
-            <TouchableOpacity
-              style={rpStyles.toggleButton}
-              onPress={toggleReflection}
-              activeOpacity={0.75}
-            >
-              <View style={rpStyles.toggleLeft}>
-                <View style={rpStyles.iconCircle}>
-                  <Lightbulb size={16} color="#F59E0B" />
-                </View>
-                <Text style={rpStyles.toggleTitle}>Pause & Reflect</Text>
-              </View>
-              {reflectionOpen ? (
-                <ChevronDown size={20} color={COLORS.text} />
-              ) : (
-                <ChevronUp size={20} color={COLORS.text} />
-              )}
-            </TouchableOpacity>
-
-            {reflectionOpen && (
-              <ScrollView
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={rpStyles.listContent}
-              >
-                {reflectionQuestions.map((q: string, idx: number) => (
-                  <View
-                    key={idx}
-                    style={[
-                      rpStyles.card,
-                      {
-                        backgroundColor: isDark ? '#1A2332' : '#FFFBF0',
-                        borderColor: isDark ? '#3D3416' : '#FDE7B0',
-                      },
-                    ]}
-                  >
-                    <View style={rpStyles.cardTopRow}>
-                      <View style={rpStyles.numBadge}>
-                        <Text style={rpStyles.numText}>{idx + 1}</Text>
-                      </View>
-                      <Lightbulb size={13} color="#F59E0B" opacity={0.55} />
-                    </View>
-                    <VerseRefText
-                      text={q}
-                      onPress={handleVerseRefPress}
-                      COLORS={COLORS}
-                      isDark={isDark}
-                    />
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-        </Animated.View>
-      )}
-
       {/* ── Guest banner (auto nudge + gated action trigger) ────────────── */}
       <GuestBanner
         triggered={gateVisible}
@@ -730,6 +745,10 @@ export default function Bible() {
         verseIndex={audioVerseIndex}
         verseCount={audioPlaylist.length}
         isDark={isDark}
+        speechRate={speechRate}
+        sleepTimerRemaining={sleepTimerRemaining}
+        onSpeedToggle={onSpeedToggle}
+        onSleepTimerToggle={onSleepTimerToggle}
         onPrev={goToPreviousSelectedVerse}
         onNext={goToNextSelectedVerse}
         onRepeatToggle={() => {}}

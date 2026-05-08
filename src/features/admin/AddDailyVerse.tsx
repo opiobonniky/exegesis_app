@@ -152,6 +152,7 @@ const AddDailyVerse: React.FC = () => {
         bookName,
         chapter: parseInt(chapter),
         verseNumber: parseInt(verseNumber),
+        verseText: verseText || null,
         displayDate: displayDate.toISOString().split('T')[0],
         reflection,
         published,
@@ -368,7 +369,17 @@ const AddDailyVerse: React.FC = () => {
                     {bookName} {chapter}:{verseNumber}
                   </Text>
                 </View>
-                <Text style={[styles.verseText, { color: theme.text }]}>{verseText}</Text>
+                <Text style={[styles.label, { color: theme.text, marginBottom: 8 }]}>
+                  Verse Text <Text style={{ color: theme.muted, fontSize: 12 }}>(editable - override default)</Text>
+                </Text>
+                <TextInput
+                  style={[styles.verseTextInput, { color: theme.text, backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}
+                  value={verseText}
+                  onChangeText={setVerseText}
+                  multiline
+                  placeholder="Verse text (you can edit this)"
+                  placeholderTextColor={theme.muted}
+                />
               </View>
             ) : null}
 
@@ -559,6 +570,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     verseRef: { fontSize: 13, fontWeight: '700' },
     verseText: { fontSize: 15, fontStyle: 'italic', lineHeight: 24 },
+    verseTextInput: { fontSize: 15, fontStyle: 'italic', lineHeight: 24, padding: 12, borderRadius: 8, minHeight: 80, textAlignVertical: 'top' },
     modalOverlay: {
       flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end',
     },

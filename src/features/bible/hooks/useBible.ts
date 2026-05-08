@@ -141,6 +141,13 @@ export function useBible() {
   const [audioVerseIndex, setAudioVerseIndex] = useState(0);
   const [isAudioPaused, setIsAudioPaused] = useState(false);
 
+  // ── Speed & Sleep Timer state ─────────────────────────────────────────────
+  const SPEED_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0] as const;
+  const SLEEP_TIMER_OPTIONS = [null, 5, 15, 30, 60] as const;
+  const [speechRate, setSpeechRate] = useState<number>(1.0);
+  const [sleepTimer, setSleepTimer] = useState<number | null>(null);
+  const [sleepTimerRemaining, setSleepTimerRemaining] = useState<number>(0);
+
   const [activeVerseWordMap, setActiveVerseWordMap] = useState<
     Array<{ start: number; length: number }>
   >([]);
@@ -162,6 +169,10 @@ export function useBible() {
   //    Reset to 0 at the START of every new verse (not on pause).
   const verseCharOffsetRef = useRef(0);
 
+  // ── Speed & Sleep Timer refs ──────────────────────────────────────────────
+  const sleepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const speechRateRef = useRef(1.0);
+
   // ── Search ────────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -170,6 +181,14 @@ export function useBible() {
   const [verseExplanationMap, setVerseExplanationMap] = useState<
     Record<number, string>
   >({});
+
+  // ── Journal Prompts ─────────────────────────────────────────────────────
+  const [allPrompts, setAllPrompts] = useState<any[]>([]);
+  const [promptsLoaded, setPromptsLoaded] = useState(false);
+  const [verseJournalPrompts, setVerseJournalPrompts] = useState<
+    Record<number, any[]>
+  >({});
+  const [chapterJournalPrompts, setChapterJournalPrompts] = useState<any[]>([]);
 
   // ── Notes ─────────────────────────────────────────────────────────────────
   const [noteText, setNoteText] = useState('');
@@ -265,12 +284,70 @@ export function useBible() {
   // FIX: Only stop audio when chapter changes if we are NOT paused.
   // When paused, chapter hasn't changed — this effect was firing spuriously
   // because isAudioPaused state change triggered re-renders that cascaded here.
+  //
+  // IMPORTANT: We only trigger on currentBook/currentChapter changes, not on
+  // showAudioPlayer/showChapterOverlay changes. This prevents the race condition
+  // where startReadingChapter() sets showChapterOverlay=true and immediately
+  // triggers this effect, stopping audio before it starts.
   useEffect(() => {
-    if ((showAudioPlayer || showChapterOverlay) && !isAudioPausedRef.current) {
+    if (showAudioPlayer && !isAudioPausedRef.current) {
       _stopAllAudio();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBook, currentChapter]);
+
+  // ── Sleep Timer countdown effect ────────────────────────────────────────────
+  useEffect(() => {
+    if (sleepTimer !== null && sleepTimer > 0) {
+      setSleepTimerRemaining(sleepTimer * 60);
+      sleepTimerRef.current = setInterval(() => {
+        setSleepTimerRemaining(prev => {
+          if (prev <= 1) {
+            if (sleepTimerRef.current) {
+              clearInterval(sleepTimerRef.current);
+              sleepTimerRef.current = null;
+            }
+            _stopAllAudio();
+            setSleepTimer(null);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (sleepTimerRef.current) {
+        clearInterval(sleepTimerRef.current);
+        sleepTimerRef.current = null;
+      }
+      setSleepTimerRemaining(0);
+    }
+
+    return () => {
+      if (sleepTimerRef.current) {
+        clearInterval(sleepTimerRef.current);
+        sleepTimerRef.current = null;
+      }
+    };
+  }, [sleepTimer]);
+
+  // ── Speed change handler ──────────────────────────────────────────────────
+  const _handleSpeedToggle = useCallback(() => {
+    const currentIdx = SPEED_OPTIONS.indexOf(speechRate as typeof SPEED_OPTIONS[number]);
+    const nextIdx = currentIdx === -1 ? 0 : (currentIdx + 1) % SPEED_OPTIONS.length;
+    const newRate = SPEED_OPTIONS[nextIdx];
+    setSpeechRate(newRate);
+    speechRateRef.current = newRate;
+    const ttsRate = newRate / 2;
+    bibleTTS.setRate(ttsRate);
+  }, [speechRate]);
+
+  // ── Sleep Timer toggle handler ─────────────────────────────────────────────
+  const _handleSleepTimerToggle = useCallback(() => {
+    const currentIdx = sleepTimerRemaining > 0
+      ? SLEEP_TIMER_OPTIONS.findIndex(o => o !== null && o * 60 === sleepTimerRemaining)
+      : 0;
+    const nextIdx = currentIdx === -1 ? 1 : (currentIdx + 1) % SLEEP_TIMER_OPTIONS.length;
+    setSleepTimer(SLEEP_TIMER_OPTIONS[nextIdx]);
+  }, [sleepTimerRemaining]);
 
   useEffect(() => {
     if (
@@ -463,16 +540,15 @@ export function useBible() {
       });
       if (res?.returnCode === 200) {
         if (!res.returnData?.explanation) {
-          showToast(
-            'info',
-            'No Explanation: No explanation found for this verse.',
-          );
+          await loadVersePrompts(verseNumber);
+          setShowExplanation(true);
           return;
         }
         setVerseExplanationMap(prev => ({
           ...prev,
           [verseNumber]: res.returnData.explanation as string,
         }));
+        await loadVersePrompts(verseNumber);
         setShowExplanation(true);
       }
     } catch (e: any) {
@@ -488,6 +564,49 @@ export function useBible() {
     setShowExplanation(false);
     setSelectedVerses([]);
   }, []);
+
+  const loadAllJournalPrompts = useCallback(async () => {
+    if (promptsLoaded) return;
+    try {
+      const res = await sendPostRequest('journal', 'prompts/get-all', {
+        isActive: true,
+      });
+      if (res?.returnCode === 200 && res.returnData) {
+        setAllPrompts(res.returnData);
+        setPromptsLoaded(true);
+      }
+    } catch (e) {
+      console.error('Error loading journal prompts:', e);
+    }
+  }, [promptsLoaded]);
+
+  const loadChapterPrompts = useCallback(async () => {
+    await loadAllJournalPrompts();
+    const chapterPrompts = allPrompts.filter(
+      (p: any) =>
+        p.bookName === currentBook &&
+        p.chapter === currentChapter &&
+        !p.verseNumber,
+    );
+    setChapterJournalPrompts(chapterPrompts);
+  }, [currentBook, currentChapter, allPrompts, loadAllJournalPrompts]);
+
+  const loadVersePrompts = useCallback(
+    async (verseNumber: number) => {
+      await loadAllJournalPrompts();
+      const versePrompts = allPrompts.filter(
+        (p: any) =>
+          p.bookName === currentBook &&
+          p.chapter === currentChapter &&
+          p.verseNumber === verseNumber,
+      );
+      setVerseJournalPrompts(prev => ({
+        ...prev,
+        [verseNumber]: versePrompts,
+      }));
+    },
+    [currentBook, currentChapter, allPrompts, loadAllJournalPrompts],
+  );
 
   const clearVerseExplanationForVerse = useCallback((verseNumber: number) => {
     setVerseExplanationMap(prev => {
@@ -660,9 +779,11 @@ export function useBible() {
     for (let i = startIndex; i < playlist.length; i++) {
       // ── Skip-jump check (Next/Prev button moved the index) ─────────────────
       // If the ref was changed externally (by onNext/onPrev), we jump to that index.
-      if (currentVerseIndexRef.current !== i) {
-        i = currentVerseIndexRef.current;
-        if (i >= playlist.length || i < 0) break;
+      // Only apply this when the ref differs from our current position AND is ahead of us.
+      if (currentVerseIndexRef.current > i) {
+        i = currentVerseIndexRef.current - 1;
+        if (i < 0) break;
+        continue;
       }
 
       // ── Pause check ────────────────────────────────────────────────────────
@@ -703,9 +824,14 @@ export function useBible() {
       if (!isReadingRef.current) return 'stopped';
 
       // ── Skip-jump (Next/Prev button moved the index while speaking) ────────
-      if (currentVerseIndexRef.current !== i) {
-        i = currentVerseIndexRef.current - 1; // for-loop will i++
+      if (currentVerseIndexRef.current > i) {
+        const targetIndex = currentVerseIndexRef.current;
+        currentVerseIndexRef.current = i;
+        i = targetIndex - 1;
         continue;
+      }
+      if (currentVerseIndexRef.current < i) {
+        currentVerseIndexRef.current = i;
       }
 
       // If paused mid-verse (pause was set while speaking), loop back to same
@@ -732,19 +858,20 @@ export function useBible() {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const startReadingSelectedVerses = async (overrideVerses?: number[]) => {
-    const targets = overrideVerses || selectedVerses;
-    if (targets.length === 0) return;
-    isReadingRef.current = true;
-    setAudioScope('selection');
-    audioScopeRef.current = 'selection';
-    setShowAudioPlayer(true);
-    setShowChapterOverlay(false);
-    isAudioPausedRef.current = false;
-    setIsAudioPaused(false);
-    currentVerseIndexRef.current = 0;
-    verseCharOffsetRef.current = 0;
+    try {
+      const targets = overrideVerses || selectedVerses;
+      if (targets.length === 0) return;
+      isReadingRef.current = true;
+      setAudioScope('selection');
+      audioScopeRef.current = 'selection';
+      setShowAudioPlayer(true);
+      setShowChapterOverlay(false);
+      isAudioPausedRef.current = false;
+      setIsAudioPaused(false);
+      currentVerseIndexRef.current = 0;
+      verseCharOffsetRef.current = 0;
 
-    while (isReadingRef.current) {
+      while (isReadingRef.current) {
       const playlist = [...targets]
         .sort((a, b) => a - b)
         .map(num => ({ num, text: verses[num] }));
@@ -790,33 +917,43 @@ export function useBible() {
       }
     }
 
-    isReadingRef.current = false;
-    setShowAudioPlayer(false);
-    setActiveAudioVerse(null);
-    setActiveAudioVerseText(null);
-    setActiveVerseWordMap([]);
-    currentVerseIndexRef.current = 0;
-    verseCharOffsetRef.current = 0;
+      isReadingRef.current = false;
+      setShowAudioPlayer(false);
+      setActiveAudioVerse(null);
+      setActiveAudioVerseText(null);
+      setActiveVerseWordMap([]);
+      currentVerseIndexRef.current = 0;
+      verseCharOffsetRef.current = 0;
+    } catch (error) {
+      console.error('[useBible] Error in startReadingSelectedVerses:', error);
+      isReadingRef.current = false;
+      setShowAudioPlayer(false);
+      setIsAudioPaused(false);
+    }
   };
 
   const startReadingChapter = async () => {
-    isReadingRef.current = true;
-    setAudioScope('chapter');
-    audioScopeRef.current = 'chapter';
-    setShowAudioPlayer(true);
-    setShowChapterOverlay(true);
-    isAudioPausedRef.current = false;
-    setIsAudioPaused(false);
-    currentVerseIndexRef.current = 0;
-    verseCharOffsetRef.current = 0;
+    try {
+      isReadingRef.current = true;
+      setAudioScope('chapter');
+      audioScopeRef.current = 'chapter';
+      setShowAudioPlayer(true);
+      setShowChapterOverlay(true);
+      isAudioPausedRef.current = false;
+      setIsAudioPaused(false);
+      currentVerseIndexRef.current = 0;
+      verseCharOffsetRef.current = 0;
 
-    while (isReadingRef.current) {
-      const chapterVerses = getVersesForChapter(currentBook, currentChapter);
-      const playlist = Object.entries(chapterVerses)
-        .map(([num, text]) => ({ num: Number(num), text }))
-        .sort((a, b) => a.num - b.num);
+      while (isReadingRef.current) {
+        const chapterVerses = getVersesForChapter(currentBook, currentChapter);
+        const playlist = Object.entries(chapterVerses)
+          .map(([num, text]) => ({ num: Number(num), text }))
+          .sort((a, b) => a.num - b.num);
 
-      if (!playlist.length) break;
+        if (!playlist.length) {
+          console.warn('[useBible] No verses found for chapter');
+          break;
+        }
 
       setAudioPlaylist(playlist);
       audioPlaylistRef.current = playlist;
@@ -855,6 +992,13 @@ export function useBible() {
     audioIndexRef.current = 0;
     currentVerseIndexRef.current = 0;
     verseCharOffsetRef.current = 0;
+    } catch (error) {
+      console.error('[useBible] Error in startReadingChapter:', error);
+      isReadingRef.current = false;
+      setShowAudioPlayer(false);
+      setShowChapterOverlay(false);
+      setIsAudioPaused(false);
+    }
   };
 
   /**
@@ -1306,6 +1450,10 @@ export function useBible() {
     afterPlayBehaviour,
     audioVerseIndex,
     isAudioPaused,
+    speechRate,
+    sleepTimerRemaining,
+    onSpeedToggle: _handleSpeedToggle,
+    onSleepTimerToggle: _handleSleepTimerToggle,
     searchQuery,
     searchResults,
     handleSearch,
@@ -1352,5 +1500,8 @@ export function useBible() {
     onRefresh,
     refreshing,
     setRefreshing,
+    verseJournalPrompts,
+    chapterJournalPrompts,
+    loadChapterPrompts,
   };
 }

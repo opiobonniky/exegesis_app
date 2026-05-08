@@ -18,6 +18,7 @@ import {
   Copy,
   X,
   BookOpen,
+  BookText,
 } from 'lucide-react-native';
 import {
   getColors,
@@ -126,6 +127,7 @@ export default function SelectionActionBar({
   onShare,
   onCopy,
   onClear,
+  onJournal,
   isDark,
 }: SelectionActionBarProps) {
   const COLORS = getColors(isDark);
@@ -177,6 +179,12 @@ export default function SelectionActionBar({
       label: 'Favorite',
       icon: <Star size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onFavorite,
+    },
+    {
+      key: 'journal',
+      label: 'Journal',
+      icon: <BookText size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
+      onPress: onJournal,
     },
     {
       key: 'share',

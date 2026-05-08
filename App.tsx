@@ -3,26 +3,32 @@ import { StyleSheet, View } from 'react-native';
 import AppNavigation from './src/component/navigations/AppNavigation';
 import { AppProvider } from './src/common/AppContext';
 import { initializeNotifications } from './src/utilits/firebaseService';
+import { initBibleTTS } from './src/utilits/bibleTTS';
 import SocketProvider from './src/services/socket/SocketProvider';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from './src/helpers/Toash.helper';
 
 const App = () => {
   useEffect(() => {
-    // Initialize notifications when app starts
-    const setupNotifications = async () => {
+    const setupApp = async () => {
       try {
         const token = await initializeNotifications();
         if (token) {
           console.log('✅ App notifications initialized with token:', token);
-          // TODO: Send token to your backend server
         }
       } catch (error) {
         console.error('Failed to initialize notifications:', error);
       }
+
+      try {
+        await initBibleTTS();
+        console.log('✅ Bible TTS initialized');
+      } catch (error) {
+        console.error('Failed to initialize Bible TTS:', error);
+      }
     };
 
-    setupNotifications();
+    setupApp();
   }, []);
 
   return (

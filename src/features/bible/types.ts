@@ -61,6 +61,7 @@ export interface SelectionActionBarProps {
   onShare: () => void;
   onCopy: () => void;
   onClear: () => void;
+  onJournal: () => void;
   isDark: boolean;
 }
 

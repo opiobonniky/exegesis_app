@@ -17,6 +17,7 @@ import {
   SkipBack,
   SkipForward,
   Music,
+  Timer,
 } from 'lucide-react-native';
 import { getColors, FONT_SIZES, SPACING } from '../../constants/theme';
 import LinearGradient from 'react-native-linear-gradient';
@@ -38,6 +39,10 @@ export interface AudioControlBarProps {
   verseIndex: number;
   verseCount: number;
   isDark: boolean;
+  speechRate?: number;
+  sleepTimerRemaining?: number;
+  onSpeedToggle?: () => void;
+  onSleepTimerToggle?: () => void;
 
   onPrev: () => void;
   onNext: () => void;
@@ -139,6 +144,10 @@ export default function AudioControlBar({
   verseIndex,
   verseCount,
   isDark,
+  speechRate = 1.0,
+  sleepTimerRemaining = 0,
+  onSpeedToggle,
+  onSleepTimerToggle,
   onPrev,
   onNext,
   onRepeatToggle,
@@ -331,6 +340,37 @@ export default function AudioControlBar({
               </CtrlBtn>
 
               <CtrlBtn
+                onPress={onSpeedToggle ?? (() => {})}
+                accent={accent}
+                isDark={isDark}
+                active={speechRate !== 1.0}
+              >
+                <Text
+                  style={[
+                    styles.speedText,
+                    { color: speechRate !== 1.0 ? accent : COLORS.muted },
+                  ]}
+                >
+                  {speechRate}x
+                </Text>
+              </CtrlBtn>
+
+              <CtrlBtn
+                onPress={onSleepTimerToggle ?? (() => {})}
+                accent={accent}
+                isDark={isDark}
+                active={sleepTimerRemaining > 0}
+              >
+                {sleepTimerRemaining > 0 ? (
+                  <Text style={[styles.sleepTimerText, { color: '#F59E0B' }]}>
+                    {Math.ceil(sleepTimerRemaining / 60)}m
+                  </Text>
+                ) : (
+                  <Timer size={16} color={COLORS.muted} />
+                )}
+              </CtrlBtn>
+
+              <CtrlBtn
                 onPress={onPrev}
                 accent={accent}
                 isDark={isDark}
@@ -459,6 +499,14 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '900',
     letterSpacing: 0.4,
+  },
+  speedText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  sleepTimerText: {
+    fontSize: 10,
+    fontWeight: '800',
   },
   titleRow: {
     marginBottom: 18,

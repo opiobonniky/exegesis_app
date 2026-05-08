@@ -8,9 +8,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Heart, X, Lightbulb } from 'lucide-react-native';
+import { Heart, X, Lightbulb, BookText } from 'lucide-react-native';
 import ExpandableText from '../../bible/ExpandableText';
 import { bibleTTS } from '../../../utilits/bibleTTS';
+import { route } from '../../../component/navigations/routes';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,10 @@ type VerseCardProps = {
   onCloseExplanation?: () => void;
   showExplanation?: boolean;
   explanationText?: string;
+  journalPrompts?: any[];
+  navigation?: any;
+  currentBook?: string;
+  currentChapter?: number;
 };
 
 export default function VerseCard({
@@ -58,6 +63,10 @@ export default function VerseCard({
   onCloseExplanation,
   showExplanation,
   explanationText,
+  journalPrompts = [],
+  navigation,
+  currentBook,
+  currentChapter,
 }: VerseCardProps) {
   const accent = colors.accent;
 
@@ -389,6 +398,78 @@ export default function VerseCard({
                     </Text>
                   </TouchableOpacity>
                 ) : null}
+
+                {/* Journal Prompts */}
+                {journalPrompts.length > 0 && (
+                  <View
+                    style={[
+                      localStyles.journalPromptsContainer,
+                      { borderTopColor: `${colors.primary}20` },
+                    ]}
+                  >
+                    <View style={localStyles.promptsHeader}>
+                      <Text
+                        style={[
+                          localStyles.promptsTitle,
+                          { color: colors.primary },
+                        ]}
+                      >
+                        Journal Prompts
+                      </Text>
+                      {currentBook && currentChapter && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            navigation?.navigate(route.journalEntry, {
+                              bookName: currentBook,
+                              chapter: currentChapter,
+                              verseStart: verseNumber,
+                              verseEnd: verseNumber,
+                            });
+                          }}
+                          style={[
+                            localStyles.addPromptBtn,
+                            { backgroundColor: colors.primary },
+                          ]}
+                        >
+                          <BookText size={12} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    {journalPrompts.map((prompt, idx) => (
+                      <TouchableOpacity
+                        key={prompt.id || idx}
+                        style={[
+                          localStyles.promptItem,
+                          {
+                            backgroundColor: `${colors.primary}10`,
+                            borderColor: colors.primary,
+                          },
+                        ]}
+                        onPress={() => {
+                          if (navigation) {
+                            navigation.navigate(route.journalEntry, {
+                              bookName: currentBook,
+                              chapter: currentChapter,
+                              verseStart: verseNumber,
+                              verseEnd: verseNumber,
+                              promptText: prompt.prompt,
+                            });
+                          }
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            localStyles.promptText,
+                            { color: colors.text },
+                          ]}
+                        >
+                          {prompt.prompt}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -485,13 +566,49 @@ const localStyles = StyleSheet.create({
     color: '#fff',
     letterSpacing: 0.3,
   },
+  journalPromptsContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    // borderTopColor is applied inline (colors comes from props, not module scope)
+  },
+  promptsTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  promptsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  addPromptBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  promptItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  promptText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
 });
 
 const wordStyles = StyleSheet.create({
   highlight: {
     fontWeight: '800',
     textDecorationLine: 'underline',
-    textDecorationStyle: 'solid',
+  textDecorationStyle: 'solid',
     borderRadius: 3,
     paddingHorizontal: 1,
   },

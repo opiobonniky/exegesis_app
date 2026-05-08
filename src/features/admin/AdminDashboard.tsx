@@ -39,6 +39,9 @@ import {
   AlertCircle,
   Clock,
   UserPlus,
+  BookText,
+  LayoutTemplate,
+  Lightbulb,
 } from 'lucide-react-native';
 import { route } from '../../component/navigations/routes';
 import useAuth from '../../hooks/useAuth';
@@ -106,6 +109,24 @@ const drawerItems = [
     label: 'Reading Plans',
     icon: CalendarClock,
     routeKey: 'adminReadingPlans',
+  },
+  {
+    id: 'adminJournalPrompts',
+    label: 'Journal Prompts',
+    icon: BookText,
+    routeKey: 'adminJournalPrompts',
+  },
+  {
+    id: 'adminJournalTemplates',
+    label: 'Journal Templates',
+    icon: LayoutTemplate,
+    routeKey: 'adminJournalTemplates',
+  },
+  {
+    id: 'adminDevotion',
+    label: 'Daily Devotion',
+    icon: Lightbulb,
+    routeKey: 'adminDailyDevotion',
   },
 ];
 
@@ -1076,7 +1097,28 @@ const AdminDashboard: React.FC = () => {
             color="#8b5cf6"
             onPress={() => navigation.navigate(route.adminReadingPlans)}
           />
-        </View>
+          <QuickAction
+            icon={<BookText size={20} color="#f59e0b" />}
+            label="Journal Prompts"
+            subtitle="Manage prompts"
+            color="#f59e0b"
+            onPress={() => navigation.navigate(route.adminJournalPrompts)}
+          />
+           <QuickAction
+             icon={<LayoutTemplate size={20} color="#ec4899" />}
+             label="Journal Templates"
+             subtitle="Manage templates"
+             color="#ec4899"
+             onPress={() => navigation.navigate(route.adminJournalTemplates)}
+           />
+           <QuickAction
+             icon={<Lightbulb size={20} color="#fbbf24" />}
+             label="Daily Devotion"
+             subtitle="Manage daily devotions"
+             color="#fbbf24"
+             onPress={() => navigation.navigate(route.adminDailyDevotion)}
+           />
+         </View>
 
         <View style={rootStyles.bottomSpacer} />
       </ScrollView>

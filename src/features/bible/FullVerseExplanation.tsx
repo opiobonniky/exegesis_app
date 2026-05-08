@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Animated,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -29,7 +30,8 @@ import { sendPostRequest } from '../../services/api';
 
 import ExpandableText from './ExpandableText';
 import ActionHeader from '../../reusable/ActionHeader';
-import { BookOpen, RefreshCw, AlertCircle } from 'lucide-react-native';
+import { BookOpen, RefreshCw, AlertCircle, BookText } from 'lucide-react-native';
+import { route } from '../../component/navigations/routes';
 
 type VerseData = {
   id?: number;
@@ -360,6 +362,22 @@ export default function FullVerseExplanation({ route, navigation }: any) {
             </Animated.View>
           </ScrollView>
         )}
+
+        {/* Floating Journal Button */}
+        <TouchableOpacity
+          style={[styles.floatingJournalBtn, { backgroundColor: COLORS.primary }]}
+          onPress={() => {
+            navigation.navigate(route.journalEntry, {
+              bookName,
+              chapter,
+              verseStart: verseNumber,
+              verseEnd: verseNumber,
+            });
+          }}
+          activeOpacity={0.8}
+        >
+          <BookText size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
     </>
   );
@@ -608,6 +626,23 @@ function createStyles(COLORS: any, isDark: boolean) {
       marginTop: 9,
       backgroundColor: COLORS.primary,
       flexShrink: 0,
+    },
+
+    // ── Floating Journal Button ─────────────────────────────────────────────
+    floatingJournalBtn: {
+      position: 'absolute',
+      bottom: SPACING.xl,
+      right: SPACING.lg,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 6,
     },
   });
 }
