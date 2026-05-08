@@ -30,14 +30,18 @@ import {
   Trash2,
   Pencil,
   Sun,
-  User,
   Clock,
   Book,
   Calendar,
+  Lightbulb,
+  Quote,
+  XCircle,
+  BookOpen,
 } from 'lucide-react-native';
+import { getVerseText } from '../../utilits/bibleUtils';
+import { getVersionById } from '../../assets/bibleVersion/json/bibleVersions';
 import BottomTab from '../../component/navigations/BottomTab';
 import { showToast } from '../../helpers/Toash.helper';
-import { getVerseText } from '../../utilits/bibleUtils';
 
 export interface ExtendedDailyVerse extends DailyVerse {
   creatorName?: string;
@@ -130,104 +134,111 @@ const AdminDailyVerseManager: React.FC = () => {
     );
   };
 
-  const renderVerse = ({ item }: { item: ExtendedDailyVerse }) => (
-    <View
-      style={[
-        styles.verseCard,
-        { backgroundColor: theme.cardBackground, borderColor: theme.border },
-      ]}
-    >
-      <View style={styles.verseHeader}>
-        <View style={styles.verseRef}>
-          <Book size={16} color={theme.primary} />
-          <Text style={[styles.verseRefText, { color: theme.text }]}>
-            {item.bookName} {item.chapter}:{item.verseNumber}
-          </Text>
-          {item.isPublished ? (
-            <CheckCircle2 size={14} color={theme.success} />
-          ) : null}
-        </View>
-        <View style={styles.dateBadge}>
-          <Calendar size={12} color={theme.muted} />
-          <Text style={[styles.verseDate, { color: theme.muted }]}>
-            {item.displayDate && typeof item.displayDate === 'string'
-              ? new Date(item.displayDate).toLocaleDateString(undefined, {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : '—'}
-          </Text>
+  const renderVerse = ({ item }: { item: ExtendedDailyVerse }) => {
+    const formattedDate = item.displayDate && typeof item.displayDate === 'string'
+      ? new Date(item.displayDate).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      : '—';
+
+    return (
+      <View
+        style={[
+          styles.verseCard,
+          { backgroundColor: theme.cardBackground, borderColor: theme.border },
+        ]}
+      >
+        <View style={[styles.verseAccentBar, { backgroundColor: theme.primary }]} />
+        <View style={styles.verseCardInner}>
+          {/* Header: Reference + Version + Actions */}
+          <View style={styles.verseHeader}>
+            <View style={styles.verseRef}>
+              <Book size={14} color={theme.primary} />
+              <Text style={[styles.verseRefText, { color: theme.text }]}>
+                {item.bookName} {item.chapter}:{item.verseNumber}
+              </Text>
+              {item.bibleVersion && (
+                <View style={[styles.versionBadge, { backgroundColor: theme.primary + '20' }]}>
+                  <Text style={[styles.versionText, { color: theme.primary }]}>
+                    {item.bibleVersion}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.verseActions}>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: `${theme.primary}10` }]}
+                onPress={() => handleEditPress(item)}
+              >
+                <Pencil size={12} color={theme.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: `${theme.error}10` }]}
+                onPress={() => handleDelete(item)}
+              >
+                <Trash2 size={12} color={theme.error} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Verse Text */}
+          <View style={styles.verseContentContainer}>
+            <Text style={styles.openQuote}>"</Text>
+            <Text style={[styles.verseText, { color: theme.textSecondary }]}>
+              {getVerseText(
+                item.bookName,
+                item.chapter,
+                item.verseNumber,
+                item.bibleVersion ? getVersionById(item.bibleVersion).load() : undefined
+              ) || '—'}
+              "
+            </Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Info Row: Status + Date */}
+          <View style={styles.infoRow}>
+            {item.isPublished ? (
+              <View style={[styles.statusBadge, { backgroundColor: `${theme.success}15` }]}>
+                <CheckCircle2 size={10} color={theme.success} />
+                <Text style={[styles.statusText, { color: theme.success }]}>Published</Text>
+              </View>
+            ) : (
+              <View style={[styles.statusBadge, { backgroundColor: `${theme.error}15` }]}>
+                <XCircle size={10} color={theme.error} />
+                <Text style={[styles.statusText, { color: theme.error }]}>Draft</Text>
+              </View>
+            )}
+            <View style={styles.dateRow}>
+              <Calendar size={10} color={theme.muted} />
+              <Text style={[styles.metaText, { color: theme.muted }]}>{formattedDate}</Text>
+            </View>
+          </View>
+
+          {/* Explanation Preview */}
+          {item.explanation && (
+            <View
+              style={[
+                styles.sectionContainer,
+                { backgroundColor: isDark ? '#ffffff08' : '#f0f9ff' },
+              ]}
+            >
+              <View style={styles.sectionHeader}>
+                <Lightbulb size={12} color={theme.primary} />
+                <Text style={[styles.sectionLabel, { color: theme.primary }]}>EXPLANATION</Text>
+              </View>
+              <Text style={[styles.sectionText, { color: theme.textSecondary }]} numberOfLines={2}>
+                {item.explanation.length > 80 ? item.explanation.substring(0, 80) + '...' : item.explanation}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
-
-      <View style={styles.verseContentContainer}>
-        <Text style={[styles.verseText, { color: theme.textSecondary }]}>
-          "{getVerseText(item.bookName, item.chapter, item.verseNumber)}"
-        </Text>
-      </View>
-
-      {item.reflection && (
-        <View
-          style={[
-            styles.reflectionContainer,
-            { backgroundColor: isDark ? '#ffffff05' : '#f8fafc' },
-          ]}
-        >
-          <Text style={[styles.reflectionLabel, { color: theme.muted }]}>
-            REFLECTION
-          </Text>
-          <Text
-            style={[styles.verseReflection, { color: theme.textSecondary }]}
-            numberOfLines={3}
-          >
-            {item.reflection}
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.metaRow}>
-        <View style={styles.metaItem}>
-          <User size={12} color={theme.muted} />
-          <Text style={[styles.metaText, { color: theme.muted }]}>
-            {item.creatorName || 'System'}
-          </Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Clock size={12} color={theme.muted} />
-          <Text style={[styles.metaText, { color: theme.muted }]}>
-            {item.createdOn
-              ? new Date(item.createdOn).toLocaleDateString()
-              : '—'}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.verseActions}>
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            { backgroundColor: `${theme.primary}10` },
-          ]}
-          onPress={() => handleEditPress(item)}
-        >
-          <Pencil size={14} color={theme.primary} />
-          <Text style={[styles.actionButtonText, { color: theme.primary }]}>
-            Edit
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: `${theme.error}10` }]}
-          onPress={() => handleDelete(item)}
-        >
-          <Trash2 size={14} color={theme.error} />
-          <Text style={[styles.actionButtonText, { color: theme.error }]}>
-            Delete
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   const renderEmpty = () => (
     <View style={styles.empty}>
@@ -297,9 +308,7 @@ const AdminDailyVerseManager: React.FC = () => {
 
 const getStyles = (theme: ReturnType<typeof getTheme>) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-    },
+    container: { flex: 1 },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -312,10 +321,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       alignItems: 'center',
       gap: 8,
     },
-    title: {
-      fontSize: 18,
-      fontWeight: '700',
-    },
+    title: { fontSize: 18, fontWeight: '700' },
     addButton: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -324,55 +330,94 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       borderRadius: 8,
       gap: 4,
     },
-    addButtonText: {
-      color: '#fff',
-      fontWeight: '600',
-      fontSize: 13,
-    },
-    loading: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    list: {
-      padding: 16,
-    },
+    addButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+    loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    list: { padding: 12 },
     verseCard: {
-      borderRadius: 12,
-      padding: 16,
+      borderRadius: 16,
       marginBottom: 12,
       borderWidth: 1,
+      overflow: 'hidden',
     },
+    verseAccentBar: { height: 4, width: '100%' },
+    verseCardInner: { padding: 16 },
     verseHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      marginBottom: 8,
     },
     verseRef: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 6,
+      flexWrap: 'wrap',
+      flex: 1,
     },
-    verseRefText: {
-      fontSize: 16,
-      fontWeight: '700',
+    verseRefText: { fontSize: 13, fontWeight: '700' },
+    versionBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
     },
-    verseDate: {
-      fontSize: 12,
-    },
-    verseReflection: {
-      fontSize: 13,
-      marginTop: 8,
-    },
+    versionText: { fontSize: 9, fontWeight: '700' },
     verseActions: {
       flexDirection: 'row',
-      justifyContent: 'flex-end',
-      gap: 12,
-      marginTop: 12,
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: theme.border,
+      gap: 6,
     },
+    verseContentContainer: {
+      marginTop: 4,
+      marginBottom: 8,
+    },
+    openQuote: {
+      fontSize: 48,
+      lineHeight: 36,
+      color: theme.primary,
+      opacity: 0.25,
+      fontStyle: 'italic',
+      marginBottom: -8,
+    },
+    verseText: {
+      fontSize: 14,
+      fontStyle: 'italic',
+      lineHeight: 22,
+      color: theme.textSecondary,
+    },
+    divider: { height: 1, backgroundColor: theme.border, marginBottom: 12 },
+    infoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+      gap: 4,
+    },
+    statusText: { fontSize: 10, fontWeight: '600' },
+    dateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    metaText: { fontSize: 10, fontWeight: '500' },
+    sectionContainer: {
+      padding: 10,
+      borderRadius: 8,
+      marginBottom: 12,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginBottom: 4,
+    },
+    sectionLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+    sectionText: { fontSize: 11, lineHeight: 16 },
     actionButton: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -381,78 +426,21 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       paddingVertical: 6,
       borderRadius: 6,
     },
-    actionButtonText: {
-      fontSize: 13,
-      fontWeight: '600',
-    },
+    actionButtonText: { fontSize: 11, fontWeight: '600' },
     empty: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
       paddingVertical: 48,
     },
-    emptyText: {
-      fontSize: 15,
-      marginTop: 12,
-      marginBottom: 16,
-    },
+    emptyText: { fontSize: 15, marginTop: 12, marginBottom: 16 },
     emptyButton: {
       paddingHorizontal: 20,
       paddingVertical: 12,
       borderRadius: 10,
     },
-    emptyButtonText: {
-      color: '#fff',
-      fontWeight: '600',
-    },
-    bottomPadding: {
-      height: 80,
-    },
-    verseText: {
-      fontSize: 15,
-      fontStyle: 'italic',
-      lineHeight: 22,
-    },
-    dateBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      backgroundColor: 'rgba(0,0,0,0.03)',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 6,
-    },
-    verseContentContainer: {
-      marginTop: 12,
-      paddingHorizontal: 4,
-    },
-    reflectionContainer: {
-      marginTop: 12,
-      padding: 12,
-      borderRadius: 10,
-      gap: 4,
-    },
-    reflectionLabel: {
-      fontSize: 10,
-      fontWeight: '800',
-      letterSpacing: 0.5,
-    },
-    metaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-      marginTop: 12,
-      paddingHorizontal: 4,
-    },
-    metaItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    metaText: {
-      fontSize: 11,
-      fontWeight: '500',
-    },
+    emptyButtonText: { color: '#fff', fontWeight: '600' },
+    bottomPadding: { height: 80 },
   });
 
 export default AdminDailyVerseManager;

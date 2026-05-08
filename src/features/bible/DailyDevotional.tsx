@@ -24,6 +24,7 @@ import {
 } from 'lucide-react-native';
 import { sendPostRequest } from '../../services/api';
 import { getVerseText } from '../../utilits/bibleUtils';
+import { getVersionById } from '../../assets/bibleVersion/json/bibleVersions';
 import ActionHeader from '../../reusable/ActionHeader';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -33,6 +34,7 @@ type DailyVerse = {
   bookName: string;
   chapter: number;
   verseNumber: number;
+  bibleVersion?: string;
   reflection?: string;
   title?: string;
   content?: string;
@@ -309,6 +311,30 @@ export default function DailyDevotionalScreen() {
       color: accent,
       letterSpacing: 0.3,
     },
+    versionBadge: {
+      backgroundColor: accent + '20',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 4,
+      marginLeft: 8,
+    },
+    versionBadgeText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+      color: accent,
+      letterSpacing: 0.3,
+    },
+    dateRowInline: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: SPACING.sm,
+    },
+    dateTextInline: {
+      fontSize: FONT_SIZES.xs,
+      color: COLORS.muted,
+      fontWeight: '500',
+    },
 
     // ── Devotion card ──
     devotionCard: {
@@ -424,16 +450,24 @@ export default function DailyDevotionalScreen() {
 
   const verseBody =
     parsed?.verseText ||
-    getVerseText(devotion.bookName, devotion.chapter, devotion.verseNumber) ||
+    getVerseText(
+      devotion.bookName,
+      devotion.chapter,
+      devotion.verseNumber,
+      devotion.bibleVersion ? getVersionById(devotion.bibleVersion).load() : undefined
+    ) ||
     '';
 
   const verseReference = `${devotion.bookName} ${devotion.chapter}:${devotion.verseNumber}`;
   const sectionTitle = parsed?.sectionTitle || devotion.title || '';
+  // Use explanation as main content, fallback to reflection for backward compatibility
   const paragraphs = parsed?.paragraphs.length
     ? parsed.paragraphs
-    : devotion.reflection
-      ? [devotion.reflection]
-      : [];
+    : (devotion as any).explanation
+      ? [(devotion as any).explanation]
+      : devotion.reflection
+        ? [devotion.reflection]
+        : [];
 
   return (
     // ── Outer View keeps ActionHeader fixed ──
@@ -471,6 +505,17 @@ export default function DailyDevotionalScreen() {
             <View style={s.referenceRow}>
               <View style={s.referenceDot} />
               <Text style={s.referenceText}>{verseReference}</Text>
+              {devotion.bibleVersion && (
+                <View style={s.versionBadge}>
+                  <Text style={s.versionBadgeText}>{devotion.bibleVersion}</Text>
+                </View>
+              )}
+            </View>
+            <View style={s.dateRowInline}>
+              <Calendar size={12} color={COLORS.muted} />
+              <Text style={s.dateTextInline}>
+                {formatDate(devotion.displayDate)}
+              </Text>
             </View>
           </View>
         </View>
@@ -490,6 +535,21 @@ export default function DailyDevotionalScreen() {
             />
           </View>
         </View>
+
+        {/* ── Learn More card ── */}
+        {(devotion as any).learnMore ? (
+          <View style={s.devotionCard}>
+            <View style={s.devotionCardInner}>
+              <Text style={s.devotionLabel}>Learn More</Text>
+              <View style={s.devotionDivider} />
+              <DevotionBody
+                paragraphs={(devotion as any).learnMore.split('\n\n').filter((p: string) => p.trim())}
+                COLORS={COLORS}
+                dynamicStyles={s}
+              />
+            </View>
+          </View>
+        ) : null}
 
         {/* Footer */}
         <View style={s.footer}>

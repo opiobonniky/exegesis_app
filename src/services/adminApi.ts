@@ -94,10 +94,12 @@ export interface DailyVerse {
   bookName: string;
   chapter: number;
   verseNumber: number;
-  verseText?: string | null;
+  bibleVersion?: string;
   displayDate: string;
   displayTime?: string;
   reflection?: string;
+  explanation?: string;
+  learnMore?: string;
   createdBy: string;
   createdOn: string;
   updatedBy?: string;
@@ -124,6 +126,7 @@ export interface DailyDevotion {
   bookName?: string | null;
   chapter?: number | null;
   verseNumber?: number | null;
+  bibleVersion?: string | null;
   displayDate: string;
   displayTime?: string;
   createdBy: string;

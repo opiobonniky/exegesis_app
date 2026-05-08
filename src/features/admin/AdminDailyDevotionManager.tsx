@@ -30,6 +30,8 @@ import {
   Pencil,
   Lightbulb,
   Calendar,
+  ChevronLeftCircle,
+  ChevronLeft,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
 
@@ -208,11 +210,21 @@ const AdminDailyDevotionManager: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={[styles.backText, { color: theme.primary }]}>Back</Text>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.surface, borderBottomColor: theme.border },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+        >
+          <ChevronLeft size={24} color={theme.primary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Daily Devotions</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>
+          Daily Devotions
+        </Text>
         <TouchableOpacity onPress={handleAddPress} style={styles.addBtn}>
           <Plus size={24} color={theme.primary} />
         </TouchableOpacity>
@@ -221,7 +233,9 @@ const AdminDailyDevotionManager: React.FC = () => {
       {devotions.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Lightbulb size={48} color={theme.muted} />
-          <Text style={[styles.emptyText, { color: theme.muted }]}>No devotions yet</Text>
+          <Text style={[styles.emptyText, { color: theme.muted }]}>
+            No devotions yet
+          </Text>
           <Text style={[styles.emptySubtext, { color: theme.muted }]}>
             Tap + to add your first devotion
           </Text>
@@ -230,7 +244,7 @@ const AdminDailyDevotionManager: React.FC = () => {
         <FlatList
           data={devotions}
           renderItem={renderDevotion}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={item => String(item.id)}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl

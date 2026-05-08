@@ -36,12 +36,18 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
-import { getChaptersForBook, getVerseText, getVersesForChapter } from '../../utilits/bibleUtils';
+import { getChaptersForBook, getVerseText, getVersesForChapter, setActiveVersion } from '../../utilits/bibleUtils';
+import { BIBLE_VERSIONS } from '../../assets/bibleVersion/json/bibleVersions';
 
 const TESTAMENTS = [
   { value: 'Old', label: 'Old Testament' },
   { value: 'New', label: 'New Testament' },
 ];
+
+const BIBLE_VERSION_OPTIONS = BIBLE_VERSIONS.map(v => ({
+  value: v.id,
+  label: `${v.name} (${v.abbreviation})`,
+}));
 
 const BIBLE_BOOKS = [
   'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
@@ -86,7 +92,9 @@ const AddDailyVerse: React.FC = () => {
   const [bookName, setBookName] = useState('');
   const [chapter, setChapter] = useState('');
   const [verseNumber, setVerseNumber] = useState('');
-  const [reflection, setReflection] = useState('');
+  const [explanation, setExplanation] = useState('');
+  const [learnMore, setLearnMore] = useState('');
+  const [bibleVersion, setBibleVersion] = useState('KJV');
   const [displayDate, setDisplayDate] = useState(new Date());
   const [published, setPublished] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -101,7 +109,9 @@ const AddDailyVerse: React.FC = () => {
       setBookName(editingVerse.bookName);
       setChapter(String(editingVerse.chapter));
       setVerseNumber(String(editingVerse.verseNumber));
-      setReflection(editingVerse.reflection || '');
+      setExplanation((editingVerse as any).explanation || '');
+      setLearnMore((editingVerse as any).learnMore || '');
+      setBibleVersion((editingVerse as any).bibleVersion || 'KJV');
       setDisplayDate(new Date(editingVerse.displayDate));
       setPublished(editingVerse.isPublished);
       const text = getVerseText(editingVerse.bookName, editingVerse.chapter, editingVerse.verseNumber);
@@ -114,6 +124,7 @@ const AddDailyVerse: React.FC = () => {
   const [chapterPickerVisible, setChapterPickerVisible] = useState(false);
   const [versePickerVisible, setVersePickerVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [versionPickerVisible, setVersionPickerVisible] = useState(false);
   const [bookSearch, setBookSearch] = useState('');
 
   const books = testament 
@@ -133,15 +144,16 @@ const AddDailyVerse: React.FC = () => {
 
   useEffect(() => {
     if (bookName && chapter && verseNumber) {
+      setActiveVersion(bibleVersion);
       const text = getVerseText(bookName, parseInt(chapter), parseInt(verseNumber)) || '';
       setVerseText(text);
     } else {
       setVerseText('');
     }
-  }, [bookName, chapter, verseNumber]);
+  }, [bookName, chapter, verseNumber, bibleVersion]);
 
   const handleSave = async () => {
-    if (!bookName || !chapter || !verseNumber || !reflection.trim()) {
+    if (!bookName || !chapter || !verseNumber || !explanation.trim()) {
       showToast('error', 'Please fill all required fields');
       return;
     }
@@ -152,9 +164,10 @@ const AddDailyVerse: React.FC = () => {
         bookName,
         chapter: parseInt(chapter),
         verseNumber: parseInt(verseNumber),
-        verseText: verseText || null,
+        bibleVersion,
         displayDate: displayDate.toISOString().split('T')[0],
-        reflection,
+        explanation,
+        learnMore: learnMore || null,
         published,
       };
 
@@ -361,6 +374,20 @@ const AddDailyVerse: React.FC = () => {
               <ChevronDown size={20} color={theme.muted} />
             </TouchableOpacity>
 
+            {/* Bible Version Selector */}
+            <TouchableOpacity
+              style={[styles.selectorBtn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+              onPress={() => setVersionPickerVisible(true)}
+            >
+              <View style={styles.selectorContent}>
+                <BookOpen size={20} color={theme.primary} />
+                <Text style={[styles.selectorText, { color: theme.text }]}>
+                  {BIBLE_VERSION_OPTIONS.find(v => v.value === bibleVersion)?.label || 'Select version'}
+                </Text>
+              </View>
+              <ChevronDown size={20} color={theme.muted} />
+            </TouchableOpacity>
+
             {verseText ? (
               <View style={[styles.verseCard, { backgroundColor: theme.cardBackground, borderColor: theme.primary }]}>
                 <View style={styles.verseCardHeader}>
@@ -370,7 +397,7 @@ const AddDailyVerse: React.FC = () => {
                   </Text>
                 </View>
                 <Text style={[styles.label, { color: theme.text, marginBottom: 8 }]}>
-                  Verse Text <Text style={{ color: theme.muted, fontSize: 12 }}>(editable - override default)</Text>
+                  Verse Text <Text style={{ color: theme.muted, fontSize: 12 }}>({'read only'})</Text>
                 </Text>
                 <TextInput
                   style={[styles.verseTextInput, { color: theme.text, backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}
@@ -379,6 +406,7 @@ const AddDailyVerse: React.FC = () => {
                   multiline
                   placeholder="Verse text (you can edit this)"
                   placeholderTextColor={theme.muted}
+                  editable={false}
                 />
               </View>
             ) : null}
@@ -409,16 +437,31 @@ const AddDailyVerse: React.FC = () => {
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: theme.text }]}>
-                Reflection <Text style={{ color: theme.primary }}>*</Text>
+                Explanation <Text style={{ color: theme.primary }}>*</Text>
               </Text>
               <TextInput
                 style={[styles.textArea, { backgroundColor: theme.cardBackground, borderColor: theme.border, color: theme.text }]}
-                value={reflection}
-                onChangeText={setReflection}
-                placeholder="What does this verse mean to you today?"
+                value={explanation}
+                onChangeText={setExplanation}
+                placeholder="Explain what this verse means and its significance..."
                 placeholderTextColor={theme.muted}
                 multiline
                 numberOfLines={5}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Learn More <Text style={{ color: theme.muted }}>(optional)</Text>
+              </Text>
+              <TextInput
+                style={[styles.textArea, { backgroundColor: theme.cardBackground, borderColor: theme.border, color: theme.text }]}
+                value={learnMore}
+                onChangeText={setLearnMore}
+                placeholder="Additional resources, related verses, or deeper insights..."
+                placeholderTextColor={theme.muted}
+                multiline
+                numberOfLines={4}
               />
             </View>
 
@@ -439,10 +482,10 @@ const AddDailyVerse: React.FC = () => {
               style={[
                 styles.saveBtn,
                 { backgroundColor: theme.primary },
-                (saving || !verseText || !reflection.trim()) && styles.saveBtnDisabled,
+                (saving || !verseText || !explanation.trim()) && styles.saveBtnDisabled,
               ]}
               onPress={handleSave}
-              disabled={saving || !verseText || !reflection.trim()}
+              disabled={saving || !verseText || !explanation.trim()}
             >
               {saving ? (
                 <ActivityIndicator size="small" color="#fff" />
@@ -509,6 +552,24 @@ const AddDailyVerse: React.FC = () => {
             ),
             (v: number) => {
               setVerseNumber(String(v));
+            },
+          )}
+        </View>
+      </Modal>
+
+      <Modal visible={versionPickerVisible} animationType="slide" transparent>
+        <View style={[styles.modalOverlay]}>
+          {renderModalContent(
+            'Select Bible Version',
+            BIBLE_VERSION_OPTIONS,
+            (v: { value: string; label: string }) => (
+              <View style={styles.pickerItemContent}>
+                <Text style={[styles.pickerItemText, { color: theme.text }]}>{v.label}</Text>
+              </View>
+            ),
+            (v: { value: string; label: string }) => {
+              setBibleVersion(v.value);
+              setVersionPickerVisible(false);
             },
           )}
         </View>

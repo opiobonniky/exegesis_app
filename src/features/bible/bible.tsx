@@ -751,7 +751,14 @@ export default function Bible() {
         onSleepTimerToggle={onSleepTimerToggle}
         onPrev={goToPreviousSelectedVerse}
         onNext={goToNextSelectedVerse}
-        onRepeatToggle={() => {}}
+        onRepeatToggle={() => {
+          // Cycle through: stop → repeat_one → repeat → continue → stop
+          const current = afterPlayBehaviour;
+          if (current === 'stop') handleAfterPlayChange('repeat_one');
+          else if (current === 'repeat_one') handleAfterPlayChange('repeat');
+          else if (current === 'repeat') handleAfterPlayChange('continue');
+          else handleAfterPlayChange('stop');
+        }}
         onPlayPause={handleAudioTogglePlayPause}
         onStop={handleAudioStop}
         onScopeChange={handleAudioScopeChange}

@@ -143,9 +143,9 @@ export function useBible() {
 
   // ── Speed & Sleep Timer state ─────────────────────────────────────────────
   const SPEED_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0] as const;
-  const SLEEP_TIMER_OPTIONS = [null, 5, 15, 30, 60] as const;
+  const SLEEP_TIMER_OPTIONS = [null, 1, 3, 5, 10, 30] as const;
   const [speechRate, setSpeechRate] = useState<number>(1.0);
-  const [sleepTimer, setSleepTimer] = useState<number | null>(null);
+  const [sleepTimer, setSleepTimer] = useState<number | null>(null); // Default off
   const [sleepTimerRemaining, setSleepTimerRemaining] = useState<number>(0);
 
   const [activeVerseWordMap, setActiveVerseWordMap] = useState<
@@ -163,6 +163,7 @@ export function useBible() {
   const isReadingRef = useRef(false);
   const isAudioPausedRef = useRef(false);
   const currentVerseIndexRef = useRef(0);
+  const repeatOneToggledRef = useRef(false); // Track if repeat_one was toggled during playback
 
   // ── FIXED: Track the char offset we have already spoken for the current
   //    verse so we can resume from that position if interrupted.
@@ -296,23 +297,27 @@ export function useBible() {
   }, [currentBook, currentChapter]);
 
   // ── Sleep Timer countdown effect ────────────────────────────────────────────
+  // Only starts when user explicitly sets a timer value
   useEffect(() => {
     if (sleepTimer !== null && sleepTimer > 0) {
-      setSleepTimerRemaining(sleepTimer * 60);
-      sleepTimerRef.current = setInterval(() => {
-        setSleepTimerRemaining(prev => {
-          if (prev <= 1) {
-            if (sleepTimerRef.current) {
-              clearInterval(sleepTimerRef.current);
-              sleepTimerRef.current = null;
+      // Only start countdown if not already running
+      if (sleepTimerRef.current === null) {
+        setSleepTimerRemaining(sleepTimer * 60);
+        sleepTimerRef.current = setInterval(() => {
+          setSleepTimerRemaining(prev => {
+            if (prev <= 1) {
+              if (sleepTimerRef.current) {
+                clearInterval(sleepTimerRef.current);
+                sleepTimerRef.current = null;
+              }
+              _stopAllAudio();
+              setSleepTimer(null);
+              return 0;
             }
-            _stopAllAudio();
-            setSleepTimer(null);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+            return prev - 1;
+          });
+        }, 1000);
+      }
     } else {
       if (sleepTimerRef.current) {
         clearInterval(sleepTimerRef.current);
@@ -334,20 +339,44 @@ export function useBible() {
     const currentIdx = SPEED_OPTIONS.indexOf(speechRate as typeof SPEED_OPTIONS[number]);
     const nextIdx = currentIdx === -1 ? 0 : (currentIdx + 1) % SPEED_OPTIONS.length;
     const newRate = SPEED_OPTIONS[nextIdx];
+    // Update UI state immediately for responsive feel
     setSpeechRate(newRate);
     speechRateRef.current = newRate;
+    // Then update TTS (async)
     const ttsRate = newRate / 2;
     bibleTTS.setRate(ttsRate);
   }, [speechRate]);
 
   // ── Sleep Timer toggle handler ─────────────────────────────────────────────
   const _handleSleepTimerToggle = useCallback(() => {
-    const currentIdx = sleepTimerRemaining > 0
-      ? SLEEP_TIMER_OPTIONS.findIndex(o => o !== null && o * 60 === sleepTimerRemaining)
-      : 0;
-    const nextIdx = currentIdx === -1 ? 1 : (currentIdx + 1) % SLEEP_TIMER_OPTIONS.length;
-    setSleepTimer(SLEEP_TIMER_OPTIONS[nextIdx]);
-  }, [sleepTimerRemaining]);
+    // Cycle through: Off → 1 → 3 → 5 → 10 → 30 → Off
+    const currentValue = sleepTimer; // Current timer in minutes (null = off)
+    
+    // Find current index in options (skip null at index 0, start from 1)
+    let currentIdx = 0;
+    if (currentValue === null) {
+      currentIdx = 0; // Start from first actual value (1m)
+    } else {
+      const foundIdx = SLEEP_TIMER_OPTIONS.findIndex(o => o === currentValue);
+      currentIdx = foundIdx >= 0 ? foundIdx : 0;
+    }
+    
+    // Move to next value, wrap around to null (off) after last option
+    const nextIdx = (currentIdx + 1) % SLEEP_TIMER_OPTIONS.length;
+    const nextTimer = SLEEP_TIMER_OPTIONS[nextIdx];
+    
+    // Update state immediately for responsive UI
+    setSleepTimer(nextTimer);
+    
+    // If turning off (nextTimer is null), clear remaining time immediately
+    if (nextTimer === null) {
+      setSleepTimerRemaining(0);
+      if (sleepTimerRef.current) {
+        clearInterval(sleepTimerRef.current);
+        sleepTimerRef.current = null;
+      }
+    }
+  }, [sleepTimer]);
 
   useEffect(() => {
     if (
@@ -759,6 +788,14 @@ export function useBible() {
     audioPlaylistRef.current = [];
     audioIndexRef.current = 0;
     currentVerseIndexRef.current = 0;
+    
+    // Reset sleep timer when audio stops (turn off)
+    if (sleepTimerRef.current) {
+      clearInterval(sleepTimerRef.current);
+      sleepTimerRef.current = null;
+    }
+    setSleepTimer(null); // Reset to off
+    setSleepTimerRemaining(0);
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -816,12 +853,20 @@ export function useBible() {
       setAudioVerseIndex(i);
       audioIndexRef.current = i;
 
-      // ── Speak ──────────────────────────────────────────────────────────────
+// ── Speak ──────────────────────────────────────────────────────────────
       await _playVerseAtIndex(i, playlist, isFirst);
       isFirst = false;
 
-      // ── Post-speak checks ──────────────────────────────────────────────────
+      // ── Post-speak checks ────────────────────────────────────────────────────────
       if (!isReadingRef.current) return 'stopped';
+
+      // ── Immediate repeat check (if user toggled repeat_one during playback) ───
+      // Reset for next iteration but check first
+      if (repeatOneToggledRef.current && afterPlayBehaviourRef.current === 'repeat_one') {
+        repeatOneToggledRef.current = false; // Reset for next toggle
+        i--; // Stay on current verse to repeat
+        continue;
+      }
 
       // ── Skip-jump (Next/Prev button moved the index while speaking) ────────
       if (currentVerseIndexRef.current > i) {
@@ -1112,8 +1157,13 @@ export function useBible() {
   };
 
   const handleAfterPlayChange = (behaviour: AfterPlayBehaviour) => {
+    // Update state immediately for responsive UI
     setAfterPlayBehaviour(behaviour);
     afterPlayBehaviourRef.current = behaviour;
+    // Mark that repeat_one was toggled for immediate effect
+    if (behaviour === 'repeat_one') {
+      repeatOneToggledRef.current = true;
+    }
   };
 
   // ─────────────────────────────────────────────────────────────────────────────

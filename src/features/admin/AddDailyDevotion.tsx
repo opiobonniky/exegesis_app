@@ -33,6 +33,13 @@ import {
   BookOpen,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
+import { BIBLE_VERSIONS } from '../../assets/bibleVersion/json/bibleVersions';
+import { getVerseText, setActiveVersion } from '../../utilits/bibleUtils';
+
+const BIBLE_VERSION_OPTIONS = BIBLE_VERSIONS.map(v => ({
+  value: v.id,
+  label: `${v.name} (${v.abbreviation})`,
+}));
 
 const BIBLE_BOOKS = [
   'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
@@ -78,6 +85,8 @@ const AddDailyDevotion: React.FC = () => {
   const [bookName, setBookName] = useState('');
   const [chapter, setChapter] = useState('');
   const [verseNumber, setVerseNumber] = useState('');
+  const [bibleVersion, setBibleVersion] = useState('KJV');
+  const [verseText, setVerseText] = useState('');
   const [displayDate, setDisplayDate] = useState(new Date());
   const [published, setPublished] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -92,12 +101,24 @@ const AddDailyDevotion: React.FC = () => {
       setVerseNumber(editingDevotion.verseNumber ? String(editingDevotion.verseNumber) : '');
       setDisplayDate(new Date(editingDevotion.displayDate));
       setPublished(editingDevotion.isPublished);
+      setBibleVersion((editingDevotion as any).bibleVersion || 'KJV');
     }
   }, [editingDevotion]);
+
+  useEffect(() => {
+    if (bookName && chapter && verseNumber) {
+      setActiveVersion(bibleVersion);
+      const text = getVerseText(bookName, parseInt(chapter), parseInt(verseNumber)) || '';
+      setVerseText(text);
+    } else {
+      setVerseText('');
+    }
+  }, [bookName, chapter, verseNumber, bibleVersion]);
 
   // Picker modals
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [versionPickerVisible, setVersionPickerVisible] = useState(false);
   const [bookSearch, setBookSearch] = useState('');
 
   const filteredBooks = bookSearch
@@ -134,6 +155,7 @@ const AddDailyDevotion: React.FC = () => {
         bookName: bookName || null,
         chapter: chapter ? parseInt(chapter) : null,
         verseNumber: verseNumber ? parseInt(verseNumber) : null,
+        bibleVersion: bookName ? bibleVersion : null,
         displayDate: displayDate.toISOString().split('T')[0],
         published,
       };
@@ -242,6 +264,28 @@ const AddDailyDevotion: React.FC = () => {
           </View>
         ) : null}
 
+        {bookName ? (
+          <TouchableOpacity
+            style={[styles.selectorBtn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+            onPress={() => setVersionPickerVisible(true)}
+          >
+            <View style={styles.selectorContent}>
+              <BookOpen size={20} color={theme.primary} />
+              <Text style={[styles.selectorText, { color: theme.text }]}>
+                {BIBLE_VERSION_OPTIONS.find(v => v.value === bibleVersion)?.label || 'Select version'}
+              </Text>
+            </View>
+            <ChevronDown size={20} color={theme.muted} />
+          </TouchableOpacity>
+        ) : null}
+
+        {verseText ? (
+          <View style={[styles.versePreview, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+            <Text style={[styles.versePreviewLabel, { color: theme.muted }]}>Verse Preview:</Text>
+            <Text style={[styles.versePreviewText, { color: theme.textSecondary }]}>"{verseText}"</Text>
+          </View>
+        ) : null}
+
         {/* Date */}
         <TouchableOpacity
           style={[styles.selectorBtn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
@@ -327,6 +371,36 @@ const AddDailyDevotion: React.FC = () => {
                   }}
                 >
                   <Text style={[styles.pickerItemText, { color: theme.text }]}>{item}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Version Picker Modal */}
+      <Modal visible={versionPickerVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+            <View style={[styles.modalTitleBar, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Select Bible Version</Text>
+              <TouchableOpacity onPress={() => setVersionPickerVisible(false)}>
+                <X size={24} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={BIBLE_VERSION_OPTIONS}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.pickerItem, { borderBottomColor: theme.border }]}
+                  onPress={() => {
+                    setBibleVersion(item.value);
+                    setVersionPickerVisible(false);
+                  }}
+                >
+                  <Text style={[styles.pickerItemText, { color: theme.text }]}>{item.label}</Text>
                 </TouchableOpacity>
               )}
             />
@@ -476,6 +550,24 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     pickerItemText: {
       fontSize: 16,
+    },
+    versePreview: {
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      marginBottom: 16,
+    },
+    versePreviewLabel: {
+      fontSize: 10,
+      fontWeight: '700',
+      marginBottom: 4,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    versePreviewText: {
+      fontSize: 14,
+      fontStyle: 'italic',
+      lineHeight: 20,
     },
   });
 

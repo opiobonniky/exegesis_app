@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -159,6 +159,24 @@ export default function AudioControlBar({
   const COLORS = getColors(isDark);
   const accent = COLORS.accent ?? COLORS.primary;
 
+  // Use refs for immediate UI updates without waiting for re-render
+  const speechRateRef = useRef(speechRate);
+  const sleepTimerRef = useRef(sleepTimerRemaining);
+  const afterPlayRef = useRef(afterPlay);
+  
+  // Update refs when props change
+  useEffect(() => {
+    speechRateRef.current = speechRate;
+  }, [speechRate]);
+  
+  useEffect(() => {
+    sleepTimerRef.current = sleepTimerRemaining;
+  }, [sleepTimerRemaining]);
+  
+  useEffect(() => {
+    afterPlayRef.current = afterPlay;
+  }, [afterPlay]);
+
   const translateY = useRef(new Animated.Value(200)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -206,13 +224,18 @@ export default function AudioControlBar({
   }, [progress]);
 
   const toggleRepeat = () => {
-    if (afterPlay === 'stop') onAfterPlayChange('repeat');
-    else if (afterPlay === 'repeat') onAfterPlayChange('repeat_one');
-    else onAfterPlayChange('stop');
+    // Use ref for immediate feedback
+    if (afterPlayRef.current === 'stop') {
+      onAfterPlayChange('repeat');
+    } else if (afterPlayRef.current === 'repeat') {
+      onAfterPlayChange('repeat_one');
+    } else {
+      onAfterPlayChange('stop');
+    }
   };
 
   const toggleContinue = () => {
-    onAfterPlayChange(afterPlay === 'continue' ? 'stop' : 'continue');
+    onAfterPlayChange(afterPlayRef.current === 'continue' ? 'stop' : 'continue');
   };
 
   return (
@@ -288,9 +311,9 @@ export default function AudioControlBar({
                 styles.autoPlayBtn,
                 {
                   backgroundColor:
-                    afterPlay === 'continue' ? `${accent}15` : 'transparent',
+                    afterPlayRef.current === 'continue' ? `${accent}15` : 'transparent',
                   borderColor:
-                    afterPlay === 'continue'
+                    afterPlayRef.current === 'continue'
                       ? `${accent}30`
                       : isDark
                         ? 'rgba(255,255,255,0.1)'
@@ -326,14 +349,16 @@ export default function AudioControlBar({
                 onPress={toggleRepeat}
                 accent={accent}
                 isDark={isDark}
-                active={afterPlay === 'repeat' || afterPlay === 'repeat_one'}
+                active={afterPlayRef.current !== 'stop'}
               >
-                {afterPlay === 'repeat_one' ? (
+                {afterPlayRef.current === 'repeat_one' ? (
                   <Repeat1 size={18} color={accent} strokeWidth={2.5} />
+                ) : afterPlayRef.current === 'continue' ? (
+                  <Text style={[styles.autoPlayText, { color: accent, fontSize: 10 }]}>AUTO</Text>
                 ) : (
                   <Repeat
                     size={18}
-                    color={afterPlay === 'repeat' ? accent : COLORS.muted}
+                    color={afterPlayRef.current === 'repeat' ? accent : COLORS.muted}
                     strokeWidth={2}
                   />
                 )}
@@ -343,15 +368,15 @@ export default function AudioControlBar({
                 onPress={onSpeedToggle ?? (() => {})}
                 accent={accent}
                 isDark={isDark}
-                active={speechRate !== 1.0}
+                active={speechRateRef.current !== 1.0}
               >
                 <Text
                   style={[
                     styles.speedText,
-                    { color: speechRate !== 1.0 ? accent : COLORS.muted },
+                    { color: speechRateRef.current !== 1.0 ? accent : COLORS.muted },
                   ]}
                 >
-                  {speechRate}x
+                  {speechRateRef.current}x
                 </Text>
               </CtrlBtn>
 
@@ -359,11 +384,13 @@ export default function AudioControlBar({
                 onPress={onSleepTimerToggle ?? (() => {})}
                 accent={accent}
                 isDark={isDark}
-                active={sleepTimerRemaining > 0}
+                active={sleepTimerRef.current > 0}
               >
-                {sleepTimerRemaining > 0 ? (
+                {sleepTimerRef.current > 0 ? (
                   <Text style={[styles.sleepTimerText, { color: '#F59E0B' }]}>
-                    {Math.ceil(sleepTimerRemaining / 60)}m
+                    {sleepTimerRef.current < 60
+                      ? `${Math.ceil(sleepTimerRef.current)}s`
+                      : `${Math.ceil(sleepTimerRef.current / 60)}m`}
                   </Text>
                 ) : (
                   <Timer size={16} color={COLORS.muted} />
