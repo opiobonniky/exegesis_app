@@ -33,6 +33,7 @@ import {
   Sun,
   ChevronRight,
   Lock,
+  BookText,
 } from 'lucide-react-native';
 import { DrawerMenuProps } from '../types';
 import { getColors, FONT_SIZES } from '../../../constants/theme';
@@ -65,6 +66,7 @@ const GRID_ITEMS: Array<{
   { label: 'Notes', icon: FileText, routeKey: 'notes', color: '#3B82F6' },
   { label: 'History', icon: Clock, routeKey: 'readHistory', color: '#8B5CF6' },
   { label: 'Favorites', icon: Star, routeKey: 'favorites', color: '#EC4899' },
+  { label: 'Journal', icon: BookText, routeKey: 'journal', color: '#10B981' },
 ];
 
 export default function DrawerMenu({

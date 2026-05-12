@@ -93,16 +93,16 @@ const drawerItems = [
   },
   { id: 'adminUsers', label: 'Users', icon: Users, routeKey: 'adminUsers' },
   {
-    id: 'adminActivity',
-    label: 'Activity',
-    icon: Activity,
-    routeKey: 'adminActivity',
-  },
-  {
     id: 'adminVerse',
     label: 'Daily Verse',
     icon: BookOpen,
     routeKey: 'adminDailyVerse',
+  },
+  {
+    id: 'adminDevotion',
+    label: 'Daily Devotion',
+    icon: Lightbulb,
+    routeKey: 'adminDailyDevotion',
   },
   {
     id: 'adminPlans',
@@ -123,10 +123,10 @@ const drawerItems = [
     routeKey: 'adminJournalTemplates',
   },
   {
-    id: 'adminDevotion',
-    label: 'Daily Devotion',
-    icon: Lightbulb,
-    routeKey: 'adminDailyDevotion',
+    id: 'adminActivity',
+    label: 'Activity',
+    icon: Activity,
+    routeKey: 'adminActivity',
   },
 ];
 

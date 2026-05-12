@@ -11,6 +11,7 @@ export const route = {
   profile: 'Profile',
   dailyDevotional: 'DailyDevotional',
   dailyDevotions: 'DailyDevotions',
+  dailyVerse: 'DailyVerse',
   home: 'Home',
   homeLogin: 'HomeLogin',
   favorites: 'Favorites',
@@ -35,7 +36,6 @@ export const route = {
   adminDailyDevotion: 'AdminDailyDevotion',
   adminReadingPlans: 'AdminReadingPlans',
   adminReadingPlanDetail: 'AdminReadingPlanDetail',
-  // Journal routes
   journal: 'Journal',
   journalEntry: 'JournalEntry',
   journalDetail: 'JournalDetail',

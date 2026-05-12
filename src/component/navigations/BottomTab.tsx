@@ -9,15 +9,14 @@ import {
 import {
   Home,
   BookOpen,
-  Heart,
   User,
   LucideUserCircle,
   CalendarClockIcon,
-  StarsIcon,
   ShieldIcon,
-  Settings,
   BookText,
   Lightbulb,
+  ListTodo,
+  Bookmark,
 } from 'lucide-react-native';
 import {
   SPACING,
@@ -96,8 +95,8 @@ export default function BottomTab({
   // Different tabs based on user role
   let tabs: TabItem[] = [];
 
-  if (isUserAdmin) {
-    // ADMIN TABS - only admin-related screens
+if (isUserAdmin) {
+    // ADMIN TABS - simplified to 4 main items
     tabs = [
       {
         id: 'adminDashboard',
@@ -111,7 +110,6 @@ export default function BottomTab({
         icon: User,
         onPress: () => navigation.navigate(route.adminUsers),
       },
-
       {
         id: 'adminVerse',
         label: 'Verse',
@@ -119,26 +117,14 @@ export default function BottomTab({
         onPress: () => navigation.navigate(route.adminDailyVerse),
       },
       {
-        id: 'adminPlans',
-        label: 'Plans',
-        icon: CalendarClockIcon,
-        onPress: () => navigation.navigate(route.adminReadingPlans),
+        id: 'adminDevotion',
+        label: 'Devotion',
+        icon: Lightbulb,
+        onPress: () => navigation.navigate(route.adminDailyDevotion),
       },
-       {
-         id: 'adminJournalPrompts',
-         label: 'Prompts',
-         icon: BookText,
-         onPress: () => navigation.navigate(route.adminJournalPrompts),
-       },
-       {
-         id: 'adminDevotion',
-         label: 'Devotion',
-         icon: Lightbulb,
-         onPress: () => navigation.navigate(route.adminDailyDevotion),
-       },
-     ];
+    ];
   } else {
-    // REGULAR USER TABS - user-related screens
+    // REGULAR USER TABS - simplified to 4 main items
     tabs = [
       {
         id: 'home',
@@ -153,22 +139,10 @@ export default function BottomTab({
         onPress: () => navigation.navigate(route.bible),
       },
       {
-        id: 'favorites',
-        label: 'Favorites',
-        icon: StarsIcon,
-        onPress: () => navigation.navigate(route.favorites),
-      },
-      {
         id: 'Plan',
         label: 'Plan',
         icon: CalendarClockIcon,
         onPress: () => navigation.navigate(route.readingPlan),
-      },
-      {
-        id: 'journal',
-        label: 'Journal',
-        icon: BookText,
-        onPress: () => navigation.navigate(route.journal),
       },
       {
         id: 'profile',

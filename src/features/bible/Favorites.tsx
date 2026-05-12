@@ -647,6 +647,7 @@ export default function Favorites() {
         rightComponent={
           <Stars size={20} color={COLORS.accent} strokeWidth={2} />
         }
+        onPress={() => navigation.goBack()}
       />
 
       {loading ? (
@@ -690,7 +691,7 @@ export default function Favorites() {
                 })
               }
               onLearnMore={() =>
-                (navigation as any).navigate(route.fullVerseExplanation, {
+                (navigation as any).navigate(route.favorites, {
                   bookName: item.bookName,
                   chapter: item.chapter,
                   verseNumber: item.verseNumber,
@@ -712,10 +713,6 @@ export default function Favorites() {
         onCancel={() => setShowRemoveModal(null)}
         onConfirm={handleDeleteConfirm}
       />
-
-      <View style={screenStyles.bottomTab}>
-        <BottomTab activeTab="favorites" setActiveTab={() => {}} />
-      </View>
     </SafeAreaView>
   );
 }

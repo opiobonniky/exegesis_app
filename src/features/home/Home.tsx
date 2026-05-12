@@ -130,25 +130,26 @@ export default function Home() {
       },
       {
         id: '3',
+        label: 'Daily Verse',
+        icon: BookMarked,
+        color: '#6A1B9A',
+        onPress: () => navigation.navigate(route.dailyVerse),
+      },
+      {
+        id: '4',
         label: 'Testify',
         icon: Mic2,
         color: '#E65100',
         onPress: () => navigation.navigate(route.home), // replace with testify route
       },
       {
-        id: '4',
+        id: '5',
         label: 'Bible Trivia',
         icon: Brain,
         color: '#F9A825',
         onPress: () => navigation.navigate(route.home), // replace with trivia route
       },
-      {
-        id: '5',
-        label: 'Daily Prayers',
-        icon: BookMarked,
-        color: '#6A1B9A',
-        onPress: () => navigation.navigate(route.home), // replace with prayers route
-      },
+
       {
         id: '6',
         label: 'Reading Plan',

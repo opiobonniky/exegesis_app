@@ -28,7 +28,6 @@ import { getVersionById } from '../../assets/bibleVersion/json/bibleVersions';
 import ActionHeader from '../../reusable/ActionHeader';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
-
 type DailyVerse = {
   id: number;
   bookName: string;
@@ -42,11 +41,6 @@ type DailyVerse = {
   displayTime: string | null;
   published?: boolean;
   isPublished?: boolean;
-};
-
-type RouteParams = {
-  date?: string;
-  mode?: 'verse' | 'devotion';
 };
 
 function parseContent(content: string): {
@@ -134,11 +128,10 @@ function DevotionBody({
 export default function DailyDevotionalScreen() {
   const app = useContext(AppContext);
   const navigation = useNavigation();
-  const route = useRoute();
-  const { date } = (route.params as RouteParams) || {};
 
   const [loading, setLoading] = useState(true);
   const [devotion, setDevotion] = useState<DailyVerse | null>(null);
+  const [scrollOffset, setScrollOffset] = useState(0);
 
   if (!app) return null;
   const { isDark } = app;
@@ -147,7 +140,7 @@ export default function DailyDevotionalScreen() {
 
   useEffect(() => {
     fetchDailyDevotional();
-  }, [date]);
+  }, []);
 
   const fetchDailyDevotional = async () => {
     setLoading(true);
@@ -157,6 +150,8 @@ export default function DailyDevotionalScreen() {
         'get-todays-devotion',
         {},
       );
+
+      console.log('Response:', response);
       if (response.returnCode === 200 && response.returnData) {
         setDevotion(response.returnData as DailyVerse);
       } else {
@@ -183,15 +178,6 @@ export default function DailyDevotionalScreen() {
       displayTime: new Date().toISOString(),
       isPublished: true,
     });
-  };
-
-  const isToday = (dateVal: string | object): boolean => {
-    try {
-      const d = new Date(parseDisplayDate(dateVal));
-      return d.toDateString() === new Date().toDateString();
-    } catch {
-      return false;
-    }
   };
 
   const formatDate = (dateVal: string | object): string => {
@@ -440,7 +426,7 @@ export default function DailyDevotionalScreen() {
             marginTop: SPACING.md,
           }}
         >
-          No devotional available {date ? 'for this date' : 'today'}
+          No devotional available today
         </Text>
       </View>
     );
@@ -454,12 +440,14 @@ export default function DailyDevotionalScreen() {
       devotion.bookName,
       devotion.chapter,
       devotion.verseNumber,
-      devotion.bibleVersion ? getVersionById(devotion.bibleVersion).load() : undefined
+      devotion.bibleVersion
+        ? getVersionById(devotion.bibleVersion).load()
+        : undefined,
     ) ||
     '';
 
   const verseReference = `${devotion.bookName} ${devotion.chapter}:${devotion.verseNumber}`;
-  const sectionTitle = parsed?.sectionTitle || devotion.title || '';
+  const sectionTitle = devotion.title || '';
   // Use explanation as main content, fallback to reflection for backward compatibility
   const paragraphs = parsed?.paragraphs.length
     ? parsed.paragraphs
@@ -469,21 +457,48 @@ export default function DailyDevotionalScreen() {
         ? [devotion.reflection]
         : [];
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    let greeting: string;
+    let icon: string;
+
+    if (hour < 5) {
+      greeting = 'Good evening';
+      icon = '🌙';
+    } else if (hour < 12) {
+      greeting = 'Good morning';
+      icon = '☀️';
+    } else if (hour < 17) {
+      greeting = 'Good afternoon';
+      icon = '🌤️';
+    } else {
+      greeting = 'Good evening';
+      icon = '🌅';
+    }
+
+    const time = new Date().toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    return `${greeting} ${icon} · ${time}`;
+  };
+
+  const headerTitle =
+    scrollOffset > 50 && sectionTitle ? sectionTitle : getGreeting();
+
   return (
     // ── Outer View keeps ActionHeader fixed ──
     <View style={s.outer}>
-      <ActionHeader
-        title={
-          isToday(devotion.displayDate) ? sectionTitle : 'Daily Devotional'
-        }
-        onPress={() => navigation.goBack()}
-      />
+      <ActionHeader title={headerTitle} onPress={() => navigation.goBack()} />
 
       {/* Only this ScrollView scrolls */}
       <ScrollView
         style={s.container}
         contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
+        onScroll={e => setScrollOffset(e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
       >
         {/* Date badge */}
         <View style={s.dateRow}>
@@ -507,7 +522,9 @@ export default function DailyDevotionalScreen() {
               <Text style={s.referenceText}>{verseReference}</Text>
               {devotion.bibleVersion && (
                 <View style={s.versionBadge}>
-                  <Text style={s.versionBadgeText}>{devotion.bibleVersion}</Text>
+                  <Text style={s.versionBadgeText}>
+                    {devotion.bibleVersion}
+                  </Text>
                 </View>
               )}
             </View>
@@ -524,9 +541,7 @@ export default function DailyDevotionalScreen() {
         <View style={s.devotionCard}>
           <View style={s.devotionCardInner}>
             <Text style={s.devotionLabel}>Today's devotion</Text>
-            {sectionTitle ? (
-              <Text style={s.sectionTitle}>{sectionTitle}</Text>
-            ) : null}
+
             <View style={s.devotionDivider} />
             <DevotionBody
               paragraphs={paragraphs}
@@ -543,7 +558,9 @@ export default function DailyDevotionalScreen() {
               <Text style={s.devotionLabel}>Learn More</Text>
               <View style={s.devotionDivider} />
               <DevotionBody
-                paragraphs={(devotion as any).learnMore.split('\n\n').filter((p: string) => p.trim())}
+                paragraphs={(devotion as any).learnMore
+                  .split('\n\n')
+                  .filter((p: string) => p.trim())}
                 COLORS={COLORS}
                 dynamicStyles={s}
               />

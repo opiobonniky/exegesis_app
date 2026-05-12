@@ -1,195 +1,377 @@
-import React, { useContext, useEffect, useRef } from 'react';
+import React, { useContext, useEffect, useRef, useCallback } from 'react';
+import { InteractionManager } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
   NavigationContainer,
   NavigationContainerRef,
 } from '@react-navigation/native';
-import Login from '../../features/auth/login';
-import ForgotPassword from '../../features/auth/ForgotPassword';
-import Register from '../../features/auth/Register';
-import GoogleRegister from '../../features/auth/GoogleRegister';
-import Welcome from '../../features/auth/welcome';
-import GuestEntry from '../../features/auth/GuestEntry'; // ← NEW
-import Bible from '../../features/bible/bible';
 import { route } from './routes';
 import { AppContext } from '../../common/AppContext';
-import Highlights from '../../features/bible/Highlights';
-import ReadHistory from '../../features/bible/ReadHistory';
-import Profile from '../../features/Setting/Profile';
-import DailyDevotional from '../../features/bible/DailyDevotional';
-import Home from '../../features/home/Home';
-import Favorites from '../../features/bible/Favorites';
-
 import LoadingCard from '../../common/LoadingCard';
-import Notes from '../../features/bible/Notes';
-import EditProfile from '../../features/Setting/EditProfile';
-import ExtendedProfile from '../../features/Setting/ExtendedProfile';
-import BibleReadingPlan from '../../features/ReadingPlan/BibleReadingPlan';
-import PlanDetailScreen from '../../features/ReadingPlan/PlanDetailScreen';
-import DailyReadingScreen from '../../features/ReadingPlan/DailyReadingScreen';
-import VoiceSettings from '../../features/Setting/VoiceSettings';
-import {
-  attachPlanNotifHandlers,
-  bootstrapPlanChannels,
-} from '../../features/ReadingPlan/planNotificationService';
-import { setupNotificationListeners } from '../../utilits/firebaseService';
-import PlanBibleScreen from '../../features/ReadingPlan/Planbiblescreen';
-import ReadingSettingsScreen from '../../features/Setting/Readingsettings';
-import NotificationSettings from '../../features/Setting/NotificationSettings';
-import {
-  attachDailyVerseNotifHandlers,
-  scheduleDailyVerseReminder,
-} from '../../features/home/dailyVerseNotificationService';
-import AdminDashboard from '../../features/admin/AdminDashboard';
-import AdminUsersPage from '../../features/admin/AdminUsersPage';
-import AdminActivityPage from '../../features/admin/AdminActivityPage';
-import AdminDailyVerseManager from '../../features/admin/AdminDailyVerseManager';
-import AddDailyVerse from '../../features/admin/AddDailyVerse';
-import AdminDailyDevotionManager from '../../features/admin/AdminDailyDevotionManager';
-import AddDailyDevotion from '../../features/admin/AddDailyDevotion';
-import AdminReadingPlans from '../../features/admin/AdminReadingPlans';
-import CreateReadingPlan from '../../features/admin/CreateReadingPlan';
-import EditReadingPlan from '../../features/admin/EditReadingPlan';
-import AdminReadingPlanDetail from '../../features/admin/AdminReadingPlanDetail';
-import JournalList from '../../features/journal/JournalList';
-import JournalEntry from '../../features/journal/JournalEntry';
-import JournalDetail from '../../features/journal/JournalDetail';
-import AdminJournalPrompts from '../../features/journal/AdminJournalPrompts';
-import AdminJournalTemplates from '../../features/journal/AdminJournalTemplates';
 
 const Stack = createNativeStackNavigator();
+
+const ANIMATIONS = [
+  'slide_from_right',
+  'slide_from_left',
+  'slide_from_bottom',
+  'fade',
+] as const;
+
+type AnimationType = (typeof ANIMATIONS)[number];
+
+const FORCED_ANIMATIONS: Record<string, AnimationType> = {
+  voiceSettings: 'slide_from_bottom',
+  readingSettings: 'slide_from_bottom',
+  notificationSettings: 'slide_from_bottom',
+  AddDailyVerse: 'slide_from_bottom',
+  EditDailyVerse: 'slide_from_bottom',
+  AddDailyDevotion: 'slide_from_bottom',
+  EditDailyDevotion: 'slide_from_bottom',
+  CreateReadingPlan: 'slide_from_bottom',
+  EditReadingPlan: 'slide_from_bottom',
+  journalEntry: 'slide_from_bottom',
+};
 
 const AppNavigation = () => {
   const { firstLaunch, userInfo, loading }: any = useContext(AppContext);
   const userLoggedIn = !!userInfo;
-
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
+  const animationMap = useRef<Map<string, AnimationType>>(new Map());
+
+  const getAnimation = useCallback((screenName: string): AnimationType => {
+    if (FORCED_ANIMATIONS[screenName]) return FORCED_ANIMATIONS[screenName];
+    if (!animationMap.current.has(screenName)) {
+      const random = ANIMATIONS[Math.floor(Math.random() * ANIMATIONS.length)];
+      animationMap.current.set(screenName, random);
+    }
+    return animationMap.current.get(screenName)!;
+  }, []);
+
+  const screenOptions = useCallback(
+    ({ route: r }: any) => {
+      const animation = getAnimation(r.name);
+      return {
+        headerShown: false,
+        animation,
+        animationDuration: 260,
+        gestureEnabled: true,
+        gestureDirection: 'horizontal' as const,
+        presentation: animation === 'slide_from_bottom' ? 'modal' : 'card',
+      };
+    },
+    [getAnimation],
+  );
 
   useEffect(() => {
-    bootstrapPlanChannels();
+    const task = InteractionManager.runAfterInteractions(async () => {
+      const [
+        { bootstrapPlanChannels, attachPlanNotifHandlers },
+        { attachDailyVerseNotifHandlers, scheduleDailyVerseReminder },
+        { setupNotificationListeners },
+      ] = await Promise.all([
+        import('../../features/ReadingPlan/planNotificationService'),
+        import('../../features/home/dailyVerseNotificationService'),
+        import('../../utilits/firebaseService'),
+      ]);
 
-    const navigate = (screen: string, params?: Record<string, any>) => {
-      navigationRef.current?.navigate(screen, params as never);
-    };
+      bootstrapPlanChannels();
 
-    attachPlanNotifHandlers(navigate);
-    attachDailyVerseNotifHandlers(navigate);
-    scheduleDailyVerseReminder();
-    setupNotificationListeners();
+      const navigate = (screen: string, params?: Record<string, any>) => {
+        navigationRef.current?.navigate(screen, params as never);
+      };
+
+      attachPlanNotifHandlers(navigate);
+      attachDailyVerseNotifHandlers(navigate);
+      scheduleDailyVerseReminder();
+      setupNotificationListeners();
+    });
+
+    return () => task.cancel();
   }, []);
 
   if (loading) return <LoadingCard />;
 
-  const userROle = userInfo?.userRole;
-  const isAdmin = userROle === 1;
+  const isAdmin = userInfo?.userRole === 1;
 
   return (
     <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator id="main" screenOptions={{ headerShown: false }}>
-        {/* ── Initial screen decision tree ─────────────────────────────── */}
+      <Stack.Navigator id="main" screenOptions={screenOptions}>
+        {/* ── Initial screen ────────────────────────────────────────────── */}
         {firstLaunch ? (
-          // Brand new install → Welcome onboarding slides
-          <Stack.Screen name={route.welcome} component={Welcome} />
+          <Stack.Screen
+            name={route.welcome}
+            getComponent={() => require('../../features/auth/welcome').default}
+          />
         ) : userLoggedIn && isAdmin ? (
-          // Returning authenticated user → straight to Bible
           <Stack.Screen
             name={route.adminDashboard}
-            component={AdminDashboard}
+            getComponent={() =>
+              require('../../features/admin/AdminDashboard').default
+            }
           />
         ) : userLoggedIn ? (
-          // Returning authenticated user → straight to Bible
-          <Stack.Screen name={route.home} component={Home} />
+          <Stack.Screen
+            name={route.home}
+            getComponent={() => require('../../features/home/Home').default}
+          />
         ) : (
-          // Not logged in, not first launch → Auth hub (GuestEntry)
-          // Users can read the Bible as guest OR choose to sign in / register
-          // <Stack.Screen name={route.guestEntry} component={GuestEntry} />
-          <Stack.Screen name={route.login} component={Login} />
+          <Stack.Screen
+            name={route.login}
+            getComponent={() => require('../../features/auth/login').default}
+          />
         )}
-        {/* ── Auth screens ─────────────────────────────────────────────── */}
-        <Stack.Screen name={route.notLogined} component={Login} />
-        {/* <Stack.Screen name={route.login} component={Login} /> */}
-        <Stack.Screen name={route.guestEntry} component={GuestEntry} />
-        <Stack.Screen name={route.register} component={Register} />
-        <Stack.Screen name={route.googleRegister} component={GoogleRegister} />
-        <Stack.Screen name={route.forgotPassword} component={ForgotPassword} />
-        <Stack.Screen name={route.bible} component={Bible} />
-        <Stack.Screen name={route.bibleGuest} component={Bible} />
-        <Stack.Screen name={route.homeLogin} component={Home} />
-        {/* ── Main app screens ─────────────────────────────────────────── */}
-        <Stack.Screen name={route.bibleFirstLaunch} component={Bible} />
-        <Stack.Screen name={route.Highlights} component={Highlights} />
-        <Stack.Screen name={route.readHistory} component={ReadHistory} />
-        <Stack.Screen name={route.profile} component={Profile} />
+
+        {/* ── Auth ──────────────────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.notLogined}
+          getComponent={() => require('../../features/auth/login').default}
+        />
+        <Stack.Screen
+          name={route.guestEntry}
+          getComponent={() => require('../../features/auth/GuestEntry').default}
+        />
+        <Stack.Screen
+          name={route.register}
+          getComponent={() => require('../../features/auth/Register').default}
+        />
+        <Stack.Screen
+          name={route.googleRegister}
+          getComponent={() =>
+            require('../../features/auth/GoogleRegister').default
+          }
+        />
+        <Stack.Screen
+          name={route.forgotPassword}
+          getComponent={() =>
+            require('../../features/auth/ForgotPassword').default
+          }
+        />
+
+        {/* ── Bible ─────────────────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.bible}
+          getComponent={() => require('../../features/bible/bible').default}
+        />
+        <Stack.Screen
+          name={route.bibleGuest}
+          getComponent={() => require('../../features/bible/bible').default}
+        />
+        <Stack.Screen
+          name={route.bibleFirstLaunch}
+          getComponent={() => require('../../features/bible/bible').default}
+        />
+
+        {/* ── Home ──────────────────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.homeLogin}
+          getComponent={() => require('../../features/home/Home').default}
+        />
+
+        {/* ── Main app ──────────────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.Highlights}
+          getComponent={() =>
+            require('../../features/bible/Highlights').default
+          }
+        />
+        <Stack.Screen
+          name={route.readHistory}
+          getComponent={() =>
+            require('../../features/bible/ReadHistory').default
+          }
+        />
+        <Stack.Screen
+          name={route.profile}
+          getComponent={() => require('../../features/Setting/Profile').default}
+        />
         <Stack.Screen
           name={route.dailyDevotional}
-          component={DailyDevotional}
+          getComponent={() =>
+            require('../../features/bible/DailyDevotional').default
+          }
         />
-        <Stack.Screen name={route.favorites} component={Favorites} />
-        <Stack.Screen name={route.notes} component={Notes} />
-        <Stack.Screen name={route.editProfile} component={EditProfile} />
+        <Stack.Screen
+          name={route.dailyVerse}
+          getComponent={() =>
+            require('../../features/bible/DailyVerseScreen').default
+          }
+        />
+        <Stack.Screen
+          name={route.favorites}
+          getComponent={() => require('../../features/bible/Favorites').default}
+        />
+        <Stack.Screen
+          name={route.notes}
+          getComponent={() => require('../../features/bible/Notes').default}
+        />
+        <Stack.Screen
+          name={route.editProfile}
+          getComponent={() =>
+            require('../../features/Setting/EditProfile').default
+          }
+        />
         <Stack.Screen
           name={route.extendedProfile}
-          component={ExtendedProfile}
+          getComponent={() =>
+            require('../../features/Setting/ExtendedProfile').default
+          }
         />
-        <Stack.Screen name={route.readingPlan} component={BibleReadingPlan} />
-        <Stack.Screen name={route.planDetail} component={PlanDetailScreen} />
+        <Stack.Screen
+          name={route.readingPlan}
+          getComponent={() =>
+            require('../../features/ReadingPlan/BibleReadingPlan').default
+          }
+        />
+        <Stack.Screen
+          name={route.planDetail}
+          getComponent={() =>
+            require('../../features/ReadingPlan/PlanDetailScreen').default
+          }
+        />
         <Stack.Screen
           name={route.dailyReading}
-          component={DailyReadingScreen}
+          getComponent={() =>
+            require('../../features/ReadingPlan/DailyReadingScreen').default
+          }
         />
-        <Stack.Screen name={route.voiceSettings} component={VoiceSettings} />
-        <Stack.Screen name={route.planBible} component={PlanBibleScreen} />
+        <Stack.Screen
+          name={route.planBible}
+          getComponent={() =>
+            require('../../features/ReadingPlan/Planbiblescreen').default
+          }
+        />
+
+        {/* ── Settings (modal) ──────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.voiceSettings}
+          getComponent={() =>
+            require('../../features/Setting/VoiceSettings').default
+          }
+        />
         <Stack.Screen
           name={route.readingSettings}
-          component={ReadingSettingsScreen}
+          getComponent={() =>
+            require('../../features/Setting/Readingsettings').default
+          }
         />
         <Stack.Screen
           name={route.notificationSettings}
-          component={NotificationSettings}
+          getComponent={() =>
+            require('../../features/Setting/NotificationSettings').default
+          }
         />
-        {/* ── Admin screens ─────────────────────────────────────────── */}
+
+        {/* ── Admin ─────────────────────────────────────────────────────── */}
         <Stack.Screen
           name={route.adminDashboardLogin}
-          component={AdminDashboard}
+          getComponent={() =>
+            require('../../features/admin/AdminDashboard').default
+          }
         />
-        <Stack.Screen name={route.adminUsers} component={AdminUsersPage} />
+        <Stack.Screen
+          name={route.adminUsers}
+          getComponent={() =>
+            require('../../features/admin/AdminUsersPage').default
+          }
+        />
         <Stack.Screen
           name={route.adminActivity}
-          component={AdminActivityPage}
+          getComponent={() =>
+            require('../../features/admin/AdminActivityPage').default
+          }
         />
         <Stack.Screen
           name={route.adminDailyVerse}
-          component={AdminDailyVerseManager}
+          getComponent={() =>
+            require('../../features/admin/AdminDailyVerseManager').default
+          }
         />
-        <Stack.Screen name="AddDailyVerse" component={AddDailyVerse} />
-        <Stack.Screen name="EditDailyVerse" component={AddDailyVerse} />
+        <Stack.Screen
+          name="AddDailyVerse"
+          getComponent={() =>
+            require('../../features/admin/AddDailyVerse').default
+          }
+        />
+        <Stack.Screen
+          name="EditDailyVerse"
+          getComponent={() =>
+            require('../../features/admin/AddDailyVerse').default
+          }
+        />
         <Stack.Screen
           name={route.adminDailyDevotion}
-          component={AdminDailyDevotionManager}
+          getComponent={() =>
+            require('../../features/admin/AdminDailyDevotionManager').default
+          }
         />
-        <Stack.Screen name="AddDailyDevotion" component={AddDailyDevotion} />
-        <Stack.Screen name="EditDailyDevotion" component={AddDailyDevotion} />
+        <Stack.Screen
+          name="AddDailyDevotion"
+          getComponent={() =>
+            require('../../features/admin/AddDailyDevotion').default
+          }
+        />
+        <Stack.Screen
+          name="EditDailyDevotion"
+          getComponent={() =>
+            require('../../features/admin/AddDailyDevotion').default
+          }
+        />
         <Stack.Screen
           name={route.adminReadingPlans}
-          component={AdminReadingPlans}
+          getComponent={() =>
+            require('../../features/admin/AdminReadingPlans').default
+          }
         />
-        <Stack.Screen name="CreateReadingPlan" component={CreateReadingPlan} />
-        <Stack.Screen name="EditReadingPlan" component={EditReadingPlan} />
+        <Stack.Screen
+          name="CreateReadingPlan"
+          getComponent={() =>
+            require('../../features/admin/CreateReadingPlan').default
+          }
+        />
+        <Stack.Screen
+          name="EditReadingPlan"
+          getComponent={() =>
+            require('../../features/admin/EditReadingPlan').default
+          }
+        />
         <Stack.Screen
           name={route.adminReadingPlanDetail}
-          component={AdminReadingPlanDetail}
+          getComponent={() =>
+            require('../../features/admin/AdminReadingPlanDetail').default
+          }
         />
-        {/* ── Journal screens ────────────────────────────────────────────── */}
-        <Stack.Screen name={route.journal} component={JournalList} />
-        <Stack.Screen name={route.journalEntry} component={JournalEntry} />
-        <Stack.Screen name={route.journalDetail} component={JournalDetail} />
+
+        {/* ── Journal ───────────────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.journal}
+          getComponent={() =>
+            require('../../features/journal/JournalList').default
+          }
+        />
+        <Stack.Screen
+          name={route.journalEntry}
+          getComponent={() =>
+            require('../../features/journal/JournalEntry').default
+          }
+        />
+        <Stack.Screen
+          name={route.journalDetail}
+          getComponent={() =>
+            require('../../features/journal/JournalDetail').default
+          }
+        />
         <Stack.Screen
           name={route.adminJournalPrompts}
-          component={AdminJournalPrompts}
+          getComponent={() =>
+            require('../../features/journal/AdminJournalPrompts').default
+          }
         />
         <Stack.Screen
           name={route.adminJournalTemplates}
-          component={AdminJournalTemplates}
+          getComponent={() =>
+            require('../../features/journal/AdminJournalTemplates').default
+          }
         />
       </Stack.Navigator>
     </NavigationContainer>
