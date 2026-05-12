@@ -1,0 +1,427 @@
+import { api } from './api';
+import { checkInternetConnection } from '../utilits/checkInternet';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export interface Translation {
+  id: string;
+  name: string;
+  shortName: string;
+  year?: string | null;
+  description: string | null;
+  copyright: string | null;
+  link: string | null;
+}
+
+export interface BookInfo {
+  bookNumber: number;
+  bookName: string;
+  testament: string;
+  chaptersCount: number;
+  totalVerses: number;
+}
+
+export interface BookWithMaxChapter extends BookInfo {
+  maxChapter: number;
+}
+
+export interface Chapter {
+  chapterNumber: number;
+  versesCount: number;
+}
+
+export interface BookChapterData {
+  bookNumber: number;
+  bookName: string;
+  chapters: Chapter[];
+}
+
+export interface Verse {
+  verseNumber: number;
+  text: string;
+}
+
+export interface VerseData {
+  bookNumber: number;
+  bookName: string;
+  chapterNumber: number;
+  verses: Verse[];
+}
+
+export interface SearchResult {
+  bookNumber: number;
+  bookName: string;
+  chapter: number;
+  verse: number;
+  text: string;
+}
+
+const TRANSLATIONS_BASE_URL = '/translations';
+const BIBLE_CACHE_KEY = 'bible_cache';
+
+let isOnline: boolean | null = null;
+let lastOnlineCheck: number = 0;
+const ONLINE_CHECK_INTERVAL = 60000;
+
+export const checkOnlineStatus = async (): Promise<boolean> => {
+  const now = Date.now();
+  if (isOnline !== null && (now - lastOnlineCheck) < ONLINE_CHECK_INTERVAL) {
+    return isOnline;
+  }
+  
+  lastOnlineCheck = now;
+  
+  try {
+    const connected = await checkInternetConnection();
+    if (!connected) {
+      isOnline = false;
+      return false;
+    }
+    try {
+      await api.get('/health', { timeout: 5000 });
+      isOnline = true;
+      return true;
+    } catch {
+      isOnline = false;
+      return false;
+    }
+  } catch {
+    isOnline = false;
+    return false;
+  }
+};
+
+export const forceRefreshOnlineStatus = async (): Promise<boolean> => {
+  lastOnlineCheck = 0;
+  return checkOnlineStatus();
+};
+
+export const getOnlineStatus = (): boolean | null => isOnline;
+
+export const mapTranslationId = (frontendId: string): string => {
+  const mapping: Record<string, string> = {
+    BSB: 'Berean',
+    Berean: 'Berean',
+    KJV: 'KJV',
+    WEB: 'GW',
+    ASV: 'ASV',
+    YLT: 'YLT',
+    DARBY: 'Darby',
+    WEBSTER: 'Amplified',
+    BBE: 'EASY',
+    NIV: 'NIV',
+    ESV: 'ESV',
+    NASB: 'NASB',
+    NKJ: 'NKJ',
+    NLT: 'NLT',
+    CSB: 'CSB',
+    HCSB: 'HCSB',
+    GNT: 'GNT',
+    NIRV: 'NIRV',
+    RSV: 'RSV',
+    NRSV: 'NRSV',
+    NET: 'NET',
+    MEV: 'MEV',
+    LSB: 'LSB',
+    NASU: 'NASU',
+    AmplifiedClassic: 'AmplifiedClassic',
+    EASY: 'EASY',
+    Passion: 'Passion',
+    TL: 'TL',
+    Tyndale: 'Tyndale',
+    ERV: 'ERV',
+  };
+  return mapping[frontendId] || frontendId;
+};
+
+export const mapFrontendId = (backendId: string): string => {
+  const mapping: Record<string, string> = {
+    Berean: 'BSB',
+    KJV: 'KJV',
+    GW: 'WEB',
+    ASV: 'ASV',
+    YLT: 'YLT',
+    Darby: 'DARBY',
+    Amplified: 'WEBSTER',
+    EASY: 'BBE',
+    NIV: 'NIV',
+    ESV: 'ESV',
+    NASB: 'NASB',
+    NKJ: 'NKJ',
+    NLT: 'NLT',
+    CSB: 'CSB',
+    HCSB: 'HCSB',
+    GNT: 'GNT',
+    NIRV: 'NIRV',
+    RSV: 'RSV',
+    NRSV: 'NRSV',
+    NET: 'NET',
+    MEV: 'MEV',
+    LSB: 'LSB',
+    NASU: 'NASU',
+    AmplifiedClassic: 'AMPClassic',
+    Passion: 'Passion',
+    TL: 'TL',
+    Tyndale: 'Tyndale',
+    ERV: 'ERV',
+  };
+  return mapping[backendId] || backendId;
+};
+
+const getCache = async (key: string): Promise<any | null> => {
+  try {
+    const cached = await AsyncStorage.getItem(key);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (e) {
+    console.warn('Cache get error:', e);
+  }
+  return null;
+};
+
+const setCache = async (key: string, data: any): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.warn('Cache set error:', e);
+  }
+};
+
+export const bibleApi = {
+  getTranslations: async (): Promise<Translation[]> => {
+    const online = await checkOnlineStatus();
+    if (!online) {
+      return [];
+    }
+    try {
+      const response = await api.post(`${TRANSLATIONS_BASE_URL}/`);
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch translations:', error);
+      return [];
+    }
+  },
+
+  getTranslation: async (translationId: string): Promise<Translation | null> => {
+    const online = await checkOnlineStatus();
+    if (!online) {
+      return null;
+    }
+    try {
+      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${translationId}`);
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error(`Failed to fetch translation ${translationId}:`, error);
+      return null;
+    }
+  },
+
+  getBooks: async (translationId: string): Promise<BookInfo[]> => {
+    const backendId = mapTranslationId(translationId);
+    const online = await checkOnlineStatus();
+    if (!online) {
+      return [];
+    }
+    try {
+      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/books`);
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error) {
+      console.error(`Failed to fetch books for ${translationId}:`, error);
+      return [];
+    }
+  },
+
+  getBooksWithMaxChapters: async (translationId: string): Promise<BookWithMaxChapter[]> => {
+    const backendId = mapTranslationId(translationId);
+    const cacheKey = `${BIBLE_CACHE_KEY}:books:${backendId}`;
+    
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    
+    const online = await checkOnlineStatus();
+    if (!online) {
+      return [];
+    }
+    try {
+      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/books-with-max`);
+      if (response.data.success && response.data.data) {
+        await setCache(cacheKey, response.data.data);
+        return response.data.data;
+      }
+      return [];
+    } catch (error) {
+      console.error(`Failed to fetch books with max chapters for ${translationId}:`, error);
+      return [];
+    }
+  },
+
+  getChapters: async (translationId: string, bookName: string): Promise<BookChapterData | null> => {
+    const backendId = mapTranslationId(translationId);
+    const online = await checkOnlineStatus();
+    if (!online) {
+      return null;
+    }
+    try {
+      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/chapters`, {
+        bookName,
+      });
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error(`Failed to fetch chapters for ${bookName}:`, error);
+      return null;
+    }
+  },
+
+  getVerses: async (translationId: string, bookName: string, chapter: number): Promise<VerseData | null> => {
+    const backendId = mapTranslationId(translationId);
+    const cacheKey = `${BIBLE_CACHE_KEY}:verses:${backendId}:${bookName}:${chapter}`;
+    
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    
+    const online = await checkOnlineStatus();
+    if (!online) {
+      return null;
+    }
+    try {
+      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/verses`, {
+        bookName,
+        chapter,
+      });
+      if (response.data.success && response.data.data) {
+        await setCache(cacheKey, response.data.data);
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error(`Failed to fetch verses for ${bookName} ${chapter}:`, error);
+      return null;
+    }
+  },
+
+  getVerse: async (
+    translationId: string,
+    bookName: string,
+    chapter: number,
+    verseNumber: number
+  ): Promise<Verse | null> => {
+    const backendId = mapTranslationId(translationId);
+    const online = await checkOnlineStatus();
+    if (!online) {
+      return null;
+    }
+    try {
+      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/verse`, {
+        bookName,
+        chapter,
+        verseNumber,
+      });
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error(`Failed to fetch verse ${bookName} ${chapter}:${verseNumber}:`, error);
+      return null;
+    }
+  },
+
+  search: async (
+    translationId: string,
+    query: string,
+    limit: number = 50
+  ): Promise<SearchResult[]> => {
+    const backendId = mapTranslationId(translationId);
+    const online = await checkOnlineStatus();
+    if (!online) {
+      return [];
+    }
+    try {
+      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/search`, {
+        query,
+        limit,
+      });
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error) {
+      console.error(`Search failed for ${translationId}:`, error);
+      return [];
+    }
+  },
+
+  getAvailableTranslations: async (): Promise<Translation[]> => {
+    const online = await checkOnlineStatus();
+    if (!online) {
+      const { BIBLE_VERSIONS } = require('../assets/bibleVersion/json/bibleVersions');
+      return BIBLE_VERSIONS.map((v: any) => ({
+        id: v.id,
+        name: v.name,
+        shortName: v.abbreviation,
+        description: v.description,
+        year: v.year,
+        copyright: null,
+        link: null,
+      }));
+    }
+    try {
+      const response = await api.post(`${TRANSLATIONS_BASE_URL}/`);
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch translations:', error);
+      return [];
+    }
+  },
+
+  getAvailableTranslationsWithMapping: async (): Promise<Array<{ backendId: string; frontendId: string; name: string; shortName: string; year?: string | null }>> => {
+    const online = await checkOnlineStatus();
+    
+    if (online) {
+      try {
+        const response = await api.post(`${TRANSLATIONS_BASE_URL}/`);
+        if (response.data.success && response.data.data) {
+          return response.data.data.map((t: Translation) => ({
+            backendId: t.id,
+            frontendId: mapFrontendId(t.id),
+            name: t.name,
+            shortName: t.shortName,
+            year: t.year,
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch translations:', error);
+      }
+    }
+    
+    const { BIBLE_VERSIONS } = require('../assets/bibleVersion/json/bibleVersions');
+    return BIBLE_VERSIONS.map((v: any) => ({
+      backendId: v.id,
+      frontendId: v.id,
+      name: v.name,
+      shortName: v.abbreviation,
+      year: v.year,
+    }));
+  },
+};
+
+export default bibleApi;

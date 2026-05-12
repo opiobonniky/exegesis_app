@@ -51,13 +51,14 @@ const AppNavigation = () => {
   const screenOptions = useCallback(
     ({ route: r }: any) => {
       const animation = getAnimation(r.name);
+      const presentation: 'card' | 'modal' | 'transparentModal' | 'containedModal' | 'containedTransparentModal' | 'fullScreenModal' | 'formSheet' | 'pageSheet' = animation === 'slide_from_bottom' ? 'modal' : 'card';
       return {
         headerShown: false,
         animation,
         animationDuration: 260,
         gestureEnabled: true,
         gestureDirection: 'horizontal' as const,
-        presentation: animation === 'slide_from_bottom' ? 'modal' : 'card',
+        presentation,
       };
     },
     [getAnimation],

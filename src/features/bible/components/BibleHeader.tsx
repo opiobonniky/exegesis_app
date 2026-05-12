@@ -30,6 +30,7 @@ export interface BibleHeaderProps {
   onMenuPress: () => void;
   onBookPress: () => void;
   onSearchPress: () => void;
+  onVersionPress?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ export default function BibleHeader({
   onMenuPress,
   onBookPress,
   onSearchPress,
+  onVersionPress,
 }: BibleHeaderProps) {
   const COLORS = getColors(isDark);
   const styles = useMemo(() => createBibleStyles(isDark), [isDark]);
@@ -65,7 +67,7 @@ export default function BibleHeader({
               <Menu color={COLORS.white} size={22} strokeWidth={2} />
             </TouchableOpacity>
 
-            {/* Book title + version badge */}
+            {/* Book title */}
             <TouchableOpacity
               style={styles.headerTitle}
               onPress={onBookPress}
@@ -80,12 +82,22 @@ export default function BibleHeader({
                   style={{ marginTop: 3 }}
                 />
               </View>
-              <View style={localStyles.versionBadge}>
-                <Text style={localStyles.versionBadgeText}>
-                  {version.abbreviation}
-                </Text>
-              </View>
             </TouchableOpacity>
+
+            {/* Version badge — separate tap for translation picker */}
+            {onVersionPress && (
+              <TouchableOpacity
+                onPress={onVersionPress}
+                activeOpacity={0.75}
+                hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+              >
+                <View style={localStyles.versionBadge}>
+                  <Text style={localStyles.versionBadgeText}>
+                    {version.abbreviation}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             {/* Search */}
             <TouchableOpacity style={styles.iconButton} onPress={onSearchPress}>

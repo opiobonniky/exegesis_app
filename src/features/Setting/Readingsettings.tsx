@@ -1,5 +1,3 @@
-
-
 import React, {
   useCallback,
   useContext,
@@ -15,10 +13,8 @@ import {
   TouchableOpacity,
   TextInput,
   Switch,
-  Platform,
   Animated,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import {
   ChevronRight,
   Volume2,
@@ -41,16 +37,17 @@ import {
   FONT_SIZES,
   SPACING,
 } from '../../constants/theme';
-import { BIBLE_VERSIONS } from '../../assets/bibleVersion/json/bibleVersions';
 import { route } from '../../component/navigations/routes';
 import ActionHeader from '../../reusable/ActionHeader';
+import useBible from '../../features/bible/hooks/useBible';
+import { bibleApi } from '../../services/bibleApi';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ReadingSettingsScreen() {
-  const app        = useContext(AppContext);
+  const app = useContext(AppContext);
   const navigation = useNavigation<any>();
-  const params     = (useRoute<any>().params ?? {}) as {
+  const params = (useRoute<any>().params ?? {}) as {
     fontSize?: number;
     onFontSizeChange?: (size: number) => void;
   };
@@ -58,6 +55,9 @@ export default function ReadingSettingsScreen() {
   if (!app) return null;
   const { isDark, toggleTheme, bibleVersionId, setBibleVersion } = app;
   const COLORS = getColors(isDark);
+
+  // Bible hook for connection status
+  const { isOnline } = useBible();
 
   // ── Font size — kept in local state and synced back via param callback ─────
   const [fontSize, setFontSizeLocal] = useState<number>(params.fontSize ?? 16);
@@ -72,26 +72,58 @@ export default function ReadingSettingsScreen() {
 
   // ── Version search ────────────────────────────────────────────────────────
   const [query, setQuery] = useState('');
+  const [allTranslations, setAllTranslations] = useState<Array<{ backendId: string; frontendId: string; name: string; shortName: string; year?: string | null }>>([]);
+  const [loadingTranslations, setLoadingTranslations] = useState(true);
+
+  // Fetch translations on mount and when coming online
+  const fetchTranslations = useCallback(async () => {
+    setLoadingTranslations(true);
+    try {
+      console.log('Fetching translations, isOnline:', isOnline);
+      const translations = await bibleApi.getAvailableTranslationsWithMapping();
+      console.log('Fetched translations:', translations?.length, translations);
+      
+      if (translations && translations.length > 0) {
+        setAllTranslations(translations);
+      } else {
+        console.log('No translations available, using local fallback');
+        setAllTranslations([]);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch translations:', error?.message || error);
+      setAllTranslations([]);
+    } finally {
+      setLoadingTranslations(false);
+    }
+  }, []);
+
+  // Fetch translations on mount
+  React.useEffect(() => {
+    fetchTranslations();
+  }, [fetchTranslations]);
+
+  // Refetch when coming online
+  React.useEffect(() => {
+    if (isOnline === true) {
+      fetchTranslations();
+    }
+  }, [isOnline, fetchTranslations]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return BIBLE_VERSIONS;
-    return BIBLE_VERSIONS.filter(v => {
+    if (!q) return allTranslations;
+    return allTranslations.filter(v => {
       const hay =
-        `${v.name} ${v.abbreviation} ${v.year} ${v.description}`.toLowerCase();
+        `${v.name} ${v.shortName} ${v.year ?? ''}`
+          .toLowerCase();
       return hay.includes(q);
     });
-  }, [query]);
-
-  const activeVersion = useMemo(
-    () => BIBLE_VERSIONS.find(v => v.id === bibleVersionId) ?? BIBLE_VERSIONS[0],
-    [bibleVersionId],
-  );
+  }, [allTranslations, query]);
 
   // ── Version row flash animation on selection ──────────────────────────────
   const flashAnim = useRef(new Animated.Value(1)).current;
-  const handleSelectVersion = (id: string) => {
-    setBibleVersion(id);
+  const handleSelectVersion = (frontendId: string) => {
+    setBibleVersion(frontendId);
     Animated.sequence([
       Animated.timing(flashAnim, { toValue: 0.4, duration: 80, useNativeDriver: true }),
       Animated.timing(flashAnim, { toValue: 1,   duration: 180, useNativeDriver: true }),
@@ -112,16 +144,35 @@ export default function ReadingSettingsScreen() {
         keyboardShouldPersistTaps="handled"
       >
 
-        {/* ════════════════════════════════════════════════════════════════
+        {/* ═══════════════════════════════════════════════════════════════════
             BIBLE TRANSLATION
-        ════════════════════════════════════════════════════════════════ */}
-        <SectionHeader
-          icon={<BookMarked size={15} color={COLORS.primary} strokeWidth={2} />}
-          label="Bible Translation"
-          COLORS={COLORS}
-        />
+        ═══════════════════════════════════════════════════════════════════ */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <SectionHeader
+            icon={<BookMarked size={15} color={COLORS.primary} strokeWidth={2} />}
+            label="Bible Translation"
+            COLORS={COLORS}
+          />
+          <Text style={{ fontSize: 10, color: isOnline ? '#10B981' : '#888' }}>
+            {isOnline === null ? 'Checking...' : isOnline ? 'Online' : 'Offline'}
+          </Text>
+        </View>
 
-        
+        {/* Loading indicator for translations */}
+        {loadingTranslations && allTranslations.length === 0 && (
+          <View style={[s.loadingContainer, { backgroundColor: surface }]}>
+            <Text style={s.loadingText}>Loading translations…</Text>
+          </View>
+        )}
+
+        {/* Show offline indicator when using local data */}
+        {!loadingTranslations && isOnline === false && (
+          <View style={[s.loadingContainer, { backgroundColor: surface, marginBottom: 8 }]}>
+            <Text style={[s.loadingText, { color: '#F59E0B' }]}>
+              Using offline translations (connect to internet for more)
+            </Text>
+          </View>
+        )}
 
         {/* Search bar */}
         <View
@@ -160,15 +211,15 @@ export default function ReadingSettingsScreen() {
             </View>
           ) : (
             filtered.map((v, i) => {
-              const isActive = v.id === bibleVersionId;
+              const isActive = v.frontendId === bibleVersionId;
               const isLast   = i === filtered.length - 1;
               return (
                 <Animated.View
-                  key={v.id}
+                  key={v.backendId}
                   style={isActive ? { opacity: flashAnim } : undefined}
                 >
                   <TouchableOpacity
-                    onPress={() => handleSelectVersion(v.id)}
+                    onPress={() => handleSelectVersion(v.frontendId)}
                     activeOpacity={0.7}
                     style={[
                       s.versionRow,
@@ -194,11 +245,11 @@ export default function ReadingSettingsScreen() {
                           { color: isActive ? COLORS.primary : COLORS.muted },
                         ]}
                       >
-                        {v.abbreviation}
+                        {v.shortName}
                       </Text>
                     </View>
 
-                    {/* Name + year + description */}
+                    {/* Name + year */}
                     <View style={{ flex: 1 }}>
                       <View style={s.rowTitleRow}>
                         <Text
@@ -227,7 +278,7 @@ export default function ReadingSettingsScreen() {
                         style={[s.rowDesc, { color: COLORS.muted }]}
                         numberOfLines={1}
                       >
-                        {v.description}
+                        {v.shortName}
                       </Text>
                     </View>
 
@@ -247,9 +298,9 @@ export default function ReadingSettingsScreen() {
         </View>
 
 
-        {/* ════════════════════════════════════════════════════════════════
+        {/* ═════════════════════════════════════════════════════════════════
             TEXT SIZE
-        ════════════════════════════════════════════════════════════════ */}
+        ══════════════════════════════════════════════════════════════════ */}
         <SectionHeader
           icon={<Type size={15} color={COLORS.primary} strokeWidth={2} />}
           label="Text Size"
@@ -334,9 +385,9 @@ export default function ReadingSettingsScreen() {
         </View>
 
 
-        {/* ════════════════════════════════════════════════════════════════
+        {/* ═════════════════════════════════════════════════════════════════
             READING VOICE
-        ════════════════════════════════════════════════════════════════ */}
+        ══════════════════════════════════════════════════════════════════ */}
         <SectionHeader
           icon={<Volume2 size={15} color="#10B981" strokeWidth={2} />}
           label="Reading Voice"
@@ -347,8 +398,7 @@ export default function ReadingSettingsScreen() {
         <TouchableOpacity
           onPress={() => navigation.navigate(route.voiceSettings)}
           activeOpacity={0.7}
-          style={[s.linkRow, { backgroundColor: surface, borderColor: border }]}
-        >
+          style={[s.linkRow, { backgroundColor: surface, borderColor: border }]}>
           <View style={[s.linkIcon, { backgroundColor: '#10B98118' }]}>
             <Volume2 size={18} color="#10B981" strokeWidth={2} />
           </View>
@@ -362,9 +412,9 @@ export default function ReadingSettingsScreen() {
         </TouchableOpacity>
 
 
-        {/* ════════════════════════════════════════════════════════════════
+        {/* ══════════════════════════════════════════════════════════════════
             APPEARANCE
-        ════════════════════════════════════════════════════════════════ */}
+        ══════════════════════════════════════════════════════════════════ */}
         <SectionHeader
           icon={<Palette size={15} color={COLORS.accent} strokeWidth={2} />}
           label="Appearance"
@@ -452,6 +502,17 @@ const s = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingTop:        SPACING.md,
     paddingBottom:     40,
+  },
+
+  // Loading
+  loadingContainer: {
+    padding: SPACING.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: '#888888',
+    fontSize: FONT_SIZES.sm,
   },
 
   // ── Active version hero ──────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import axios, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { showToast } from '../helpers/Toash.helper';
 
-interface GenericResponse<T = any> {
+export interface GenericResponse<T = any> {
   returnCode: number;
   returnMessage: string;
   returnData?: T;
@@ -16,7 +16,7 @@ const getBaseURL = () => {
   if (__DEV__) {
     // For physical device on WiFi: use ur local IP (192.168.100.123)
     // For Android emulator: use 10.0.2.2
-    return 'http://192.168.100.123:5001';
+    return 'http://192.168.100.128:5001';
   } else {
     return 'https://exegesisbackend-production.up.railway.app/';
   }
@@ -25,7 +25,7 @@ const getBaseURL = () => {
 const BASE_URL = getBaseURL();
 export const TOKEN_KEY = 'auth_token';
 export const USER_KEY = 'user_data';
-const api: AxiosInstance = axios.create({
+export const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 15000,
   headers: {

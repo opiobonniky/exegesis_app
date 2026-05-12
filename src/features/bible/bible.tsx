@@ -60,6 +60,7 @@ import {
   SearchModal,
   DrawerMenu,
   NoteModal,
+  TranslationPickerModal,
 } from './modals';
 
 if (
@@ -225,6 +226,8 @@ export default function Bible() {
     setShowExplanation,
     showNoteModal,
     showAudioPlayer,
+    showTranslationPicker,
+    setShowTranslationPicker,
     searchQuery,
     searchResults,
     handleSearch,
@@ -350,12 +353,13 @@ export default function Bible() {
           clearSelection();
           setShowDrawer(true);
         }}
-        onBookPress={() => setShowBookSelector(true)} // ✅ allowed
+        onBookPress={() => setShowBookSelector(true)}
         onSearchPress={() =>
           guard('Search requires an account to save your search history.', () =>
             setShowSearchModal(true),
           )
         }
+        onVersionPress={() => setShowTranslationPicker(true)}
       />
 
       {/* ── Chapter Navigation ───────────────────────────────────────────── */}
@@ -690,6 +694,15 @@ export default function Bible() {
         totalVerses={Object.keys(verses).length}
         currentBook={currentBook}
         currentChapter={currentChapter}
+        isDark={isDark}
+      />
+
+      {/* ── Translation Picker ──────────────────────────────────────────── */}
+      <TranslationPickerModal
+        visible={showTranslationPicker}
+        onClose={() => setShowTranslationPicker(false)}
+        currentVersionId={bibleVersionId}
+        onSelectVersion={handleVersionChange}
         isDark={isDark}
       />
 

@@ -40,9 +40,9 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { AppContext } from '../../common/AppContext';
 import { sendPostRequest } from '../../services/api';
-import { getVerseText } from '../../utilits/bibleUtils';
 import { route } from '../../component/navigations/routes';
 import { showToast } from '../../helpers/Toash.helper';
+import useBible from '../../features/bible/hooks/useBible';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -157,6 +157,8 @@ function FavoriteCard({
   onReadPress,
   onLearnMore,
   onDelete,
+  verseText,
+  verseLoading,
 }: {
   item: FavoriteItem;
   index: number;
@@ -164,14 +166,14 @@ function FavoriteCard({
   onReadPress: () => void;
   onLearnMore: () => void;
   onDelete: () => void;
+  verseText: string;
+  verseLoading: boolean;
 }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(32)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const accent = CARD_ACCENTS[index % CARD_ACCENTS.length];
-  const verseText =
-    getVerseText(item.bookName, item.chapter, item.verseNumber) ?? '';
 
   useEffect(() => {
     Animated.parallel([
@@ -267,7 +269,7 @@ function FavoriteCard({
                 style={[cardStyles.verseText, { color: COLORS.text }]}
                 numberOfLines={4}
               >
-                {verseText}
+                {verseLoading ? 'Loading...' : verseText}
               </Text>
 
               {/* Divider */}
@@ -580,18 +582,72 @@ export default function Favorites() {
   const [showRemoveModal, setShowRemoveModal] = useState<FavoriteItem | null>(
     null,
   );
+  const [verseTexts, setVerseTexts] = useState<Record<number, string>>({});
+  const [verseLoading, setVerseLoading] = useState<Record<number, boolean>>({});
 
   if (!app) return null;
   const { isDark } = app;
   const COLORS = getColors(isDark);
 
+  // Bible hook for accessing verse data
+  const {
+    getVerseTextAsync,
+    isOnline,
+    getVerseText: getVerseTextSync // Keep sync version as fallback
+  } = useBible();
+
   // ── Data ─────────────────────────────────────────────────────────────────────
 
   const loadFavorites = useCallback(async () => {
     try {
+      setLoading(true);
       const response = await sendPostRequest('bible', 'get-favorites', {});
       if (response.returnCode === 200 && response.returnData) {
         setFavorites(response.returnData.favorites);
+
+        // Load verse texts for all favorites
+        const versePromises = response.returnData.favorites.map(async (fav) => {
+          const favId = fav.id;
+          setVerseLoading(prev => ({ ...prev, [favId]: true }));
+
+          try {
+            // Try to get verse text from backend if online, fallback to local
+            const text = await getVerseTextAsync(
+              fav.bookName,
+              fav.chapter,
+              fav.verseNumber
+            );
+
+            // If we got text from backend, use it
+            // If not (null), fall back to local data
+            let finalText = '';
+            if (text !== null) {
+              finalText = text;
+            } else {
+              // Fallback to local data
+              finalText = getVerseTextSync(
+                fav.bookName,
+                fav.chapter,
+                fav.verseNumber
+              ) ?? '';
+            }
+
+            setVerseTexts(prev => ({ ...prev, [favId]: finalText }));
+          } catch (error) {
+            console.error(`Error fetching verse for favorite ${favId}:`, error);
+            // Fallback to local data on error
+            const localText = getVerseTextSync(
+              fav.bookName,
+              fav.chapter,
+              fav.verseNumber
+            ) ?? '';
+            setVerseTexts(prev => ({ ...prev, [favId]: localText }));
+          } finally {
+            setVerseLoading(prev => ({ ...prev, [favId]: false }));
+          }
+        });
+
+        await Promise.all(versePromises);
       } else {
         showToast(
           'error',
@@ -625,6 +681,17 @@ export default function Favorites() {
       if (response.returnCode === 200) {
         setFavorites(prev => prev.filter(f => f.id !== showRemoveModal.id));
         setShowRemoveModal(null);
+        // Clean up verse text and loading state for deleted favorite
+        setVerseTexts(prev => {
+          const newTexts = { ...prev };
+          delete newTexts[showRemoveModal.id];
+          return newTexts;
+        });
+        setVerseLoading(prev => {
+          const newLoading = { ...prev };
+          delete newLoading[showRemoveModal.id];
+          return newLoading;
+        });
         showToast('success', 'Removed from favourites');
       } else {
         showToast('error', response.returnMessage || 'Failed to remove');
@@ -698,6 +765,8 @@ export default function Favorites() {
                 })
               }
               onDelete={() => setShowRemoveModal(item)}
+              verseText={verseTexts[item.id] ?? ''}
+              verseLoading={verseLoading[item.id] ?? false}
             />
           )}
         />

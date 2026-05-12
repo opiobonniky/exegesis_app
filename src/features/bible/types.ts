@@ -38,6 +38,7 @@ export interface BibleHeaderProps {
   onMenuPress: () => void;
   onBookPress: () => void;
   onSearchPress: () => void;
+  onVersionPress?: () => void;
 }
 
 export interface ChapterNavigationProps {

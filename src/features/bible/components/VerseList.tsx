@@ -328,7 +328,7 @@ export default function VerseList({
         data={versesArray}
         extraData={[selectedVerses, activeAudioVerse]}
         renderItem={renderVerseItem}
-        keyExtractor={item => item.verseNum}
+        keyExtractor={(item) => (item as any).verseNum || (item as any).num?.toString() || String(Math.random())}
         contentContainerStyle={[
           styles.scrollContent,
           versesArray.length === 0 && { flex: 1 },

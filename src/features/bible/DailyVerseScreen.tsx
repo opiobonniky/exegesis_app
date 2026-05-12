@@ -25,10 +25,10 @@ import {
   BookMarked,
 } from 'lucide-react-native';
 import { sendPostRequest } from '../../services/api';
-import { getVerseText } from '../../utilits/bibleUtils';
 import { getVersionById } from '../../assets/bibleVersion/json/bibleVersions';
 import ActionHeader from '../../reusable/ActionHeader';
 import { useNavigation } from '@react-navigation/native';
+import useBible from '../../features/bible/hooks/useBible';
 
 type DailyVerse = {
   id: number;
@@ -144,12 +144,21 @@ export default function DailyVerseScreen() {
   const [loading, setLoading] = useState(true);
   const [dailyVerse, setDailyVerse] = useState<DailyVerse | null>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [verseText, setVerseText] = useState<string>('');
+  const [verseLoading, setVerseLoading] = useState<boolean>(false);
 
   if (!app) return null;
   const { isDark } = app;
   const COLORS = getColors(isDark);
   const themeStyle = createThemeStyles(COLORS);
   const accent = COLORS.primary;
+
+  // Bible hook for accessing verse data
+  const {
+    getVerseTextAsync,
+    isOnline,
+    getVerseText: getVerseTextSync // Keep sync version as fallback
+  } = useBible();
 
   const fetchDailyVerse = useCallback(async () => {
     setLoading(true);
@@ -172,6 +181,52 @@ export default function DailyVerseScreen() {
   useEffect(() => {
     fetchDailyVerse();
   }, [fetchDailyVerse]);
+
+  // Fetch verse text when we have the daily verse data
+  useEffect(() => {
+    if (dailyVerse) {
+      const fetchVerseText = async () => {
+        setVerseLoading(true);
+        try {
+          // Try to get verse text from backend if online, fallback to local
+          const text = await getVerseTextAsync(
+            dailyVerse.bookName,
+            dailyVerse.chapter,
+            dailyVerse.verseNumber
+          );
+
+          // If we got text from backend, use it
+          // If not (null), fall back to local data
+          if (text !== null) {
+            setVerseText(text);
+          } else {
+            // Fallback to local data
+            const localText = getVerseTextSync(
+              dailyVerse.bookName,
+              dailyVerse.chapter,
+              dailyVerse.verseNumber,
+              dailyVerse.bibleVersion ? getVersionById(dailyVerse.bibleVersion).load() : undefined
+            ) || '';
+            setVerseText(localText);
+          }
+        } catch (error) {
+          console.error('Error fetching verse text:', error);
+          // Fallback to local data on error
+            const localText = getVerseTextSync(
+              dailyVerse.bookName,
+              dailyVerse.chapter,
+              dailyVerse.verseNumber,
+              dailyVerse.bibleVersion ? getVersionById(dailyVerse.bibleVersion).load() : undefined
+            ) || '';
+            setVerseText(localText);
+        } finally {
+          setVerseLoading(false);
+        }
+      };
+
+      fetchVerseText();
+    }
+  }, [dailyVerse, getVerseTextAsync, getVerseTextSync]);
 
   const useFallbackVerse = () => {
     setDailyVerse({
@@ -236,13 +291,6 @@ export default function DailyVerseScreen() {
     );
   }
 
-  const verseText = getVerseText(
-    dailyVerse.bookName,
-    dailyVerse.chapter,
-    dailyVerse.verseNumber,
-    dailyVerse.bibleVersion ? getVersionById(dailyVerse.bibleVersion).load() : undefined
-  ) || '';
-
   const verseReference = `${dailyVerse.bookName} ${dailyVerse.chapter}:${dailyVerse.verseNumber}`;
   const headerTitle = scrollOffset > 50 ? verseReference : GreetingHeader();
 
@@ -269,7 +317,7 @@ export default function DailyVerseScreen() {
             <Text style={[styles.verseLabel, { color: accent }]}>Verse of the Day</Text>
             <Text style={styles.openQuote}>"</Text>
             <Text style={[styles.verseText, { color: COLORS.text }]}>
-              {verseText || 'The Lord is my shepherd, I shall not want.'}
+              {verseLoading ? 'Loading...' : (verseText || 'The Lord is my shepherd, I shall not want.')}
               "
             </Text>
             <View style={[styles.divider, { backgroundColor: dividerColor }]} />
@@ -277,13 +325,39 @@ export default function DailyVerseScreen() {
               <View style={[styles.referenceDot, { backgroundColor: accent }]} />
               <Text style={[styles.referenceText, { color: accent }]}>{verseReference}</Text>
               {dailyVerse.bibleVersion && (
-                <View style={[styles.versionBadge, { backgroundColor: accent + '20' }]}>
-                  <Text style={[styles.versionBadgeText, { color: accent }]}>{dailyVerse.bibleVersion}</Text>
+                <View style={[s.versionBadge, { backgroundColor: accent + '20' }]}>
+                  <Text style={[s.versionBadgeText, { color: accent }]}>{dailyVerse.bibleVersion}</Text>
                 </View>
               )}
             </View>
           </View>
         </View>
+
+        {/* Connection status indicator */}
+        {isOnline !== null && (
+          <View style={{
+            position: 'absolute',
+            top: 60,
+            left: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            backgroundColor: isOnline ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 20
+          }}>
+            {isOnline ? (
+              <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '600' }}>
+                ● Online - Using backend
+              </Text>
+            ) : (
+              <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '600' }}>
+                ● Offline - Using local data
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* Reflection Card */}
         {dailyVerse.reflection && (
@@ -330,13 +404,13 @@ export default function DailyVerseScreen() {
         {/* Learn More Card */}
         {dailyVerse.learnMore && (
           <View style={[styles.contentCard, { backgroundColor: COLORS.cardBackground, borderColor }]}>
-            <View style={[styles.cardAccentBar, { backgroundColor: '#10B981' }]} />
-            <View style={styles.cardInner}>
-              <View style={styles.sectionHeader}>
+            <View style={[s.cardAccentBar, { backgroundColor: '#10B981' }]} />
+            <View style={s.cardInner}>
+              <View style={s.sectionHeader}>
                 <GraduationCap size={18} color="#10B981" />
-                <Text style={[styles.sectionTitle, { color: COLORS.text }]}>Learn More</Text>
+                <Text style={[s.sectionTitle, { color: COLORS.text }]}>Learn More</Text>
               </View>
-              <View style={[styles.sectionDivider, { backgroundColor: dividerColor }]} />
+              <View style={[s.sectionDivider, { backgroundColor: dividerColor }]} />
               <ExpandableContent
                 content={dailyVerse.learnMore}
                 label="LEARN MORE"
