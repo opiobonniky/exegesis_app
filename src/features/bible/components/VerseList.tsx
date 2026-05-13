@@ -164,12 +164,12 @@ function SkeletonLoader({ colors }: { colors: any }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type VerseItem = {
-  verseNum: string;
+  num: number;
   text: string;
 };
 
 export type VerseListProps = {
-  versesArray: VerseItem[];
+  versesArray: { num: number; text: string }[];
   selectedVerses: number[];
   highlights: Record<string, { color?: string }>;
   favorites: Set<string>;
@@ -241,9 +241,10 @@ export default function VerseList({
     );
   }
 
-  const renderVerseItem = ({ item }: { item: VerseItem }) => {
-    const { verseNum, text } = item;
-    const verseNumber = parseInt(verseNum, 10);
+  const renderVerseItem = ({ item }: { item: { num: number; text: string } }) => {
+    const { num, text } = item;
+    const verseNum = num;
+    const verseNumber = verseNum;
     const key = `${currentBook} ${currentChapter}:${verseNum}`;
     const isSelected = selectedVerses.includes(verseNumber);
     const isFavorite = favorites.has(key);
@@ -258,7 +259,7 @@ export default function VerseList({
 
     return (
       <VerseCard
-        verseNum={verseNum}
+        verseNum={String(verseNum)}
         verseNumber={verseNumber}
         text={text}
         isSelected={isSelected}
@@ -287,7 +288,7 @@ export default function VerseList({
                 onCloseExplanation(verseNumber);
                 // Scroll the verse back into view after explanation collapses
                 const index = versesArray.findIndex(
-                  v => parseInt(v.verseNum, 10) === verseNumber,
+                  v => v.num === verseNumber,
                 );
                 if (index !== -1) {
                   setTimeout(() => {
@@ -328,7 +329,7 @@ export default function VerseList({
         data={versesArray}
         extraData={[selectedVerses, activeAudioVerse]}
         renderItem={renderVerseItem}
-        keyExtractor={(item) => (item as any).verseNum || (item as any).num?.toString() || String(Math.random())}
+        keyExtractor={(item) => String(item.num)}
         contentContainerStyle={[
           styles.scrollContent,
           versesArray.length === 0 && { flex: 1 },

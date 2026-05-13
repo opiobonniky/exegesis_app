@@ -361,3 +361,52 @@ export const getVerseRangeText = (
     .map(v => `${v}: ${verses[Number(v)]}`)
     .join('\n');
 };
+
+/* ------------------------------------------------------------------ */
+/*  Word Map for TTS word highlighting                                */
+/* ------------------------------------------------------------------ */
+
+import { bibleTTS } from './bibleTTS';
+
+export type WordSpan = { start: number; length: number };
+
+/**
+ * Computes a word map from verse text for TTS word highlighting.
+ * Uses the same text preparation as bibleTTS to ensure alignment.
+ * Returns an array of { start, length } for each word in the text.
+ */
+export const computeWordMap = (text: string): WordSpan[] => {
+  if (!text) return [];
+  
+  const cleanedText = bibleTTS.prepareText(text);
+  
+  const wordMap: WordSpan[] = [];
+  const wordRegex = /\S+/g;
+  let match;
+  
+  while ((match = wordRegex.exec(cleanedText)) !== null) {
+    wordMap.push({
+      start: match.index,
+      length: match[0].length,
+    });
+  }
+  
+  return wordMap;
+};
+
+/**
+ * Computes word maps for all verses in a chapter.
+ * Returns a map of verseNumber -> WordSpan[]
+ */
+export const computeVerseWordMaps = (
+  verses: Record<number, string>,
+): Record<number, WordSpan[]> => {
+  const wordMaps: Record<number, WordSpan[]> = {};
+  
+  Object.keys(verses).forEach(key => {
+    const verseNum = parseInt(key, 10);
+    wordMaps[verseNum] = computeWordMap(verses[verseNum]);
+  });
+  
+  return wordMaps;
+};

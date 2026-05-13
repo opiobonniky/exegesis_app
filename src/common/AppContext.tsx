@@ -180,6 +180,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       await AsyncStorage.setItem(BIBLE_VERSION_KEY, versionId);
       console.log('✅ Bible version changed to:', versionId);
     } catch (error) {
+      setBibleVersionId(DEFAULT_VERSION_ID);
       console.error('❌ Error saving Bible version:', error);
     }
   };
