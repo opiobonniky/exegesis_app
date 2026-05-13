@@ -366,25 +366,23 @@ export const getVerseRangeText = (
 /*  Word Map for TTS word highlighting                                */
 /* ------------------------------------------------------------------ */
 
-import { bibleTTS } from './bibleTTS';
-
 export type WordSpan = { start: number; length: number };
 
 /**
  * Computes a word map from verse text for TTS word highlighting.
- * Uses the same text preparation as bibleTTS to ensure alignment.
- * Returns an array of { start, length } for each word in the text.
+ * Uses RAW verse text (not prepareText-cleaned) because VerseCard
+ * renders the raw text. TTS wordIndex maps to words by INDEX,
+ * which is identical between raw and cleaned text for the vast
+ * majority of Bible verses (prepareText doesn't change word count).
  */
 export const computeWordMap = (text: string): WordSpan[] => {
   if (!text) return [];
-  
-  const cleanedText = bibleTTS.prepareText(text);
   
   const wordMap: WordSpan[] = [];
   const wordRegex = /\S+/g;
   let match;
   
-  while ((match = wordRegex.exec(cleanedText)) !== null) {
+  while ((match = wordRegex.exec(text)) !== null) {
     wordMap.push({
       start: match.index,
       length: match[0].length,

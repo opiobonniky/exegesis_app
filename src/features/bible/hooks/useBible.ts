@@ -14,23 +14,16 @@ import {
   UIManager,
   Animated,
   FlatList,
-
   Clipboard,
 } from 'react-native';
-import {
-  bibleApi,
-  checkOnlineStatus,
-} from '../../../services/bibleApi';
+import { bibleApi, checkOnlineStatus } from '../../../services/bibleApi';
 import {
   getVerseText,
   getVersesForChapter,
   getBibleBooks,
 } from '../../../utilits/bibleUtils';
 import { AppContext } from '../../../common/AppContext';
-import {
-  getColors,
-
-} from '../../../constants/theme';
+import { getColors } from '../../../constants/theme';
 import { route } from '../../../component/navigations/routes';
 import { sendPostRequest } from '../../../services/api';
 import { showToast } from '../../../helpers/Toash.helper';
@@ -335,7 +328,17 @@ export const useBible = () => {
         setShowAudioPlayer(true);
         setIsAudioPaused(false);
       } else if (ttsState.isPaused) {
+        setShowAudioPlayer(true);
         setIsAudioPaused(true);
+      } else if (
+        ttsState.tier === 'idle' &&
+        !isPausedRef.current &&
+        !ttsActiveRef.current
+      ) {
+        // TTS has finished and the verse loop has acknowledged it
+        setShowAudioPlayer(false);
+        setActiveAudioVerse(null);
+        setIsAudioPaused(false);
       }
     });
     return unsub;
@@ -397,15 +400,14 @@ export const useBible = () => {
     } else if (next < playlist.length) {
       speakVerseAtIndex(next);
     } else {
-      // Playlist exhausted
+      // Playlist exhausted - close audio bar and reset state
       ttsActiveRef.current = false;
+      setShowAudioPlayer(false);
       setActiveAudioVerse(null);
-      if (behaviour === 'stop') {
-        setShowAudioPlayer(false);
-        setAudioPlaylist([]);
-        setAudioVerseIndex(0);
-      }
-      // 'continue' keeps the bar visible so user can restart
+      setAudioPlaylist([]);
+      setAudioVerseIndex(0);
+      audioPlaylistRef.current = [];
+      audioVerseIndexRef.current = 0;
     }
   }, []);
 
@@ -475,22 +477,33 @@ export const useBible = () => {
   const handleAudioTogglePlayPause = useCallback(async () => {
     if (isPausedRef.current) {
       // ── RESUME ────────────────────────────────────────────────────────────
+      // Device TTS cannot seek mid-utterance, so we'll start from the beginning
+      // but preserve the word position for visual highlighting.
+      
       isPausedRef.current = false;
       setIsAudioPaused(false);
       ttsActiveRef.current = true;
-      // Re-speak current verse from beginning (device TTS has no mid-seek)
-      speakVerseAtIndex(audioVerseIndexRef.current);
+      
+      // Use bibleTTS.resume() to start speaking from beginning but keep the
+      // word position for visual highlighting
+      if (bibleTTS.hasPausedText) {
+        try {
+          await bibleTTS.resume();
+        } catch (err) {
+          console.warn('[useBible] resume error:', err);
+        }
+      } else {
+        // No saved paused text - just restart the current verse
+        speakVerseAtIndex(audioVerseIndexRef.current);
+      }
     } else {
       // ── PAUSE ─────────────────────────────────────────────────────────────
-      // Set flag BEFORE the engine call so the tts-cancel → promise-resolve
-      // arrives after isPausedRef is already true and speakVerseAtIndex
-      // returns without advancing.
       isPausedRef.current = true;
       setIsAudioPaused(true);
       ttsActiveRef.current = false;
       await bibleTTS.pause();
     }
-  }, [speakVerseAtIndex]);
+  }, []);
 
   // ── Skip next / previous ────────────────────────────────────────────────────
   const goToNextSelectedVerse = useCallback(async () => {

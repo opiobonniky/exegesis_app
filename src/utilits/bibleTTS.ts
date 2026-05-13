@@ -93,6 +93,9 @@ class BibleTTSManager {
   private _pendingResolve: (() => void) | null = null;
   private _utteranceStarted = false;
   private _isTtsSpeaking = false;
+  // True while pause() is executing Tts.stop() so tts-cancel knows not to
+  // reset isPaused state — pause() will set it correctly after stop resolves.
+  private _isPauseStop = false;
 
   // ── Pause / resume state ──────────────────────────────────────────────────
   //
@@ -102,6 +105,7 @@ class BibleTTSManager {
   //
   private _pausedText = '';
   private _pausedPrefixLen = 0;
+  private _pausedWordIndex = -1;
 
   // ── Timer-based word highlighting (fallback) ──────────────────────────────
   private _wordTimers: ReturnType<typeof setTimeout>[] = [];
@@ -260,7 +264,10 @@ class BibleTTSManager {
 
     // ── tts-cancel ────────────────────────────────────────────────────────────
     Tts.addEventListener('tts-cancel', () => {
-      console.log('[BibleTTS] tts-cancel event fired');
+      console.log(
+        '[BibleTTS] tts-cancel event fired, _isPauseStop:',
+        this._isPauseStop,
+      );
       this._isTtsSpeaking = false;
       this._clearUtteranceTimeout();
       this._clearWordTimers();
@@ -272,6 +279,15 @@ class BibleTTSManager {
       this._pendingResolve = null;
       const wasStarted = this._utteranceStarted;
       this._utteranceStarted = false;
+
+      // BUG FIX: if this cancel was triggered by pause() calling Tts.stop(),
+      // do NOT reset isPaused/isPlaying here — pause() will set
+      // { isPaused: true, isPlaying: false } itself after Tts.stop() resolves.
+      // Overwriting with isPaused:false here is a race that breaks resume().
+      if (this._isPauseStop) {
+        resolve?.();
+        return;
+      }
 
       if (!wasStarted) {
         // Cancel fired before speech began — resolve but don't touch
@@ -400,29 +416,21 @@ class BibleTTSManager {
   // ── Init ──────────────────────────────────────────────────────────────────
   async init(): Promise<void> {
     if (this.initialized) return;
-    
+
     if (!Tts) {
-      console.warn('[BibleTTS] Tts module not available - native module may not be linked');
+      console.warn(
+        '[BibleTTS] Tts module not available - native module may not be linked',
+      );
       return;
     }
-    
+
     try {
       await Tts.setDefaultLanguage('en-US');
-      // Only override the engine's native defaults when the user has explicitly
-      // saved a preference. Otherwise leave the device's own setting untouched.
+
       if (this._rateCustomized) await Tts.setDefaultRate(this.currentRate);
       if (this._pitchCustomized) await Tts.setDefaultPitch(this.currentPitch);
 
       if (Platform.OS === 'android') {
-        // setEnabled() was removed in Android 14 (API 34). Calling it on API 34+
-        // throws "TextToSpeech not supported" on several OEMs, which can crash
-        // init() entirely and silence all TTS. Safe to drop — it was only needed
-        // on API < 21 devices which react-native-tts no longer supports anyway.
-        //
-        // setSpokenWordProgress() is still valid on API ≤ 33. On API 34+
-        // react-native-tts registers the UtteranceProgressListener internally,
-        // so word-boundary events still arrive without this call. We keep it for
-        // older devices and silently swallow errors on Android 14+.
         try {
           await (Tts as any).setSpokenWordProgress(true);
         } catch {
@@ -446,8 +454,6 @@ class BibleTTSManager {
   private selectBestVoice(voices: any[]): string | null {
     const english = voices.filter(v => {
       if (!v.language?.toLowerCase().startsWith('en')) return false;
-      // Android 14 (API 34): voices with notInstalled=true are listed but will
-      // silently fail or crash TTS when selected. Only pick ready voices.
       if (v.notInstalled === true) return false;
       return true;
     });
@@ -512,11 +518,6 @@ class BibleTTSManager {
       .trim();
   }
 
-  // ── Per-utterance timeout (Android 14 safety net) ───────────────────────
-  // On Android 14 (API 34) the TTS engine occasionally drops an utterance
-  // silently — no tts-start, no tts-finish, no tts-cancel ever fires.
-  // Without this guard the verse-loop would stall forever on that verse.
-  // 30 s covers even the longest Bible verse at the slowest speech rate.
   private _utteranceTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   private _clearUtteranceTimeout() {
@@ -539,14 +540,19 @@ class BibleTTSManager {
       console.warn('[BibleTTS] speak called with empty text');
       return Promise.resolve();
     }
-    
+
     if (!Tts) {
       console.error('[BibleTTS] Tts module not available - cannot speak');
       return Promise.resolve();
     }
-    
-    console.log('[BibleTTS] speak called with text length:', text.length, 'prefixLen:', prefixLen);
-    
+
+    console.log(
+      '[BibleTTS] speak called with text length:',
+      text.length,
+      'prefixLen:',
+      prefixLen,
+    );
+
     this._onProgressCallback = onProgress || null;
     this._baseWordIndex = baseWordIndex;
 
@@ -557,35 +563,20 @@ class BibleTTSManager {
     this.state.wordIndex = -1;
 
     this._cleanPrefixCharLen = prefixLen;
-    // Initialise base so  charIndex + _charIndexBase  equals
-    // charIndex - prefixLen  for the first chunk (identical to original logic).
     this._charIndexBase = -prefixLen;
     this._lastRawCharIndex = -1;
 
-    // Pre-compute char spans of every word in the VERSE portion (post-prefix).
-    //
-    // Spans are VERSE-LOCAL (offsets into clean.slice(prefixLen), starting at 0).
-    //
-    // In tts-progress, verseCharOffset = charIndex + _charIndexBase where
-    // _charIndexBase = -prefixLen.  For the first chunk this gives:
-    //   verseCharOffset = charIndex - prefixLen
-    // which is exactly the byte position inside the verse substring — the same
-    // coordinate space as these spans. Both sides match. ✓
-    //
-    // On a chunk-restart (Android), _charIndexBase is updated so charIndex=0
-    // still maps to the correct next verse-local word position.
     const verseText = clean.slice(prefixLen);
     const spanRe = /\S+/g;
     let sm: RegExpExecArray | null;
     const spans: Array<{ start: number; end: number }> = [];
     while ((sm = spanRe.exec(verseText)) !== null) {
-      // Store as local (verse-relative) offsets — verseCharOffset is also
-      // verse-relative (charIndex - prefixLen), so they match directly.
       spans.push({ start: sm.index, end: sm.index + sm[0].length });
     }
     this._cleanVerseWordSpans = spans;
 
     // Timer fallback word data
+    // Use baseWordIndex to start highlighting from the correct word
     const allWords = clean.match(/\S+/g) ?? [];
     const prefixWordCount =
       prefixLen > 0
@@ -595,36 +586,39 @@ class BibleTTSManager {
       prefixWords: allWords.slice(0, prefixWordCount),
       verseWords: allWords.slice(prefixWordCount),
     };
+    
+    // Update current word index to the baseWordIndex for visual highlighting
+    this.state.wordIndex = baseWordIndex;
 
     if (this.stopRequested) return;
     if (!this.initialized) await this.init();
     this.setState({ usingCloudVoice: false, tier: 'device' });
 
-    // ── Pre-highlight (Resume/Immediate) ──────────────────────────────────
-    // If this is a resume (baseWordIndex > 0) or a fresh start with no prefix,
-    // show the first word immediately. This eliminates the visual delay
-    // caused by the TTS engine's internal startup latency.
     if (baseWordIndex > 0 || prefixLen === 0) {
       this.state.wordIndex = baseWordIndex;
       this.notifyListeners();
 
-      // If it's a resume (baseWordIndex > 0), start timers IMMEDIATELY
-      // instead of waiting for the engine's tts-start event.
       if (baseWordIndex > 0) {
         this._startWordTimers(true);
       }
     }
 
     try {
-      console.log('[BibleTTS] _isTtsSpeaking before speak:', this._isTtsSpeaking);
-      
+      console.log(
+        '[BibleTTS] _isTtsSpeaking before speak:',
+        this._isTtsSpeaking,
+      );
+
       await new Promise<void>(resolve => {
         this._pendingResolve = resolve;
         this._utteranceStarted = false;
 
         const doSpeak = () => {
-          console.log('[BibleTTS] doSpeak called, stopRequested:', this.stopRequested);
-          
+          console.log(
+            '[BibleTTS] doSpeak called, stopRequested:',
+            this.stopRequested,
+          );
+
           if (this.stopRequested) {
             this._pendingResolve = null;
             this._utteranceStarted = false;
@@ -634,7 +628,15 @@ class BibleTTSManager {
           }
           this._utteranceStarted = true;
           this._isTtsSpeaking = true;
-          console.log('[BibleTTS] Calling Tts.speak with text:', clean.substring(0, 30), '...');
+          // Reset pause-stop guard right before starting new speech, so any
+          // stale tts-cancel from the previous pause() that fires before this
+          // point is still handled by the _isPauseStop guard.
+          this._isPauseStop = false;
+          console.log(
+            '[BibleTTS] Calling Tts.speak with text:',
+            clean.substring(0, 30),
+            '...',
+          );
 
           // Android 14 safety net: if the engine drops the utterance silently
           // (no finish/cancel within 30 s) we resolve anyway so the loop moves on.
@@ -660,14 +662,14 @@ class BibleTTSManager {
 
           Promise.resolve(Tts.speak(clean))
             .then(() => console.log('[BibleTTS] Tts.speak resolved'))
-            .catch((err) => {
+            .catch(err => {
               console.error('[BibleTTS] Tts.speak error:', err);
               this._clearUtteranceTimeout();
               this._isTtsSpeaking = false;
               this._pendingResolve = null;
               this._utteranceStarted = false;
               resolve();
-          });
+            });
         };
 
         if (this._isTtsSpeaking) {
@@ -707,10 +709,7 @@ class BibleTTSManager {
     const announce = opts.announceLocation ?? verses.length === 1;
 
     let fullText: string;
-    // prefixRaw is the raw prefix string before prepareText — we clean it
-    // separately to find where the verse starts in the cleaned full string
-    // without relying on indexOf(firstWord) which can match inside the prefix
-    // (e.g. verse starting with "God" when prefix contains "God").
+
     let prefixRaw: string;
 
     if (verses.length === 1) {
@@ -735,10 +734,6 @@ class BibleTTSManager {
 
     const cleanedFull = this.prepareText(fullText);
 
-    // BUG FIX: search for the first verse word starting AFTER the prefix area,
-    // not from the beginning of the string. This prevents a false match when
-    // the verse opens with a word that also appears in the prefix (e.g. "God",
-    // "Genesis", "Lord").
     const cleanedPrefix = this.prepareText(prefixRaw);
     const searchFrom = Math.max(0, cleanedPrefix.length - 2);
 
@@ -766,8 +761,7 @@ class BibleTTSManager {
   async speakVerseOfDay(text: string, reference: string): Promise<void> {
     if (!text) return;
     await this.stop();
-    // Compute prefixLen so word-highlighting begins at [text], not at the
-    // "Verse of the day / reference" announcement.
+
     const prefixRaw = `Verse of the day.  ${reference}.   `;
     const fullText = `${prefixRaw}${text}.   ${reference}.`;
     const cleanFull = this.prepareText(fullText);
@@ -787,39 +781,77 @@ class BibleTTSManager {
 
   async pause(): Promise<void> {
     if (!this.state.isPlaying || this.state.isPaused) return;
-    // BUG FIX: save text + prefixLen BEFORE calling Tts.stop(), because the
-    // resulting tts-cancel event wipes state.currentText → resume() would find
-    // an empty string and return immediately without restarting playback.
+    
+    // Save the text and position for potential resume
     this._pausedText = this.state.currentText;
     this._pausedPrefixLen = this._cleanPrefixCharLen;
+    this._pausedWordIndex = this.state.wordIndex;
+
+    this._isPauseStop = true;
     try {
       await Tts.stop();
+      // Clear the pending promise from the original speak() call so the
+      // async tts-cancel (which may fire after this method returns) won't
+      // resolve a stale _pendingResolve from the pre-pause utterance.
+      const resolve = this._pendingResolve;
+      this._pendingResolve = null;
+      resolve?.();
+      
+      this._isTtsSpeaking = false;
+      this._clearWordTimers();
+      this._clearUtteranceTimeout();
+      this.state.wordIndex = -1;
       this.setState({ isPaused: true, isPlaying: false });
     } catch (err) {
+      this._isTtsSpeaking = false;
       console.warn('[BibleTTS] Pause error:', err);
     }
   }
 
   async resume(): Promise<void> {
-    if (!this.state.isPaused || !this._pausedText) return;
+    // Use _pausedWordIndex as the source of truth for where we were paused
+    // Note: The device TTS engine cannot seek mid-utterance, so this is
+    // a logical position only. The actual audio will start from the beginning.
+    // This gives visual feedback that the user is resuming, but the audio
+    // will re-read from the beginning of the verse.
+    if (!this._pausedText || this._pausedWordIndex === -1) return;
+    
     const text = this._pausedText;
     const prefixLen = this._pausedPrefixLen;
+    const baseWordIndex = this._pausedWordIndex;
+    
+    // Reset pause state
     this._pausedText = '';
     this._pausedPrefixLen = 0;
+    this._pausedWordIndex = -1;
+    
     try {
-      this.setState({ isPaused: false });
-      await this.speak(text, prefixLen);
+      // Set isPlaying:true immediately so the UI bar shows the Play button
+      // transitioning back to Pause. This gives visual feedback that the user
+      // is resuming.
+      this.setState({ isPaused: false, isPlaying: true });
+      
+      // Speak the text with the baseWordIndex to start from the correct word
+      // for visual highlighting, but the audio will always start from the beginning
+      await this.speak(text, prefixLen, baseWordIndex);
     } catch (err) {
       console.warn('[BibleTTS] Resume error:', err);
     }
   }
 
+  /** True if there is saved paused text and position that can be resumed. */
+  get hasPausedText(): boolean {
+    return !!this._pausedText && this._pausedWordIndex >= 0;
+  }
+
   async stop(): Promise<void> {
     try {
       this.stopRequested = true;
+      this._isPauseStop = false;
       this._isTtsSpeaking = false;
       this._pausedText = '';
       this._pausedPrefixLen = 0;
+      this._pausedWordIndex = -1;
       this._clearUtteranceTimeout();
       this._clearWordTimers();
       this.state.wordIndex = -1;
