@@ -1,6 +1,7 @@
 import { api } from './api';
 import { checkInternetConnection } from '../utilits/checkInternet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BibleVersion } from '../assets/bibleVersion/json/bibleVersions';
 
 export interface Translation {
   id: string;
@@ -64,12 +65,12 @@ const ONLINE_CHECK_INTERVAL = 60000;
 
 export const checkOnlineStatus = async (): Promise<boolean> => {
   const now = Date.now();
-  if (isOnline !== null && (now - lastOnlineCheck) < ONLINE_CHECK_INTERVAL) {
+  if (isOnline !== null && now - lastOnlineCheck < ONLINE_CHECK_INTERVAL) {
     return isOnline;
   }
-  
+
   lastOnlineCheck = now;
-  
+
   try {
     const connected = await checkInternetConnection();
     if (!connected) {
@@ -205,13 +206,17 @@ export const bibleApi = {
     }
   },
 
-  getTranslation: async (translationId: string): Promise<Translation | null> => {
+  getTranslation: async (
+    translationId: string,
+  ): Promise<Translation | null> => {
     const online = await checkOnlineStatus();
     if (!online) {
       return null;
     }
     try {
-      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${translationId}`);
+      const response = await api.post(
+        `${TRANSLATIONS_BASE_URL}/${translationId}`,
+      );
       if (response.data.success && response.data.data) {
         return response.data.data;
       }
@@ -229,7 +234,9 @@ export const bibleApi = {
       return [];
     }
     try {
-      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/books`);
+      const response = await api.post(
+        `${TRANSLATIONS_BASE_URL}/${backendId}/books`,
+      );
       if (response.data.success && response.data.data) {
         return response.data.data;
       }
@@ -240,42 +247,55 @@ export const bibleApi = {
     }
   },
 
-  getBooksWithMaxChapters: async (translationId: string): Promise<BookWithMaxChapter[]> => {
+  getBooksWithMaxChapters: async (
+    translationId: string,
+  ): Promise<BookWithMaxChapter[]> => {
     const backendId = mapTranslationId(translationId);
     const cacheKey = `${BIBLE_CACHE_KEY}:books:${backendId}`;
-    
+
     const cached = await getCache(cacheKey);
     if (cached) {
       return cached;
     }
-    
+
     const online = await checkOnlineStatus();
     if (!online) {
       return [];
     }
     try {
-      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/books-with-max`);
+      const response = await api.post(
+        `${TRANSLATIONS_BASE_URL}/${backendId}/books-with-max`,
+      );
       if (response.data.success && response.data.data) {
         await setCache(cacheKey, response.data.data);
         return response.data.data;
       }
       return [];
     } catch (error) {
-      console.error(`Failed to fetch books with max chapters for ${translationId}:`, error);
+      console.error(
+        `Failed to fetch books with max chapters for ${translationId}:`,
+        error,
+      );
       return [];
     }
   },
 
-  getChapters: async (translationId: string, bookName: string): Promise<BookChapterData | null> => {
+  getChapters: async (
+    translationId: string,
+    bookName: string,
+  ): Promise<BookChapterData | null> => {
     const backendId = mapTranslationId(translationId);
     const online = await checkOnlineStatus();
     if (!online) {
       return null;
     }
     try {
-      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/chapters`, {
-        bookName,
-      });
+      const response = await api.post(
+        `${TRANSLATIONS_BASE_URL}/${backendId}/chapters`,
+        {
+          bookName,
+        },
+      );
       if (response.data.success && response.data.data) {
         return response.data.data;
       }
@@ -286,31 +306,41 @@ export const bibleApi = {
     }
   },
 
-  getVerses: async (translationId: string, bookName: string, chapter: number): Promise<VerseData | null> => {
+  getVerses: async (
+    translationId: string,
+    bookName: string,
+    chapter: number,
+  ): Promise<VerseData | null> => {
     const backendId = mapTranslationId(translationId);
     const cacheKey = `${BIBLE_CACHE_KEY}:verses:${backendId}:${bookName}:${chapter}`;
-    
+
     const cached = await getCache(cacheKey);
     if (cached) {
       return cached;
     }
-    
+
     const online = await checkOnlineStatus();
     if (!online) {
       return null;
     }
     try {
-      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/verses`, {
-        bookName,
-        chapter,
-      });
+      const response = await api.post(
+        `${TRANSLATIONS_BASE_URL}/${backendId}/verses`,
+        {
+          bookName,
+          chapter,
+        },
+      );
       if (response.data.success && response.data.data) {
         await setCache(cacheKey, response.data.data);
         return response.data.data;
       }
       return null;
     } catch (error) {
-      console.error(`Failed to fetch verses for ${bookName} ${chapter}:`, error);
+      console.error(
+        `Failed to fetch verses for ${bookName} ${chapter}:`,
+        error,
+      );
       return null;
     }
   },
@@ -319,7 +349,7 @@ export const bibleApi = {
     translationId: string,
     bookName: string,
     chapter: number,
-    verseNumber: number
+    verseNumber: number,
   ): Promise<Verse | null> => {
     const backendId = mapTranslationId(translationId);
     const online = await checkOnlineStatus();
@@ -327,17 +357,23 @@ export const bibleApi = {
       return null;
     }
     try {
-      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/verse`, {
-        bookName,
-        chapter,
-        verseNumber,
-      });
+      const response = await api.post(
+        `${TRANSLATIONS_BASE_URL}/${backendId}/verse`,
+        {
+          bookName,
+          chapter,
+          verseNumber,
+        },
+      );
       if (response.data.success && response.data.data) {
         return response.data.data;
       }
       return null;
     } catch (error) {
-      console.error(`Failed to fetch verse ${bookName} ${chapter}:${verseNumber}:`, error);
+      console.error(
+        `Failed to fetch verse ${bookName} ${chapter}:${verseNumber}:`,
+        error,
+      );
       return null;
     }
   },
@@ -345,7 +381,7 @@ export const bibleApi = {
   search: async (
     translationId: string,
     query: string,
-    limit: number = 50
+    limit: number = 50,
   ): Promise<SearchResult[]> => {
     const backendId = mapTranslationId(translationId);
     const online = await checkOnlineStatus();
@@ -353,10 +389,13 @@ export const bibleApi = {
       return [];
     }
     try {
-      const response = await api.post(`${TRANSLATIONS_BASE_URL}/${backendId}/search`, {
-        query,
-        limit,
-      });
+      const response = await api.post(
+        `${TRANSLATIONS_BASE_URL}/${backendId}/search`,
+        {
+          query,
+          limit,
+        },
+      );
       if (response.data.success && response.data.data) {
         return response.data.data;
       }
@@ -370,15 +409,17 @@ export const bibleApi = {
   getAvailableTranslations: async (): Promise<Translation[]> => {
     const online = await checkOnlineStatus();
     if (!online) {
-      const { BIBLE_VERSIONS } = require('../assets/bibleVersion/json/bibleVersions');
-      return BIBLE_VERSIONS.map((v: any) => ({
+      const {
+        BIBLE_VERSIONS,
+      } = require('../assets/bibleVersion/json/bibleVersions');
+      return BIBLE_VERSIONS.map((v: Translation) => ({
         id: v.id,
         name: v.name,
-        shortName: v.abbreviation,
+        shortName: v.shortName,
         description: v.description,
         year: v.year,
-        copyright: null,
-        link: null,
+        copyright: v.copyright,
+        link: v.link,
       }));
     }
     try {
@@ -393,33 +434,60 @@ export const bibleApi = {
     }
   },
 
-  getAvailableTranslationsWithMapping: async (): Promise<Array<{ backendId: string; frontendId: string; name: string; shortName: string; year?: string | null }>> => {
+  getAvailableTranslationsWithMapping: async (): Promise<
+    Array<{
+      id: string;
+      frontendId: string;
+      backendId: string;
+      name: string;
+      shortName: string;
+      year?: string | null;
+      description: string | null;
+      link: string | null;
+      copyright: string | null;
+    }>
+  > => {
     const online = await checkOnlineStatus();
-    
+
     if (online) {
       try {
         const response = await api.post(`${TRANSLATIONS_BASE_URL}/`);
+
         if (response.data.success && response.data.data) {
-          return response.data.data.map((t: Translation) => ({
-            backendId: t.id,
-            frontendId: mapFrontendId(t.id),
-            name: t.name,
-            shortName: t.shortName,
-            year: t.year,
-          }));
+          return response.data.data.map((t: Translation) => {
+            const backendId = t.id;
+            const frontendId = mapFrontendId(backendId);
+            return {
+              id: frontendId,
+              frontendId,
+              backendId,
+              name: t.name,
+              shortName: t.shortName,
+              year: t.year,
+              description: t.description,
+              link: t.link,
+              copyright: t.copyright,
+            };
+          });
         }
       } catch (error) {
         console.error('Failed to fetch translations:', error);
       }
     }
-    
-    const { BIBLE_VERSIONS } = require('../assets/bibleVersion/json/bibleVersions');
-    return BIBLE_VERSIONS.map((v: any) => ({
-      backendId: v.id,
+
+    const {
+      BIBLE_VERSIONS,
+    } = require('../assets/bibleVersion/json/bibleVersions');
+    return BIBLE_VERSIONS.map((v: BibleVersion) => ({
+      id: v.id,
       frontendId: v.id,
+      backendId: mapTranslationId(v.id),
       name: v.name,
       shortName: v.abbreviation,
-      year: v.year,
+      year: String(v.year),
+      description: v.description,
+      link: null,
+      copyright: null,
     }));
   },
 };

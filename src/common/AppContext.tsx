@@ -173,11 +173,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const setBibleVersion = async (versionId: string) => {
     try {
+      console.log('🔄 Changing Bible version to:', versionId);
       const resolved = getVersionById(versionId).id;
-      setActiveVersion(resolved);
-      setBibleVersionId(resolved);
-      await AsyncStorage.setItem(BIBLE_VERSION_KEY, resolved);
-      console.log('✅ Bible version changed to:', resolved);
+      setActiveVersion(versionId);
+      setBibleVersionId(versionId);
+      await AsyncStorage.setItem(BIBLE_VERSION_KEY, versionId);
+      console.log('✅ Bible version changed to:', versionId);
     } catch (error) {
       console.error('❌ Error saving Bible version:', error);
     }

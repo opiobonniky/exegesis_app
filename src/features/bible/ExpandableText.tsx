@@ -8,7 +8,7 @@ import React, {
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { AppContext } from '../../common/AppContext';
 import { getColors, SPACING } from '../../constants/theme';
-import { ChevronDown, ChevronUp, X } from 'lucide-react-native';
+import { ChevronDown, X } from 'lucide-react-native';
 
 type Props = {
   text?: string;

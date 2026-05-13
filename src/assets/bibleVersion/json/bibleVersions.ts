@@ -1,30 +1,3 @@
-/**
- * bibleVersions.ts
- *
- * Registry of free / public-domain Bible versions bundled with the app.
- * Each version ships as a JSON file with keys:
- *
- *   "<Book> <chapter>:<verse>"  →  "<verse text>"
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * AVAILABLE FROM scrollmapper/bible_databases (2024 branch) – all 5 below
- * Run `node download_bible_versions.js` to fetch them.
- *
- * HOW TO ADD A CUSTOM VERSION (e.g. Darby, BSB, ESV)
- * ─────────────────────────────────────────────────────────────────────────────
- * 1. Get the Bible text from a public-domain or permissive-license source.
- * 2. Convert it to the flat JSON format:
- *      { "Genesis 1:1": "In the beginning...", "Genesis 1:2": "...", ... }
- * 3. Save it as  src/assets/bibleVersion/json/verses-<n>.json
- * 4. Add an entry below — the app picks it up automatically.
- *
- * Useful free sources:
- *   • Berean Standard Bible (CC BY 4.0): https://berean.bible/downloads.htm
- *   • eBible.org (many languages):       https://ebible.org/find/
- *   • Crosswire SWORD modules:           https://crosswire.org/sword/modules/
- * ─────────────────────────────────────────────────────────────────────────────
- */
-
 export interface BibleVersion {
   /** Short identifier stored in AsyncStorage / state */
   id: string;
@@ -49,7 +22,7 @@ export interface BibleVersion {
 export const BIBLE_VERSIONS: BibleVersion[] = [
   // 1. BSB — default; fast-growing modern translation, highly accurate
   {
-    id: 'BSB',
+    id: 'Berean',
     name: 'Berean Standard Bible',
     abbreviation: 'BSB',
     description:
@@ -126,9 +99,52 @@ export const BIBLE_VERSIONS: BibleVersion[] = [
 ];
 
 /** Default version id used on first launch */
-export const DEFAULT_VERSION_ID = 'BSB';
+export const DEFAULT_VERSION_ID = 'Berean';
 
-/** Look up a version by id (falls back to BSB if unknown) */
-export const getVersionById = (id: string): BibleVersion =>
-  BIBLE_VERSIONS.find(v => v.id === id) ??
-  BIBLE_VERSIONS.find(v => v.id === DEFAULT_VERSION_ID)!;
+/** Online-only translations (not in local bundle, fetched from backend) */
+const ONLINE_ONLY_TRANSLATIONS: Record<string, Omit<BibleVersion, 'load'>> = {
+  NIV: { id: 'NIV', name: 'New International Version', abbreviation: 'NIV', description: 'Modern English translation', year: 2011 },
+  ESV: { id: 'ESV', name: 'English Standard Version', abbreviation: 'ESV', description: 'ESV Bible', year: 2016 },
+  NASB: { id: 'NASB', name: 'New American Standard Bible', abbreviation: 'NASB', description: 'NASB', year: 1995 },
+  NLT: { id: 'NLT', name: 'New Living Translation', abbreviation: 'NLT', description: 'NLT', year: 2004 },
+  NKJ: { id: 'NKJ', name: 'New King James Version', abbreviation: 'NKJ', description: 'NKJV', year: 1982 },
+  CSB: { id: 'CSB', name: 'Christian Standard Bible', abbreviation: 'CSB', description: 'CSB', year: 2017 },
+  GNT: { id: 'GNT', name: 'Good News Translation', abbreviation: 'GNT', description: 'GNT', year: 1992 },
+  NIRV: { id: 'NIRV', name: "New International Reader's Version", abbreviation: 'NIRV', description: 'NIRV', year: 1996 },
+  RSV: { id: 'RSV', name: 'Revised Standard Version', abbreviation: 'RSV', description: 'RSV', year: 1971 },
+  NRSV: { id: 'NRSV', name: 'New Revised Standard Version', abbreviation: 'NRSV', description: 'NRSV', year: 1989 },
+  NET: { id: 'NET', name: 'NET Bible', abbreviation: 'NET', description: 'NET', year: 2005 },
+  MEV: { id: 'MEV', name: 'Modern English Version', abbreviation: 'MEV', description: 'MEV', year: 2014 },
+  LSB: { id: 'LSB', name: 'Legacy Standard Bible', abbreviation: 'LSB', description: 'LSB', year: 2021 },
+  NASU: { id: 'NASU', name: 'New American Standard Update', abbreviation: 'NASU', description: 'NASU', year: 1989 },
+  AmplifiedClassic: { id: 'AmplifiedClassic', name: 'Amplified Classic', abbreviation: 'AMPClassic', description: 'Amplified Classic', year: 1987 },
+  Passion: { id: 'Passion', name: 'The Passion Translation', abbreviation: 'TPT', description: 'The Passion Translation', year: 2020 },
+  ERV: { id: 'ERV', name: 'English Revised Version', abbreviation: 'ERV', description: 'ERV', year: 2006 },
+  HCSB: { id: 'HCSB', name: 'Holman Christian Standard', abbreviation: 'HCSB', description: 'HCSB', year: 2004 },
+};
+
+/** Look up a version by id (falls back to Berean if unknown) */
+export const getVersionById = (id: string): BibleVersion => {
+  const local = BIBLE_VERSIONS.find(v => v.id === id);
+  if (local) return local;
+
+  const online = ONLINE_ONLY_TRANSLATIONS[id];
+  if (online) {
+    return {
+      ...online,
+      load: () => ({}),
+    };
+  }
+
+  return BIBLE_VERSIONS.find(v => v.id === DEFAULT_VERSION_ID)!;
+};
+
+/** Check if a translation is available locally (offline) */
+export const isLocalTranslation = (id: string): boolean => {
+  return BIBLE_VERSIONS.some(v => v.id === id);
+};
+
+/** Check if a translation is available only online */
+export const isOnlineOnlyTranslation = (id: string): boolean => {
+  return !!ONLINE_ONLY_TRANSLATIONS[id];
+};

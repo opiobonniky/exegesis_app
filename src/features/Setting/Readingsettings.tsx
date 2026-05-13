@@ -27,6 +27,7 @@ import {
   BookMarked,
   Type,
   Palette,
+  Loader,
 } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -72,7 +73,7 @@ export default function ReadingSettingsScreen() {
 
   // ── Version search ────────────────────────────────────────────────────────
   const [query, setQuery] = useState('');
-  const [allTranslations, setAllTranslations] = useState<Array<{ backendId: string; frontendId: string; name: string; shortName: string; year?: string | null }>>([]);
+  const [allTranslations, setAllTranslations] = useState<any>([]);
   const [loadingTranslations, setLoadingTranslations] = useState(true);
 
   // Fetch translations on mount and when coming online
@@ -82,7 +83,7 @@ export default function ReadingSettingsScreen() {
       console.log('Fetching translations, isOnline:', isOnline);
       const translations = await bibleApi.getAvailableTranslationsWithMapping();
       console.log('Fetched translations:', translations?.length, translations);
-      
+
       if (translations && translations.length > 0) {
         setAllTranslations(translations);
       } else {
@@ -112,10 +113,8 @@ export default function ReadingSettingsScreen() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return allTranslations;
-    return allTranslations.filter(v => {
-      const hay =
-        `${v.name} ${v.shortName} ${v.year ?? ''}`
-          .toLowerCase();
+    return allTranslations.filter((v: any) => {
+      const hay = `${v.name} ${v.shortName} ${v.year ?? ''}`.toLowerCase();
       return hay.includes(q);
     });
   }, [allTranslations, query]);
@@ -123,51 +122,87 @@ export default function ReadingSettingsScreen() {
   // ── Version row flash animation on selection ──────────────────────────────
   const flashAnim = useRef(new Animated.Value(1)).current;
   const handleSelectVersion = (frontendId: string) => {
-    setBibleVersion(frontendId);
-    Animated.sequence([
-      Animated.timing(flashAnim, { toValue: 0.4, duration: 80, useNativeDriver: true }),
-      Animated.timing(flashAnim, { toValue: 1,   duration: 180, useNativeDriver: true }),
-    ]).start();
+   try {
+     setBibleVersion(frontendId);
+     Animated.sequence([
+       Animated.timing(flashAnim, {
+         toValue: 0.4,
+         duration: 80,
+         useNativeDriver: true,
+       }),
+       Animated.timing(flashAnim, {
+         toValue: 1,
+         duration: 180,
+         useNativeDriver: true,
+       }),
+     ]).start();
+   } catch (error:any) {
+    console.error('❌ Error selecting Bible version:', error.message || error);
+   }
   };
 
   // ── Theme tokens ──────────────────────────────────────────────────────────
   const surface = COLORS.cardBackground;
-  const border  = COLORS.border;
+  const border = COLORS.border;
 
   return (
     <View style={[s.root, { backgroundColor: COLORS.background }]}>
-      <ActionHeader title="Reading Settings" onPress={() => navigation.goBack()} />
+      <ActionHeader
+        title="Reading Settings"
+        onPress={() => navigation.goBack()}
+      />
 
       <ScrollView
         contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-
         {/* ═══════════════════════════════════════════════════════════════════
             BIBLE TRANSLATION
         ═══════════════════════════════════════════════════════════════════ */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
           <SectionHeader
-            icon={<BookMarked size={15} color={COLORS.primary} strokeWidth={2} />}
+            icon={
+              <BookMarked size={15} color={COLORS.primary} strokeWidth={2} />
+            }
             label="Bible Translation"
             COLORS={COLORS}
           />
           <Text style={{ fontSize: 10, color: isOnline ? '#10B981' : '#888' }}>
-            {isOnline === null ? 'Checking...' : isOnline ? 'Online' : 'Offline'}
+            {isOnline === null
+              ? 'Checking...'
+              : isOnline
+                ? 'Online'
+                : 'Offline'}
           </Text>
         </View>
 
         {/* Loading indicator for translations */}
         {loadingTranslations && allTranslations.length === 0 && (
           <View style={[s.loadingContainer, { backgroundColor: surface }]}>
-            <Text style={s.loadingText}>Loading translations…</Text>
+            <Loader size={20} color={COLORS.primary} />
+            <Text
+              style={[s.loadingText, { color: COLORS.muted, marginTop: 8 }]}
+            >
+              Loading translations…
+            </Text>
           </View>
         )}
 
         {/* Show offline indicator when using local data */}
         {!loadingTranslations && isOnline === false && (
-          <View style={[s.loadingContainer, { backgroundColor: surface, marginBottom: 8 }]}>
+          <View
+            style={[
+              s.loadingContainer,
+              { backgroundColor: surface, marginBottom: 8 },
+            ]}
+          >
             <Text style={[s.loadingText, { color: '#F59E0B' }]}>
               Using offline translations (connect to internet for more)
             </Text>
@@ -176,7 +211,10 @@ export default function ReadingSettingsScreen() {
 
         {/* Search bar */}
         <View
-          style={[s.searchBar, { backgroundColor: surface, borderColor: border }]}
+          style={[
+            s.searchBar,
+            { backgroundColor: surface, borderColor: border },
+          ]}
         >
           <Search size={15} color={COLORS.muted} strokeWidth={2} />
           <TextInput
@@ -195,35 +233,50 @@ export default function ReadingSettingsScreen() {
               onPress={() => setQuery('')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={{ color: COLORS.muted, fontSize: 13, fontWeight: '600' }}>✕</Text>
+              <Text
+                style={{ color: COLORS.muted, fontSize: 13, fontWeight: '600' }}
+              >
+                ✕
+              </Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Version list */}
-        <View style={[s.versionList, { backgroundColor: surface, borderColor: border }]}>
+        <View
+          style={[
+            s.versionList,
+            { backgroundColor: surface, borderColor: border },
+          ]}
+        >
           {filtered.length === 0 ? (
             <View style={s.emptyWrap}>
-              <Text style={[s.emptyTitle, { color: COLORS.text }]}>No results</Text>
+              <Text style={[s.emptyTitle, { color: COLORS.text }]}>
+                No results
+              </Text>
               <Text style={[s.emptySub, { color: COLORS.muted }]}>
                 Try "NIV", "KJV", "ESV"…
               </Text>
             </View>
           ) : (
-            filtered.map((v, i) => {
-              const isActive = v.frontendId === bibleVersionId;
-              const isLast   = i === filtered.length - 1;
+            filtered.map((v: any, i: number) => {
+              const frontendId = v.frontendId || v.id;
+              const isActive = frontendId === bibleVersionId;
+              const isLast = i === filtered.length - 1;
               return (
                 <Animated.View
-                  key={v.backendId}
+                  key={frontendId}
                   style={isActive ? { opacity: flashAnim } : undefined}
                 >
                   <TouchableOpacity
-                    onPress={() => handleSelectVersion(v.frontendId)}
+                    onPress={() => handleSelectVersion(frontendId)}
                     activeOpacity={0.7}
                     style={[
                       s.versionRow,
-                      !isLast && { borderBottomWidth: 1, borderBottomColor: border },
+                      !isLast && {
+                        borderBottomWidth: 1,
+                        borderBottomColor: border,
+                      },
                       isActive && { backgroundColor: `${COLORS.primary}0D` },
                     ]}
                   >
@@ -256,7 +309,7 @@ export default function ReadingSettingsScreen() {
                           style={[
                             s.rowName,
                             {
-                              color:      COLORS.text,
+                              color: COLORS.text,
                               fontWeight: isActive ? '800' : '600',
                             },
                           ]}
@@ -266,7 +319,10 @@ export default function ReadingSettingsScreen() {
                         </Text>
                         {!!v.year && (
                           <View
-                            style={[s.yearPill, { backgroundColor: `${COLORS.muted}16` }]}
+                            style={[
+                              s.yearPill,
+                              { backgroundColor: `${COLORS.muted}16` },
+                            ]}
                           >
                             <Text style={[s.yearText, { color: COLORS.muted }]}>
                               {v.year}
@@ -284,7 +340,12 @@ export default function ReadingSettingsScreen() {
 
                     {/* Check / empty ring */}
                     {isActive ? (
-                      <View style={[s.checkDot, { backgroundColor: COLORS.primary }]}>
+                      <View
+                        style={[
+                          s.checkDot,
+                          { backgroundColor: COLORS.primary },
+                        ]}
+                      >
                         <Check size={11} color="#fff" strokeWidth={3} />
                       </View>
                     ) : (
@@ -297,7 +358,6 @@ export default function ReadingSettingsScreen() {
           )}
         </View>
 
-
         {/* ═════════════════════════════════════════════════════════════════
             TEXT SIZE
         ══════════════════════════════════════════════════════════════════ */}
@@ -309,7 +369,12 @@ export default function ReadingSettingsScreen() {
         />
 
         {/* Stepper */}
-        <View style={[s.fontCard, { backgroundColor: surface, borderColor: border }]}>
+        <View
+          style={[
+            s.fontCard,
+            { backgroundColor: surface, borderColor: border },
+          ]}
+        >
           <TouchableOpacity
             style={[s.fontBtn, { borderRightColor: border }]}
             onPress={() => handleFontChange(Math.max(12, fontSize - 2))}
@@ -320,7 +385,9 @@ export default function ReadingSettingsScreen() {
 
           <View style={s.fontCenter}>
             {/* Animated size display */}
-            <Text style={[s.fontValue, { color: COLORS.primary }]}>{fontSize}</Text>
+            <Text style={[s.fontValue, { color: COLORS.primary }]}>
+              {fontSize}
+            </Text>
             <Text style={[s.fontUnit, { color: COLORS.muted }]}>pt</Text>
           </View>
 
@@ -335,7 +402,7 @@ export default function ReadingSettingsScreen() {
 
         {/* Size scale row */}
         <View style={s.sizeScale}>
-          {[11,12, 14, 16, 18, 20, 24, 28].map(sz => {
+          {[11, 12, 14, 16, 18, 20, 24, 28].map(sz => {
             const active = fontSize === sz;
             return (
               <TouchableOpacity
@@ -344,7 +411,9 @@ export default function ReadingSettingsScreen() {
                 style={[
                   s.scaleDot,
                   {
-                    backgroundColor: active ? COLORS.primary : `${COLORS.muted}22`,
+                    backgroundColor: active
+                      ? COLORS.primary
+                      : `${COLORS.muted}22`,
                     borderColor: active ? COLORS.primary : 'transparent',
                   },
                 ]}
@@ -364,26 +433,36 @@ export default function ReadingSettingsScreen() {
         </View>
 
         {/* Live preview */}
-        <View style={[s.previewCard, { backgroundColor: surface, borderColor: border }]}>
+        <View
+          style={[
+            s.previewCard,
+            { backgroundColor: surface, borderColor: border },
+          ]}
+        >
           <Text style={[s.previewHint, { color: COLORS.muted }]}>PREVIEW</Text>
           <Text
             style={{
-              color:      COLORS.text,
+              color: COLORS.text,
               fontSize,
               lineHeight: fontSize * 1.7,
-              fontStyle:  'italic',
+              fontStyle: 'italic',
             }}
             numberOfLines={4}
           >
-            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>{'"'}</Text>
+            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>
+              {'"'}
+            </Text>
             {
               'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.'
             }
-            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>{'"'}</Text>
+            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>
+              {'"'}
+            </Text>
           </Text>
-          <Text style={[s.previewRef, { color: COLORS.muted }]}>— John 3:16</Text>
+          <Text style={[s.previewRef, { color: COLORS.muted }]}>
+            — John 3:16
+          </Text>
         </View>
-
 
         {/* ═════════════════════════════════════════════════════════════════
             READING VOICE
@@ -398,19 +477,21 @@ export default function ReadingSettingsScreen() {
         <TouchableOpacity
           onPress={() => navigation.navigate(route.voiceSettings)}
           activeOpacity={0.7}
-          style={[s.linkRow, { backgroundColor: surface, borderColor: border }]}>
+          style={[s.linkRow, { backgroundColor: surface, borderColor: border }]}
+        >
           <View style={[s.linkIcon, { backgroundColor: '#10B98118' }]}>
             <Volume2 size={18} color="#10B981" strokeWidth={2} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.linkLabel, { color: COLORS.text }]}>Voice Settings</Text>
+            <Text style={[s.linkLabel, { color: COLORS.text }]}>
+              Voice Settings
+            </Text>
             <Text style={[s.linkSub, { color: COLORS.muted }]}>
               Speed, pitch, narrator voice
             </Text>
           </View>
           <ChevronRight size={16} color={COLORS.muted} strokeWidth={2} />
         </TouchableOpacity>
-
 
         {/* ══════════════════════════════════════════════════════════════════
             APPEARANCE
@@ -422,19 +503,24 @@ export default function ReadingSettingsScreen() {
           style={{ marginTop: SPACING.xl }}
         />
 
-        <View style={[s.linkRow, { backgroundColor: surface, borderColor: border }]}>
+        <View
+          style={[s.linkRow, { backgroundColor: surface, borderColor: border }]}
+        >
           <View style={[s.linkIcon, { backgroundColor: `${COLORS.accent}18` }]}>
-            {isDark
-              ? <Moon size={18} color={COLORS.accent} strokeWidth={2} />
-              : <Sun  size={18} color={COLORS.accent} strokeWidth={2} />
-            }
+            {isDark ? (
+              <Moon size={18} color={COLORS.accent} strokeWidth={2} />
+            ) : (
+              <Sun size={18} color={COLORS.accent} strokeWidth={2} />
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[s.linkLabel, { color: COLORS.text }]}>
               {isDark ? 'Light Mode' : 'Dark Mode'}
             </Text>
             <Text style={[s.linkSub, { color: COLORS.muted }]}>
-              {isDark ? 'Switch to a brighter theme' : 'Switch to a darker theme'}
+              {isDark
+                ? 'Switch to a brighter theme'
+                : 'Switch to a darker theme'}
             </Text>
           </View>
           <Switch
@@ -459,8 +545,8 @@ function SectionHeader({
   COLORS,
   style,
 }: {
-  icon:   React.ReactNode;
-  label:  string;
+  icon: React.ReactNode;
+  label: string;
   COLORS: any;
   style?: any;
 }) {
@@ -469,7 +555,9 @@ function SectionHeader({
       <View style={[sh.iconWrap, { backgroundColor: `${COLORS.primary}12` }]}>
         {icon}
       </View>
-      <Text style={[sh.label, { color: COLORS.muted }]}>{label.toUpperCase()}</Text>
+      <Text style={[sh.label, { color: COLORS.muted }]}>
+        {label.toUpperCase()}
+      </Text>
     </View>
   );
 }
@@ -477,31 +565,31 @@ function SectionHeader({
 const sh = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    alignItems:    'center',
-    gap:           8,
-    marginBottom:  SPACING.sm,
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: SPACING.sm,
   },
   iconWrap: {
-    width:          26,
-    height:         26,
-    borderRadius:   8,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
     justifyContent: 'center',
-    alignItems:     'center',
+    alignItems: 'center',
   },
   label: {
-    fontSize:      10,
-    fontWeight:    '700',
+    fontSize: 10,
+    fontWeight: '700',
     letterSpacing: 1.4,
   },
 });
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:   { flex: 1 },
+  root: { flex: 1 },
   scroll: {
     paddingHorizontal: SPACING.lg,
-    paddingTop:        SPACING.md,
-    paddingBottom:     40,
+    paddingTop: SPACING.md,
+    paddingBottom: 40,
   },
 
   // Loading
@@ -518,85 +606,85 @@ const s = StyleSheet.create({
   // ── Active version hero ──────────────────────────────────────────────────
   activeVersionHero: {
     borderRadius: BORDER_RADIUS.xl,
-    padding:      SPACING.lg,
+    padding: SPACING.lg,
     marginBottom: SPACING.md,
-    overflow:     'hidden',
-    shadowColor:  '#000',
+    overflow: 'hidden',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,
-    shadowRadius:  14,
-    elevation:     8,
+    shadowRadius: 14,
+    elevation: 8,
   },
   heroOrb: {
-    position:     'absolute',
-    width:        120,
-    height:       120,
+    position: 'absolute',
+    width: 120,
+    height: 120,
     borderRadius: 60,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    top:  -30,
+    top: -30,
     right: -30,
   },
   heroContent: {
     flexDirection: 'row',
-    alignItems:    'center',
-    gap:           12,
+    alignItems: 'center',
+    gap: 12,
   },
   heroBadgeWrap: {
-    backgroundColor:  'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
     paddingHorizontal: 10,
-    paddingVertical:    5,
-    borderRadius:      10,
-    borderWidth:        1,
-    borderColor:       'rgba(255,255,255,0.20)',
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
   },
   heroBadgeText: {
-    fontSize:      FONT_SIZES.sm,
-    fontWeight:    '900',
-    color:         '#fff',
-    letterSpacing:  0.5,
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   heroName: {
-    fontSize:   FONT_SIZES.md,
+    fontSize: FONT_SIZES.md,
     fontWeight: '800',
-    color:      '#fff',
+    color: '#fff',
     letterSpacing: -0.2,
   },
   heroMeta: {
-    fontSize:  11,
-    color:     'rgba(255,255,255,0.68)',
-    marginTop:  2,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.68)',
+    marginTop: 2,
   },
   activeTag: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    gap:               4,
-    backgroundColor:  'rgba(255,255,255,0.18)',
-    borderRadius:     999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 999,
     paddingHorizontal: 10,
-    paddingVertical:    5,
-    borderWidth:        1,
-    borderColor:       'rgba(255,255,255,0.22)',
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   activeTagText: {
-    fontSize:   11,
+    fontSize: 11,
     fontWeight: '800',
-    color:      'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.9)',
   },
 
   // ── Search ───────────────────────────────────────────────────────────────
   searchBar: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    gap:               8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: SPACING.md,
-    height:           44,
-    borderRadius:     BORDER_RADIUS.lg,
-    borderWidth:       1,
-    marginBottom:     SPACING.sm,
+    height: 44,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    marginBottom: SPACING.sm,
   },
   searchInput: {
-    flex:       1,
-    fontSize:   FONT_SIZES.sm,
+    flex: 1,
+    fontSize: FONT_SIZES.sm,
     fontWeight: '600',
     paddingVertical: 0, // prevent Android extra padding
   },
@@ -604,144 +692,144 @@ const s = StyleSheet.create({
   // ── Version list ─────────────────────────────────────────────────────────
   versionList: {
     borderRadius: BORDER_RADIUS.xl,
-    borderWidth:   1,
-    overflow:     'hidden',
-    marginBottom:  SPACING.sm,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: SPACING.sm,
   },
   versionRow: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    paddingVertical:  12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
     paddingHorizontal: SPACING.md,
-    gap:              12,
+    gap: 12,
   },
   rowBadge: {
-    width:          46,
-    height:         28,
-    borderRadius:   9,
+    width: 46,
+    height: 28,
+    borderRadius: 9,
     justifyContent: 'center',
-    alignItems:     'center',
-    borderWidth:     1,
+    alignItems: 'center',
+    borderWidth: 1,
   },
   rowBadgeText: {
-    fontSize:   10,
+    fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.4,
   },
   rowTitleRow: {
     flexDirection: 'row',
-    alignItems:    'center',
-    gap:            6,
-    flexWrap:      'nowrap',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'nowrap',
   },
   rowName: { fontSize: FONT_SIZES.sm },
   yearPill: {
     paddingHorizontal: 7,
-    paddingVertical:    2,
-    borderRadius:      999,
+    paddingVertical: 2,
+    borderRadius: 999,
   },
   yearText: { fontSize: 10, fontWeight: '800' },
-  rowDesc:  { fontSize: 11, marginTop: 2 },
+  rowDesc: { fontSize: 11, marginTop: 2 },
 
   checkDot: {
-    width:          22,
-    height:         22,
-    borderRadius:   11,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     justifyContent: 'center',
-    alignItems:     'center',
+    alignItems: 'center',
   },
   checkEmpty: {
-    width:       22,
-    height:      22,
+    width: 22,
+    height: 22,
     borderRadius: 11,
-    borderWidth:  1.5,
+    borderWidth: 1.5,
   },
 
   emptyWrap: { padding: SPACING.lg, alignItems: 'center' },
   emptyTitle: { fontSize: FONT_SIZES.md, fontWeight: '700', marginBottom: 4 },
-  emptySub:   { fontSize: FONT_SIZES.sm, fontWeight: '500' },
+  emptySub: { fontSize: FONT_SIZES.sm, fontWeight: '500' },
 
   // ── Font size ────────────────────────────────────────────────────────────
   fontCard: {
     flexDirection: 'row',
-    borderRadius:  BORDER_RADIUS.lg,
-    borderWidth:    1,
-    overflow:      'hidden',
-    height:         56,
-    marginBottom:  SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+    height: 56,
+    marginBottom: SPACING.sm,
   },
   fontBtn: {
-    width:          56,
+    width: 56,
     justifyContent: 'center',
-    alignItems:     'center',
+    alignItems: 'center',
     borderRightWidth: 1,
-    borderLeftWidth:  1,
+    borderLeftWidth: 1,
   },
   fontCenter: {
-    flex:           1,
-    flexDirection:  'row',
+    flex: 1,
+    flexDirection: 'row',
     justifyContent: 'center',
-    alignItems:     'baseline',
-    gap:             4,
+    alignItems: 'baseline',
+    gap: 4,
   },
   fontValue: { fontSize: 26, fontWeight: '900', letterSpacing: -0.5 },
-  fontUnit:  { fontSize: 13, fontWeight: '500', marginBottom: 3 },
+  fontUnit: { fontSize: 13, fontWeight: '500', marginBottom: 3 },
 
   // Quick-select dots
   sizeScale: {
-    flexDirection:   'row',
-    justifyContent:  'space-between',
-    marginBottom:     SPACING.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
     paddingHorizontal: 2,
   },
   scaleDot: {
     paddingHorizontal: 9,
-    paddingVertical:    5,
-    borderRadius:      BORDER_RADIUS.round,
-    borderWidth:        1,
-    minWidth:          32,
-    alignItems:        'center',
+    paddingVertical: 5,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1,
+    minWidth: 32,
+    alignItems: 'center',
   },
   scaleLabel: { fontSize: 11, fontWeight: '700' },
 
   // Preview card
   previewCard: {
-    borderRadius:  BORDER_RADIUS.xl,
-    borderWidth:    1,
-    padding:       SPACING.lg,
-    marginBottom:  SPACING.sm,
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: 1,
+    padding: SPACING.lg,
+    marginBottom: SPACING.sm,
   },
   previewHint: {
-    fontSize:      9,
-    fontWeight:    '800',
+    fontSize: 9,
+    fontWeight: '800',
     letterSpacing: 1.5,
-    marginBottom:  SPACING.sm,
+    marginBottom: SPACING.sm,
   },
   previewRef: {
-    fontSize:   11,
+    fontSize: 11,
     fontWeight: '600',
-    marginTop:  SPACING.sm,
-    textAlign:  'right',
+    marginTop: SPACING.sm,
+    textAlign: 'right',
   },
 
   // ── Link row (Voice / Appearance) ────────────────────────────────────────
   linkRow: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    gap:              12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     paddingHorizontal: SPACING.md,
-    paddingVertical:  14,
-    borderRadius:     BORDER_RADIUS.xl,
-    borderWidth:       1,
-    marginBottom:      8,
+    paddingVertical: 14,
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: 1,
+    marginBottom: 8,
   },
   linkIcon: {
-    width:          40,
-    height:         40,
-    borderRadius:   12,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
-    alignItems:     'center',
+    alignItems: 'center',
   },
   linkLabel: { fontSize: FONT_SIZES.md, fontWeight: '700' },
-  linkSub:   { fontSize: 11,            fontWeight: '500', marginTop: 2 },
+  linkSub: { fontSize: 11, fontWeight: '500', marginTop: 2 },
 });
