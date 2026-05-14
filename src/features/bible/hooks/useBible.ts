@@ -116,7 +116,7 @@ export const useBible = () => {
   const [afterPlayBehaviour, setAfterPlayBehaviour] = useState<
     'stop' | 'repeat_one' | 'repeat' | 'continue'
   >('continue');
-  const [speechRate, setSpeechRate] = useState<number>(0.75);
+  const [speechRate, setSpeechRate] = useState<number>(1.0);
   const [sleepTimerRemaining, setSleepTimerRemaining] = useState<number>(0);
   const [modal, setModal] = useState<{
     status: boolean;
@@ -627,7 +627,7 @@ export const useBible = () => {
   // ── Speed ────────────────────────────────────────────────────────────────────
   const onSpeedToggle = useCallback(() => {
     setSpeechRate(prev => {
-      const rates = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+      const rates = [0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 2.0];
       const next = rates[(rates.indexOf(prev) + 1) % rates.length];
       bibleTTS
         .setRate(next)
@@ -656,23 +656,33 @@ export const useBible = () => {
   }, [speakVerseAtIndex]);
 
   // ── Sleep timer ──────────────────────────────────────────────────────────────
+  const sleepTimerValues = [0, 60, 180, 300, 900]; // 0 = off, rest in seconds
   const onSleepTimerToggle = useCallback(() => {
-    if (sleepTimerRemaining > 0) {
-      setSleepTimerRemaining(0);
+    setSleepTimerRemaining(prev => {
+      const currentIdx = sleepTimerValues.indexOf(prev);
+      const nextIdx = (currentIdx + 1) % sleepTimerValues.length;
+      const nextValue = sleepTimerValues[nextIdx];
+
       if (sleepTimerRef.current) clearInterval(sleepTimerRef.current);
-    } else {
-      setSleepTimerRemaining(15);
+
+      if (nextValue === 0) {
+        return 0;
+      }
+
+      // Store in seconds for fine-grained countdown
       sleepTimerRef.current = setInterval(() => {
-        setSleepTimerRemaining(prev => {
-          if (prev <= 1) {
+        setSleepTimerRemaining(p => {
+          if (p <= 1) {
             handleAudioStop();
             return 0;
           }
-          return prev - 1;
+          return p - 1;
         });
-      }, 60000);
-    }
-  }, [sleepTimerRemaining, handleAudioStop]);
+      }, 1000);
+
+      return nextValue;
+    });
+  }, [handleAudioStop]);
 
   // ── Scope / after-play ───────────────────────────────────────────────────────
   const handleAudioScopeChange = useCallback(

@@ -134,15 +134,11 @@ export default function AudioControlBar({
 
   const afterPlayRef = useRef(afterPlay);
   const speechRateRef = useRef(speechRate);
-  const sleepTimerRef = useRef(sleepTimerRemaining);
   const lastLabelRef = useRef(nowPlayingLabel);
 
   useEffect(() => {
     speechRateRef.current = speechRate;
   }, [speechRate]);
-  useEffect(() => {
-    sleepTimerRef.current = sleepTimerRemaining;
-  }, [sleepTimerRemaining]);
   useEffect(() => {
     afterPlayRef.current = afterPlay;
   }, [afterPlay]);
@@ -206,13 +202,20 @@ export default function AudioControlBar({
   };
 
   const sleepLabel = () => {
-    // Use `sleepTimerRemaining` prop directly so it re-renders when it changes
-    if (sleepTimerRemaining > 0) {
+    const v = sleepTimerRemaining;
+    if (v > 0) {
+      if (v >= 60) {
+        const mins = Math.floor(v / 60);
+        const secs = v % 60;
+        return (
+          <Text style={[styles.sleepText, { color: '#F59E0B' }]}>
+            {mins}:{String(secs).padStart(2, '0')}
+          </Text>
+        );
+      }
       return (
         <Text style={[styles.sleepText, { color: '#F59E0B' }]}>
-          {sleepTimerRemaining < 60
-            ? `${Math.ceil(sleepTimerRemaining)}s`
-            : `${Math.ceil(sleepTimerRemaining / 60)}m`}
+          {`${v}s`}
         </Text>
       );
     }

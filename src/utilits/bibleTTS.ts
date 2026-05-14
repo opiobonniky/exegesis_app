@@ -10,7 +10,7 @@ const STORAGE_KEYS = {
 };
 
 // ─── Narration defaults ───────────────────────────────────────────────────────
-const DEFAULT_RATE = 0.75;
+const DEFAULT_RATE = 1;
 const DEFAULT_PITCH = 0.95;
 
 const PREFERRED_VOICES: string[] =
