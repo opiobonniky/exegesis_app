@@ -162,6 +162,15 @@ export const useBible = () => {
   const isPausedRef = useRef<boolean>(false); // user intentionally paused
   const stopRequestedRef = useRef<boolean>(false); // hard-stop in progress
   const ttsActiveRef = useRef<boolean>(false); // loop is running
+  /** Index of the last verse CONFIRMED by the TTS engine (tts-start). Used by
+   *  next/prev to advance from what the user is *actually* hearing, not from
+   *  the index that auto-advance has already queued during the gap between
+   *  verses. */
+  const confirmedAudioIndexRef = useRef<number>(-1);
+
+  /** Set when user initiates next/prev navigation. Prevents the auto-advance
+   *  logic inside speakVerseAtIndex from racing with user navigation. */
+  const _userNavigatingRef = useRef<boolean>(false);
 
   // Keep refs synced with state
   useEffect(() => {
@@ -356,19 +365,29 @@ export const useBible = () => {
       return;
     }
 
+    // Guard: if user is navigating (next/prev), do NOT auto-advance
+    if (_userNavigatingRef.current) {
+      _userNavigatingRef.current = false;
+      return;
+    }
+
     const verse = playlist[index];
-    setAudioVerseIndex(index);
+
+    // Update the highlight and audio-bar index IMMEDIATELY so the UI
+    // stays in sync with what we're about to speak — no need to wait for
+    // tts-start. This also fixes next/prev which previously left the
+    // highlight on the wrong verse because tts-start had already fired
+    // before the navigation call.
     audioVerseIndexRef.current = index;
+    setAudioVerseIndex(index);
     setActiveAudioVerse(verse.num);
 
-    // Scroll the current verse into view
-    setTimeout(() => {
-      flatListRef.current?.scrollToIndex({
-        index: Math.max(0, index),
-        animated: true,
-        viewPosition: 0.3,
-      });
-    }, 100);
+    // Scroll the verse into view immediately
+    flatListRef.current?.scrollToIndex({
+      index: Math.max(0, index),
+      animated: true,
+      viewPosition: 0.3,
+    });
 
     try {
       await bibleTTS.speakVerses(
@@ -385,12 +404,13 @@ export const useBible = () => {
     //
     // isPausedRef = true  →  user paused; do NOT advance, wait for resume()
     // stopRequestedRef = true  →  hard stop; clean up and exit
+    // _userNavigatingRef = true  →  user pressed next/prev; do NOT auto-advance
     //
     if (isPausedRef.current) return;
     if (stopRequestedRef.current) {
-      ttsActiveRef.current = false;
       return;
     }
+    if (_userNavigatingRef.current) return;
 
     const behaviour = afterPlayBehaviourRef.current;
     const next = index + 1;
@@ -418,19 +438,24 @@ export const useBible = () => {
     async (playlist: Array<{ num: number; text: string }>, startIndex = 0) => {
       if (!playlist.length) return;
 
-      // Kill any existing playback without triggering the "pause" branch
       isPausedRef.current = false;
       stopRequestedRef.current = true;
-      if (ttsActiveRef.current) await bibleTTS.stop();
+      ttsActiveRef.current = true;
+      await bibleTTS.stop();
       stopRequestedRef.current = false;
 
       audioPlaylistRef.current = playlist;
       setAudioPlaylist(playlist);
-      setAudioVerseIndex(startIndex);
+
       audioVerseIndexRef.current = startIndex;
+      setAudioVerseIndex(startIndex);
+
+      const startVerse = playlist[startIndex];
+      setActiveAudioVerse(startVerse?.num ?? null);
+
+      confirmedAudioIndexRef.current = startIndex;
       setShowAudioPlayer(true);
       setIsAudioPaused(false);
-      ttsActiveRef.current = true;
 
       speakVerseAtIndex(startIndex);
     },
@@ -472,6 +497,7 @@ export const useBible = () => {
     audioPlaylistRef.current = [];
     setAudioVerseIndex(0);
     audioVerseIndexRef.current = 0;
+    confirmedAudioIndexRef.current = -1;
     setIsAudioPaused(false);
   }, []);
 
@@ -542,28 +568,55 @@ export const useBible = () => {
 
   // ── Skip next / previous ────────────────────────────────────────────────────
   const goToNextSelectedVerse = useCallback(async () => {
-    const next = audioVerseIndexRef.current + 1;
-    if (next >= audioPlaylistRef.current.length) return;
-    // Treat as a hard jump, not a pause
+    _userNavigatingRef.current = true;
+
+    const savedAfterPlay = afterPlayBehaviourRef.current;
+    afterPlayBehaviourRef.current = 'stop';
+
+    // Use the live audioVerseIndexRef — it's updated synchronously in speakVerseAtIndex
+    const currentIdx = audioVerseIndexRef.current;
+    const playlist = audioPlaylistRef.current;
+    const next = currentIdx + 1;
+    if (next >= playlist.length) {
+      afterPlayBehaviourRef.current = savedAfterPlay;
+      _userNavigatingRef.current = false;
+      return;
+    }
     isPausedRef.current = false;
     stopRequestedRef.current = true;
+    ttsActiveRef.current = true;
     await bibleTTS.stop();
     stopRequestedRef.current = false;
-    ttsActiveRef.current = true;
     setIsAudioPaused(false);
-    speakVerseAtIndex(next);
+    speakVerseAtIndex(next).finally(() => {
+      afterPlayBehaviourRef.current = savedAfterPlay;
+      _userNavigatingRef.current = false;
+    });
   }, [speakVerseAtIndex]);
 
   const goToPreviousSelectedVerse = useCallback(async () => {
-    const prev = audioVerseIndexRef.current - 1;
-    if (prev < 0) return;
+    _userNavigatingRef.current = true;
+
+    const savedAfterPlay = afterPlayBehaviourRef.current;
+    afterPlayBehaviourRef.current = 'stop';
+
+    const currentIdx = audioVerseIndexRef.current;
+    const prev = currentIdx - 1;
+    if (prev < 0) {
+      afterPlayBehaviourRef.current = savedAfterPlay;
+      _userNavigatingRef.current = false;
+      return;
+    }
     isPausedRef.current = false;
     stopRequestedRef.current = true;
+    ttsActiveRef.current = true;
     await bibleTTS.stop();
     stopRequestedRef.current = false;
-    ttsActiveRef.current = true;
     setIsAudioPaused(false);
-    speakVerseAtIndex(prev);
+    speakVerseAtIndex(prev).finally(() => {
+      afterPlayBehaviourRef.current = savedAfterPlay;
+      _userNavigatingRef.current = false;
+    });
   }, [speakVerseAtIndex]);
 
   // ── Speed ────────────────────────────────────────────────────────────────────

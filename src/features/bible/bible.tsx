@@ -749,7 +749,7 @@ export default function Bible() {
       <AudioControlBar
         isPlaying={showAudioPlayer}
         isPaused={isAudioPaused}
-        nowPlayingLabel={`${currentBook} ${currentChapter}:${audioPlaylist[audioVerseIndex]?.num || ''}`}
+        nowPlayingLabel={`${currentBook} ${currentChapter}:${activeAudioVerse ?? ''}`}
         scope={audioScope}
         afterPlay={afterPlayBehaviour}
         isRepeat={

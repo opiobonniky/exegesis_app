@@ -87,30 +87,29 @@ export default function VerseCard({
   const wordMapRef = useRef<WordSpan[] | null>(null);
   wordMapRef.current = wordMap;
 
-    useEffect(() => {
-      if (!isActiveAudio) {
+  useEffect(() => {
+    if (!isActiveAudio) {
+      setActiveWordOffset(null);
+      return;
+    }
+    const unsub = bibleTTS.subscribe(s => {
+      if (s.tier === 'idle') return;
+      if (s.currentVerseNum !== verseNumber) {
         setActiveWordOffset(null);
         return;
       }
-      const unsub = bibleTTS.subscribe(s => {
-        if (s.tier === 'idle') {
-          // Paused or stopped. Keep the last activeWordOffset if we are still
-          // the active verse so the highlight persists on pause.
-          return;
-        }
-        if (s.wordIndex < 0) {
-          setActiveWordOffset(null);
-          return;
-        }
-        // For resumed verses, we will start speaking from the beginning,
-        // but we keep the wordIndex to show the correct position visually
-        const map = wordMapRef.current;
-        if (map && s.wordIndex < map.length) {
-          setActiveWordOffset(map[s.wordIndex]);
-        }
-      });
+      if (s.wordIndex < 0) {
+        setActiveWordOffset(null);
+        return;
+      }
+      const map = wordMapRef.current;
+      if (!map) return;
+      if (s.wordIndex >= map.length) return;
+      const offset = map[s.wordIndex];
+      setActiveWordOffset(offset);
+    });
     return unsub;
-  }, [isActiveAudio]);
+  }, [isActiveAudio, verseNumber]);
 
   // ── Word highlight animation ─────────────────────────────────────────────
   const wordAnim = useRef(new Animated.Value(0)).current;

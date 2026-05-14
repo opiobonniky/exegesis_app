@@ -52,6 +52,12 @@ export interface TTSState {
    * -1 = speaking the intro prefix (book / chapter / verse number).
    */
   wordIndex: number;
+  /**
+   * The verse number this utterance belongs to. Used by VerseCard to verify
+   * it is the intended target before applying word-index highlights.
+   * -1 = no active verse.
+   */
+  currentVerseNum: number;
 }
 
 export interface DeviceVoice {
@@ -71,6 +77,7 @@ class BibleTTSManager {
     usingCloudVoice: false,
     tier: 'idle',
     wordIndex: -1,
+    currentVerseNum: -1,
   };
 
   private listeners: Array<(state: TTSState) => void> = [];
@@ -95,10 +102,12 @@ class BibleTTSManager {
   private _utteranceStarted = false;
   private _isTtsSpeaking = false;
   private _pauseInProgress = false;
+  private _currentVerseNum = -1;
   // Absolute char position in the cleaned text where speech was paused.
   // Computed from the last raw engine charIndex + _charIndexBase (= -prefixLen).
   // -1 means unknown (no progress events fired before pause).
   private _pausedAbsoluteCharPos: number = -1;
+  private _pausedVerseNum: number = -1;
 
   // ── Pause / resume state ──────────────────────────────────────────────────
   //
@@ -138,7 +147,12 @@ class BibleTTSManager {
       this._isTtsSpeaking = true;
       this._progressEventsFired = 0;
       this._lastRawCharIndex = -1;
-      this.setState({ isPlaying: true, isPaused: false, tier: 'device' });
+      this.setState({
+        isPlaying: true,
+        isPaused: false,
+        tier: 'device',
+        currentVerseNum: this._currentVerseNum,
+      });
 
       // Start timer-based highlighting as a fallback. Cancelled on the first
       // tts-progress event if the engine supports word-boundary callbacks.
@@ -213,6 +227,7 @@ class BibleTTSManager {
         isPaused: false,
         currentPosition: 0,
         tier: 'idle',
+        currentVerseNum: -1,
       });
       const resolve = this._pendingResolve;
       this._pendingResolve = null;
@@ -239,19 +254,12 @@ class BibleTTSManager {
       }
 
       if (this._pauseInProgress) {
-        // Cancel was triggered by pause() → preserve paused state so the UI
-        // bar stays open and resume() has something to work with.
-        // Do NOT clear _pauseInProgress here — pause() resets it after await.
-        //
-        // FIX: restore the word index that was saved synchronously in pause()
-        // BEFORE Tts.stop() was called. This keeps the word highlight pinned
-        // to the paused word instead of disappearing (wordIndex=-1) while the
-        // audio bar sits in the paused state.
         this.state.wordIndex = this._pausedWordIndex;
         this.setState({
           isPlaying: false,
           isPaused: true,
           tier: 'device',
+          currentVerseNum: this._currentVerseNum,
         });
         resolve?.();
         return;
@@ -262,6 +270,7 @@ class BibleTTSManager {
         isPaused: false,
         currentPosition: 0,
         tier: 'idle',
+        currentVerseNum: -1,
       });
       resolve?.();
     });
@@ -498,6 +507,7 @@ class BibleTTSManager {
     baseWordIndex = 0,
     onProgress?: (charIndex: number) => void,
     alreadyClean = false,
+    verseNum = -1,
   ): Promise<void> {
     if (!text) {
       console.warn('[BibleTTS] speak called with empty text');
@@ -518,14 +528,14 @@ class BibleTTSManager {
 
     this._onProgressCallback = onProgress || null;
     this._baseWordIndex = baseWordIndex;
+    this._currentVerseNum = verseNum;
 
     this.stopRequested = false;
-    // Skip prepareText when caller passes already-cleaned text (e.g. resume())
-    // to avoid non-idempotent transforms shifting character positions.
     const clean = alreadyClean ? text : this.prepareText(text);
     console.log('[BibleTTS] prepared text:', clean.substring(0, 50), '...');
     this.state.currentText = clean;
     this.state.wordIndex = -1;
+    this.state.currentVerseNum = verseNum;
 
     this._cleanPrefixCharLen = prefixLen;
 
@@ -541,15 +551,12 @@ class BibleTTSManager {
     }
     this._cleanVerseWordSpans = spans;
 
-    // Timer fallback word data
-    const allWords = clean.match(/\S+/g) ?? [];
-    const prefixWordCount =
-      prefixLen > 0
-        ? (clean.slice(0, prefixLen).match(/\S+/g) ?? []).length
-        : 0;
+    // Timer fallback word data — verseWords are relative to verse start (index 0),
+    // matching _cleanVerseWordSpans[0] as the first word of the verse.
+    const verseWords = clean.slice(prefixLen).match(/\S+/g) ?? [];
     this._pendingWordData = {
-      prefixWords: allWords.slice(0, prefixWordCount),
-      verseWords: allWords.slice(prefixWordCount),
+      prefixWords: [],
+      verseWords,
     };
 
     if (this.stopRequested) return;
@@ -613,6 +620,7 @@ class BibleTTSManager {
                 isPlaying: false,
                 isPaused: false,
                 tier: 'idle',
+                currentVerseNum: -1,
               });
               resolve();
             }
@@ -720,7 +728,8 @@ class BibleTTSManager {
         : cleanedFull.length - cleanedVerseOnly.length,
     );
 
-    await this.speak(fullText, prefixLen);
+    const verseNum = verses.length === 1 ? verses[0].num : verses[0].num;
+    await this.speak(fullText, prefixLen, 0, undefined, false, verseNum);
   }
 
   async speakVerseOfDay(text: string, reference: string): Promise<void> {
@@ -753,6 +762,7 @@ class BibleTTSManager {
     this._pausedPrefixLen = this._cleanPrefixCharLen;
     this._pausedBaseWordIndex = this._baseWordIndex;
     this._pausedText = this.state.currentText;
+    this._pausedVerseNum = this._currentVerseNum;
     // Save the absolute char position from the last engine progress event.
     // _lastRawCharIndex is the raw engine charIndex (into the full clean string).
     // _charIndexBase = -prefixLen, so absoluteCharPos = _lastRawCharIndex - prefixLen...
@@ -784,7 +794,12 @@ class BibleTTSManager {
       await Tts.stop();
       // tts-cancel may have already set isPaused:true via the event handler.
       // Either way, ensure the final state is correct before clearing the flag.
-      this.setState({ isPaused: true, isPlaying: false, tier: 'device' });
+      this.setState({
+        isPaused: true,
+        isPlaying: false,
+        tier: 'device',
+        currentVerseNum: this._currentVerseNum,
+      });
     } catch (err) {
       console.warn('[BibleTTS] Pause error:', err);
     } finally {
@@ -802,20 +817,21 @@ class BibleTTSManager {
     // always available even if state.isPaused has not been confirmed yet.
     if (!this._pausedText) return;
 
-    const cleanedText = this._pausedText; // already cleaned — do NOT re-clean
-    const prefixLen = this._pausedPrefixLen; // char offset where verse text starts
+    const cleanedText = this._pausedText;
+    const prefixLen = this._pausedPrefixLen;
     const pausedWordIdx = this._pausedWordIndex;
     const pausedBaseIdx = this._pausedBaseWordIndex;
-    const pausedCharPos = this._pausedAbsoluteCharPos; // raw engine char pos (or -1)
+    const pausedCharPos = this._pausedAbsoluteCharPos;
+    const pausedVerseNum = this._pausedVerseNum;
 
-    // Clear all saved state before any await so a second resume() is a no-op.
     this._pausedText = '';
     this._pausedPrefixLen = 0;
     this._pausedWordIndex = -1;
     this._pausedBaseWordIndex = 0;
     this._pausedAbsoluteCharPos = -1;
+    this._pausedVerseNum = -1;
 
-    this.setState({ isPaused: false });
+    this.setState({ isPaused: false, currentVerseNum: pausedVerseNum });
 
     try {
       // ── Strategy 1: use the raw engine char position (most accurate) ────────
@@ -854,7 +870,14 @@ class BibleTTSManager {
         if (resumeText.length > 0) {
           // FIX: pass pausedWordIdx as baseWordIndex so the highlight continues
           // from the paused word, not from word 0 of the verse.
-          await this.speak(resumeText, 0, pausedWordIdx, undefined, true);
+          await this.speak(
+            resumeText,
+            0,
+            pausedWordIdx,
+            undefined,
+            true,
+            pausedVerseNum,
+          );
           return;
         }
       }
@@ -892,7 +915,14 @@ class BibleTTSManager {
           // FIX: pausedWordIdx is the absolute verse-word index at pause time.
           // Passing it as baseWordIndex means tts-progress/timer indices are
           // added on top of it → state.wordIndex stays aligned with wordMap[].
-          await this.speak(resumeText, 0, pausedWordIdx, undefined, true);
+          await this.speak(
+            resumeText,
+            0,
+            pausedWordIdx,
+            undefined,
+            true,
+            pausedVerseNum,
+          );
           return;
         }
       }
@@ -906,6 +936,7 @@ class BibleTTSManager {
         0,
         undefined,
         true,
+        pausedVerseNum,
       );
     } catch (err) {
       console.warn('[BibleTTS] Resume error:', err);
@@ -922,6 +953,7 @@ class BibleTTSManager {
       this._pausedWordIndex = -1;
       this._pausedBaseWordIndex = 0;
       this._pausedAbsoluteCharPos = -1;
+      this._pausedVerseNum = -1;
       this._clearUtteranceTimeout();
       this._clearWordTimers();
       this.state.wordIndex = -1;
@@ -940,6 +972,7 @@ class BibleTTSManager {
         currentText: '',
         usingCloudVoice: false,
         tier: 'idle',
+        currentVerseNum: -1,
       });
     } catch (err) {
       console.warn('[BibleTTS] Stop error:', err);
