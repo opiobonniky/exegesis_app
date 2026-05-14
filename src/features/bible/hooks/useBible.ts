@@ -328,17 +328,19 @@ export const useBible = () => {
         setShowAudioPlayer(true);
         setIsAudioPaused(false);
       } else if (ttsState.isPaused) {
+        // Engine confirmed paused — keep the bar visible in paused state.
         setShowAudioPlayer(true);
         setIsAudioPaused(true);
-      } else if (
-        ttsState.tier === 'idle' &&
-        !isPausedRef.current &&
-        !ttsActiveRef.current
-      ) {
-        // TTS has finished and the verse loop has acknowledged it
-        setShowAudioPlayer(false);
-        setActiveAudioVerse(null);
-        setIsAudioPaused(false);
+      } else if (ttsState.tier === 'idle') {
+        // Only close the audio bar if:
+        //  1. The user did NOT intentionally pause (isPausedRef.current is false)
+        //  2. No playback loop is running
+        // This prevents the bar from closing when tts-cancel fires as part of
+        // the pause flow before the engine has acknowledged isPaused state.
+        if (!isPausedRef.current && !ttsActiveRef.current) {
+          setShowAudioPlayer(false);
+          setIsAudioPaused(false);
+        }
       }
     });
     return unsub;
@@ -477,33 +479,66 @@ export const useBible = () => {
   const handleAudioTogglePlayPause = useCallback(async () => {
     if (isPausedRef.current) {
       // ── RESUME ────────────────────────────────────────────────────────────
-      // Device TTS cannot seek mid-utterance, so we'll start from the beginning
-      // but preserve the word position for visual highlighting.
-      
       isPausedRef.current = false;
       setIsAudioPaused(false);
+      setShowAudioPlayer(true); // keep bar open during the async gap
       ttsActiveRef.current = true;
-      
-      // Use bibleTTS.resume() to start speaking from beginning but keep the
-      // word position for visual highlighting
+
+      const currentIndex = audioVerseIndexRef.current;
+
       if (bibleTTS.hasPausedText) {
+        // bibleTTS.resume() speaks the remainder of the paused verse and
+        // resolves when that utterance finishes (tts-finish / tts-cancel).
+        // After it resolves we chain directly to the next verse so the full
+        // playlist continues — exactly what speakVerseAtIndex does after each
+        // verse, but starting from the mid-verse resume instead of the top.
         try {
           await bibleTTS.resume();
         } catch (err) {
           console.warn('[useBible] resume error:', err);
         }
+
+        // Guard: if the user paused/stopped again while we were awaiting, bail.
+        if (isPausedRef.current || stopRequestedRef.current) return;
+        if (!ttsActiveRef.current) return;
+
+        const behaviour = afterPlayBehaviourRef.current;
+        const next = currentIndex + 1;
+        const playlist = audioPlaylistRef.current;
+
+        if (behaviour === 'repeat_one') {
+          speakVerseAtIndex(currentIndex);
+        } else if (behaviour === 'repeat' && next >= playlist.length) {
+          speakVerseAtIndex(0);
+        } else if (next < playlist.length) {
+          speakVerseAtIndex(next);
+        } else {
+          // Playlist exhausted after the resumed verse
+          ttsActiveRef.current = false;
+          setShowAudioPlayer(false);
+          setActiveAudioVerse(null);
+          setAudioPlaylist([]);
+          setAudioVerseIndex(0);
+          audioPlaylistRef.current = [];
+          audioVerseIndexRef.current = 0;
+        }
       } else {
-        // No saved paused text - just restart the current verse
-        speakVerseAtIndex(audioVerseIndexRef.current);
+        // No saved paused text (e.g. pause was triggered at a verse boundary
+        // or the paused text was cleared). Fall back to restarting the current
+        // verse from the top so the user always hears something immediately.
+        speakVerseAtIndex(currentIndex);
       }
     } else {
       // ── PAUSE ─────────────────────────────────────────────────────────────
+      // Set flag BEFORE the engine call so the tts-cancel → promise-resolve
+      // arrives after isPausedRef is already true and speakVerseAtIndex
+      // returns without advancing.
       isPausedRef.current = true;
       setIsAudioPaused(true);
       ttsActiveRef.current = false;
       await bibleTTS.pause();
     }
-  }, []);
+  }, [speakVerseAtIndex]);
 
   // ── Skip next / previous ────────────────────────────────────────────────────
   const goToNextSelectedVerse = useCallback(async () => {
