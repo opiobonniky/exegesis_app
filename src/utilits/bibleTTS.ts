@@ -982,7 +982,7 @@ class BibleTTSManager {
   // ── Settings ──────────────────────────────────────────────────────────────
 
   async setRate(rate: number): Promise<void> {
-    this.currentRate = Math.max(0.1, Math.min(1.0, rate));
+    this.currentRate = Math.max(0.1, Math.min(2.0, rate));
     this._rateCustomized = true;
     await AsyncStorage.setItem(
       STORAGE_KEYS.rate,

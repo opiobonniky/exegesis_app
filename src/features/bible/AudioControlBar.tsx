@@ -96,7 +96,9 @@ function CtrlBtn({
             alignItems: 'center',
             justifyContent: 'center',
             opacity: disabled ? 0.25 : 1,
-            backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+            backgroundColor: isDark
+              ? 'rgba(255,255,255,0.08)'
+              : 'rgba(0,0,0,0.04)',
           },
           { transform: [{ scale }] },
         ]}
@@ -125,6 +127,7 @@ export default function AudioControlBar({
   onRepeatToggle,
   onPlayPause,
   onStop,
+  onAfterPlayChange,
 }: AudioControlBarProps) {
   const COLORS = getColors(isDark);
   const accent = COLORS.accent ?? COLORS.primary;
@@ -134,10 +137,18 @@ export default function AudioControlBar({
   const sleepTimerRef = useRef(sleepTimerRemaining);
   const lastLabelRef = useRef(nowPlayingLabel);
 
-  useEffect(() => { speechRateRef.current = speechRate; }, [speechRate]);
-  useEffect(() => { sleepTimerRef.current = sleepTimerRemaining; }, [sleepTimerRemaining]);
-  useEffect(() => { afterPlayRef.current = afterPlay; }, [afterPlay]);
-  useEffect(() => { lastLabelRef.current = nowPlayingLabel; }, [nowPlayingLabel]);
+  useEffect(() => {
+    speechRateRef.current = speechRate;
+  }, [speechRate]);
+  useEffect(() => {
+    sleepTimerRef.current = sleepTimerRemaining;
+  }, [sleepTimerRemaining]);
+  useEffect(() => {
+    afterPlayRef.current = afterPlay;
+  }, [afterPlay]);
+  useEffect(() => {
+    lastLabelRef.current = nowPlayingLabel;
+  }, [nowPlayingLabel]);
 
   const translateY = useRef(new Animated.Value(220)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -176,22 +187,32 @@ export default function AudioControlBar({
   const disablePrev = verseIndex <= 0;
   const disableNext = verseIndex >= verseCount - 1;
 
-  const progress = verseCount > 0 ? (verseIndex) / verseCount : 0;
+  const progress = verseCount > 0 ? verseIndex / verseCount : 0;
   const progressPct = Math.min(1, Math.max(0, progress));
 
   const repeatIcon = () => {
-    const r = afterPlayRef.current;
-    if (r === 'repeat_one') return <Repeat1 size={18} color={accent} strokeWidth={2.2} />;
-    if (r === 'continue') return <Repeat size={17} color={accent} strokeWidth={2.2} />;
-    return <Repeat size={17} color={r === 'repeat' ? accent : COLORS.muted} strokeWidth={2} />;
+    // Use `afterPlay` prop directly (not the ref) so the icon updates on each render
+    if (afterPlay === 'repeat_one')
+      return <Repeat1 size={18} color={accent} strokeWidth={2.2} />;
+    if (afterPlay === 'continue')
+      return <Repeat size={17} color={accent} strokeWidth={2.2} />;
+    return (
+      <Repeat
+        size={17}
+        color={afterPlay === 'repeat' ? accent : COLORS.muted}
+        strokeWidth={2}
+      />
+    );
   };
 
   const sleepLabel = () => {
-    const v = sleepTimerRef.current;
-    if (v > 0) {
+    // Use `sleepTimerRemaining` prop directly so it re-renders when it changes
+    if (sleepTimerRemaining > 0) {
       return (
         <Text style={[styles.sleepText, { color: '#F59E0B' }]}>
-          {v < 60 ? `${Math.ceil(v)}s` : `${Math.ceil(v / 60)}m`}
+          {sleepTimerRemaining < 60
+            ? `${Math.ceil(sleepTimerRemaining)}s`
+            : `${Math.ceil(sleepTimerRemaining / 60)}m`}
         </Text>
       );
     }
@@ -216,7 +237,16 @@ export default function AudioControlBar({
       >
         {/* Progress track */}
         <View style={styles.progressWrapper}>
-          <View style={[styles.progressTrack, { backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)' }]}>
+          <View
+            style={[
+              styles.progressTrack,
+              {
+                backgroundColor: isDark
+                  ? 'rgba(255,255,255,0.07)'
+                  : 'rgba(0,0,0,0.06)',
+              },
+            ]}
+          >
             <View
               style={[
                 styles.progressFill,
@@ -233,7 +263,12 @@ export default function AudioControlBar({
         <View style={styles.content}>
           {/* Top row: mode badge + reference + autoplay */}
           <View style={styles.topRow}>
-            <View style={[styles.badge, { borderColor: `${accent}50`, backgroundColor: `${accent}12` }]}>
+            <View
+              style={[
+                styles.badge,
+                { borderColor: `${accent}50`, backgroundColor: `${accent}12` },
+              ]}
+            >
               <Music size={11} color={accent} strokeWidth={2.5} />
               <Text style={[styles.badgeText, { color: accent }]}>
                 {scope === 'chapter' ? 'CHAPTER' : 'SELECTION'}
@@ -245,22 +280,32 @@ export default function AudioControlBar({
             </Text>
 
             <TouchableOpacity
-              onPress={() => onAfterPlayChange(afterPlayRef.current === 'continue' ? 'stop' : 'continue')}
+              onPress={() =>
+                onAfterPlayChange(
+                  afterPlay === 'continue' ? 'stop' : 'continue',
+                )
+              }
               style={[
                 styles.autoplayBadge,
                 {
-                  backgroundColor: afterPlayRef.current === 'continue' ? `${accent}14` : 'transparent',
-                  borderColor: afterPlayRef.current === 'continue' ? `${accent}30` : isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                  backgroundColor:
+                    afterPlay === 'continue' ? `${accent}14` : 'transparent',
+                  borderColor:
+                    afterPlay === 'continue'
+                      ? `${accent}30`
+                      : isDark
+                        ? 'rgba(255,255,255,0.1)'
+                        : 'rgba(0,0,0,0.1)',
                 },
               ]}
             >
               <Text
                 style={[
                   styles.autoplayText,
-                  { color: afterPlayRef.current === 'continue' ? accent : COLORS.muted },
+                  { color: afterPlay === 'continue' ? accent : COLORS.muted },
                 ]}
               >
-                {afterPlayRef.current === 'continue' ? 'AUTOPLAY' : 'ONCE'}
+                {afterPlay === 'continue' ? 'AUTOPLAY' : 'ONCE'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -283,13 +328,25 @@ export default function AudioControlBar({
                 {repeatIcon()}
               </CtrlBtn>
 
-              <CtrlBtn onPress={onSpeedToggle ?? (() => {})} isDark={isDark} size={46}>
-                <Text style={[styles.speedText, { color: speechRateRef.current !== 1.0 ? accent : COLORS.muted }]}>
-                  {speechRateRef.current}x
+              <CtrlBtn
+                onPress={onSpeedToggle ?? (() => {})}
+                isDark={isDark}
+                size={46}
+              >
+                <Text
+                  style={[
+                    styles.speedText,
+                    { color: speechRate !== 1.0 ? accent : COLORS.muted },
+                  ]}
+                >
+                  {speechRate}x
                 </Text>
               </CtrlBtn>
 
-              <CtrlBtn onPress={onSleepTimerToggle ?? (() => {})} isDark={isDark}>
+              <CtrlBtn
+                onPress={onSleepTimerToggle ?? (() => {})}
+                isDark={isDark}
+              >
                 {sleepLabel()}
               </CtrlBtn>
             </View>
@@ -297,7 +354,11 @@ export default function AudioControlBar({
             {/* Center: prev + play/pause + next */}
             <View style={styles.centerGroup}>
               <CtrlBtn onPress={onPrev} isDark={isDark} disabled={disablePrev}>
-                <SkipBack size={20} color={disablePrev ? COLORS.muted : COLORS.text} strokeWidth={2.2} />
+                <SkipBack
+                  size={20}
+                  color={disablePrev ? COLORS.muted : COLORS.text}
+                  strokeWidth={2.2}
+                />
               </CtrlBtn>
 
               <TouchableOpacity
@@ -312,11 +373,7 @@ export default function AudioControlBar({
                 )}
               </TouchableOpacity>
 
-              <CtrlBtn
-                onPress={onNext}
-                isDark={isDark}
-                disabled={disableNext}
-              >
+              <CtrlBtn onPress={onNext} isDark={isDark} disabled={disableNext}>
                 <SkipForward
                   size={20}
                   color={disableNext ? COLORS.muted : COLORS.text}

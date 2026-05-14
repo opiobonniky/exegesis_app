@@ -356,82 +356,86 @@ export const useBible = () => {
   }, []);
 
   // ─── Core verse playback loop ───────────────────────────────────────────────
-  const speakVerseAtIndex = useCallback(async (index: number) => {
-    const playlist = audioPlaylistRef.current;
-    if (!playlist.length || index < 0 || index >= playlist.length) {
-      ttsActiveRef.current = false;
-      setShowAudioPlayer(false);
-      setActiveAudioVerse(null);
-      return;
-    }
+  const speakVerseAtIndex = useCallback(
+    async (index: number, fromUserNav = false) => {
+      const playlist = audioPlaylistRef.current;
+      if (!playlist.length || index < 0 || index >= playlist.length) {
+        ttsActiveRef.current = false;
+        setShowAudioPlayer(false);
+        setActiveAudioVerse(null);
+        return;
+      }
 
-    // Guard: if user is navigating (next/prev), do NOT auto-advance
-    if (_userNavigatingRef.current) {
-      _userNavigatingRef.current = false;
-      return;
-    }
+      // Guard: only block if this is an auto-advance call AND the user is navigating.
+      // We must NOT block calls that originate directly from next/prev (fromUserNav=true).
+      if (!fromUserNav && _userNavigatingRef.current) {
+        _userNavigatingRef.current = false;
+        return;
+      }
 
-    const verse = playlist[index];
+      const verse = playlist[index];
 
-    // Update the highlight and audio-bar index IMMEDIATELY so the UI
-    // stays in sync with what we're about to speak — no need to wait for
-    // tts-start. This also fixes next/prev which previously left the
-    // highlight on the wrong verse because tts-start had already fired
-    // before the navigation call.
-    audioVerseIndexRef.current = index;
-    setAudioVerseIndex(index);
-    setActiveAudioVerse(verse.num);
+      // Update the highlight and audio-bar index IMMEDIATELY so the UI
+      // stays in sync with what we're about to speak — no need to wait for
+      // tts-start. This also fixes next/prev which previously left the
+      // highlight on the wrong verse because tts-start had already fired
+      // before the navigation call.
+      audioVerseIndexRef.current = index;
+      setAudioVerseIndex(index);
+      setActiveAudioVerse(verse.num);
 
-    // Scroll the verse into view immediately
-    flatListRef.current?.scrollToIndex({
-      index: Math.max(0, index),
-      animated: true,
-      viewPosition: 0.3,
-    });
+      // Scroll the verse into view immediately
+      flatListRef.current?.scrollToIndex({
+        index: Math.max(0, index),
+        animated: true,
+        viewPosition: 0.3,
+      });
 
-    try {
-      await bibleTTS.speakVerses(
-        [verse],
-        currentBookRef.current,
-        currentChapterRef.current,
-        { announceLocation: index === 0 },
-      );
-    } catch (err) {
-      console.warn('[useBible] speakVerses error:', err);
-    }
+      try {
+        await bibleTTS.speakVerses(
+          [verse],
+          currentBookRef.current,
+          currentChapterRef.current,
+          { announceLocation: index === 0 },
+        );
+      } catch (err) {
+        console.warn('[useBible] speakVerses error:', err);
+      }
 
-    // ── Post-utterance decision ───────────────────────────────────────────
-    //
-    // isPausedRef = true  →  user paused; do NOT advance, wait for resume()
-    // stopRequestedRef = true  →  hard stop; clean up and exit
-    // _userNavigatingRef = true  →  user pressed next/prev; do NOT auto-advance
-    //
-    if (isPausedRef.current) return;
-    if (stopRequestedRef.current) {
-      return;
-    }
-    if (_userNavigatingRef.current) return;
+      // ── Post-utterance decision ───────────────────────────────────────────
+      //
+      // isPausedRef = true  →  user paused; do NOT advance, wait for resume()
+      // stopRequestedRef = true  →  hard stop; clean up and exit
+      // _userNavigatingRef = true  →  user pressed next/prev; do NOT auto-advance
+      //
+      if (isPausedRef.current) return;
+      if (stopRequestedRef.current) {
+        return;
+      }
+      if (_userNavigatingRef.current) return;
 
-    const behaviour = afterPlayBehaviourRef.current;
-    const next = index + 1;
+      const behaviour = afterPlayBehaviourRef.current;
+      const next = index + 1;
 
-    if (behaviour === 'repeat_one') {
-      speakVerseAtIndex(index);
-    } else if (behaviour === 'repeat' && next >= playlist.length) {
-      speakVerseAtIndex(0);
-    } else if (next < playlist.length) {
-      speakVerseAtIndex(next);
-    } else {
-      // Playlist exhausted - close audio bar and reset state
-      ttsActiveRef.current = false;
-      setShowAudioPlayer(false);
-      setActiveAudioVerse(null);
-      setAudioPlaylist([]);
-      setAudioVerseIndex(0);
-      audioPlaylistRef.current = [];
-      audioVerseIndexRef.current = 0;
-    }
-  }, []);
+      if (behaviour === 'repeat_one') {
+        speakVerseAtIndex(index, false);
+      } else if (behaviour === 'repeat' && next >= playlist.length) {
+        speakVerseAtIndex(0, false);
+      } else if (next < playlist.length) {
+        speakVerseAtIndex(next, false);
+      } else {
+        // Playlist exhausted - close audio bar and reset state
+        ttsActiveRef.current = false;
+        setShowAudioPlayer(false);
+        setActiveAudioVerse(null);
+        setAudioPlaylist([]);
+        setAudioVerseIndex(0);
+        audioPlaylistRef.current = [];
+        audioVerseIndexRef.current = 0;
+      }
+    },
+    [],
+  );
 
   // ─── Internal launcher ──────────────────────────────────────────────────────
   const _startPlayback = useCallback(
@@ -457,7 +461,7 @@ export const useBible = () => {
       setShowAudioPlayer(true);
       setIsAudioPaused(false);
 
-      speakVerseAtIndex(startIndex);
+      speakVerseAtIndex(startIndex, false);
     },
     [speakVerseAtIndex],
   );
@@ -533,11 +537,11 @@ export const useBible = () => {
         const playlist = audioPlaylistRef.current;
 
         if (behaviour === 'repeat_one') {
-          speakVerseAtIndex(currentIndex);
+          speakVerseAtIndex(currentIndex, false);
         } else if (behaviour === 'repeat' && next >= playlist.length) {
-          speakVerseAtIndex(0);
+          speakVerseAtIndex(0, false);
         } else if (next < playlist.length) {
-          speakVerseAtIndex(next);
+          speakVerseAtIndex(next, false);
         } else {
           // Playlist exhausted after the resumed verse
           ttsActiveRef.current = false;
@@ -552,7 +556,7 @@ export const useBible = () => {
         // No saved paused text (e.g. pause was triggered at a verse boundary
         // or the paused text was cleared). Fall back to restarting the current
         // verse from the top so the user always hears something immediately.
-        speakVerseAtIndex(currentIndex);
+        speakVerseAtIndex(currentIndex, false);
       }
     } else {
       // ── PAUSE ─────────────────────────────────────────────────────────────
@@ -588,7 +592,7 @@ export const useBible = () => {
     await bibleTTS.stop();
     stopRequestedRef.current = false;
     setIsAudioPaused(false);
-    speakVerseAtIndex(next).finally(() => {
+    speakVerseAtIndex(next, true).finally(() => {
       afterPlayBehaviourRef.current = savedAfterPlay;
       _userNavigatingRef.current = false;
     });
@@ -613,7 +617,7 @@ export const useBible = () => {
     await bibleTTS.stop();
     stopRequestedRef.current = false;
     setIsAudioPaused(false);
-    speakVerseAtIndex(prev).finally(() => {
+    speakVerseAtIndex(prev, true).finally(() => {
       afterPlayBehaviourRef.current = savedAfterPlay;
       _userNavigatingRef.current = false;
     });
@@ -624,10 +628,31 @@ export const useBible = () => {
     setSpeechRate(prev => {
       const rates = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
       const next = rates[(rates.indexOf(prev) + 1) % rates.length];
-      bibleTTS.setRate(next).catch(console.warn);
+      bibleTTS
+        .setRate(next)
+        .then(() => {
+          // If audio is actively playing (not paused), restart the current verse
+          // at the new speed so the change is felt immediately.
+          if (
+            ttsActiveRef.current &&
+            !isPausedRef.current &&
+            !stopRequestedRef.current
+          ) {
+            const idx = audioVerseIndexRef.current;
+            stopRequestedRef.current = true;
+            bibleTTS
+              .stop()
+              .then(() => {
+                stopRequestedRef.current = false;
+                speakVerseAtIndex(idx, true);
+              })
+              .catch(console.warn);
+          }
+        })
+        .catch(console.warn);
       return next;
     });
-  }, []);
+  }, [speakVerseAtIndex]);
 
   // ── Sleep timer ──────────────────────────────────────────────────────────────
   const onSleepTimerToggle = useCallback(() => {
