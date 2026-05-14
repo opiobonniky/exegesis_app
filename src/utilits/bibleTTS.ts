@@ -242,6 +242,12 @@ class BibleTTSManager {
         // Cancel was triggered by pause() → preserve paused state so the UI
         // bar stays open and resume() has something to work with.
         // Do NOT clear _pauseInProgress here — pause() resets it after await.
+        //
+        // FIX: restore the word index that was saved synchronously in pause()
+        // BEFORE Tts.stop() was called. This keeps the word highlight pinned
+        // to the paused word instead of disappearing (wordIndex=-1) while the
+        // audio bar sits in the paused state.
+        this.state.wordIndex = this._pausedWordIndex;
         this.setState({
           isPlaying: false,
           isPaused: true,
@@ -846,7 +852,9 @@ class BibleTTSManager {
         );
 
         if (resumeText.length > 0) {
-          await this.speak(resumeText, 0, 0, undefined, true);
+          // FIX: pass pausedWordIdx as baseWordIndex so the highlight continues
+          // from the paused word, not from word 0 of the verse.
+          await this.speak(resumeText, 0, pausedWordIdx, undefined, true);
           return;
         }
       }
@@ -881,7 +889,10 @@ class BibleTTSManager {
         );
 
         if (resumeText.length > 0) {
-          await this.speak(resumeText, 0, 0, undefined, true);
+          // FIX: pausedWordIdx is the absolute verse-word index at pause time.
+          // Passing it as baseWordIndex means tts-progress/timer indices are
+          // added on top of it → state.wordIndex stays aligned with wordMap[].
+          await this.speak(resumeText, 0, pausedWordIdx, undefined, true);
           return;
         }
       }
