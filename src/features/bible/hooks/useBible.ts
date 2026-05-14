@@ -116,7 +116,7 @@ export const useBible = () => {
   const [afterPlayBehaviour, setAfterPlayBehaviour] = useState<
     'stop' | 'repeat_one' | 'repeat' | 'continue'
   >('continue');
-  const [speechRate, setSpeechRate] = useState<number>(1.0);
+  const [speechRate, setSpeechRate] = useState<number>(0.75);
   const [sleepTimerRemaining, setSleepTimerRemaining] = useState<number>(0);
   const [modal, setModal] = useState<{
     status: boolean;
@@ -409,19 +409,20 @@ export const useBible = () => {
       // _userNavigatingRef = true  →  user pressed next/prev; do NOT auto-advance
       //
       if (isPausedRef.current) return;
-      if (stopRequestedRef.current) {
-        return;
-      }
+      if (stopRequestedRef.current) return;
       if (_userNavigatingRef.current) return;
 
       const behaviour = afterPlayBehaviourRef.current;
       const next = index + 1;
 
       if (behaviour === 'repeat_one') {
+        if (_userNavigatingRef.current) return;
         speakVerseAtIndex(index, false);
       } else if (behaviour === 'repeat' && next >= playlist.length) {
+        if (_userNavigatingRef.current) return;
         speakVerseAtIndex(0, false);
       } else if (next < playlist.length) {
+        if (_userNavigatingRef.current) return;
         speakVerseAtIndex(next, false);
       } else {
         // Playlist exhausted - close audio bar and reset state
