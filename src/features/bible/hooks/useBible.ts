@@ -410,9 +410,13 @@ export const useBible = () => {
       //
       if (isPausedRef.current) return;
       if (stopRequestedRef.current) return;
-      if (_userNavigatingRef.current) return;
-
+      
       const behaviour = afterPlayBehaviourRef.current;
+      
+      if (_userNavigatingRef.current) {
+        _userNavigatingRef.current = false;
+        if (behaviour !== 'continue') return;
+      }
       const next = index + 1;
 
       if (behaviour === 'repeat_one') {
@@ -576,7 +580,7 @@ export const useBible = () => {
     _userNavigatingRef.current = true;
 
     const savedAfterPlay = afterPlayBehaviourRef.current;
-    afterPlayBehaviourRef.current = 'stop';
+    afterPlayBehaviourRef.current = 'continue';
 
     // Use the live audioVerseIndexRef — it's updated synchronously in speakVerseAtIndex
     const currentIdx = audioVerseIndexRef.current;
