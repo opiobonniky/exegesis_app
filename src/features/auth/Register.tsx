@@ -1,4 +1,5 @@
 import React, { useContext, useRef, useState, useEffect } from 'react';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   View,
   Text,
@@ -55,9 +56,19 @@ interface PasswordReq {
 
 export default function Register() {
   const { isDark, setUserInfo }: any = useContext(AppContext);
+  const { translations } = useLanguage();
   const navigation = useNavigation<any>();
   const routes = useRoute();
-  const { emailVerify, tab, googleSignUp, googleId, firstName: gFirstName, lastName: gLastName, photoUrl, email: gEmail }: any = routes.params || {};
+  const {
+    emailVerify,
+    tab,
+    googleSignUp,
+    googleId,
+    firstName: gFirstName,
+    lastName: gLastName,
+    photoUrl,
+    email: gEmail,
+  }: any = routes.params || {};
 
   const C = getColors(isDark);
 
@@ -224,7 +235,7 @@ export default function Register() {
     if (!phoneNumber || !/^[0-9]{10,15}$/.test(phoneNumber))
       e.phoneNumber = 'Phone must be 10-15 digits';
     if (!password) {
-      e.password = 'Password is required';
+      e.password = translations.validation.passwordRequired;
     } else {
       const unmet = pwdReqs.filter(r => !r.met);
       if (unmet.length > 0) {
@@ -249,7 +260,7 @@ export default function Register() {
 
     try {
       setLoading(true);
-      
+
       let res;
       if (googleSignUp && googleId) {
         res = await sendPostRequest('auth', 'complete-google-registration', {
@@ -291,7 +302,10 @@ export default function Register() {
             roleName: returnData.roleName,
           };
           await setUserInfo(info);
-          showToast('success', returnMessage || 'Account created successfully!');
+          showToast(
+            'success',
+            returnMessage || 'Account created successfully!',
+          );
           setTimeout(() => navigation.navigate(route.homeLogin), 1500);
         } else {
           showToast(
@@ -411,8 +425,8 @@ export default function Register() {
                     {googleSignUp ? 'Complete Registration' : 'Create Account'}
                   </Text>
                   <Text style={[s.subtitle, { color: C.muted }]}>
-                    {googleSignUp 
-                      ? 'Set up your password to complete sign-up' 
+                    {googleSignUp
+                      ? 'Set up your password to complete sign-up'
                       : 'Fill in your details to get started'}
                   </Text>
                 </View>

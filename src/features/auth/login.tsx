@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useLanguage } from '../../component/LanguageProvider';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import useLogin from './hooks/uselogin';
 import {
   View,
   Text,
@@ -13,19 +14,18 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
+  Modal,
 } from 'react-native';
 import ActionModal from '../../reusable/ActionModal';
 import { getColors } from '../../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import { route } from '../../component/navigations/routes';
-import { sendPostRequest, testConnection } from '../../services/api';
-import { AppContext, UserInfo } from '../../common/AppContext';
+import { testConnection } from '../../services/api';
+import { AppContext } from '../../common/AppContext';
 import KeyboardAwareness from '../../reusable/KeyboardAwareness';
-import { showToast } from '../../helpers/Toash.helper';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
+// helpers
+import { Eye, EyeOff, Mail, Lock, Globe } from 'lucide-react-native';
 import GoogleIcon from '../../assets/icons/google-icon.svg'; // ← NEW
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-
 const { width } = Dimensions.get('window');
 
 const LOGO_SIZE = Math.min(width * 0.55, 260);
@@ -33,18 +33,23 @@ const LOGO_SIZE = Math.min(width * 0.55, 260);
 // ─────────────────────────────────────────────────────────────────────────────
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-    {},
-  );
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [googleUser, setGoogleUser] = useState<any>(null);
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    errors,
+    setErrors,
+    loading,
+    googleLoading,
+    passwordVisible,
+    setPasswordVisible,
+    handleLogin,
+    handleGoogleSignIn,
+  } = useLogin();
 
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const [modal, setModal] = useState<any>({
     status: false,
@@ -75,109 +80,11 @@ const Login = () => {
 
   const { isDark, setUserInfo, userInfo } = appContext;
 
-  useEffect(() => {
-    GoogleSignin.configure({
-      webClientId:
-        '270479211517-kinap7kv1bcd3dlpuodt5fkju361fdqb.apps.googleusercontent.com',
-      prompt: 'select_account',
-    });
-  }, []);
+  // useLogin provides Google sign-in and normal login handlers
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    setGoogleUser(null);
-    try {
-      await GoogleSignin.signOut();
-      await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
-      const signInResult = await GoogleSignin.signIn();
-      console.log('Google Sign-In Result:', JSON.stringify(signInResult));
-
-      const { idToken, user } = signInResult.data;
-      if (!idToken) {
-        throw new Error('No ID token found');
-      }
-      setGoogleUser(user);
-      await submitGoogleLogin(idToken, user);
-    } catch (error: any) {
-      console.log('Google Sign-In Error:', error);
-      showToast('error', error?.message || 'Google sign-in failed');
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const submitGoogleLogin = async (idToken: string, user?: any) => {
-    try {
-      const response = await sendPostRequest('auth', 'google-login', {
-        idToken,
-        email: user?.email,
-        firstName: user?.givenName,
-        lastName: user?.familyName,
-        photoUrl: user?.photo,
-      });
-
-      const { returnCode, returnMessage, returnData } = response;
-
-      if (returnCode === 200) {
-        const info: UserInfo = {
-          token: returnData.token,
-          tokenType: returnData.tokenType,
-          username: returnData.username,
-          email: returnData.email,
-          firstName: returnData.firstName,
-          lastName: returnData.lastName,
-          profilePhotoUrl: returnData.profilePhotoUrl,
-          userRole: returnData.userRole,
-          roleName: returnData.roleName,
-        };
-
-        const dashboardRoute =
-          info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
-
-        await setUserInfo(info);
-        navigation.navigate(dashboardRoute);
-      } else if (returnCode === 201 && returnData?.needsRegistration) {
-        navigation.navigate(route.googleRegister, {
-          googleId: returnData.googleId,
-          email: returnData.email,
-          firstName: returnData.firstName,
-          lastName: returnData.lastName,
-          photoUrl: returnData.photoUrl,
-        });
-      } else {
-        showToast('error', returnMessage || 'Google sign-in failed');
-        setGoogleUser(null);
-      }
-    } catch (error: any) {
-      console.log('Google Sign-In Error:', error);
-      showToast('error', error?.message || 'Google sign-in failed');
-      setGoogleUser(null);
-    }
-  };
-
-  const onContinueWithGoogle = async () => {
-    if (googleUser) {
-      setGoogleLoading(true);
-      try {
-        await GoogleSignin.hasPlayServices({
-          showPlayServicesUpdateDialog: true,
-        });
-        const tokens = await GoogleSignin.getTokens();
-        if (tokens.idToken) {
-          await submitGoogleLogin(tokens.idToken, googleUser);
-        }
-      } catch (error: any) {
-        console.log('Continue Google Error:', error);
-        showToast('error', error?.message || 'Sign-in failed');
-      } finally {
-        setGoogleLoading(false);
-      }
-    }
-  };
-
-  const { t } = useLanguage();
+  const { translations, language, setLanguage } = useLanguage();
+  const [langOpen, setLangOpen] = useState(false);
+  const [showLangModal, setShowLangModal] = useState(false);
   const C = getColors(isDark);
 
   React.useEffect(() => {
@@ -214,82 +121,7 @@ const Login = () => {
     ]).start();
   }, []);
 
-  // ── Validation ─────────────────────────────────────────────────────────────
-  const validate = () => {
-    const e: { email?: string; password?: string } = {};
-    if (!email.trim()) e.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(email))
-      e.email = 'Please enter a valid email';
-    if (!password) e.password = 'Password is required';
-    else if (password.length < 6)
-      e.password = 'Password must be at least 6 characters';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  // ── Login ──────────────────────────────────────────────────────────────────
-  const handleLogin = async () => {
-    if (!validate()) return;
-    setLoading(true);
-    try {
-      const response = await sendPostRequest('auth', 'login', {
-        username: email.toLowerCase().trim(),
-        password,
-      });
-      const { returnCode, returnMessage, returnData } = response;
-
-      if (returnCode === 200) {
-        const info: UserInfo = {
-          token: returnData.token,
-          tokenType: returnData.tokenType,
-          username: returnData.username,
-          email: returnData.email,
-          firstName: returnData.firstName,
-          lastName: returnData.lastName,
-          profilePhotoUrl: returnData.profilePhotoUrl,
-          userRole: returnData.userRole,
-          roleName: returnData.roleName,
-        };
-
-        const dashboardRoute =
-          info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
-
-        await setUserInfo(info);
-        navigation.navigate(dashboardRoute);
-      } else if (returnCode === 405) {
-        showToast('warning', returnMessage);
-        setTimeout(() => {
-          setModal((m: any) => ({ ...m, status: false }));
-          navigation.navigate(route.register, {
-            emailVerify: email,
-            tab: 'verify',
-          });
-        }, 4000);
-      } else {
-        showToast('error', returnMessage || 'Unknown error');
-      }
-    } catch (error: any) {
-      const returnCode = error?.returnCode;
-      const returnMessage = error?.message || 'An unexpected error occurred';
-
-      if (returnCode === 405) {
-        showToast('warning', returnMessage);
-        setTimeout(() => {
-          setModal((m: any) => ({ ...m, status: false }));
-          navigation.navigate(route.register, {
-            emailVerify: email,
-            tab: 'verify',
-          });
-        }, 4000);
-      } else if (returnCode === 401) {
-        showToast('error', returnMessage);
-      } else {
-        showToast('error', returnMessage);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  // validation and login logic handled by useLogin hook
 
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -319,6 +151,20 @@ const Login = () => {
               { opacity: logoFade, transform: [{ translateY: logoSlide }] },
             ]}
           >
+            {/* language button above logo */}
+            <TouchableOpacity
+              style={[
+                s.langAboveLogo,
+                { borderColor: C.border, backgroundColor: C.surface },
+              ]}
+              onPress={() => setShowLangModal(true)}
+            >
+              <Globe size={16} color={C.text} style={{ marginRight: 8 }} />
+              <Text style={{ color: C.text, fontWeight: '600' }}>
+                {language.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+
             <Image source={logo} style={s.logoImg} resizeMode="contain" />
           </Animated.View>
 
@@ -331,13 +177,75 @@ const Login = () => {
               { opacity: formFade, transform: [{ translateY: formSlide }] },
             ]}
           >
-            {/* "Log In" heading */}
-            <Text style={[s.loginHeading, { color: C.text }]}>
-              {t('login.title')}
-            </Text>
+            {/* "Log In" heading (language selector is floating) */}
+            <View style={s.headingRow}>
+              <Text style={[s.loginHeading, { color: C.text }]}>
+                {translations.login.title}
+              </Text>
+            </View>
+
+            {/* language button moved above the logo */}
+
+            {/* language selection modal */}
+            <Modal
+              visible={showLangModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowLangModal(false)}
+            >
+              <View
+                style={[s.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}
+              >
+                <View
+                  style={[
+                    s.modalContainer,
+                    { backgroundColor: C.surface, borderColor: C.border },
+                  ]}
+                >
+                  <Text style={[s.modalTitle, { color: C.text }]}>
+                    Select language
+                  </Text>
+                  {(
+                    [
+                      { code: 'en', label: 'English' },
+                      { code: 'es', label: 'Español' },
+                      { code: 'fr', label: 'Français' },
+                      { code: 'ar', label: 'العربية' },
+                    ] as const
+                  ).map(l => (
+                    <TouchableOpacity
+                      key={l.code}
+                      style={[
+                        s.modalOption,
+                        language === l.code && {
+                          backgroundColor: C.primary + '11',
+                        },
+                      ]}
+                      onPress={() => {
+                        setLanguage(l.code as any);
+                        setShowLangModal(false);
+                      }}
+                    >
+                      <Text style={{ color: C.text, fontSize: 16 }}>
+                        {l.label}
+                      </Text>
+                      <Text style={{ color: C.muted, marginLeft: 8 }}>
+                        {l.code.toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={s.modalClose}
+                    onPress={() => setShowLangModal(false)}
+                  >
+                    <Text style={{ color: C.primary }}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
 
             <Text style={[s.continueHeading, { color: C.text }]}>
-              {t('login.subtitle')}
+              {translations.login.subtitle}
             </Text>
 
             {/* ── Email input ─────────────────────────────────────────────── */}
@@ -383,7 +291,7 @@ const Login = () => {
                       },
                     ]}
                   >
-                    {t('login.email')}
+                    {translations.login.email}
                   </Animated.Text>
 
                   <TextInput
@@ -454,7 +362,7 @@ const Login = () => {
                       },
                     ]}
                   >
-                    Password
+                    {translations.login.password}
                   </Animated.Text>
 
                   <TextInput
@@ -506,7 +414,7 @@ const Login = () => {
               activeOpacity={0.7}
             >
               <Text style={[s.forgotText, { color: C.primary }]}>
-                Forgot password?
+                {translations.forgotPassword.text}
               </Text>
             </TouchableOpacity>
 
@@ -532,7 +440,7 @@ const Login = () => {
                 <ActivityIndicator size="small" color={C.white} />
               ) : (
                 <Text style={[s.signInText, { color: C.white }]}>
-                  {t('login.button')}
+                  {translations.login.button}
                 </Text>
               )}
             </TouchableOpacity>
@@ -547,7 +455,7 @@ const Login = () => {
               activeOpacity={0.82}
             >
               <Text style={[s.createAccountText, { color: C.text }]}>
-                Create New Account
+                {translations.createAccount.text}
               </Text>
             </TouchableOpacity>
 
@@ -555,7 +463,7 @@ const Login = () => {
             <View style={s.dividerRow}>
               <View style={[s.dividerLine, { backgroundColor: C.border }]} />
               <Text style={[s.dividerText, { color: C.muted }]}>
-                or continue with
+                {translations.login.continuewith}
               </Text>
               <View style={[s.dividerLine, { backgroundColor: C.border }]} />
             </View>
@@ -580,28 +488,28 @@ const Login = () => {
                   </View>
                   <Text style={[s.googleText, { color: C.text }]}>
                     <Text style={[s.googleText, { color: C.text }]}>
-                      {t('login.google')}
+                      {translations.login.google}
                     </Text>
                   </Text>
                 </>
               )}
             </TouchableOpacity>
 
-            {/* Terms and Conditions */}
+            {/* Terms and Conditions (moved into login container) */}
             <Text style={[s.termsText, { color: C.muted }]}>
-              By continuing, you agree to our{' '}
+              {translations.login.terms.byContinuing}{' '}
               <Text style={[s.termsLink, { color: C.primaryDark }]}>
-                Terms of Service
+                {translations.login.terms.termsOfService}
               </Text>{' '}
-              and{' '}
+              {translations.login.terms.and}{' '}
               <Text style={[s.termsLink, { color: C.primaryDark }]}>
-                Privacy Policy
+                {translations.login.terms.privacyPolicy}
               </Text>
             </Text>
 
-            {/* Coming soon */}
+            {/* Coming soon (moved into login container) */}
             <Text style={[s.comingSoon, { color: C.muted }]}>
-              Full version arriving with public launch.
+              {translations.login.footer.fullVersion}
             </Text>
           </Animated.View>
         </ScrollView>
@@ -675,6 +583,72 @@ const s = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
     letterSpacing: 0.3,
+  },
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  langWrap: {
+    position: 'relative',
+  },
+  langBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  langList: {
+    position: 'absolute',
+    right: 0,
+    top: 40,
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    zIndex: 30,
+  },
+  langOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  langFloatingBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? 14 : 46,
+    right: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    zIndex: 100,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '80%',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  modalOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalClose: {
+    marginTop: 12,
+    alignSelf: 'flex-end',
   },
   // INPUTS
   fieldWrap: {

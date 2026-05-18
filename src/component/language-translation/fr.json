@@ -1,17 +1,47 @@
 {
-  "forgotPassword.title": "Mot de passe oublié",
-  "forgotPassword.submit": "Envoyer",
-  "login.title": "Connexion",
-  "login.email": "Email",
-  "login.password": "Mot de passe",
-  "login.subtitle": "Connectez‑vous pour continuer votre parcours.",
-  "login.button": "Se connecter",
-  "login.google": "Continuer avec Google",
-  "register.title": "Inscription",
-  "register.username": "Nom d'utilisateur",
-  "register.email": "Email",
-  "register.password": "Mot de passe",
-  "register.button": "S'inscrire",
-  "welcome.title": "Bienvenue",
-  "welcome.message": "Bienvenue dans l'application!"
+  "forgotPassword": {
+    "title": "Mot de passe oublié",
+    "submit": "Envoyer",
+    "text": "Mot de passe oublié ?"
+  },
+  "login": {
+    "title": "Connexion",
+    "email": "Email",
+    "password": "Mot de passe",
+    "subtitle": "Connectez‑vous pour continuer votre parcours.",
+    "button": "Se connecter",
+    "google": "Continuer avec Google",
+    "continuewith": "ou continuer avec",
+    "terms": {
+      "byContinuing": "En continuant, vous acceptez nos",
+      "termsOfService": "Conditions d'utilisation",
+      "privacyPolicy": "Politique de confidentialité",
+      "and": "et"
+    },
+    "footer": {
+      "fullVersion": "La version complète arrivera au lancement public."
+    }
+  },
+  "createAccount": {
+    "text": "Créer un compte"
+  },
+
+  "validation": {
+    "emailRequired": "L'email est requis",
+    "invalidEmail": "Veuillez entrer un email valide",
+    "passwordRequired": "Le mot de passe est requis",
+    "passwordMin": "Le mot de passe doit comporter au moins 6 caractères"
+  },
+  "errors": {
+    "googleFailed": "Échec de la connexion Google",
+    "noIdToken": "Aucun jeton d'identification trouvé",
+    "unknown": "Erreur inconnue",
+    "unexpected": "Une erreur inattendue est survenue",
+    "warning": "Attention"
+  },
+
+  "welcome": {
+    "title": "Bienvenue",
+    "message": "Bienvenue dans l'application!"
+  }
 }

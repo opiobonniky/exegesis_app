@@ -1,17 +1,47 @@
 {
-  "forgotPassword.title": "Olvidó la Contraseña",
-  "forgotPassword.submit": "Enviar",
-  "login.title": "Iniciar Sesión",
-  "login.email": "Correo Electrónico",
-  "login.password": "Contraseña",
-  "login.subtitle": "Inicia sesión para continuar tu viaje.",
-  "login.button": "Acceder",
-  "login.google": "Continuar con Google",
-  "register.title": "Registrarse",
-  "register.username": "Nombre de Usuario",
-  "register.email": "Correo Electrónico",
-  "register.password": "Contraseña",
-  "register.button": "Crear Cuenta",
-  "welcome.title": "Bienvenido",
-  "welcome.message": "¡Bienvenido a la aplicación!"
+  "forgotPassword": {
+    "title": "Olvidó la Contraseña",
+    "submit": "Enviar",
+    "text": "¿Olvidó su contraseña?"
+  },
+  "login": {
+    "title": "Iniciar Sesión",
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "subtitle": "Inicia sesión para continuar tu viaje.",
+    "button": "Acceder",
+    "google": "Continuar con Google",
+    "continuewith": "o continuar con",
+    "terms": {
+      "byContinuing": "Al continuar, aceptas nuestros",
+      "termsOfService": "Términos de servicio",
+      "privacyPolicy": "Política de privacidad",
+      "and": "y"
+    },
+    "footer": {
+      "fullVersion": "La versión completa llegará con el lanzamiento público."
+    }
+  },
+  "createAccount": {
+    "text": "Crear Nueva Cuenta"
+  },
+
+  "validation": {
+    "emailRequired": "El correo es obligatorio",
+    "invalidEmail": "Por favor ingrese un correo válido",
+    "passwordRequired": "La contraseña es obligatoria",
+    "passwordMin": "La contraseña debe tener al menos 6 caracteres"
+  },
+  "errors": {
+    "googleFailed": "Fallo en el inicio de sesión con Google",
+    "noIdToken": "No se encontró token de ID",
+    "unknown": "Error desconocido",
+    "unexpected": "Ocurrió un error inesperado",
+    "warning": "Advertencia"
+  },
+
+  "welcome": {
+    "title": "Bienvenido",
+    "message": "¡Bienvenido a la aplicación!"
+  }
 }

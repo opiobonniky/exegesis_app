@@ -12,6 +12,7 @@
  */
 
 import React, { useContext, useEffect, useRef } from 'react';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   Animated,
   Dimensions,
@@ -57,6 +58,7 @@ const BACKGROUND_COLORS = ['#ffffff', '#ffffff'];
 export default function GuestEntry() {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
+  const { translations } = useLanguage();
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -401,7 +403,9 @@ export default function GuestEntry() {
           ]}
         >
           <Image source={logo} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.tagline}>Your Daily Spiritual Companion</Text>
+          <Text style={styles.tagline}>
+            {translations.welcome?.message || 'Your Daily Spiritual Companion'}
+          </Text>
         </Animated.View>
 
         {/* Features Section */}
@@ -412,7 +416,8 @@ export default function GuestEntry() {
           ]}
         >
           <Text style={styles.featuresTitle}>
-            Everything you need to study the Word
+            {translations.welcome?.message ||
+              'Everything you need to study the Word'}
           </Text>
           <View style={styles.featuresGrid}>
             {FEATURES.map(({ icon: Icon, label, color }) => (
@@ -449,9 +454,12 @@ export default function GuestEntry() {
                 <BookOpen size={22} color="#0f2744" strokeWidth={2.5} />
               </View>
               <View style={styles.primaryTextBox}>
-                <Text style={styles.primaryTitle}>Read the Bible</Text>
+                <Text style={styles.primaryTitle}>
+                  {translations.welcome?.title || 'Read the Bible'}
+                </Text>
                 <Text style={styles.primarySubtitle}>
-                  No account needed • All 66 books
+                  {translations.createAccount?.text ||
+                    'No account needed • All 66 books'}
                 </Text>
               </View>
               <ChevronRight size={24} color="#0f2744" />
@@ -461,7 +469,9 @@ export default function GuestEntry() {
           {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
+            <Text style={styles.dividerText}>
+              {translations.login?.continuewith || 'or continue with'}
+            </Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -472,7 +482,9 @@ export default function GuestEntry() {
             activeOpacity={0.8}
           >
             <LogIn size={20} color="#0f2744" strokeWidth={2} />
-            <Text style={styles.secondaryText}>Sign In to Your Account</Text>
+            <Text style={styles.secondaryText}>
+              {translations.login?.button || 'Sign In to Your Account'}
+            </Text>
           </TouchableOpacity>
 
           {/* Register Button */}
@@ -482,14 +494,22 @@ export default function GuestEntry() {
             activeOpacity={0.8}
           >
             <UserPlus size={20} color="#F0B429" strokeWidth={2} />
-            <Text style={styles.tertiaryText}>Create a Free Account</Text>
+            <Text style={styles.tertiaryText}>
+              {translations.createAccount?.text || 'Create a Free Account'}
+            </Text>
           </TouchableOpacity>
 
-          {/* Terms */}
+          {/* Terms (moved into login container) */}
           <Text style={styles.termsText}>
-            By continuing you agree to our{' '}
-            <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-            <Text style={styles.termsLink}>Privacy Policy</Text>
+            {translations.login?.terms?.byContinuing ||
+              'By continuing you agree to our'}{' '}
+            <Text style={styles.termsLink}>
+              {translations.login?.terms?.termsOfService || 'Terms of Service'}
+            </Text>{' '}
+            {translations.login?.terms?.and || 'and'}{' '}
+            <Text style={styles.termsLink}>
+              {translations.login?.terms?.privacyPolicy || 'Privacy Policy'}
+            </Text>
           </Text>
         </Animated.View>
       </ScrollView>

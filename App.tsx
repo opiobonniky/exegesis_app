@@ -6,7 +6,7 @@ import { initializeNotifications } from './src/utilits/firebaseService';
 import { initBibleTTS } from './src/utilits/bibleTTS';
 import SocketProvider from './src/services/socket/SocketProvider';
 import { toastConfig } from './src/helpers/Toash.helper';
-import { LanguageProvider } from './src/component/LanguageProvider';
+import { LanguageProvider } from './src/component/language-translation/LanguageProvider';
 import Toast from 'react-native-toast-message';
 
 const App = () => {

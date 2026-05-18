@@ -1,17 +1,47 @@
 {
-  "forgotPassword.title": "نسيت كلمة المرور",
-  "forgotPassword.submit": "إرسال",
-  "login.title": "تسجيل الدخول",
-  "login.email": "البريد الإلكتروني",
-  "login.password": "كلمة المرور",
-  "login.subtitle": "سجل الدخول لمتابعة رحلتك.",
-  "login.button": "دخول",
-  "login.google": "استمرار مع جوجل",
-  "register.title": "تسجيل",
-  "register.username": "اسم المستخدم",
-  "register.email": "البريد الإلكتروني",
-  "register.password": "كلمة المرور",
-  "register.button": "إنشاء حساب",
-  "welcome.title": "أهلا وسهلا",
-  "welcome.message": "أهلا بك في التطبيق!"
+  "forgotPassword": {
+    "title": "نسيت كلمة المرور",
+    "submit": "إرسال",
+    "text": "نسيت كلمة المرور؟"
+  },
+  "login": {
+    "title": "تسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "subtitle": "سجل الدخول لمتابعة رحلتك.",
+    "button": "دخول",
+    "google": "استمرار مع جوجل",
+    "continuewith": "أو الاستمرار مع",
+    "terms": {
+      "byContinuing": "بالاستمرار، أنت توافق على",
+      "termsOfService": "شروط الخدمة",
+      "privacyPolicy": "سياسة الخصوصية",
+      "and": "و"
+    },
+    "footer": {
+      "fullVersion": "ستصل النسخة الكاملة عند الإطلاق العام."
+    }
+  },
+  "createAccount": {
+    "text": "إنشاء حساب"
+  },
+
+  "validation": {
+    "emailRequired": "البريد الإلكتروني مطلوب",
+    "invalidEmail": "يرجى إدخال بريد إلكتروني صالح",
+    "passwordRequired": "كلمة المرور مطلوبة",
+    "passwordMin": "يجب أن تكون كلمة المرور 6 أحرف على الأقل"
+  },
+  "errors": {
+    "googleFailed": "فشل تسجيل الدخول عبر جوجل",
+    "noIdToken": "لم يتم العثور على رمز التعريف",
+    "unknown": "خطأ غير معروف",
+    "unexpected": "حدث خطأ غير متوقع",
+    "warning": "تحذير"
+  },
+
+  "welcome": {
+    "title": "أهلا وسهلا",
+    "message": "أهلا بك في التطبيق!"
+  }
 }

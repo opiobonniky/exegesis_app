@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   View,
   Text,
@@ -108,6 +109,7 @@ export default function ForgotPassword() {
 
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
+  const { translations } = useLanguage();
   const codeRefs = useRef<(TextInput | any)[]>([]);
 
   // ── Animations ─────────────────────────────────────────────────────────────
@@ -238,7 +240,7 @@ export default function ForgotPassword() {
   const handleSendCode = async () => {
     if (currentStep === 'verify' && !canResend) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Please enter a valid email address');
+      setError(translations.validation.invalidEmail);
       return;
     }
     if (!(await checkInternetConnection())) {

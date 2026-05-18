@@ -1,17 +1,54 @@
 {
-  "forgotPassword.title": "Forgot Password",
-  "forgotPassword.submit": "Submit",
-  "login.title": "Login",
-  "login.email": "Email",
-  "login.password": "Password",
-  "login.subtitle": "Sign in to continue your journey.",
-  "login.button": "Log In",
-  "login.google": "Continue with Google",
-  "register.title": "Register",
-  "register.username": "Username",
-  "register.email": "Email",
-  "register.password": "Password",
-  "register.button": "Sign Up",
-  "welcome.title": "Welcome",
-  "welcome.message": "Welcome to the app!"
+  "login": {
+    "title": "Login",
+    "email": "Email",
+    "password": "Password",
+    "subtitle": "Sign in to continue your journey.",
+    "button": "Log In",
+    "google": "Continue with Google",
+    "continuewith": "or continue with",
+    "terms": {
+      "byContinuing": "By continuing, you agree to our",
+      "termsOfService": "Terms of Service",
+      "privacyPolicy": "Privacy Policy",
+      "and": "and"
+    },
+    "footer": {
+      "fullVersion": "Full version arriving with public launch."
+    }
+  },
+  "forgotPassword": {
+    "title": "Forgot Password",
+    "submit": "Submit",
+    "text": "Forgot password?"
+  },
+  "createAccount": {
+    "text": "Create New Account"
+  },
+
+  "validation": {
+    "emailRequired": "Email is required",
+    "invalidEmail": "Please enter a valid email",
+    "passwordRequired": "Password is required",
+    "passwordMin": "Password must be at least 6 characters"
+  },
+  "errors": {
+    "googleFailed": "Google sign-in failed",
+    "noIdToken": "No ID token found",
+    "unknown": "Unknown error",
+    "unexpected": "An unexpected error occurred",
+    "warning": "Warning"
+  },
+
+  "register": {
+    "title": "Register",
+    "username": "Username",
+    "email": "Email",
+    "password": "Password",
+    "button": "Sign Up"
+  },
+  "welcome": {
+    "title": "Welcome",
+    "message": "Welcome to the app!"
+  }
 }

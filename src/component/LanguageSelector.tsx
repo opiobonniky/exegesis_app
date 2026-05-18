@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLanguage } from './LanguageProvider';
+import { useLanguage } from './language-translation/LanguageProvider';
 
 export const LanguageSelector = () => {
   const { language, setLanguage } = useLanguage();
