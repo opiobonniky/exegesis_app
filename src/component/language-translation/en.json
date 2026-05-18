@@ -1,0 +1,17 @@
+{
+  "forgotPassword.title": "Forgot Password",
+  "forgotPassword.submit": "Submit",
+  "login.title": "Login",
+  "login.email": "Email",
+  "login.password": "Password",
+  "login.subtitle": "Sign in to continue your journey.",
+  "login.button": "Log In",
+  "login.google": "Continue with Google",
+  "register.title": "Register",
+  "register.username": "Username",
+  "register.email": "Email",
+  "register.password": "Password",
+  "register.button": "Sign Up",
+  "welcome.title": "Welcome",
+  "welcome.message": "Welcome to the app!"
+}

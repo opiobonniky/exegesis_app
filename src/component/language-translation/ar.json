@@ -1,0 +1,17 @@
+{
+  "forgotPassword.title": "نسيت كلمة المرور",
+  "forgotPassword.submit": "إرسال",
+  "login.title": "تسجيل الدخول",
+  "login.email": "البريد الإلكتروني",
+  "login.password": "كلمة المرور",
+  "login.subtitle": "سجل الدخول لمتابعة رحلتك.",
+  "login.button": "دخول",
+  "login.google": "استمرار مع جوجل",
+  "register.title": "تسجيل",
+  "register.username": "اسم المستخدم",
+  "register.email": "البريد الإلكتروني",
+  "register.password": "كلمة المرور",
+  "register.button": "إنشاء حساب",
+  "welcome.title": "أهلا وسهلا",
+  "welcome.message": "أهلا بك في التطبيق!"
+}

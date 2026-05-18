@@ -24,6 +24,8 @@ import {
   Shield,
   Star,
   CheckCircle2,
+  CircleCheckBig,
+  SquareCheckBig,
 } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -62,14 +64,18 @@ const Welcome = () => {
     () => [
       {
         id: 1,
-        title: 'Deepen Your',
-        highlight: 'Biblical Journey',
-        text: 'Experience the Word like never before with advanced exegetical tools and daily insights.',
-        gradientColors: isDark 
-          ? ['#0F172A', '#1E293B'] 
+        title: ' ',
+        highlight: 'Search The Scriptures',
+        text: 'Exegesis is the process of carefully studying Scripture to discover the original meaning in its historical and literary context.',
+        gradientColors: isDark
+          ? ['#0F172A', '#1E293B']
           : ['#F8FAFC', '#E2E8F0'],
         icon: <BookOpen size={64} color={COLORS.accent} strokeWidth={1.5} />,
-        features: ['Verse Analysis', 'Daily Devotionals', 'Study Insights'],
+        features: [
+          'Bibical Deep Dives',
+          'Verse-by-Verse teachings',
+          'Personalized Journaling',
+        ],
         accent: COLORS.accent,
       },
       {
@@ -77,11 +83,15 @@ const Welcome = () => {
         title: 'Compare &',
         highlight: 'Interpret',
         text: 'Analyze multiple translations side-by-side to uncover the original meaning of scripture.',
-        gradientColors: isDark 
-          ? ['#1E1B4B', '#312E81'] 
+        gradientColors: isDark
+          ? ['#1E1B4B', '#312E81']
           : ['#EEF2FF', '#E0E7FF'],
         icon: <Search size={64} color={COLORS.accent} strokeWidth={1.5} />,
-        features: ['Multi-Version View', 'Context Analysis', 'Cross References'],
+        features: [
+          'Multi-Version View',
+          'Context Analysis',
+          'Cross References',
+        ],
         accent: COLORS.accent,
       },
       {
@@ -89,10 +99,12 @@ const Welcome = () => {
         title: 'Engage &',
         highlight: 'Reflect',
         text: 'Save your study notes and share meaningful interpretations with your community.',
-        gradientColors: isDark 
-          ? ['#134E4A', '#115E59'] 
+        gradientColors: isDark
+          ? ['#134E4A', '#115E59']
           : ['#F0FDFA', '#CCFBF1'],
-        icon: <MessageSquare size={64} color={COLORS.accent} strokeWidth={1.5} />,
+        icon: (
+          <SquareCheckBig size={64} color={COLORS.accent} strokeWidth={1.5} />
+        ),
         features: ['Personal Notes', 'Verse Sharing', 'Progress Tracking'],
         accent: COLORS.accent,
       },
@@ -161,10 +173,12 @@ const Welcome = () => {
           <Animated.View
             style={[
               styles.iconContainer,
-              { 
-                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                transform: [{ translateY: floatingTranslate }] 
-              }
+              {
+                backgroundColor: isDark
+                  ? 'rgba(255,255,255,0.05)'
+                  : 'rgba(0,0,0,0.03)',
+                transform: [{ translateY: floatingTranslate }],
+              },
             ]}
           >
             {slide.id === 1 ? (
@@ -188,18 +202,26 @@ const Welcome = () => {
 
           <View style={styles.featuresContainer}>
             {slide.features.map((feature, i) => (
-              <Animated.View 
-                key={i} 
+              <Animated.View
+                key={i}
                 style={[
                   styles.featureBadge,
-                  { 
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
-                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
-                  }
+                  {
+                    backgroundColor: isDark
+                      ? 'rgba(255,255,255,0.08)'
+                      : 'rgba(0,0,0,0.04)',
+                    borderColor: isDark
+                      ? 'rgba(255,255,255,0.1)'
+                      : 'rgba(0,0,0,0.08)',
+                  },
                 ]}
               >
-                <CheckCircle2 size={14} color={COLORS.accent} strokeWidth={2.5} />
-                <Text style={[styles.featureText, { color: COLORS.text }]}>
+                <SquareCheckBig
+                  size={16}
+                  color={COLORS.accent}
+                  strokeWidth={2.5}
+                />
+                <Text style={[styles.featureText, { color: COLORS.accent }]}>
                   {feature}
                 </Text>
               </Animated.View>
@@ -215,7 +237,7 @@ const Welcome = () => {
       <StatusBar
         translucent
         backgroundColor="transparent"
-        barStyle={isDark ? "light-content" : "dark-content"}
+        barStyle={isDark ? 'light-content' : 'dark-content'}
       />
 
       {/* Modern Background Gradients */}
@@ -238,27 +260,27 @@ const Welcome = () => {
               end={{ x: 1, y: 1 }}
             />
             {/* Decorative Ambient Orbs */}
-            <View 
+            <View
               style={[
-                styles.orb, 
-                { 
-                  backgroundColor: slide.accent, 
-                  top: -100, 
-                  right: -100, 
-                  opacity: isDark ? 0.15 : 0.08 
-                }
-              ]} 
+                styles.orb,
+                {
+                  backgroundColor: slide.accent,
+                  top: -100,
+                  right: -100,
+                  opacity: isDark ? 0.15 : 0.08,
+                },
+              ]}
             />
-            <View 
+            <View
               style={[
-                styles.orb, 
-                { 
-                  backgroundColor: slide.accent, 
-                  bottom: -150, 
-                  left: -150, 
-                  opacity: isDark ? 0.1 : 0.05 
-                }
-              ]} 
+                styles.orb,
+                {
+                  backgroundColor: slide.accent,
+                  bottom: -150,
+                  left: -150,
+                  opacity: isDark ? 0.1 : 0.05,
+                },
+              ]}
             />
           </Animated.View>
         );
@@ -266,10 +288,7 @@ const Welcome = () => {
 
       <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
         <Image source={logo} style={styles.headerLogo} />
-        <TouchableOpacity
-          style={styles.skipBtn}
-          onPress={handleGetStarted}
-        >
+        <TouchableOpacity style={styles.skipBtn} onPress={handleGetStarted}>
           <Text style={[styles.skipText, { color: COLORS.muted }]}>Skip</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -353,9 +372,15 @@ const Welcome = () => {
               end={{ x: 1, y: 0 }}
             >
               <Text style={[styles.ctaText, { color: COLORS.primaryDark }]}>
-                {currentIndex === slides.length - 1 ? 'Get Started' : 'Continue'}
+                {currentIndex === slides.length - 1
+                  ? 'Get Started'
+                  : 'Continue'}
               </Text>
-              <ArrowRight size={20} color={COLORS.primaryDark} strokeWidth={2.5} />
+              <ArrowRight
+                size={20}
+                color={COLORS.primaryDark}
+                strokeWidth={2.5}
+              />
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>

@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { useLanguage } from '../../component/LanguageProvider';
 import {
   View,
   Text,
@@ -71,6 +72,8 @@ const Login = () => {
       </View>
     );
   }
+
+  const { isDark, setUserInfo, userInfo } = appContext;
 
   useEffect(() => {
     GoogleSignin.configure({
@@ -174,7 +177,7 @@ const Login = () => {
     }
   };
 
-  const { isDark, setUserInfo, userInfo } = appContext;
+  const { t } = useLanguage();
   const C = getColors(isDark);
 
   React.useEffect(() => {
@@ -330,11 +333,11 @@ const Login = () => {
           >
             {/* "Log In" heading */}
             <Text style={[s.loginHeading, { color: C.text }]}>
-              Welcome Back!
+              {t('login.title')}
             </Text>
 
             <Text style={[s.continueHeading, { color: C.text }]}>
-              Sign in to continue your journey.
+              {t('login.subtitle')}
             </Text>
 
             {/* ── Email input ─────────────────────────────────────────────── */}
@@ -380,7 +383,7 @@ const Login = () => {
                       },
                     ]}
                   >
-                    Email Address
+                    {t('login.email')}
                   </Animated.Text>
 
                   <TextInput
@@ -528,7 +531,9 @@ const Login = () => {
               {loading ? (
                 <ActivityIndicator size="small" color={C.white} />
               ) : (
-                <Text style={[s.signInText, { color: C.white }]}>SIGN IN</Text>
+                <Text style={[s.signInText, { color: C.white }]}>
+                  {t('login.button')}
+                </Text>
               )}
             </TouchableOpacity>
 
@@ -574,7 +579,9 @@ const Login = () => {
                     <GoogleIcon width={25} height={25} />
                   </View>
                   <Text style={[s.googleText, { color: C.text }]}>
-                    Continue with Google
+                    <Text style={[s.googleText, { color: C.text }]}>
+                      {t('login.google')}
+                    </Text>
                   </Text>
                 </>
               )}

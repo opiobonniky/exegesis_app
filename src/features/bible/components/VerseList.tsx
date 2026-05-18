@@ -171,8 +171,15 @@ type VerseItem = {
 export type VerseListProps = {
   versesArray: { num: number; text: string }[];
   selectedVerses: number[];
-  highlights: Record<string, { color?: string }>;
-  favorites: Set<string>;
+  /**
+   * Keyed by verse NUMBER (not a string key). Matches useBible's
+   * Record<number, {colorId, color}> state.
+   */
+  highlights: Record<number, { colorId?: number; color?: string }>;
+  /**
+   * Set of verse NUMBERS. Matches useBible's Set<number> state.
+   */
+  favorites: Set<number>;
   highlightedVerse: number | null;
   activeAudioVerse: number | null;
   activeVerseWordMap: Array<{ start: number; length: number }> | null;
@@ -241,14 +248,22 @@ export default function VerseList({
     );
   }
 
-  const renderVerseItem = ({ item }: { item: { num: number; text: string } }) => {
+  const renderVerseItem = ({
+    item,
+  }: {
+    item: { num: number; text: string };
+  }) => {
     const { num, text } = item;
     const verseNum = num;
     const verseNumber = verseNum;
     const key = `${currentBook} ${currentChapter}:${verseNum}`;
     const isSelected = selectedVerses.includes(verseNumber);
-    const isFavorite = favorites.has(key);
-    const highlight = highlights[key];
+    // favorites is Set<number> from useBible — check by verse number directly.
+    const isFavorite = (favorites as unknown as Set<number>).has(verseNumber);
+    // highlights is Record<number, {colorId, color}> from useBible — key by verse number.
+    const highlight = (
+      highlights as unknown as Record<number, { color?: string }>
+    )[verseNumber];
     const highlightColor = highlight?.color;
     const isTargetHighlight = highlightedVerse === verseNumber;
     const isActiveAudio = activeAudioVerse === verseNumber;
@@ -287,9 +302,7 @@ export default function VerseList({
             ? () => {
                 onCloseExplanation(verseNumber);
                 // Scroll the verse back into view after explanation collapses
-                const index = versesArray.findIndex(
-                  v => v.num === verseNumber,
-                );
+                const index = versesArray.findIndex(v => v.num === verseNumber);
                 if (index !== -1) {
                   setTimeout(() => {
                     flatListRef.current?.scrollToIndex({
@@ -329,7 +342,7 @@ export default function VerseList({
         data={versesArray}
         extraData={[selectedVerses, activeAudioVerse]}
         renderItem={renderVerseItem}
-        keyExtractor={(item) => String(item.num)}
+        keyExtractor={item => String(item.num)}
         contentContainerStyle={[
           styles.scrollContent,
           versesArray.length === 0 && { flex: 1 },

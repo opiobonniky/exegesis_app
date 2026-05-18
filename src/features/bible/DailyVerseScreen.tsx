@@ -65,6 +65,7 @@ function ExpandableContent({
   icon: Icon,
   COLORS,
   accent,
+
 }: {
   content: string;
   label: string;
@@ -72,7 +73,7 @@ function ExpandableContent({
   COLORS: any;
   accent: string;
 }) {
-  const INITIAL_LINES = 3;
+  const INITIAL_LINES = 5;
   const [expanded, setExpanded] = useState(false);
   const lines = content.split('\n').filter(p => p.trim());
   const visibleLines = expanded ? lines : lines.slice(0, INITIAL_LINES);
@@ -157,8 +158,8 @@ export default function DailyVerseScreen() {
   const {
     getVerseTextAsync,
     isOnline,
-    getVerseText: getVerseTextSync // Keep sync version as fallback
-  } = useBible();
+    getVerseText: getVerseTextSync 
+  }:any = useBible();
 
   const fetchDailyVerse = useCallback(async () => {
     setLoading(true);
@@ -315,7 +316,6 @@ export default function DailyVerseScreen() {
           <View style={[styles.accentBar, { backgroundColor: accent }]} />
           <View style={styles.verseCardInner}>
             <Text style={[styles.verseLabel, { color: accent }]}>Verse of the Day</Text>
-            <Text style={styles.openQuote}>"</Text>
             <Text style={[styles.verseText, { color: COLORS.text }]}>
               {verseLoading ? 'Loading...' : (verseText || 'The Lord is my shepherd, I shall not want.')}
               "
@@ -325,40 +325,14 @@ export default function DailyVerseScreen() {
               <View style={[styles.referenceDot, { backgroundColor: accent }]} />
               <Text style={[styles.referenceText, { color: accent }]}>{verseReference}</Text>
               {dailyVerse.bibleVersion && (
-                <View style={[s.versionBadge, { backgroundColor: accent + '20' }]}>
-                  <Text style={[s.versionBadgeText, { color: accent }]}>{dailyVerse.bibleVersion}</Text>
+                <View style={[styles.versionBadge, { backgroundColor: accent + '20' }]}>
+                  <Text style={[styles.versionBadgeText, { color: accent }]}>{dailyVerse.bibleVersion}</Text>
                 </View>
               )}
             </View>
           </View>
         </View>
-
-        {/* Connection status indicator */}
-        {isOnline !== null && (
-          <View style={{
-            position: 'absolute',
-            top: 60,
-            left: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            backgroundColor: isOnline ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            borderRadius: 20
-          }}>
-            {isOnline ? (
-              <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '600' }}>
-                ● Online - Using backend
-              </Text>
-            ) : (
-              <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '600' }}>
-                ● Offline - Using local data
-              </Text>
-            )}
-          </View>
-        )}
-
+       
         {/* Reflection Card */}
         {dailyVerse.reflection && (
           <View style={[styles.contentCard, { backgroundColor: COLORS.cardBackground, borderColor }]}>
@@ -404,13 +378,13 @@ export default function DailyVerseScreen() {
         {/* Learn More Card */}
         {dailyVerse.learnMore && (
           <View style={[styles.contentCard, { backgroundColor: COLORS.cardBackground, borderColor }]}>
-            <View style={[s.cardAccentBar, { backgroundColor: '#10B981' }]} />
-            <View style={s.cardInner}>
-              <View style={s.sectionHeader}>
+            <View style={[styles.cardAccentBar, { backgroundColor: '#10B981' }]} />
+            <View style={styles.cardInner}>
+              <View style={styles.sectionHeader}>
                 <GraduationCap size={18} color="#10B981" />
-                <Text style={[s.sectionTitle, { color: COLORS.text }]}>Learn More</Text>
+                <Text style={[styles.sectionTitle, { color: COLORS.text }]}>Learn More</Text>
               </View>
-              <View style={[s.sectionDivider, { backgroundColor: dividerColor }]} />
+              <View style={[styles.sectionDivider, { backgroundColor: dividerColor }]} />
               <ExpandableContent
                 content={dailyVerse.learnMore}
                 label="LEARN MORE"

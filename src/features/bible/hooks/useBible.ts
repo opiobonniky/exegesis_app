@@ -171,6 +171,19 @@ export const useBible = () => {
   /** Set when user initiates next/prev navigation. Prevents the auto-advance
    *  logic inside speakVerseAtIndex from racing with user navigation. */
   const _userNavigatingRef = useRef<boolean>(false);
+  
+  /** Stores the original afterPlayBehaviour before user navigation so 
+   *  repeat modes work correctly after pressing next/prev. */
+  const _originalAfterPlayRef = useRef<
+    'stop' | 'repeat_one' | 'repeat' | 'continue'
+  >('continue');
+
+  /** Tracks the target verse index for the current playback request.
+   *  Used to ensure audio and UI stay synchronized - only proceed if target matches. */
+  const _targetVerseIndexRef = useRef<number>(-1);
+
+  /** Request ID - incremented on each user navigation to invalidate stale auto-advance */
+  const _requestIdRef = useRef<number>(0);
 
   // Keep refs synced with state
   useEffect(() => {
@@ -257,6 +270,28 @@ export const useBible = () => {
   useEffect(() => {
     if (currentBook) loadCurrentChapter();
   }, [currentBook, currentChapter]);
+
+  // ─── Get verse text async (from backend with local fallback) ─────────────────────
+  const getVerseTextAsync = useCallback(
+    async (bookName: string, chapter: number, verseNumber: number): Promise<string | null> => {
+      try {
+        const result = await bibleApi.getVerse(
+          activeVersionId,
+          bookName,
+          chapter,
+          verseNumber,
+        );
+        if (result && result.text) {
+          return result.text;
+        }
+        return null;
+      } catch (error) {
+        console.warn('[useBible] getVerseTextAsync error:', error);
+        return null;
+      }
+    },
+    [activeVersionId],
+  );
 
   const loadBooks = useCallback(async () => {
     try {
@@ -358,6 +393,9 @@ export const useBible = () => {
   // ─── Core verse playback loop ───────────────────────────────────────────────
   const speakVerseAtIndex = useCallback(
     async (index: number, fromUserNav = false) => {
+      // Capture request ID at start - used to invalidate stale callbacks
+      const requestId = _requestIdRef.current;
+      
       const playlist = audioPlaylistRef.current;
       if (!playlist.length || index < 0 || index >= playlist.length) {
         ttsActiveRef.current = false;
@@ -374,6 +412,9 @@ export const useBible = () => {
       }
 
       const verse = playlist[index];
+
+      // Update target to track this verse - used to prevent stale callbacks
+      _targetVerseIndexRef.current = index;
 
       // Update the highlight and audio-bar index IMMEDIATELY so the UI
       // stays in sync with what we're about to speak — no need to wait for
@@ -406,37 +447,45 @@ export const useBible = () => {
       //
       // isPausedRef = true  →  user paused; do NOT advance, wait for resume()
       // stopRequestedRef = true  →  hard stop; clean up and exit
-      // _userNavigatingRef = true  →  user pressed next/prev; do NOT auto-advance
+      // _targetVerseIndexRef tracks the target - if we auto-advance past it, stop
       //
       if (isPausedRef.current) return;
       if (stopRequestedRef.current) return;
       
-      const behaviour = afterPlayBehaviourRef.current;
-      
-      if (_userNavigatingRef.current) {
-        _userNavigatingRef.current = false;
-        if (behaviour !== 'continue') return;
+      // Verify we're still on the target verse (not superseded by user navigation)
+      // Also verify request ID hasn't changed (stale callback protection)
+      if (_targetVerseIndexRef.current !== index || requestId !== _requestIdRef.current) {
+        return;
       }
+
+      const behaviour = afterPlayBehaviourRef.current;
+      const wasUserNavigating = _userNavigatingRef.current;
+      _userNavigatingRef.current = false;
+      
+      // If user manually navigated (pressed next/prev), DON'T return early
+      // Instead, continue with normal auto-advance logic based on behaviour
+      // The key is that target was already set correctly before TTS started
+      
       const next = index + 1;
 
+      // For repeat_one, always repeat the current verse
       if (behaviour === 'repeat_one') {
-        if (_userNavigatingRef.current) return;
         speakVerseAtIndex(index, false);
-      } else if (behaviour === 'repeat' && next >= playlist.length) {
-        if (_userNavigatingRef.current) return;
+      } 
+      // For repeat, wrap to beginning at end of playlist
+      else if (behaviour === 'repeat' && next >= playlist.length) {
+        _targetVerseIndexRef.current = 0;
         speakVerseAtIndex(0, false);
-      } else if (next < playlist.length) {
-        if (_userNavigatingRef.current) return;
+      }
+      // For continue, auto-advance to next verse
+      else if (behaviour === 'continue' && next < playlist.length) {
+        // Don't set _targetVerseIndexRef here - speakVerseAtIndex will set it
+        // This prevents double-setting and ensures proper sequencing
         speakVerseAtIndex(next, false);
-      } else {
-        // Playlist exhausted - close audio bar and reset state
+      }
+      // For stop or end of playlist, stop playback
+      else {
         ttsActiveRef.current = false;
-        setShowAudioPlayer(false);
-        setActiveAudioVerse(null);
-        setAudioPlaylist([]);
-        setAudioVerseIndex(0);
-        audioPlaylistRef.current = [];
-        audioVerseIndexRef.current = 0;
       }
     },
     [],
@@ -446,6 +495,11 @@ export const useBible = () => {
   const _startPlayback = useCallback(
     async (playlist: Array<{ num: number; text: string }>, startIndex = 0) => {
       if (!playlist.length) return;
+
+      // Reset target and request ID for fresh playback
+      _targetVerseIndexRef.current = startIndex;
+      _userNavigatingRef.current = false;
+      _requestIdRef.current = 0;
 
       isPausedRef.current = false;
       stopRequestedRef.current = true;
@@ -495,6 +549,9 @@ export const useBible = () => {
   );
 
   const handleAudioStop = useCallback(async () => {
+    _targetVerseIndexRef.current = -1;
+    _userNavigatingRef.current = false;
+    _requestIdRef.current = 0;
     isPausedRef.current = false;
     stopRequestedRef.current = true;
     ttsActiveRef.current = false;
@@ -577,20 +634,21 @@ export const useBible = () => {
 
   // ── Skip next / previous ────────────────────────────────────────────────────
   const goToNextSelectedVerse = useCallback(async () => {
-    _userNavigatingRef.current = true;
-
-    const savedAfterPlay = afterPlayBehaviourRef.current;
-    afterPlayBehaviourRef.current = 'continue';
-
-    // Use the live audioVerseIndexRef — it's updated synchronously in speakVerseAtIndex
     const currentIdx = audioVerseIndexRef.current;
     const playlist = audioPlaylistRef.current;
     const next = currentIdx + 1;
-    if (next >= playlist.length) {
-      afterPlayBehaviourRef.current = savedAfterPlay;
-      _userNavigatingRef.current = false;
-      return;
-    }
+    
+    if (next >= playlist.length) return;
+    
+    // Invalidate any in-flight requests
+    ++_requestIdRef.current;
+    
+    // Store original behavior and update target
+    _originalAfterPlayRef.current = afterPlayBehaviourRef.current;
+    _targetVerseIndexRef.current = next;
+    _userNavigatingRef.current = true;
+    afterPlayBehaviourRef.current = 'continue';
+
     isPausedRef.current = false;
     stopRequestedRef.current = true;
     ttsActiveRef.current = true;
@@ -598,24 +656,26 @@ export const useBible = () => {
     stopRequestedRef.current = false;
     setIsAudioPaused(false);
     speakVerseAtIndex(next, true).finally(() => {
-      afterPlayBehaviourRef.current = savedAfterPlay;
-      _userNavigatingRef.current = false;
+      afterPlayBehaviourRef.current = _originalAfterPlayRef.current;
     });
   }, [speakVerseAtIndex]);
 
   const goToPreviousSelectedVerse = useCallback(async () => {
-    _userNavigatingRef.current = true;
-
-    const savedAfterPlay = afterPlayBehaviourRef.current;
-    afterPlayBehaviourRef.current = 'stop';
-
     const currentIdx = audioVerseIndexRef.current;
+    const playlist = audioPlaylistRef.current;
     const prev = currentIdx - 1;
-    if (prev < 0) {
-      afterPlayBehaviourRef.current = savedAfterPlay;
-      _userNavigatingRef.current = false;
-      return;
-    }
+    
+    if (prev < 0) return;
+    
+    // Invalidate any in-flight requests
+    ++_requestIdRef.current;
+    
+    // Store original behavior and update target
+    _originalAfterPlayRef.current = afterPlayBehaviourRef.current;
+    _targetVerseIndexRef.current = prev;
+    _userNavigatingRef.current = true;
+    afterPlayBehaviourRef.current = 'continue';
+
     isPausedRef.current = false;
     stopRequestedRef.current = true;
     ttsActiveRef.current = true;
@@ -623,8 +683,7 @@ export const useBible = () => {
     stopRequestedRef.current = false;
     setIsAudioPaused(false);
     speakVerseAtIndex(prev, true).finally(() => {
-      afterPlayBehaviourRef.current = savedAfterPlay;
-      _userNavigatingRef.current = false;
+      afterPlayBehaviourRef.current = _originalAfterPlayRef.current;
     });
   }, [speakVerseAtIndex]);
 
@@ -1110,6 +1169,7 @@ export const useBible = () => {
     copyVerses,
     goToChapter,
     handleVersionChange,
+    getVerseTextAsync,
     getverseExplanation,
     clearVerseExplanationForVerse,
     activeVerseWordMap,

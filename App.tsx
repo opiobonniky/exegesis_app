@@ -5,8 +5,9 @@ import { AppProvider } from './src/common/AppContext';
 import { initializeNotifications } from './src/utilits/firebaseService';
 import { initBibleTTS } from './src/utilits/bibleTTS';
 import SocketProvider from './src/services/socket/SocketProvider';
-import Toast from 'react-native-toast-message';
 import { toastConfig } from './src/helpers/Toash.helper';
+import { LanguageProvider } from './src/component/LanguageProvider';
+import Toast from 'react-native-toast-message';
 
 const App = () => {
   useEffect(() => {
@@ -32,17 +33,19 @@ const App = () => {
   }, []);
 
   return (
-    <AppProvider>
-      <View style={styles.root}>
-        <SocketProvider
-          topics={['notifications', 'daily-verse']}
-          debug={__DEV__}
-        >
-          <AppNavigation />
-        </SocketProvider>
-        <Toast config={toastConfig} />
-      </View>
-    </AppProvider>
+    <LanguageProvider>
+      <AppProvider>
+        <View style={styles.root}>
+          <SocketProvider
+            topics={['notifications', 'daily-verse']}
+            debug={__DEV__}
+          >
+            <AppNavigation />
+          </SocketProvider>
+          <Toast config={toastConfig} />
+        </View>
+      </AppProvider>
+    </LanguageProvider>
   );
 };
 

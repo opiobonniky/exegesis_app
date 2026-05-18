@@ -1,0 +1,17 @@
+{
+  "forgotPassword.title": "Mot de passe oublié",
+  "forgotPassword.submit": "Envoyer",
+  "login.title": "Connexion",
+  "login.email": "Email",
+  "login.password": "Mot de passe",
+  "login.subtitle": "Connectez‑vous pour continuer votre parcours.",
+  "login.button": "Se connecter",
+  "login.google": "Continuer avec Google",
+  "register.title": "Inscription",
+  "register.username": "Nom d'utilisateur",
+  "register.email": "Email",
+  "register.password": "Mot de passe",
+  "register.button": "S'inscrire",
+  "welcome.title": "Bienvenue",
+  "welcome.message": "Bienvenue dans l'application!"
+}

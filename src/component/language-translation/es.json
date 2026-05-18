@@ -1,0 +1,17 @@
+{
+  "forgotPassword.title": "Olvidó la Contraseña",
+  "forgotPassword.submit": "Enviar",
+  "login.title": "Iniciar Sesión",
+  "login.email": "Correo Electrónico",
+  "login.password": "Contraseña",
+  "login.subtitle": "Inicia sesión para continuar tu viaje.",
+  "login.button": "Acceder",
+  "login.google": "Continuar con Google",
+  "register.title": "Registrarse",
+  "register.username": "Nombre de Usuario",
+  "register.email": "Correo Electrónico",
+  "register.password": "Contraseña",
+  "register.button": "Crear Cuenta",
+  "welcome.title": "Bienvenido",
+  "welcome.message": "¡Bienvenido a la aplicación!"
+}
