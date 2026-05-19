@@ -9,6 +9,7 @@ export type Translations = {
     subtitle: string;
     button: string;
     google: string;
+    lordsbook?: string;
     continuewith: string;
     terms: {
       byContinuing: string;
@@ -24,6 +25,16 @@ export type Translations = {
     title: string;
     submit: string;
     text: string;
+    resetTitle?: string;
+    resetSubtitle?: string;
+    passwordPlaceholder?: string;
+    confirmPasswordPlaceholder?: string;
+    confirmLabel?: string;
+    tip?: string;
+    resetAction?: string;
+    helpPrefix?: string;
+    contact?: string;
+    emailPlaceholder?: string;
   };
   createAccount: {
     text: string;
@@ -34,19 +45,44 @@ export type Translations = {
     invalidEmail: string;
     passwordRequired: string;
     passwordMin: string;
+    usernameRequired?: string;
+    usernameMin?: string;
+    usernameFormat?: string;
+    firstNameRequired?: string;
+    lastNameRequired?: string;
+    phoneInvalid?: string;
+    passwordRequirementsPrefix?: string;
+    missingPrefix?: string;
   };
-  // footer and terms moved into login container because they are screen-specific
-  register: {
-    title: string;
-    username: string;
-    email: string;
-    password: string;
-    button: string;
+  timePicker?: {
+    selectTime?: string;
+    hour?: string;
+    minute?: string;
+    cancel?: string;
+    confirm?: string;
+  };
+  passwords?: {
+    strong?: string;
+    medium?: string;
+    weak?: string;
+    match?: string;
+    notMatch?: string;
+  };
+  verify?: {
+    title?: string;
+    subtitle?: string;
+    button?: string;
+    didntReceive?: string;
+    resend?: string;
+    action?: string;
+    resendTimerPrefix?: string;
+    alreadyVerified?: string;
   };
   welcome: {
     title: string;
     message: string;
   };
+  appTagline?: string;
   [k: string]: any;
 };
 

@@ -42,8 +42,6 @@ import {
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
 
-const { width } = Dimensions.get('window');
-
 type Step = 'details' | 'verify';
 
 const STEPS: Step[] = ['details', 'verify'];
@@ -56,7 +54,8 @@ interface PasswordReq {
 
 export default function Register() {
   const { isDark, setUserInfo }: any = useContext(AppContext);
-  const { translations } = useLanguage();
+  const { translations, language } = useLanguage();
+  const isRtl = language === 'ar';
   const navigation = useNavigation<any>();
   const routes = useRoute();
   const {
@@ -91,13 +90,22 @@ export default function Register() {
     text: '',
     color: '',
   });
+  const defaultPwdReqs = (translations.register &&
+    (translations.register as any).pwdReqs) || [
+    'At least 8 characters',
+    'One lowercase letter',
+    'One uppercase letter',
+    'One number',
+    'One special character',
+  ];
+
   const [pwdReqs, setPwdReqs] = useState<PasswordReq[]>([
-    { label: 'At least 8 characters', met: false, test: p => p.length >= 8 },
-    { label: 'One lowercase letter', met: false, test: p => /[a-z]/.test(p) },
-    { label: 'One uppercase letter', met: false, test: p => /[A-Z]/.test(p) },
-    { label: 'One number', met: false, test: p => /[0-9]/.test(p) },
+    { label: defaultPwdReqs[0], met: false, test: p => p.length >= 8 },
+    { label: defaultPwdReqs[1], met: false, test: p => /[a-z]/.test(p) },
+    { label: defaultPwdReqs[2], met: false, test: p => /[A-Z]/.test(p) },
+    { label: defaultPwdReqs[3], met: false, test: p => /[0-9]/.test(p) },
     {
-      label: 'One special character',
+      label: defaultPwdReqs[4],
       met: false,
       test: p => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),
     },
@@ -162,10 +170,23 @@ export default function Register() {
     }
 
     if (score === 5)
-      setPwdStrength({ score, text: 'Strong', color: C.success });
+      setPwdStrength({
+        score,
+        text: translations.passwords?.strong || 'Strong',
+        color: C.success,
+      });
     else if (score >= 3)
-      setPwdStrength({ score, text: 'Medium', color: C.warning });
-    else setPwdStrength({ score, text: 'Weak', color: C.error });
+      setPwdStrength({
+        score,
+        text: translations.passwords?.medium || 'Medium',
+        color: C.warning,
+      });
+    else
+      setPwdStrength({
+        score,
+        text: translations.passwords?.weak || 'Weak',
+        color: C.error,
+      });
   };
 
   const formatTime = (seconds: number) => {
@@ -223,29 +244,44 @@ export default function Register() {
 
   const validateDetails = () => {
     const e: Record<string, string> = {};
-    if (!username.trim()) e.username = 'Username is required';
+    if (!username.trim())
+      e.username =
+        translations.validation?.usernameRequired || 'Username is required';
     else if (username.length < 3)
-      e.username = 'Username must be at least 3 characters';
+      e.username =
+        translations.validation?.usernameMin ||
+        'Username must be at least 3 characters';
     else if (!/^[a-zA-Z0-9_]+$/.test(username))
-      e.username = 'Only letters, numbers, underscores';
+      e.username =
+        translations.validation?.usernameFormat ||
+        'Only letters, numbers, underscores';
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      e.email = 'Valid email required';
-    if (!firstName.trim()) e.firstName = 'First name required';
-    if (!lastName.trim()) e.lastName = 'Last name required';
+      e.email = translations.validation?.invalidEmail || 'Valid email required';
+    if (!firstName.trim())
+      e.firstName =
+        translations.validation?.firstNameRequired || 'First name required';
+    if (!lastName.trim())
+      e.lastName =
+        translations.validation?.lastNameRequired || 'Last name required';
     if (!phoneNumber || !/^[0-9]{10,15}$/.test(phoneNumber))
-      e.phoneNumber = 'Phone must be 10-15 digits';
+      e.phoneNumber =
+        translations.validation?.phoneInvalid || 'Phone must be 10-15 digits';
     if (!password) {
       e.password = translations.validation.passwordRequired;
     } else {
       const unmet = pwdReqs.filter(r => !r.met);
       if (unmet.length > 0) {
-        e.password = `Missing: ${unmet[0].label}`;
+        const missingPrefix =
+          translations.validation?.missingPrefix || 'Missing:';
+        e.password = `${missingPrefix} ${unmet[0].label}`;
       }
     }
     if (!confirmPassword) {
-      e.confirmPassword = 'Please confirm password';
+      e.confirmPassword =
+        translations.validation?.confirmPassword || 'Please confirm password';
     } else if (password !== confirmPassword) {
-      e.confirmPassword = 'Passwords do not match';
+      e.confirmPassword =
+        translations.passwords?.notMatch || 'Passwords do not match';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -381,7 +417,13 @@ export default function Register() {
     }
   };
 
-  const genders = ['Male', 'Female', 'Not Specified'];
+  const genderOptions: string[] = (translations.register &&
+    (translations.register as any).genders) || [
+    'Male',
+    'Female',
+    'Not Specified',
+  ];
+  const genders = genderOptions;
 
   return (
     <View
@@ -392,6 +434,8 @@ export default function Register() {
         translucent
         backgroundColor="transparent"
       />
+
+      {/* language selection removed from Register - language is controlled on Login */}
 
       <KeyboardAwareness>
         <ScrollView
@@ -422,12 +466,16 @@ export default function Register() {
 
                 <View style={s.titleSection}>
                   <Text style={[s.title, { color: C.text }]}>
-                    {googleSignUp ? 'Complete Registration' : 'Create Account'}
+                    {googleSignUp
+                      ? translations.register?.title || 'Complete Registration'
+                      : translations.register?.title || 'Create Account'}
                   </Text>
                   <Text style={[s.subtitle, { color: C.muted }]}>
                     {googleSignUp
-                      ? 'Set up your password to complete sign-up'
-                      : 'Fill in your details to get started'}
+                      ? translations.register?.googleComplete ||
+                        'Set up your password to complete sign-up'
+                      : translations.register?.subtitle ||
+                        'Fill in your details to get started'}
                   </Text>
                 </View>
 
@@ -435,13 +483,20 @@ export default function Register() {
                   style={[s.formCard, { backgroundColor: C.cardBackground }]}
                 >
                   <View style={s.form}>
-                    <View style={s.nameRow}>
+                    <View
+                      style={[
+                        s.nameRow,
+                        isRtl ? { flexDirection: 'row-reverse' } : {},
+                      ]}
+                    >
                       <View style={s.halfField}>
                         <Text style={[s.fieldLabel, { color: C.muted }]}>
-                          FIRST NAME
+                          {translations.register?.firstName || 'FIRST NAME'}
                         </Text>
                         <InputField
-                          placeholder="First"
+                          placeholder={
+                            translations.register?.firstPlaceholder || 'First'
+                          }
                           value={firstName}
                           onChangeText={t => {
                             setFirstName(t);
@@ -450,14 +505,17 @@ export default function Register() {
                           }}
                           error={errors.firstName}
                           leftIcon={<User size={18} color={C.muted} />}
+                          textAlign={isRtl ? 'right' : 'left'}
                         />
                       </View>
                       <View style={s.halfField}>
                         <Text style={[s.fieldLabel, { color: C.muted }]}>
-                          LAST NAME
+                          {translations.register?.lastName || 'LAST NAME'}
                         </Text>
                         <InputField
-                          placeholder="Last"
+                          placeholder={
+                            translations.register?.lastPlaceholder || 'Last'
+                          }
                           value={lastName}
                           onChangeText={t => {
                             setLastName(t);
@@ -466,16 +524,20 @@ export default function Register() {
                           }}
                           error={errors.lastName}
                           leftIcon={<User size={18} color={C.muted} />}
+                          textAlign={isRtl ? 'right' : 'left'}
                         />
                       </View>
                     </View>
 
                     <View style={s.fieldWrap}>
                       <Text style={[s.fieldLabel, { color: C.muted }]}>
-                        EMAIL
+                        {translations.register?.email || 'EMAIL'}
                       </Text>
                       <InputField
-                        placeholder="you@example.com"
+                        placeholder={
+                          translations.register?.emailPlaceholder ||
+                          'you@example.com'
+                        }
                         value={email}
                         onChangeText={t => {
                           setEmail(t);
@@ -486,15 +548,19 @@ export default function Register() {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         leftIcon={<Mail size={18} color={C.muted} />}
+                        textAlign={isRtl ? 'right' : 'left'}
                       />
                     </View>
 
                     <View style={s.fieldWrap}>
                       <Text style={[s.fieldLabel, { color: C.muted }]}>
-                        USERNAME
+                        {translations.register?.username || 'USERNAME'}
                       </Text>
                       <InputField
-                        placeholder="Choose username"
+                        placeholder={
+                          translations.register?.usernamePlaceholder ||
+                          'Choose username'
+                        }
                         value={username}
                         onChangeText={t => {
                           setUsername(t.replace(/\s/g, ''));
@@ -504,15 +570,19 @@ export default function Register() {
                         error={errors.username}
                         autoCapitalize="none"
                         leftIcon={<User size={18} color={C.muted} />}
+                        textAlign={isRtl ? 'right' : 'left'}
                       />
                     </View>
 
                     <View style={s.fieldWrap}>
                       <Text style={[s.fieldLabel, { color: C.muted }]}>
-                        PHONE
+                        {translations.register?.phone || 'PHONE'}
                       </Text>
                       <InputField
-                        placeholder="+1 234 567 8900"
+                        placeholder={
+                          translations.register?.phonePlaceholder ||
+                          '+1 234 567 8900'
+                        }
                         value={phoneNumber}
                         onChangeText={t => {
                           setPhoneNumber(t);
@@ -522,12 +592,13 @@ export default function Register() {
                         error={errors.phoneNumber}
                         keyboardType="phone-pad"
                         leftIcon={<PhoneCall size={18} color={C.muted} />}
+                        textAlign={isRtl ? 'right' : 'left'}
                       />
                     </View>
 
                     <View style={s.fieldWrap}>
                       <Text style={[s.fieldLabel, { color: C.muted }]}>
-                        GENDER
+                        {translations.register?.gender || 'GENDER'}
                       </Text>
                       <TouchableOpacity
                         onPress={() => setGenderDropdown(!genderDropdown)}
@@ -575,22 +646,30 @@ export default function Register() {
 
                     <View style={s.fieldWrap}>
                       <Text style={[s.fieldLabel, { color: C.muted }]}>
-                        DATE OF BIRTH (Optional)
+                        {translations.register?.dateOfBirth ||
+                          'DATE OF BIRTH (Optional)'}
                       </Text>
                       <DatePickerInput
                         label=""
-                        placeholder="Select date"
+                        placeholder={
+                          translations.register?.datePlaceholder ||
+                          'Select date'
+                        }
                         value={dateOfBirth}
                         onChangeDate={setDateOfBirth}
+                        textAlign={isRtl ? 'right' : 'left'}
                       />
                     </View>
 
                     <View style={s.fieldWrap}>
                       <Text style={[s.fieldLabel, { color: C.muted }]}>
-                        PASSWORD
+                        {translations.register?.password || 'PASSWORD'}
                       </Text>
                       <InputField
-                        placeholder="Create password"
+                        placeholder={
+                          translations.register?.passwordPlaceholder ||
+                          'Create password'
+                        }
                         value={password}
                         onChangeText={t => {
                           checkPwdStrength(t);
@@ -601,6 +680,7 @@ export default function Register() {
                         error={errors.password}
                         secure
                         leftIcon={<Lock size={18} color={C.muted} />}
+                        textAlign={isRtl ? 'right' : 'left'}
                       />
                       {password.length > 0 && (
                         <View style={s.strengthRow}>
@@ -636,10 +716,14 @@ export default function Register() {
 
                     <View style={s.fieldWrap}>
                       <Text style={[s.fieldLabel, { color: C.muted }]}>
-                        CONFIRM PASSWORD
+                        {translations.register?.confirmPassword ||
+                          'CONFIRM PASSWORD'}
                       </Text>
                       <InputField
-                        placeholder="Repeat password"
+                        placeholder={
+                          translations.register?.confirmPasswordPlaceholder ||
+                          'Repeat password'
+                        }
                         value={confirmPassword}
                         onChangeText={t => {
                           setConfirmPassword(t);
@@ -649,6 +733,7 @@ export default function Register() {
                         error={errors.confirmPassword}
                         secure
                         leftIcon={<Lock size={18} color={C.muted} />}
+                        textAlign={isRtl ? 'right' : 'left'}
                       />
                       {confirmPassword.length > 0 && (
                         <View style={s.matchRow}>
@@ -656,14 +741,16 @@ export default function Register() {
                             <>
                               <Check size={14} color={C.success} />
                               <Text style={[s.matchText, { color: C.success }]}>
-                                Passwords match
+                                {translations.passwords?.match ||
+                                  'Passwords match'}
                               </Text>
                             </>
                           ) : (
                             <>
                               <X size={14} color={C.error} />
                               <Text style={[s.matchText, { color: C.error }]}>
-                                Passwords do not match
+                                {translations.passwords?.notMatch ||
+                                  'Passwords do not match'}
                               </Text>
                             </>
                           )}
@@ -685,7 +772,9 @@ export default function Register() {
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
                         <>
-                          <Text style={s.submitButtonText}>Create Account</Text>
+                          <Text style={s.submitButtonText}>
+                            {translations.register?.button || 'Create Account'}
+                          </Text>
                           <ArrowRight size={18} color="#FFFFFF" />
                         </>
                       )}
@@ -695,13 +784,14 @@ export default function Register() {
 
                 <View style={s.footer}>
                   <Text style={[s.footerText, { color: C.muted }]}>
-                    Already have an account?{' '}
+                    {translations.footer?.alreadyHave ||
+                      'Already have an account?'}{' '}
                   </Text>
                   <TouchableOpacity
                     onPress={() => navigation.navigate(route.login)}
                   >
                     <Text style={[s.footerLink, { color: C.primary }]}>
-                      Sign In
+                      {translations.footer?.signIn || 'Sign In'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -729,10 +819,12 @@ export default function Register() {
                       <Mail size={28} color="#FFFFFF" />
                     </View>
                     <Text style={[s.verifyTitle, { color: C.text }]}>
-                      Verify Your Email
+                      {translations.verify?.title || 'Verify Your Email'}
                     </Text>
                     <Text style={[s.verifySubtitle, { color: C.muted }]}>
-                      We've sent a 6-digit code to{'\n'}
+                      {translations.verify?.subtitle ||
+                        "We've sent a 6-digit code to"}
+                      {'\n'}
                       <Text style={{ color: C.primary, fontWeight: '600' }}>
                         {email}
                       </Text>
@@ -767,7 +859,8 @@ export default function Register() {
                   <View style={s.resendContainer}>
                     {!canResend ? (
                       <Text style={[s.resendTimer, { color: C.primary }]}>
-                        Resend in {formatTime(resendTimer)}
+                        {translations.verify?.resendTimerPrefix || 'Resend in'}{' '}
+                        {formatTime(resendTimer)}
                       </Text>
                     ) : (
                       <TouchableOpacity
@@ -776,10 +869,11 @@ export default function Register() {
                         disabled={loading}
                       >
                         <Text style={[s.resendText, { color: C.muted }]}>
-                          Didn't receive it?{' '}
+                          {translations.verify?.didntReceive ||
+                            "Didn't receive it?"}{' '}
                         </Text>
                         <Text style={{ color: C.primary, fontWeight: '600' }}>
-                          Resend
+                          {translations.verify?.resend || 'Resend'}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -799,7 +893,9 @@ export default function Register() {
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                       <>
-                        <Text style={s.submitButtonText}>Verify Email</Text>
+                        <Text style={s.submitButtonText}>
+                          {translations.verify?.button || 'Verify Email'}
+                        </Text>
                         <ArrowRight size={18} color="#FFFFFF" />
                       </>
                     )}
@@ -810,7 +906,8 @@ export default function Register() {
                     onPress={() => navigation.navigate(route.login)}
                   >
                     <Text style={[s.footerLink, { color: C.primary }]}>
-                      Already verified? Sign In
+                      {translations.verify?.alreadyVerified ||
+                        'Already verified? Sign In'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1013,6 +1110,7 @@ const s = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: SPACING.lg,
   },
+
   verifyContainer: {
     flex: 1,
     justifyContent: 'center',

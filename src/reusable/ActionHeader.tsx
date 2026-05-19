@@ -12,6 +12,7 @@ import React, { useContext, useEffect, useRef } from 'react';
 import { FONT_SIZES, getColors, SPACING } from '../constants/theme';
 import LinearGradient from 'react-native-linear-gradient';
 import { ChevronLeft, Moon, Sun, User } from 'lucide-react-native';
+import { useLanguage } from '../component/language-translation/LanguageProvider';
 import { AppContext } from '../common/AppContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -57,42 +58,45 @@ const LogoLockup = ({
 }: {
   compact?: boolean;
   isLight?: boolean;
-}) => (
-  <View style={logo.wrap}>
-    <Image
-      source={require('../assets/logos/exegesis-logo.png')}
-      style={compact ? logo.imageCompact : logo.image}
-      resizeMode="contain"
-    />
-    <View
-      style={[
-        logo.divider,
-        compact && { height: 32 },
-        isLight && { backgroundColor: 'rgba(0,0,0,0.1)' },
-      ]}
-    />
-    <View style={logo.textBlock}>
-      <Text
+}) => {
+  const { translations } = useLanguage();
+  return (
+    <View style={logo.wrap}>
+      <Image
+        source={require('../assets/logos/exegesis-logo.png')}
+        style={compact ? logo.imageCompact : logo.image}
+        resizeMode="contain"
+      />
+      <View
         style={[
-          logo.appNameBold,
-          compact && { fontSize: 13, lineHeight: 17 },
-          isLight && { color: '#0f2744' },
+          logo.divider,
+          compact && { height: 32 },
+          isLight && { backgroundColor: 'rgba(0,0,0,0.1)' },
         ]}
-      >
-        Exegesis
-      </Text>
-      <Text
-        style={[
-          logo.tagline,
-          compact && { fontSize: 8 },
-          isLight && { color: '#F0B429' },
-        ]}
-      >
-        Your Daily Spiritual Companion
-      </Text>
+      />
+      <View style={logo.textBlock}>
+        <Text
+          style={[
+            logo.appNameBold,
+            compact && { fontSize: 13, lineHeight: 17 },
+            isLight && { color: '#0f2744' },
+          ]}
+        >
+          Exegesis
+        </Text>
+        <Text
+          style={[
+            logo.tagline,
+            compact && { fontSize: 8 },
+            isLight && { color: '#F0B429' },
+          ]}
+        >
+          {translations.appTagline || 'Your Daily Spiritual Companion'}
+        </Text>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 const logo = StyleSheet.create({
   wrap: {
@@ -199,11 +203,11 @@ const ActionHeader = (props: Props) => {
             end={{ x: 1, y: 0 }}
             style={styles.container}
           >
-             <View style={styles.shimmerLine} />
-             <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
-               <View style={{ paddingTop: 6 }}>
-                 <LogoLockup compact isLight={false} />
-               </View>
+            <View style={styles.shimmerLine} />
+            <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
+              <View style={{ paddingTop: 6 }}>
+                <LogoLockup compact isLight={false} />
+              </View>
               <View style={styles.homeControls}>
                 <TouchableOpacity
                   style={styles.iconBtn}
@@ -247,19 +251,19 @@ const ActionHeader = (props: Props) => {
             </Animated.View>
           </LinearGradient>
         ) : (
-           <View
-             style={[styles.container, { backgroundColor: COLORS.background }]}
-           >
-             <View
-               style={[
-                 styles.shimmerLine,
-                 { backgroundColor: COLORS.primary + '20' },
-               ]}
-             />
-             <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
-               <View style={{ paddingTop: 6 }}>
-                 <LogoLockup compact isLight={true} />
-               </View>
+          <View
+            style={[styles.container, { backgroundColor: COLORS.background }]}
+          >
+            <View
+              style={[
+                styles.shimmerLine,
+                { backgroundColor: COLORS.primary + '20' },
+              ]}
+            />
+            <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
+              <View style={{ paddingTop: 6 }}>
+                <LogoLockup compact isLight={true} />
+              </View>
               <View style={styles.homeControls}>
                 <TouchableOpacity
                   style={[

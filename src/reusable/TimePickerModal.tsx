@@ -10,13 +10,14 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import { X } from 'lucide-react-native';
+import { useLanguage } from '../component/language-translation/LanguageProvider';
 import {
   getColors,
   SPACING,
   FONT_SIZES,
   BORDER_RADIUS,
 } from '../constants/theme';
+import { X } from 'lucide-react-native';
 
 interface TimePickerModalProps {
   visible: boolean;
@@ -35,6 +36,7 @@ function TimePickerModalComponent({
   onCancel,
   isDark = false,
 }: TimePickerModalProps) {
+  const { translations } = useLanguage();
   const COLORS = getColors(isDark);
 
   const [hour, setHour] = useState(initialHour);
@@ -102,7 +104,7 @@ function TimePickerModalComponent({
         >
           <View style={styles.header}>
             <Text style={[styles.title, { color: COLORS.text }]}>
-              Select Time
+              {translations.timePicker?.selectTime || 'Select Time'}
             </Text>
             <TouchableOpacity onPress={onCancel} hitSlop={12}>
               <X size={24} color={COLORS.muted} />
@@ -112,7 +114,7 @@ function TimePickerModalComponent({
           <View style={styles.pickerRow}>
             <View style={styles.pickerColumn}>
               <Text style={[styles.columnLabel, { color: COLORS.muted }]}>
-                Hour
+                {translations.timePicker?.hour || 'Hour'}
               </Text>
               <ScrollView
                 ref={hourScrollRef}
@@ -148,7 +150,7 @@ function TimePickerModalComponent({
 
             <View style={styles.pickerColumn}>
               <Text style={[styles.columnLabel, { color: COLORS.muted }]}>
-                Minute
+                {translations.timePicker?.minute || 'Minute'}
               </Text>
               <ScrollView
                 ref={minuteScrollRef}
@@ -189,7 +191,7 @@ function TimePickerModalComponent({
               onPress={onCancel}
             >
               <Text style={[styles.btnText, { color: COLORS.text }]}>
-                Cancel
+                {translations.timePicker?.cancel || 'Cancel'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -201,7 +203,7 @@ function TimePickerModalComponent({
               onPress={handleConfirm}
             >
               <Text style={[styles.btnText, { color: COLORS.white }]}>
-                Confirm
+                {translations.timePicker?.confirm || 'Confirm'}
               </Text>
             </TouchableOpacity>
           </View>

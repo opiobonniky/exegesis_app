@@ -31,16 +31,28 @@ import {
 import GoogleIcon from '../../assets/icons/google-icon.svg';
 
 // ─── Password requirement definition ─────────────────────────────────────────
-const REQUIREMENTS = [
-  { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
-  { label: 'Lowercase letter', test: (p: string) => /[a-z]/.test(p) },
-  { label: 'Uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
-  { label: 'Number', test: (p: string) => /[0-9]/.test(p) },
-  {
-    label: 'Special character',
-    test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),
-  },
-];
+// Try to read requirement labels from translations when available; fallback to English
+const getRequirements = (translations?: any) => {
+  const labels = (translations &&
+    translations.register &&
+    (translations.register as any).pwdReqs) || [
+    'At least 8 characters',
+    'Lowercase letter',
+    'Uppercase letter',
+    'Number',
+    'Special character',
+  ];
+  return [
+    { label: labels[0], test: (p: string) => p.length >= 8 },
+    { label: labels[1], test: (p: string) => /[a-z]/.test(p) },
+    { label: labels[2], test: (p: string) => /[A-Z]/.test(p) },
+    { label: labels[3], test: (p: string) => /[0-9]/.test(p) },
+    {
+      label: labels[4],
+      test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),
+    },
+  ];
+};
 
 // ─── Requirement row ──────────────────────────────────────────────────────────
 const RequirementRow = ({
@@ -86,7 +98,12 @@ const GoogleRegister: React.FC = () => {
   const { googleId, email, firstName, lastName, photoUrl }: any =
     routes.params || {};
 
+  const { translations } = useLanguage
+    ? useLanguage()
+    : ({ translations: undefined } as any);
   const C = getColors(isDark);
+  // build localized requirement labels (if available)
+  const REQUIREMENTS = getRequirements(translations);
 
   // ── Animations ───────────────────────────────────────────────────────────
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -160,7 +177,10 @@ const GoogleRegister: React.FC = () => {
       return;
     }
     if (!passwordsMatch) {
-      showToast('error', 'Passwords do not match');
+      showToast(
+        'error',
+        translations?.passwords?.notMatch || 'Passwords do not match',
+      );
       return;
     }
 
@@ -259,10 +279,13 @@ const GoogleRegister: React.FC = () => {
 
             {/* ── Header ──────────────────────────────────────────────── */}
             <Text style={[s.welcomeText, { color: C.text }]}>
-              Welcome, {firstName}!
+              {translations?.welcome?.title
+                ? `${translations.welcome.title}, ${firstName}!`
+                : `Welcome, ${firstName}!`}
             </Text>
             <Text style={[s.subText, { color: C.muted }]}>
-              Set a password to complete your account
+              {translations?.register?.googleComplete ||
+                'Set a password to complete your account'}
             </Text>
 
             {/* ── Email card ───────────────────────────────────────────── */}
@@ -280,7 +303,9 @@ const GoogleRegister: React.FC = () => {
 
             {/* ── Username (read-only info) ────────────────────────────── */}
             <View style={s.field}>
-              <Text style={[s.label, { color: C.text }]}>Username</Text>
+              <Text style={[s.label, { color: C.text }]}>
+                {translations?.register?.username || 'Username'}
+              </Text>
               <View
                 style={[
                   s.inputRow,
@@ -300,7 +325,9 @@ const GoogleRegister: React.FC = () => {
 
             {/* ── Password ─────────────────────────────────────────────── */}
             <View style={s.field}>
-              <Text style={[s.label, { color: C.text }]}>Create Password</Text>
+              <Text style={[s.label, { color: C.text }]}>
+                {translations?.register?.password || 'Create Password'}
+              </Text>
               <View
                 style={[
                   s.inputRow,
@@ -313,7 +340,10 @@ const GoogleRegister: React.FC = () => {
                 <Lock size={17} color={C.muted} />
                 <TextInput
                   style={[s.input, { color: C.text }]}
-                  placeholder="Enter password"
+                  placeholder={
+                    translations?.register?.passwordPlaceholder ||
+                    'Enter password'
+                  }
                   placeholderTextColor={C.muted}
                   value={password}
                   onChangeText={setPassword}
@@ -400,7 +430,9 @@ const GoogleRegister: React.FC = () => {
 
             {/* ── Confirm Password ─────────────────────────────────────── */}
             <View style={s.field}>
-              <Text style={[s.label, { color: C.text }]}>Confirm Password</Text>
+              <Text style={[s.label, { color: C.text }]}>
+                {translations?.register?.confirmPassword || 'Confirm Password'}
+              </Text>
               <View
                 style={[
                   s.inputRow,
@@ -418,7 +450,10 @@ const GoogleRegister: React.FC = () => {
                 <Lock size={17} color={C.muted} />
                 <TextInput
                   style={[s.input, { color: C.text }]}
-                  placeholder="Confirm password"
+                  placeholder={
+                    translations?.register?.confirmPasswordPlaceholder ||
+                    'Confirm password'
+                  }
                   placeholderTextColor={C.muted}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -445,8 +480,9 @@ const GoogleRegister: React.FC = () => {
                   ]}
                 >
                   {passwordsMatch
-                    ? '✓ Passwords match'
-                    : 'Passwords do not match'}
+                    ? translations?.passwords?.match || '✓ Passwords match'
+                    : translations?.passwords?.notMatch ||
+                      'Passwords do not match'}
                 </Text>
               )}
             </View>
@@ -466,7 +502,9 @@ const GoogleRegister: React.FC = () => {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Text style={s.submitText}>Create Account</Text>
+                  <Text style={s.submitText}>
+                    {translations?.register?.button || 'Create Account'}
+                  </Text>
                   <ArrowRight size={18} color="#FFFFFF" />
                 </>
               )}
@@ -479,7 +517,8 @@ const GoogleRegister: React.FC = () => {
               activeOpacity={0.7}
             >
               <Text style={[s.backText, { color: C.muted }]}>
-                Use a different account
+                {translations?.register?.useDifferentAccount ||
+                  'Use a different account'}
               </Text>
             </TouchableOpacity>
           </Animated.View>

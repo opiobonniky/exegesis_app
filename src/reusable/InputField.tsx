@@ -16,6 +16,7 @@ type Props = {
   disable?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  textAlign?: 'left' | 'right' | 'center';
 };
 
 export default function InputField({
@@ -30,6 +31,7 @@ export default function InputField({
   disable = false,
   leftIcon,
   rightIcon,
+  textAlign = 'left',
   ...props
 }: Props) {
   const [showPassword, setShowPassword] = useState(false);
@@ -69,6 +71,7 @@ export default function InputField({
             paddingHorizontal: leftIcon ? 0 : 12,
             paddingVertical: 12,
             color: COLORS.text,
+            textAlign: textAlign,
           }}
           value={value}
           onChangeText={onChangeText}

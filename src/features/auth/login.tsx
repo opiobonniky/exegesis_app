@@ -24,7 +24,7 @@ import { testConnection } from '../../services/api';
 import { AppContext } from '../../common/AppContext';
 import KeyboardAwareness from '../../reusable/KeyboardAwareness';
 // helpers
-import { Eye, EyeOff, Mail, Lock, Globe } from 'lucide-react-native';
+import { Eye, EyeOff, Mail, Lock, Globe, X } from 'lucide-react-native';
 import GoogleIcon from '../../assets/icons/google-icon.svg'; // ← NEW
 const { width } = Dimensions.get('window');
 
@@ -60,6 +60,7 @@ const Login = () => {
 
   // ⚠️  Update this path to your actual logo asset
   const logo = require('../../assets/logos/exegesis_bg_rm.png');
+  const book = require('../../assets/logos/lordsbook.png');
 
   const appContext = useContext(AppContext);
   const navigation = useNavigation<any>();
@@ -241,7 +242,7 @@ const Login = () => {
                     style={s.modalClose}
                     onPress={() => setShowLangModal(false)}
                   >
-                    <Text style={{ color: C.primary }}>Close</Text>
+                    <X color={C.primary} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -439,8 +440,13 @@ const Login = () => {
               onPress={() => navigation.navigate(route.forgotPassword)}
               activeOpacity={0.7}
             >
-              <Text style={[s.forgotText, { color: C.primary }]}>
-                {translations.forgotPassword.text}
+              <Text
+                style={[
+                  s.forgotText,
+                  { color: C.primary, textDecorationLine: 'underline' },
+                ]}
+              >
+                {translations.forgotPassword?.title || 'Forgot password?'}
               </Text>
             </TouchableOpacity>
 
@@ -475,12 +481,12 @@ const Login = () => {
             <TouchableOpacity
               style={[
                 s.createAccountBtn,
-                { borderColor: C.border, backgroundColor: C.surface },
+                { borderColor: C.primary, backgroundColor: C.accent + '10' },
               ]}
               onPress={() => navigation.navigate(route.register)}
               activeOpacity={0.82}
             >
-              <Text style={[s.createAccountText, { color: C.text }]}>
+              <Text style={[s.createAccountText, { color: C.primary }]}>
                 {translations.createAccount.text}
               </Text>
             </TouchableOpacity>
@@ -524,6 +530,28 @@ const Login = () => {
                   </Text>
                 </>
               )}
+            </TouchableOpacity>
+
+            {/* Lordsbook Login button */}
+            <TouchableOpacity
+              style={[
+                s.lordsBtn,
+                { borderColor: C.border, backgroundColor: C.surface },
+              ]}
+              onPress={() => navigation.navigate(route.bible)}
+              activeOpacity={0.82}
+            >
+              <View style={s.lordsIconContainer}>
+                <Image source={book} style={s.lordsIcon} resizeMode="contain" />
+              </View>
+              <Text
+                style={[
+                  s.lordsText,
+                  { color: C.text, textAlign: isRtl ? 'right' : 'center' },
+                ]}
+              >
+                {translations.login?.lordsbook || 'Continue with Lordsbook'}
+              </Text>
             </TouchableOpacity>
 
             {/* Terms and Conditions (moved into login container) */}
@@ -916,9 +944,37 @@ const s = StyleSheet.create({
     position: 'absolute',
     left: 30,
   },
-  googleText: {
+
+  lordsBtn: {
+    width: '100%',
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  lordsIconContainer: {
+    width: 24,
+    height: 24,
+    position: 'absolute',
+    left: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lordsText: {
+    flex: 1,
+    textAlign: 'center',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+
+  lordsIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 4,
   },
 
   // TERMS
@@ -943,6 +999,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
+    backgroundColor: 'transparent',
   },
   createAccountText: {
     fontSize: 15,

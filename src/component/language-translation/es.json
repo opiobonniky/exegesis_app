@@ -1,8 +1,20 @@
 {
   "forgotPassword": {
     "title": "Olvidó la Contraseña",
-    "submit": "Enviar",
-    "text": "¿Olvidó su contraseña?"
+    "submit": "Enviar código",
+    "text": "Ingrese su correo para recibir un código de verificación",
+    "emailPlaceholder": "tú@ejemplo.com",
+    "passwordLabel": "NUEVA CONTRASEÑA",
+    "eyebrow": "DIRECCIÓN DE CORREO",
+    "resetTitle": "Nueva contraseña",
+    "resetSubtitle": "Cree una nueva contraseña segura para su cuenta",
+    "passwordPlaceholder": "Ingrese nueva contraseña",
+    "confirmPasswordPlaceholder": "Repita nueva contraseña",
+    "confirmLabel": "CONFIRMAR CONTRASEÑA",
+    "tip": "Use letras, números y caracteres especiales para mayor seguridad",
+    "resetAction": "Restablecer contraseña",
+    "helpPrefix": "¿Necesita ayuda?",
+    "contact": "Contactar soporte"
   },
   "login": {
     "title": "Iniciar Sesión",
@@ -11,6 +23,7 @@
     "subtitle": "Inicia sesión para continuar tu viaje.",
     "button": "Acceder",
     "google": "Continuar con Google",
+    "lordsbook": "Continuar con Lordsbook",
     "continuewith": "o continuar con",
     "terms": {
       "byContinuing": "Al continuar, aceptas nuestros",
@@ -43,5 +56,68 @@
   "welcome": {
     "title": "Bienvenido",
     "message": "¡Bienvenido a la aplicación!"
-  }
+  },
+  "register": {
+    "title": "Registrarse",
+    "button": "Crear cuenta",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "phone": "Teléfono",
+    "gender": "Género",
+    "dateOfBirth": "Fecha de nacimiento (Opcional)",
+    "confirmPassword": "Confirmar contraseña",
+    "subtitle": "Complete sus datos para comenzar",
+    "googleComplete": "Establezca su contraseña para completar el registro",
+    "firstPlaceholder": "Nombre",
+    "lastPlaceholder": "Apellido",
+    "emailPlaceholder": "tú@ejemplo.com",
+    "usernamePlaceholder": "Elija un nombre de usuario",
+    "phonePlaceholder": "+1 234 567 8900",
+    "datePlaceholder": "Seleccionar fecha",
+    "passwordPlaceholder": "Crear contraseña",
+    "confirmPasswordPlaceholder": "Repetir contraseña",
+    "pwdReqs": [
+      "Al menos 8 caracteres",
+      "Una letra minúscula",
+      "Una letra mayúscula",
+      "Un número",
+      "Un carácter especial"
+    ],
+    "useDifferentAccount": "Usar otra cuenta"
+  },
+  "passwords": {
+    "strong": "Fuerte",
+    "medium": "Medio",
+    "weak": "Débil",
+    "match": "Las contraseñas coinciden",
+    "notMatch": "Las contraseñas no coinciden"
+  },
+  "footer": {
+    "alreadyHave": "¿Ya tienes una cuenta?",
+    "signIn": "Iniciar sesión"
+  },
+  "verify": {
+    "title": "Verifica tu correo",
+    "subtitle": "Hemos enviado un código de 6 dígitos a",
+    "button": "Verificar correo",
+    "didntReceive": "¿No lo recibiste?",
+    "resend": "Reenviar",
+    "action": "Verificar código",
+    "eyebrow": "VERIFICACIÓN",
+    "resendTimerPrefix": "Reenviar en",
+    "alreadyVerified": "¿Ya verificado? Iniciar sesión"
+  },
+  "steps": {
+    "email": { "eyebrow": "PASO 1 DE 3" },
+    "verify": { "eyebrow": "PASO 2 DE 3" },
+    "reset": { "eyebrow": "PASO 3 DE 3" }
+  },
+  "timePicker": {
+    "selectTime": "Seleccionar hora",
+    "hour": "Hora",
+    "minute": "Minuto",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar"
+  },
+  "appTagline": "Tu compañero espiritual diario"
 }

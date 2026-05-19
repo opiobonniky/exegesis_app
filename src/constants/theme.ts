@@ -472,3 +472,7 @@ export const createThemeStyles = (COLORS: ReturnType<typeof getColors>) =>
       borderColor: COLORS.success,
     },
   });
+
+// Backwards-compatible exports for files that imported older constants
+export const COLORS = lightColors; // default light palette (use getColors for dynamic)
+export const themeStyle = createThemeStyles(COLORS);

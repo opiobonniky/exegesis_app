@@ -32,6 +32,7 @@ type Props = {
   label?: string;
   minimumDate?: Date;
   maximumDate?: Date;
+  textAlign?: 'left' | 'right' | 'center';
 };
 
 const DAYS: number[] = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -68,6 +69,7 @@ export default function DatePickerInput({
   label,
   minimumDate,
   maximumDate = new Date(),
+  textAlign = 'left',
 }: Props) {
   const app = useContext(AppContext);
   if (!app) return null;
@@ -221,7 +223,6 @@ export default function DatePickerInput({
       {label && (
         <Text style={[styles.label, { color: COLORS.text }]}>{label}</Text>
       )}
-
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => setShow(true)}
@@ -237,6 +238,7 @@ export default function DatePickerInput({
         <Text
           style={[
             styles.boxText,
+            { textAlign },
             { color: value ? COLORS.text : COLORS.muted },
           ]}
         >

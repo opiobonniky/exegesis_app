@@ -48,24 +48,38 @@ interface PasswordReq {
   test: (p: string) => boolean;
 }
 
-const STEP_META: Record<Step, { eyebrow: string; title: string; sub: string }> =
-  {
-    email: {
-      eyebrow: 'STEP 1 OF 3',
-      title: 'Forgot Password?',
-      sub: "Enter your email and we'll send a verification code",
-    },
-    verify: {
-      eyebrow: 'STEP 2 OF 3',
-      title: 'Check Your Email',
-      sub: 'Enter the 6-digit code we sent to your inbox',
-    },
-    reset: {
-      eyebrow: 'STEP 3 OF 3',
-      title: 'New Password',
-      sub: 'Create a strong new password for your account',
-    },
-  };
+const STEP_META = (translations: any) => ({
+  email: {
+    eyebrow:
+      translations.steps?.email?.eyebrow ||
+      translations.forgotPassword?.eyebrow ||
+      'STEP 1 OF 3',
+    title: translations.forgotPassword?.title || 'Forgot Password?',
+    sub:
+      translations.forgotPassword?.text ||
+      "Enter your email and we'll send a verification code",
+  },
+  verify: {
+    eyebrow:
+      translations.steps?.verify?.eyebrow ||
+      translations.verify?.eyebrow ||
+      'STEP 2 OF 3',
+    title: translations.verify?.title || 'Check Your Email',
+    sub:
+      translations.verify?.subtitle ||
+      'Enter the 6-digit code we sent to your inbox',
+  },
+  reset: {
+    eyebrow:
+      translations.steps?.reset?.eyebrow ||
+      translations.forgotPassword?.eyebrow ||
+      'STEP 3 OF 3',
+    title: translations.forgotPassword?.resetTitle || 'New Password',
+    sub:
+      translations.forgotPassword?.resetSubtitle ||
+      'Create a strong new password for your account',
+  },
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -109,7 +123,8 @@ export default function ForgotPassword() {
 
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
-  const { translations } = useLanguage();
+  const { translations, language } = useLanguage();
+  const isRtl = language === 'ar';
   const codeRefs = useRef<(TextInput | any)[]>([]);
 
   // ── Animations ─────────────────────────────────────────────────────────────
@@ -211,10 +226,23 @@ export default function ForgotPassword() {
     }
 
     if (score === 5)
-      setPwdStrength({ score, text: 'Strong', color: C.success });
+      setPwdStrength({
+        score,
+        text: translations.passwords?.strong || 'Strong',
+        color: C.success,
+      });
     else if (score >= 3)
-      setPwdStrength({ score, text: 'Medium', color: C.warning });
-    else setPwdStrength({ score, text: 'Weak', color: C.error });
+      setPwdStrength({
+        score,
+        text: translations.passwords?.medium || 'Medium',
+        color: C.warning,
+      });
+    else
+      setPwdStrength({
+        score,
+        text: translations.passwords?.weak || 'Weak',
+        color: C.error,
+      });
   };
 
   // ── Code input ──────────────────────────────────────────────────────────────
@@ -240,7 +268,9 @@ export default function ForgotPassword() {
   const handleSendCode = async () => {
     if (currentStep === 'verify' && !canResend) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError(translations.validation.invalidEmail);
+      setError(
+        translations.validation?.invalidEmail || 'Please enter a valid email',
+      );
       return;
     }
     if (!(await checkInternetConnection())) {
@@ -254,7 +284,12 @@ export default function ForgotPassword() {
         email,
       });
       if (res.returnCode === 200) {
-        showToast('success', res.returnMessage || 'Verification code sent');
+        showToast(
+          'success',
+          res.returnMessage ||
+            translations.verify?.sent ||
+            'Verification code sent',
+        );
         goToStep('verify');
         startResendTimer();
       } else if (res.returnCode === 201) {
@@ -278,7 +313,10 @@ export default function ForgotPassword() {
   const handleVerifyCode = async () => {
     const code = verificationCode.join('');
     if (code.length !== 6) {
-      showToast('error', 'Please enter the 6-digit code');
+      showToast(
+        'error',
+        translations.verify?.enterCode || 'Please enter the 6-digit code',
+      );
       return;
     }
     try {
@@ -289,7 +327,11 @@ export default function ForgotPassword() {
         showToast('success', res.returnMessage || 'Code verified');
         goToStep('reset');
       } else {
-        setError(res.returnMessage || 'Invalid verification code');
+        setError(
+          res.returnMessage ||
+            translations.verify?.invalidCode ||
+            'Invalid verification code',
+        );
       }
     } catch (e: any) {
       setError(e.message || 'Something went wrong');
@@ -301,11 +343,19 @@ export default function ForgotPassword() {
   const handleResetPassword = async () => {
     const unmet = pwdReqs.filter(r => !r.met).map(r => r.label.toLowerCase());
     if (unmet.length > 0) {
-      showToast('error', `Password must include:\n- ${unmet.join('\n- ')}`);
+      showToast(
+        'error',
+        translations.validation?.passwordRequirementsPrefix
+          ? `${translations.validation.passwordRequirementsPrefix}\n- ${unmet.join('\n- ')}`
+          : `Password must include:\n- ${unmet.join('\n- ')}`,
+      );
       return;
     }
     if (newPassword !== confirmPassword) {
-      showToast('error', 'Passwords do not match');
+      showToast(
+        'error',
+        translations.passwords?.notMatch || 'Passwords do not match',
+      );
       return;
     }
     if (!(await checkInternetConnection())) {
@@ -332,7 +382,47 @@ export default function ForgotPassword() {
     }
   };
 
-  const meta = STEP_META[currentStep];
+  const meta = STEP_META(translations)[currentStep];
+
+  // Initialize password requirement labels from translations if provided
+  useEffect(() => {
+    try {
+      const tReqs = (translations.register as any)?.pwdReqs;
+      if (Array.isArray(tReqs) && tReqs.length > 0) {
+        // preserve original tests but replace labels
+        const mapped: PasswordReq[] = [
+          {
+            label: tReqs[0] || 'At least 8 characters',
+            met: false,
+            test: p => p.length >= 8,
+          },
+          {
+            label: tReqs[1] || 'One lowercase letter',
+            met: false,
+            test: p => /[a-z]/.test(p),
+          },
+          {
+            label: tReqs[2] || 'One uppercase letter',
+            met: false,
+            test: p => /[A-Z]/.test(p),
+          },
+          {
+            label: tReqs[3] || 'One number',
+            met: false,
+            test: p => /[0-9]/.test(p),
+          },
+          {
+            label: tReqs[4] || 'One special character',
+            met: false,
+            test: p => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),
+          },
+        ];
+        setPwdReqs(mapped);
+      }
+    } catch (e) {
+      // ignore and keep defaults
+    }
+  }, [translations]);
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -391,11 +481,28 @@ export default function ForgotPassword() {
         </View>
 
         {/* Eyebrow + title + subtitle */}
-        <Text style={[s.headerEyebrow, { color: C.accent }]}>
+        <Text
+          style={[
+            s.headerEyebrow,
+            { color: C.accent, textAlign: isRtl ? 'right' : 'center' },
+          ]}
+        >
           {meta.eyebrow}
         </Text>
-        <Text style={[s.headerTitle, { color: C.text }]}>{meta.title}</Text>
-        <Text style={[s.headerSub, { color: C.textSecondary }]}>
+        <Text
+          style={[
+            s.headerTitle,
+            { color: C.text, textAlign: isRtl ? 'right' : 'center' },
+          ]}
+        >
+          {meta.title}
+        </Text>
+        <Text
+          style={[
+            s.headerSub,
+            { color: C.textSecondary, textAlign: isRtl ? 'right' : 'center' },
+          ]}
+        >
           {meta.sub}
         </Text>
 
@@ -465,21 +572,29 @@ export default function ForgotPassword() {
               {currentStep === 'email' && (
                 <>
                   <Text style={[s.cardEyebrow, { color: C.primary }]}>
-                    EMAIL ADDRESS
+                    {meta.eyebrow}
                   </Text>
                   <Text style={[s.cardTitle, { color: C.text }]}>
-                    Enter Your Email
+                    {translations.forgotPassword?.title || 'Enter Your Email'}
                   </Text>
                   <View
                     style={[s.cardDivider, { backgroundColor: C.accent }]}
                   />
 
                   <View style={s.fieldWrap}>
-                    <Text style={[s.fieldLabel, { color: C.muted }]}>
-                      EMAIL
+                    <Text
+                      style={[
+                        s.fieldLabel,
+                        { color: C.muted, textAlign: isRtl ? 'right' : 'left' },
+                      ]}
+                    >
+                      {translations.login?.email || 'EMAIL'}
                     </Text>
                     <InputField
-                      placeholder="you@example.com"
+                      placeholder={
+                        translations.forgotPassword?.emailPlaceholder ||
+                        'you@example.com'
+                      }
                       value={email}
                       onChangeText={t => {
                         setEmail(t);
@@ -489,6 +604,7 @@ export default function ForgotPassword() {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       leftIcon={<Mail size={17} color={C.muted} />}
+                      textAlign={isRtl ? 'right' : 'left'}
                     />
                   </View>
 
@@ -513,7 +629,7 @@ export default function ForgotPassword() {
                       ) : (
                         <>
                           <Text style={[s.ctaText, { color: C.white }]}>
-                            Send Code
+                            {translations.forgotPassword?.submit || 'Send Code'}
                           </Text>
                           <ArrowRight
                             size={17}
@@ -530,11 +646,21 @@ export default function ForgotPassword() {
               {/* ══ STEP 2: Verify ═════════════════════════════════════════ */}
               {currentStep === 'verify' && (
                 <>
-                  <Text style={[s.cardEyebrow, { color: C.primary }]}>
-                    VERIFICATION
+                  <Text
+                    style={[
+                      s.cardEyebrow,
+                      { color: C.primary, textAlign: isRtl ? 'right' : 'left' },
+                    ]}
+                  >
+                    {meta.eyebrow}
                   </Text>
-                  <Text style={[s.cardTitle, { color: C.text }]}>
-                    Enter Code
+                  <Text
+                    style={[
+                      s.cardTitle,
+                      { color: C.text, textAlign: isRtl ? 'right' : 'left' },
+                    ]}
+                  >
+                    {translations.verify?.title || 'Enter Code'}
                   </Text>
                   <View
                     style={[s.cardDivider, { backgroundColor: C.accent }]}
@@ -581,7 +707,9 @@ export default function ForgotPassword() {
                   <View style={s.resendContainer}>
                     {!canResend ? (
                       <Text style={[s.resendTimer, { color: C.primary }]}>
-                        Resend code in {formatTime(resendTimer)}
+                        {translations.verify?.resendTimerPrefix ||
+                          'Resend code in'}{' '}
+                        {formatTime(resendTimer)}
                       </Text>
                     ) : (
                       <TouchableOpacity
@@ -620,7 +748,7 @@ export default function ForgotPassword() {
                       ) : (
                         <>
                           <Text style={[s.ctaText, { color: C.white }]}>
-                            Verify Code
+                            {translations.verify?.action || 'Verify Code'}
                           </Text>
                           <ArrowRight
                             size={17}
@@ -637,22 +765,42 @@ export default function ForgotPassword() {
               {/* ══ STEP 3: Reset ══════════════════════════════════════════ */}
               {currentStep === 'reset' && (
                 <>
-                  <Text style={[s.cardEyebrow, { color: C.primary }]}>
-                    RESET PASSWORD
+                  <Text
+                    style={[
+                      s.cardEyebrow,
+                      { color: C.primary, textAlign: isRtl ? 'right' : 'left' },
+                    ]}
+                  >
+                    {meta.eyebrow}
                   </Text>
-                  <Text style={[s.cardTitle, { color: C.text }]}>
-                    New Password
+                  <Text
+                    style={[
+                      s.cardTitle,
+                      { color: C.text, textAlign: isRtl ? 'right' : 'left' },
+                    ]}
+                  >
+                    {translations.forgotPassword?.resetTitle || 'New Password'}
                   </Text>
                   <View
                     style={[s.cardDivider, { backgroundColor: C.accent }]}
                   />
 
                   <View style={s.fieldWrap}>
-                    <Text style={[s.fieldLabel, { color: C.muted }]}>
-                      NEW PASSWORD
+                    <Text
+                      style={[
+                        s.fieldLabel,
+                        { color: C.muted, textAlign: isRtl ? 'right' : 'left' },
+                      ]}
+                    >
+                      {translations.forgotPassword?.passwordLabel ||
+                        'NEW PASSWORD'}
                     </Text>
                     <InputField
-                      placeholder="Enter new password"
+                      placeholder={
+                        translations.forgotPassword?.passwordPlaceholder ||
+                        translations.reset?.passwordPlaceholder ||
+                        'Enter new password'
+                      }
                       value={newPassword}
                       onChangeText={t => {
                         checkPwdStrength(t);
@@ -661,6 +809,7 @@ export default function ForgotPassword() {
                       }}
                       secure
                       leftIcon={<KeyRound size={17} color={C.muted} />}
+                      textAlign={isRtl ? 'right' : 'left'}
                     />
 
                     {/* Strength bars */}
@@ -736,11 +885,22 @@ export default function ForgotPassword() {
                   </View>
 
                   <View style={s.fieldWrap}>
-                    <Text style={[s.fieldLabel, { color: C.muted }]}>
-                      CONFIRM PASSWORD
+                    <Text
+                      style={[
+                        s.fieldLabel,
+                        { color: C.muted, textAlign: isRtl ? 'right' : 'left' },
+                      ]}
+                    >
+                      {translations.forgotPassword?.confirmLabel ||
+                        'CONFIRM PASSWORD'}
                     </Text>
                     <InputField
-                      placeholder="Repeat new password"
+                      placeholder={
+                        translations.forgotPassword
+                          ?.confirmPasswordPlaceholder ||
+                        translations.reset?.confirmPasswordPlaceholder ||
+                        'Repeat new password'
+                      }
                       value={confirmPassword}
                       onChangeText={t => {
                         setConfirmPassword(t);
@@ -749,6 +909,7 @@ export default function ForgotPassword() {
                       secure
                       error={error || undefined}
                       leftIcon={<ShieldCheck size={17} color={C.muted} />}
+                      textAlign={isRtl ? 'right' : 'left'}
                     />
 
                     {/* Match indicator */}
@@ -758,14 +919,16 @@ export default function ForgotPassword() {
                           <>
                             <Check size={14} color={C.success} />
                             <Text style={[s.matchText, { color: C.success }]}>
-                              Passwords match
+                              {translations.passwords?.match ||
+                                'Passwords match'}
                             </Text>
                           </>
                         ) : (
                           <>
                             <X size={14} color={C.error} />
                             <Text style={[s.matchText, { color: C.error }]}>
-                              Passwords do not match
+                              {translations.passwords?.notMatch ||
+                                'Passwords do not match'}
                             </Text>
                           </>
                         )}
@@ -785,8 +948,8 @@ export default function ForgotPassword() {
                   >
                     <KeyRound size={15} color={C.primary} />
                     <Text style={[s.tipText, { color: C.muted }]}>
-                      Use letters, numbers & special characters for a stronger
-                      password
+                      {translations.forgotPassword?.tip ||
+                        'Use letters, numbers & special characters for a stronger password'}
                     </Text>
                   </View>
 
@@ -811,7 +974,8 @@ export default function ForgotPassword() {
                       ) : (
                         <>
                           <Text style={[s.ctaText, { color: C.white }]}>
-                            Reset Password
+                            {translations.forgotPassword?.resetAction ||
+                              'Reset Password'}
                           </Text>
                           <ArrowRight
                             size={17}
@@ -829,10 +993,13 @@ export default function ForgotPassword() {
 
           {/* Footer help */}
           <View style={s.footer}>
-            <Text style={[s.footerText, { color: C.muted }]}>Need help? </Text>
+            <Text style={[s.footerText, { color: C.muted }]}>
+              {' '}
+              {translations.forgotPassword?.helpPrefix || 'Need help?'}{' '}
+            </Text>
             <TouchableOpacity>
               <Text style={[s.footerLink, { color: C.primary }]}>
-                Contact Support
+                {translations.forgotPassword?.contact || 'Contact Support'}
               </Text>
             </TouchableOpacity>
           </View>

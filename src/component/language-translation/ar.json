@@ -1,8 +1,20 @@
 {
   "forgotPassword": {
     "title": "نسيت كلمة المرور",
-    "submit": "إرسال",
-    "text": "نسيت كلمة المرور؟"
+    "submit": "إرسال الكود",
+    "text": "أدخل بريدك لاستلام رمز التحقق",
+    "emailPlaceholder": "you@example.com",
+    "passwordLabel": "كلمة مرور جديدة",
+    "eyebrow": "البريد الإلكتروني",
+    "resetTitle": "كلمة مرور جديدة",
+    "resetSubtitle": "أنشئ كلمة مرور جديدة وقوية لحسابك",
+    "passwordPlaceholder": "أدخل كلمة المرور الجديدة",
+    "confirmPasswordPlaceholder": "كرر كلمة المرور الجديدة",
+    "confirmLabel": "تأكيد كلمة المرور",
+    "tip": "استخدم حروفًا وأرقامًا ورموزًا خاصة لزيادة الأمان",
+    "resetAction": "إعادة تعيين كلمة المرور",
+    "helpPrefix": "بحاجة لمساعدة؟",
+    "contact": "اتصل بالدعم"
   },
   "login": {
     "title": "تسجيل الدخول",
@@ -11,6 +23,7 @@
     "subtitle": "سجل الدخول لمتابعة رحلتك.",
     "button": "دخول",
     "google": "استمرار مع جوجل",
+    "lordsbook": "المتابعة مع لوردسبوك",
     "continuewith": "أو الاستمرار مع",
     "terms": {
       "byContinuing": "بالاستمرار، أنت توافق على",
@@ -43,5 +56,68 @@
   "welcome": {
     "title": "أهلا وسهلا",
     "message": "أهلا بك في التطبيق!"
-  }
+  },
+  "register": {
+    "title": "تسجيل",
+    "button": "إنشاء حساب",
+    "firstName": "الاسم الأول",
+    "lastName": "اسم العائلة",
+    "phone": "الهاتف",
+    "gender": "الجنس",
+    "dateOfBirth": "تاريخ الميلاد (اختياري)",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "subtitle": "املأ بياناتك للبدء",
+    "googleComplete": "قم بتعيين كلمة المرور لإكمال التسجيل",
+    "firstPlaceholder": "الاسم الأول",
+    "lastPlaceholder": "اسم العائلة",
+    "emailPlaceholder": "أنت@مثال.كوم",
+    "usernamePlaceholder": "اختر اسم المستخدم",
+    "phonePlaceholder": "+1 234 567 8900",
+    "datePlaceholder": "اختر التاريخ",
+    "passwordPlaceholder": "إنشاء كلمة المرور",
+    "confirmPasswordPlaceholder": "أعد إدخال كلمة المرور",
+    "pwdReqs": [
+      "8 أحرف على الأقل",
+      "حرف صغير واحد",
+      "حرف كبير واحد",
+      "رقم واحد",
+      "حرف خاص واحد"
+    ],
+    "useDifferentAccount": "استخدم حسابًا مختلفًا"
+  },
+  "passwords": {
+    "strong": "قوي",
+    "medium": "متوسط",
+    "weak": "ضعيف",
+    "match": "كلمات المرور متطابقة",
+    "notMatch": "كلمات المرور غير متطابقة"
+  },
+  "footer": {
+    "alreadyHave": "هل لديك حساب؟",
+    "signIn": "تسجيل الدخول"
+  },
+  "verify": {
+    "title": "تحقق من بريدك الإلكتروني",
+    "subtitle": "أرسلنا رمزًا مكوّنًا من 6 أرقام إلى",
+    "button": "تحقق من البريد",
+    "didntReceive": "ألم تستلمه؟",
+    "resend": "إعادة إرسال",
+    "action": "تحقق من الكود",
+    "eyebrow": "التحقق",
+    "resendTimerPrefix": "إعادة الإرسال خلال",
+    "alreadyVerified": "تم التحقق بالفعل؟ تسجيل الدخول"
+  },
+  "steps": {
+    "email": { "eyebrow": "الخطوة 1 من 3" },
+    "verify": { "eyebrow": "الخطوة 2 من 3" },
+    "reset": { "eyebrow": "الخطوة 3 من 3" }
+  },
+  "timePicker": {
+    "selectTime": "اختر الوقت",
+    "hour": "ساعة",
+    "minute": "دقيقة",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد"
+  },
+  "appTagline": "رفيقك الروحي اليومي"
 }

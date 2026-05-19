@@ -1,8 +1,20 @@
 {
   "forgotPassword": {
     "title": "Mot de passe oublié",
-    "submit": "Envoyer",
-    "text": "Mot de passe oublié ?"
+    "submit": "Envoyer le code",
+    "text": "Entrez votre email pour recevoir un code de vérification",
+    "emailPlaceholder": "vous@exemple.com",
+    "passwordLabel": "NOUVEAU MOT DE PASSE",
+    "eyebrow": "ADRESSE E‑MAIL",
+    "resetTitle": "Nouveau mot de passe",
+    "resetSubtitle": "Créez un nouveau mot de passe sécurisé pour votre compte",
+    "passwordPlaceholder": "Entrez le nouveau mot de passe",
+    "confirmPasswordPlaceholder": "Répétez le nouveau mot de passe",
+    "confirmLabel": "CONFIRMER LE MOT DE PASSE",
+    "tip": "Utilisez des lettres, chiffres et caractères spéciaux pour plus de sécurité",
+    "resetAction": "Réinitialiser le mot de passe",
+    "helpPrefix": "Besoin d'aide ?",
+    "contact": "Contacter le support"
   },
   "login": {
     "title": "Connexion",
@@ -11,6 +23,7 @@
     "subtitle": "Connectez‑vous pour continuer votre parcours.",
     "button": "Se connecter",
     "google": "Continuer avec Google",
+    "lordsbook": "Continuer avec Lordsbook",
     "continuewith": "ou continuer avec",
     "terms": {
       "byContinuing": "En continuant, vous acceptez nos",
@@ -43,5 +56,68 @@
   "welcome": {
     "title": "Bienvenue",
     "message": "Bienvenue dans l'application!"
-  }
+  },
+  "register": {
+    "title": "S'inscrire",
+    "button": "Créer un compte",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "phone": "Téléphone",
+    "gender": "Genre",
+    "dateOfBirth": "Date de naissance (Optionnel)",
+    "confirmPassword": "Confirmer le mot de passe",
+    "subtitle": "Remplissez vos informations pour commencer",
+    "googleComplete": "Définissez votre mot de passe pour terminer l'inscription",
+    "firstPlaceholder": "Prénom",
+    "lastPlaceholder": "Nom",
+    "emailPlaceholder": "vous@exemple.com",
+    "usernamePlaceholder": "Choisissez un nom d'utilisateur",
+    "phonePlaceholder": "+1 234 567 8900",
+    "datePlaceholder": "Sélectionner la date",
+    "passwordPlaceholder": "Créer un mot de passe",
+    "confirmPasswordPlaceholder": "Répéter le mot de passe",
+    "pwdReqs": [
+      "Au moins 8 caractères",
+      "Une lettre minuscule",
+      "Une lettre majuscule",
+      "Un chiffre",
+      "Un caractère spécial"
+    ],
+    "useDifferentAccount": "Utiliser un autre compte"
+  },
+  "passwords": {
+    "strong": "Fort",
+    "medium": "Moyen",
+    "weak": "Faible",
+    "match": "Les mots de passe correspondent",
+    "notMatch": "Les mots de passe ne correspondent pas"
+  },
+  "footer": {
+    "alreadyHave": "Vous avez déjà un compte ?",
+    "signIn": "Se connecter"
+  },
+  "verify": {
+    "title": "Vérifiez votre e‑mail",
+    "subtitle": "Nous avons envoyé un code à 6 chiffres à",
+    "button": "Vérifier l'e‑mail",
+    "didntReceive": "Vous ne l'avez pas reçu ?",
+    "resend": "Renvoyer",
+    "action": "Vérifier le code",
+    "eyebrow": "VÉRIFICATION",
+    "resendTimerPrefix": "Renvoyer dans",
+    "alreadyVerified": "Déjà vérifié ? Se connecter"
+  },
+  "steps": {
+    "email": { "eyebrow": "ÉTAPE 1 SUR 3" },
+    "verify": { "eyebrow": "ÉTAPE 2 SUR 3" },
+    "reset": { "eyebrow": "ÉTAPE 3 SUR 3" }
+  },
+  "timePicker": {
+    "selectTime": "Sélectionner l'heure",
+    "hour": "Heure",
+    "minute": "Minute",
+    "cancel": "Annuler",
+    "confirm": "Confirmer"
+  },
+  "appTagline": "Votre compagnon spirituel quotidien"
 }
