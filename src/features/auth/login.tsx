@@ -86,6 +86,7 @@ const Login = () => {
   const [langOpen, setLangOpen] = useState(false);
   const [showLangModal, setShowLangModal] = useState(false);
   const C = getColors(isDark);
+  const isRtl = language === 'ar';
 
   React.useEffect(() => {
     if (userInfo) navigation.navigate(route.bible);
@@ -133,6 +134,19 @@ const Login = () => {
         backgroundColor="transparent"
       />
 
+      <TouchableOpacity
+        style={[
+          s.langFloatingBtn,
+          { borderColor: C.border, backgroundColor: C.surface },
+        ]}
+        onPress={() => setShowLangModal(true)}
+      >
+        <Globe size={16} color={C.text} style={{ marginRight: 8 }} />
+        <Text style={{ color: C.text, fontWeight: '600' }}>
+          {language.toUpperCase()}
+        </Text>
+      </TouchableOpacity>
+
       <KeyboardAwareness>
         <ScrollView
           style={s.scroll}
@@ -151,20 +165,6 @@ const Login = () => {
               { opacity: logoFade, transform: [{ translateY: logoSlide }] },
             ]}
           >
-            {/* language button above logo */}
-            <TouchableOpacity
-              style={[
-                s.langAboveLogo,
-                { borderColor: C.border, backgroundColor: C.surface },
-              ]}
-              onPress={() => setShowLangModal(true)}
-            >
-              <Globe size={16} color={C.text} style={{ marginRight: 8 }} />
-              <Text style={{ color: C.text, fontWeight: '600' }}>
-                {language.toUpperCase()}
-              </Text>
-            </TouchableOpacity>
-
             <Image source={logo} style={s.logoImg} resizeMode="contain" />
           </Animated.View>
 
@@ -178,8 +178,10 @@ const Login = () => {
             ]}
           >
             {/* "Log In" heading (language selector is floating) */}
-            <View style={s.headingRow}>
-              <Text style={[s.loginHeading, { color: C.text }]}>
+            <View style={[s.headingRow, { justifyContent: 'center' }]}>
+              <Text
+                style={[s.loginHeading, { color: C.text, textAlign: 'center' }]}
+              >
                 {translations.login.title}
               </Text>
             </View>
@@ -220,6 +222,7 @@ const Login = () => {
                         language === l.code && {
                           backgroundColor: C.primary + '11',
                         },
+                        isRtl && { flexDirection: 'row-reverse' },
                       ]}
                       onPress={() => {
                         setLanguage(l.code as any);
@@ -244,13 +247,20 @@ const Login = () => {
               </View>
             </Modal>
 
-            <Text style={[s.continueHeading, { color: C.text }]}>
+            <Text
+              style={[
+                s.continueHeading,
+                { color: C.text, textAlign: isRtl ? 'right' : 'center' },
+              ]}
+            >
               {translations.login.subtitle}
             </Text>
 
             {/* ── Email input ─────────────────────────────────────────────── */}
             <View style={s.fieldWrap}>
-              <View style={s.inputRow}>
+              <View
+                style={[s.inputRow, isRtl && { flexDirection: 'row-reverse' }]}
+              >
                 <View
                   style={[
                     s.inputIconBox,
@@ -288,6 +298,8 @@ const Login = () => {
                         color: emailFocused || email ? C.primary : C.muted,
                         top: emailFocused || email ? 6 : 16,
                         fontSize: emailFocused || email ? 12 : 15,
+                        left: isRtl ? undefined : 14,
+                        right: isRtl ? 14 : undefined,
                       },
                     ]}
                   >
@@ -295,7 +307,15 @@ const Login = () => {
                   </Animated.Text>
 
                   <TextInput
-                    style={[s.textInput, { color: C.text, paddingTop: 18 }]}
+                    style={[
+                      s.textInput,
+                      {
+                        color: C.text,
+                        paddingTop: 18,
+                        textAlign: isRtl ? 'right' : 'left',
+                        writingDirection: isRtl ? 'rtl' : 'ltr',
+                      },
+                    ]}
                     value={email}
                     onChangeText={text => {
                       setEmail(text);
@@ -320,7 +340,9 @@ const Login = () => {
 
             {/* ── Password input ──────────────────────────────────────────── */}
             <View style={s.fieldWrap}>
-              <View style={s.inputRow}>
+              <View
+                style={[s.inputRow, isRtl && { flexDirection: 'row-reverse' }]}
+              >
                 <View
                   style={[
                     s.inputIconBox,
@@ -359,6 +381,8 @@ const Login = () => {
                           passwordFocused || password ? C.primary : C.muted,
                         top: passwordFocused || password ? 6 : 16,
                         fontSize: passwordFocused || password ? 12 : 15,
+                        left: isRtl ? undefined : 14,
+                        right: isRtl ? 14 : undefined,
                       },
                     ]}
                   >
@@ -371,6 +395,8 @@ const Login = () => {
                       {
                         color: C.text,
                         paddingTop: 18,
+                        textAlign: isRtl ? 'right' : 'left',
+                        writingDirection: isRtl ? 'rtl' : 'ltr',
                       },
                     ]}
                     value={password}
@@ -387,7 +413,7 @@ const Login = () => {
 
                   {/* Eye Icon */}
                   <TouchableOpacity
-                    style={s.eyeIcon}
+                    style={[s.eyeIcon, isRtl && { right: undefined, left: 10 }]}
                     onPress={() => setPasswordVisible(!passwordVisible)}
                     activeOpacity={0.7}
                   >
@@ -462,7 +488,9 @@ const Login = () => {
             {/* ── Divider ──────────────────────────────────────────────────────── */}
             <View style={s.dividerRow}>
               <View style={[s.dividerLine, { backgroundColor: C.border }]} />
-              <Text style={[s.dividerText, { color: C.muted }]}>
+              <Text
+                style={[s.dividerText, { color: C.muted, textAlign: 'center' }]}
+              >
                 {translations.login.continuewith}
               </Text>
               <View style={[s.dividerLine, { backgroundColor: C.border }]} />
@@ -486,17 +514,25 @@ const Login = () => {
                   <View style={s.googleIconContainer}>
                     <GoogleIcon width={25} height={25} />
                   </View>
-                  <Text style={[s.googleText, { color: C.text }]}>
-                    <Text style={[s.googleText, { color: C.text }]}>
-                      {translations.login.google}
-                    </Text>
+                  <Text
+                    style={[
+                      s.googleText,
+                      { color: C.text, textAlign: isRtl ? 'right' : 'center' },
+                    ]}
+                  >
+                    {translations.login.google}
                   </Text>
                 </>
               )}
             </TouchableOpacity>
 
             {/* Terms and Conditions (moved into login container) */}
-            <Text style={[s.termsText, { color: C.muted }]}>
+            <Text
+              style={[
+                s.termsText,
+                { color: C.muted, textAlign: isRtl ? 'right' : 'center' },
+              ]}
+            >
               {translations.login.terms.byContinuing}{' '}
               <Text style={[s.termsLink, { color: C.primaryDark }]}>
                 {translations.login.terms.termsOfService}
@@ -508,7 +544,12 @@ const Login = () => {
             </Text>
 
             {/* Coming soon (moved into login container) */}
-            <Text style={[s.comingSoon, { color: C.muted }]}>
+            <Text
+              style={[
+                s.comingSoon,
+                { color: C.muted, textAlign: isRtl ? 'right' : 'center' },
+              ]}
+            >
               {translations.login.footer.fullVersion}
             </Text>
           </Animated.View>
@@ -614,7 +655,7 @@ const s = StyleSheet.create({
   },
   langFloatingBtn: {
     position: 'absolute',
-    top: Platform.OS === 'android' ? 14 : 46,
+    top: Platform.OS === 'android' ? 34 : 56,
     right: 18,
     paddingHorizontal: 12,
     paddingVertical: 8,
