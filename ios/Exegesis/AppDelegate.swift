@@ -32,11 +32,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
           launchOptions: launchOptions
         )
 
-        if let plistPath = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"), FileManager.default.fileExists(atPath: plistPath) {
-            FirebaseApp.configure()
-        } else {
-            print("⚠️ GoogleService-Info.plist not found, skipping Firebase configuration.")
-        }
+
+   FirebaseApp.configure()
+        
 
 
     return true
