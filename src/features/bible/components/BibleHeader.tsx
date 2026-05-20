@@ -159,10 +159,11 @@ const localStyles = StyleSheet.create({
 
   // The actual icon/title row — explicit height so it never collapses
   row: {
-    height: 52,
+    height: Platform.OS==='ios' ? 52 : 82,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingBottom:Platform.OS==='ios'?20:20
   },
 
   // Title takes all remaining space between the side icons

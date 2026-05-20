@@ -896,23 +896,29 @@ export const useBible = () => {
   const addFavorite = useCallback(
     async (versesToFav: number[]) => {
       try {
-        const startV = Math.min(...versesToFav);
-        const endV = Math.max(...versesToFav);
-        const response = await sendPostRequest<any>('bible', 'add-favorite', {
+        // Normalize input to an array (accepts Array, Set, or single number)
+        let versesArr: number[] = [];
+        if (Array.isArray(versesToFav)) versesArr = versesToFav.slice();
+        else if (versesToFav instanceof Set) versesArr = Array.from(versesToFav);
+        else if (typeof versesToFav === 'number') versesArr = [versesToFav];
+
+        if (!versesArr || versesArr.length === 0) return;
+
+        const body: any = {
           bookName: currentBook,
           chapter: currentChapter,
-          verseStart: startV,
-          verseEnd: versesToFav.length > 1 ? endV : startV,
-        });
+        };
+        // Always send an array for consistency with backend expectations
+        body.verseNumbers = versesArr;
 
-        console.log("respone........: "+JSON.stringify(response))
+        const response = await sendPostRequest<any>('bible', 'add-favorite', body);
 
         if (response.returnCode === 200) {
-          setFavorites(prev => new Set([...prev, ...versesToFav]));
+          setFavorites(prev => new Set([...Array.from(prev), ...versesArr]));
           showToast('success', 'Added to favorites');
         }
-      } catch (error:any){
-        showToast('error', error.message);
+      } catch (error: any) {
+        showToast('error', error?.message || 'Failed to add favorite');
       }
     },
     [currentBook, currentChapter],
@@ -936,22 +942,31 @@ export const useBible = () => {
               )
             : selectedVerses;
       try {
-        for (const v of versesToHighlight) {
-          await sendPostRequest('bible', 'highlight', {
-            bookName: currentBook,
-            chapter: currentChapter,
-            verseNumber: v,
-            colorId,
-            color,
-          });
-        }
+        if (!versesToHighlight || versesToHighlight.length === 0) return;
+
+        // Normalize to array (avoid Set or other structures)
+        const versesArr = Array.isArray(versesToHighlight)
+          ? versesToHighlight.slice()
+          : Array.from(versesToHighlight);
+
+        // Backend accepts verseNumbers array (or single verseNumber)
+        const body: any = {
+          bookName: currentBook,
+          chapter: currentChapter,
+          colorId,
+        };
+        // Always send array key
+        body.verseNumbers = versesArr;
+
+        await sendPostRequest('bible', 'add-highlight', body);
+
         const newHighlights = { ...highlights };
-        versesToHighlight.forEach(v => {
+        versesArr.forEach(v => {
           newHighlights[v] = { colorId, color };
         });
         setHighlights(newHighlights);
-        showToast('success', 'Highlighted');
-      } catch {
+      } catch (err:any) {
+        console.warn('Failed to highlight', err);
         showToast('error', 'Failed to highlight');
       }
     },
@@ -961,16 +976,28 @@ export const useBible = () => {
   const removeHighlight = useCallback(
     async (verseNumber: number) => {
       try {
-        await sendPostRequest('bible', 'remove-highlight', {
+        // Backend delete requires highlightId. Fetch highlights for the verse,
+        // then delete each returned highlight by id.
+        const res = await sendPostRequest<any>('bible', 'get-highlights', {
           bookName: currentBook,
           chapter: currentChapter,
           verseNumber,
         });
+        if (res.returnCode === 200 && res.returnData && res.returnData.highlights) {
+          const hs: any[] = res.returnData.highlights;
+          for (const h of hs) {
+            try {
+              await sendPostRequest('bible', 'delete-highlight', { highlightId: h.id });
+            } catch (e) {
+              console.warn('Failed to delete highlight id', h.id, e);
+            }
+          }
+        }
         const newHighlights = { ...highlights };
         delete newHighlights[verseNumber];
         setHighlights(newHighlights);
-      } catch {
-        console.warn('Failed to remove highlight');
+      } catch (err:any) {
+        console.warn('Failed to remove highlight', err);
       }
     },
     [currentBook, currentChapter, highlights],
@@ -1023,21 +1050,35 @@ export const useBible = () => {
   const getverseExplanation = useCallback(
     async (verseNumbers: number[], bookName: string, chapter: number) => {
       try {
-        const response = await sendPostRequest<any>('bible', 'explain', {
-          bookName,
-          chapter,
-          verseNumbers,
-        });
-        if (response.returnCode === 200 && response.returnData) {
-          const explanations: Record<number, string> = {};
-          response.returnData.forEach((item: any) => {
-            explanations[item.verseNumber] = item.explanation;
-          });
-          setVerseExplanationMap(explanations);
+        if (!verseNumbers || verseNumbers.length === 0) return;
+
+        // Backend provides get-verse-explanation for a single verse.
+        // Call it for each requested verse and combine results.
+        const promises = verseNumbers.map(vn =>
+          sendPostRequest<any>('bible', 'get-verse-explanation', {
+            bookName,
+            chapter,
+            verseNumber: vn,
+          }).then(res => ({ vn, res })).catch(err => ({ vn, err })),
+        );
+
+        const results = await Promise.all(promises);
+        const explanations: Record<number, string> = {};
+        for (const r of results) {
+          if (r.res && r.res.returnCode === 200 && r.res.returnData) {
+            // res.returnData is the explanation object
+            const item = r.res.returnData;
+            // backend returns a single explanation object
+            explanations[item.verseNumber] = item.explanation || '';
+          }
+        }
+
+        if (Object.keys(explanations).length > 0) {
+          setVerseExplanationMap(prev => ({ ...prev, ...explanations }));
           setShowExplanation(true);
         }
-      } catch {
-        console.warn('Failed to get explanation');
+      } catch (err) {
+        console.warn('Failed to get explanation', err);
       }
     },
     [],
@@ -1070,18 +1111,25 @@ export const useBible = () => {
                   (_, i) => rangeStart + i,
                 )
               : selectedVerses;
-        const startV = Math.min(...versesToSave);
-        const endV = Math.max(...versesToSave);
-        await sendPostRequest('bible', 'note', {
+        if (!versesToSave || versesToSave.length === 0) return;
+
+        const versesArr = Array.isArray(versesToSave)
+          ? versesToSave.slice()
+          : Array.from(versesToSave);
+
+        const body: any = {
           bookName: currentBook,
           chapter: currentChapter,
-          verseStart: startV,
-          verseEnd: versesToSave.length > 1 ? endV : startV,
           note: noteText,
-        });
+        };
+        // Always send array key
+        body.verseNumbers = versesArr;
+
+        await sendPostRequest('bible', 'add-verse-note', body);
         showToast('success', 'Note saved');
         closeNoteModal();
-      } catch {
+      } catch (err:any) {
+        console.warn('Failed to save note', err);
         showToast('error', 'Failed to save note');
       } finally {
         setNoteSaving(false);

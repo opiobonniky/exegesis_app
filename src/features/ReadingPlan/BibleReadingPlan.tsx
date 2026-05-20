@@ -457,6 +457,7 @@ export default function BibleReadingPlan() {
       <ActionHeader
         title="Reading Plans"
         subtitle="Build a daily Bible habit"
+        onPress={()=>navigation.goBack()}
       />
 
       {/* Tab row — sits flush below the header */}

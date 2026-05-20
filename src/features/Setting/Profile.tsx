@@ -288,7 +288,8 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
-      <ActionHeader title="Profile Information" />
+      <ActionHeader title="Profile Information"         onPress={()=>navigation.goBack()}
+ />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}

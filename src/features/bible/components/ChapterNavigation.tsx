@@ -1,21 +1,4 @@
-/**
- * ChapterNavigation.tsx
- *
- * FIX: "Attempting to run JS driven animation on animated node that has been
- *       moved to native earlier" crash.
- *
- * Root cause: mixing useNativeDriver:false (backgroundColor/borderColor on the
- * pill Animated.View) with useNativeDriver:true (scaleY on LiveBars children)
- * on the same Animated.View node tree causes RN to throw.
- *
- * Solution:
- *  • Pill container is now a plain <View> — background & border set via state,
- *    no Animated.View with JS-driver styles at all.
- *  • The pulse "glow" effect is a separate absolutely-positioned Animated.View
- *    that only animates `opacity` → useNativeDriver: true ✓
- *  • LiveBars bars still use useNativeDriver: true for scaleY ✓
- *  • Zero driver conflicts remain.
- */
+
 
 import React, { useEffect, useMemo, useRef } from 'react';
 import {

@@ -63,7 +63,7 @@ export const createBibleStyles = (isDark: boolean) => {
       marginHorizontal: SPACING.lg,
       // On iOS avoid pulling the nav pill over the header title — keep it
       // slightly below the header so the title remains visible.
-      marginTop: Platform.OS === 'ios' ? 8 : -20,
+      marginTop: Platform.OS === 'ios' ? -10:-20,
       padding: SPACING.md,
       borderRadius: BORDER_RADIUS.lg,
       shadowColor: COLORS.shadowColor,
