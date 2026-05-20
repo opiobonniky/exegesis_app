@@ -904,12 +904,15 @@ export const useBible = () => {
           verseStart: startV,
           verseEnd: versesToFav.length > 1 ? endV : startV,
         });
+
+        console.log("respone........: "+JSON.stringify(response))
+
         if (response.returnCode === 200) {
           setFavorites(prev => new Set([...prev, ...versesToFav]));
           showToast('success', 'Added to favorites');
         }
-      } catch {
-        showToast('error', 'Failed to add favorite');
+      } catch (error:any){
+        showToast('error', error.message);
       }
     },
     [currentBook, currentChapter],

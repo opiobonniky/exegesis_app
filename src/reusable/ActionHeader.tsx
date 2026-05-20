@@ -48,7 +48,7 @@ type Props = StandardProps | HomeProps;
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ANDROID_TOP =
-  Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 12 : 24;
+  Platform.OS === 'android' ? (StatusBar.currentHeight ?? 34) : 44;
 
 // ── Logo lockup ───────────────────────────────────────────────────────────────
 

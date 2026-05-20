@@ -127,31 +127,10 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
 
-    // Fix duplicate class conflict between androidx and old support library
-    constraints {
-        implementation("com.android.support:support-compat:27.1.1") {
-            because("force migration to androidx")
-        }
-    }
-
-    constraints {
-        implementation("com.android.support:support-v4:27.1.1") {
-            because("force migration to androidx")
-        }
-    }
-
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
-    }
-}
-
-configurations.all {
-    resolutionStrategy {
-        force "com.android.support:support-compat:28.0.0"
-        force "com.android.support:support-v4:28.0.0"
-        force "androidx.core:core:1.15.0"
     }
 }
 

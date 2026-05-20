@@ -13,13 +13,17 @@ import {
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 export const showToast = (severity: ToastType, message: string) => {
+  const topOffset = Platform.OS === 'ios' ? 84 : 56;
   Toast.show({
     type: severity,
-    text1: undefined,
+    // Some platforms (iOS) require text1 to be present for a custom toast
+    // to render text2 correctly. Provide an empty string when there's no
+    // explicit title so rendering is consistent across platforms.
+    text1: '',
     text2: message,
     position: 'top',
     visibilityTime: 2600,
-    topOffset: 56,
+    topOffset,
     bottomOffset: 40,
   });
 };
@@ -97,28 +101,42 @@ function FancyToast(props: BaseToastProps & { variant: ToastType }) {
 
   return (
     <View style={S.wrap}>
-      <LinearGradient
-        colors={cfg.bg}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[S.card, { borderColor: cfg.stroke }]}
-      >
-        <View style={[S.iconBox, { backgroundColor: cfg.chipBg }]}>
-          <Icon size={18} color={cfg.icon} />
-        </View>
+      <View style={[S.cardContainer, { borderColor: cfg.stroke }]}> 
+        {/* Gradient as background filling the container */}
+        <LinearGradient
+          colors={cfg.bg}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={S.gradientFill}
+        />
 
-        <View style={{ flex: 1 }}>
-          {text1 && (
-            <Text style={[S.title, { color: cfg.title }]} numberOfLines={1}>
-              {text1}
+        {/* Foreground content */}
+        <View style={S.cardContent}>
+          <View style={[S.iconBox, { backgroundColor: cfg.chipBg }]}> 
+            <Icon size={18} color={cfg.icon} />
+          </View>
+
+          <View style={{ flex: 1, minWidth: 0 }}>
+            {text1 ? (
+              <Text
+                style={[S.title, { color: cfg.title }]}
+                numberOfLines={1}
+                allowFontScaling
+              >
+                {text1}
+              </Text>
+            ) : null}
+
+            <Text
+              style={[S.body, { color: cfg.body ?? '#000' }]}
+              numberOfLines={Platform.OS === 'ios' ? 4 : 2}
+              allowFontScaling
+            >
+              {text2 ?? ''}
             </Text>
-          )}
-
-          <Text style={[S.body, { color: cfg.body }]} numberOfLines={2}>
-            {text2 ?? ''}
-          </Text>
+          </View>
         </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -136,21 +154,32 @@ export const toastConfig = {
 
 const S = StyleSheet.create({
   wrap: { paddingHorizontal: 14, width: '100%' },
-  card: {
+  cardContainer: {
+    alignSelf: 'stretch',
     width: '100%',
     borderRadius: 16,
     borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
-    elevation: Platform.OS === 'android' ? 4 : 0,
+    elevation: Platform.OS === 'android' ? 4 : 2,
+  },
+  gradientFill: {
+    ...StyleSheet.absoluteFillObject,
+    // ensure there's always a fallback background color under the gradient
+    // (some iOS rendering quirk causes gradient clipping in rare cases)
+    backgroundColor: '#ffffff00',
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    gap: 10,
+    position: 'relative',
+    backgroundColor: 'transparent',
   },
 
   iconBox: {

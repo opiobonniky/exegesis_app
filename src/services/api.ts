@@ -16,7 +16,7 @@ const getBaseURL = () => {
   if (__DEV__) {
     // For physical device on WiFi: use ur local IP (192.168.100.123)
     // For Android emulator: use 10.0.2.2
-    return 'http://192.168.100.128:5001';
+    return 'http://192.168.100.145:5001';
   } else {
     return 'https://exegesisbackend-production.up.railway.app/';
   }

@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import {
   BORDER_RADIUS,
   FONT_SIZES,
@@ -29,7 +29,6 @@ export const createBibleStyles = (isDark: boolean) => {
     headerGradient: {
       paddingTop: SPACING.xxl,
       paddingBottom: SPACING.xl,
-      paddingHorizontal: SPACING.lg,
     },
     headerContent: {
       width: '100%',
@@ -62,7 +61,9 @@ export const createBibleStyles = (isDark: boolean) => {
       alignItems: 'center',
       backgroundColor: COLORS.cardBackground, // add slight transparency to blend with header
       marginHorizontal: SPACING.lg,
-      marginTop: -20,
+      // On iOS avoid pulling the nav pill over the header title — keep it
+      // slightly below the header so the title remains visible.
+      marginTop: Platform.OS === 'ios' ? 8 : -20,
       padding: SPACING.md,
       borderRadius: BORDER_RADIUS.lg,
       shadowColor: COLORS.shadowColor,

@@ -27,6 +27,7 @@ import {
   CircleCheckBig,
   SquareCheckBig,
 } from 'lucide-react-native';
+import { PrimaryButton } from '../../reusable/PrimaryButton';
 
 const { width, height } = Dimensions.get('window');
 const BOTTOM_SPACING = Platform.OS === 'ios' ? 40 : 24;
@@ -356,33 +357,16 @@ const Welcome = () => {
             { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
           ]}
         >
-          <TouchableOpacity
-            style={styles.cta}
+        
+
+          <PrimaryButton title={currentIndex === slides.length - 1
+                  ? 'Get Started'
+                  : 'Continue'} style={[styles.cta, {backgroundColor:currentIndex !== 1 ?COLORS.accent:COLORS.primary}]}
             onPress={
               currentIndex === slides.length - 1
                 ? handleGetStarted
                 : handleContinue
-            }
-            activeOpacity={0.9}
-          >
-            <LinearGradient
-              colors={[COLORS.accent, COLORS.accentLight]}
-              style={styles.ctaGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Text style={[styles.ctaText, { color: COLORS.primaryDark }]}>
-                {currentIndex === slides.length - 1
-                  ? 'Get Started'
-                  : 'Continue'}
-              </Text>
-              <ArrowRight
-                size={20}
-                color={COLORS.primaryDark}
-                strokeWidth={2.5}
-              />
-            </LinearGradient>
-          </TouchableOpacity>
+            }/>
         </Animated.View>
       </View>
     </View>
@@ -521,6 +505,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 15,
     elevation: 10,
+    
   },
   ctaGradient: {
     flexDirection: 'row',

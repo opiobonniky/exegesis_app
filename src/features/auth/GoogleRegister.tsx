@@ -29,6 +29,7 @@ import {
   X,
 } from 'lucide-react-native';
 import GoogleIcon from '../../assets/icons/google-icon.svg';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 // ─── Password requirement definition ─────────────────────────────────────────
 // Try to read requirement labels from translations when available; fallback to English
