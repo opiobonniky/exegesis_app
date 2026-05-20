@@ -26,11 +26,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     window = UIWindow(frame: UIScreen.main.bounds)
 
-    factory.startReactNative(
-      withModuleName: "PAB App",
-      in: window,
-      launchOptions: launchOptions
-    )
+        factory.startReactNative(
+          withModuleName: "ExegesisApp",
+          in: window,
+          launchOptions: launchOptions
+        )
 
         if let plistPath = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"), FileManager.default.fileExists(atPath: plistPath) {
             FirebaseApp.configure()
