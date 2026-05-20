@@ -1,5 +1,4 @@
 
-# Override Firebase SDK Version if desired
 $FirebaseSDKVersion = '12.8.0'
 
 # Resolve react_native_pods.rb with node to allow for hoisting
@@ -9,22 +8,13 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-platform :ios, min_ios_version_supported
+platform :ios, '16.0'
 prepare_react_native_project!
 
-linkage = ENV['USE_FRAMEWORKS']
-if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+use_frameworks! :linkage => :static
+$RNFirebaseAsStaticFramework = true
 
-  # use_frameworks! :linkage => linkage.to_sym
-
-  use_frameworks! :linkage => :static
-  $RNFirebaseAsStaticFramework = true
-
-
-end
-
-target 'PABApp' do
+target 'Exegesis' do
   config = use_native_modules!
 
   use_react_native!(

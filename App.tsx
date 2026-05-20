@@ -13,17 +13,13 @@ const App = () => {
   useEffect(() => {
     const setupApp = async () => {
       try {
-        const token = await initializeNotifications();
-        if (token) {
-          console.log('✅ App notifications initialized with token:', token);
-        }
+        await initializeNotifications();
       } catch (error) {
         console.error('Failed to initialize notifications:', error);
       }
 
       try {
         await initBibleTTS();
-        console.log('✅ Bible TTS initialized');
       } catch (error) {
         console.error('Failed to initialize Bible TTS:', error);
       }
