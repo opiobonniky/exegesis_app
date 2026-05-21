@@ -86,6 +86,47 @@ export type Translations = {
   [k: string]: any;
 };
 
+// Profile / Settings translations
+export type ProfileTranslations = {
+  title?: string;
+  stats?: {
+    books?: string;
+    chapters?: string;
+    highlights?: string;
+    notes?: string;
+  };
+  menuSections?: {
+    bibleStudy?: string;
+    settings?: string;
+  };
+  menuItems?: {
+    continueReading?: string;
+    myHighlights?: string;
+    favorites?: string;
+    myNotes?: string;
+    readingHistory?: string;
+    language?: string;
+    lightMode?: string;
+    darkMode?: string;
+    notifications?: string;
+    editProfile?: string;
+    readingSettings?: string;
+  };
+  fields?: {
+    email?: string;
+    phone?: string;
+    memberSince?: string;
+  };
+  logout?: {
+    logout?: string;
+    loggingOut?: string;
+    confirmTitle?: string;
+    confirmMessage?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+  };
+};
+
 export type ScreenProps = {
   login: {
     title: string;
@@ -109,5 +150,5 @@ export interface LanguageContextProps {
   // callable translator that also exposes nested keys (e.g. t.login.title)
   t: Translator;
   // full translation object for dot‑notation property access
-  translations: Translations;
+  translations: Translations & { profile?: ProfileTranslations };
 }

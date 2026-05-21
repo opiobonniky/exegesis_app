@@ -116,4 +116,130 @@
     "message": "Welcome to the app!"
   },
   "appTagline": "Your Daily Spiritual Companion"
+  ,
+    "readingSettings": {
+    "title": "Reading Settings",
+    "status": {
+      "checking": "Checking...",
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "bibleTranslation": "Bible Translation",
+    "loadingTranslations": "Loading translations…",
+    "offlineFallback": "Using offline translations (connect to internet for more)",
+    "searchPlaceholder": "Search translations — NIV, KJV, ESV…",
+    "noResults": "No results",
+    "trySuggestions": "Try \"NIV\", \"KJV\", \"ESV\"…",
+    "textSize": "Text Size",
+    "previewLabel": "PREVIEW",
+    "preview": { "ref": "— John 3:16" },
+    "readingVoice": "Reading Voice",
+    "voiceSettings": {
+      "label": "Voice Settings",
+      "subtitle": "Speed, pitch, narrator voice"
+    },
+    "appearance": {
+      "label": "Appearance",
+      "lightMode": "Light Mode",
+      "darkMode": "Dark Mode",
+      "lightDesc": "Switch to a brighter theme",
+      "darkDesc": "Switch to a darker theme"
+    }
+  },
+  "notificationSettings": {
+    "heroTitle": "Manage reminders",
+    "heroSub": "Choose when you want to be notified for the Daily Verse and your Reading Plan.",
+    "dailyVerse": "Daily Verse",
+    "dailyVerseSub": "A gentle daily reminder to read the verse of the day.",
+    "enableDailyVerse": "Enable Daily Verse reminder",
+    "reminderTime": "Reminder time",
+    "readingPlan": "Reading Plan",
+    "readingPlanSub": "Daily reading reminders and a completion nudge if today’s task exists.",
+    "enableReadingPlan": "Enable Reading Plan notifications",
+    "dailyReminderTime": "Daily reminder time",
+    "missedDay": "Missed Day Reminder",
+    "missedDaySub": "Evening reminder if today's reading assignment isn't completed.",
+    "enableMissedDay": "Enable missed day reminder",
+    "footerTip": "Tip: If notifications don't show, enable them in your phone settings and disable battery optimizations for this app."
+  },
+  "profile": {
+    "title": "Profile Information",
+    "stats": {
+      "books": "Books",
+      "chapters": "Chapters",
+      "highlights": "Highlights",
+      "notes": "Notes"
+    },
+    "menuSections": {
+      "bibleStudy": "Bible Study",
+      "settings": "Settings"
+    },
+      "menuItems": {
+        "continueReading": "Continue Reading",
+        "myHighlights": "My Highlights",
+        "favorites": "Favorites",
+        "myNotes": "My Notes",
+        "readingHistory": "Reading History",
+        "lightMode": "Light Mode",
+        "darkMode": "Dark Mode",
+        "notifications": "Notifications",
+        "editProfile": "Edit Profile",
+        "readingSettings": "Reading Settings"
+      ,
+      "language": "Language"
+      },
+    "fields": {
+      "email": "Email",
+      "phone": "Phone",
+      "memberSince": "Member since"
+    },
+    "logout": {
+      "logout": "Logout",
+      "loggingOut": "Logging out…",
+      "confirmTitle": "Logout",
+      "confirmMessage": "Are you sure you want to logout from your account?",
+      "confirmLabel": "Logout",
+      "cancelLabel": "Cancel"
+    }
+  }
+  ,
+  "voiceSettings": {
+    "title": "Voice & Narration",
+    "loadingVoices": "Loading voices…",
+    "selectVoice": "Select a voice",
+    "quality": {
+      "neural": "Neural",
+      "enhanced": "Enhanced",
+      "local": "Local"
+    },
+    "rateSnaps": {
+      "slow": "Slow",
+      "calm": "Calm",
+      "normal": "Normal",
+      "quick": "Quick",
+      "fast": "Fast"
+    },
+    "pitchSnaps": {
+      "low": "Low",
+      "natural": "Natural",
+      "high": "High"
+    },
+    "speedReset": "Speed reset: Using device default speed.",
+    "pitchReset": "Pitch reset: Using device default pitch.",
+    "voiceUpdated": "Voice updated",
+    "previewFailed": "Preview failed: Check TTS language packs.",
+    "heroSubPrefix": "Configure your reading voice. Sliders marked ",
+    "deviceDefaultBadge": "Device default",
+    "heroSubSuffix": "inherit your system TTS settings.",
+    "narratorLabel": "Narrator Voice",
+    "previewLabel": "PREVIEW",
+    "previewRef": "John 3:16",
+    "stop": "Stop",
+    "play": "Play",
+    "speechControlsLabel": "SPEECH CONTROLS",
+    "readingSpeed": "Reading Speed",
+    "voicePitch": "Voice Pitch",
+    "reset": "Reset",
+    "deviceHint": "Move the slider to override your device setting"
+  }
 }

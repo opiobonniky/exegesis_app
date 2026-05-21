@@ -61,6 +61,7 @@ import {
   DrawerMenu,
   NoteModal,
   TranslationPickerModal,
+  VerseResourceSheet,
 } from './modals';
 
 if (
@@ -315,6 +316,11 @@ export default function Bible() {
   const [gateVisible, setGateVisible] = useState(false);
   const [gateMessage, setGateMessage] = useState('');
   const [explanationOpen, setExplanationOpen] = useState(false);
+  const [resourceSheetVisible, setResourceSheetVisible] = useState(false);
+  const [resourceVerse, setResourceVerse] = useState<{
+    number: number;
+    text: string;
+  } | null>(null);
 
   const showGate = (msg: string) => {
     clearSelection();
@@ -456,6 +462,31 @@ export default function Bible() {
               startReadingSelectedVerses(current);
             })
           }
+          onJournal={() =>
+            guard(
+              'Journal entries are saved to your account. Sign in to use this feature.',
+              () => {
+                const current = [...selectedVerses];
+                const startVerse = Math.min(...current);
+                const endVerse = Math.max(...current);
+                clearSelection();
+                navigation.navigate(route.journalEntry, {
+                  bookName: currentBook,
+                  chapter: currentChapter,
+                  verseStart: startVerse,
+                  verseEnd: current.length > 1 ? endVerse : startVerse,
+                });
+              },
+            )
+          }
+          onExplain={async () => {
+            if (selectedVerses.length > 0) {
+              const found = await getverseExplanation(selectedVerses, currentBook, currentChapter);
+              if (found) {
+                setExplanationOpen(true);
+              }
+            }
+          }}
           onHighlight={() =>
             guard(
               'Highlights are saved to your account. Sign in to use this feature.',
@@ -504,23 +535,6 @@ export default function Bible() {
             clearSelection();
             setExplanationOpen(false);
           }}
-          onJournal={() =>
-            guard(
-              'Journal entries are saved to your account. Sign in to use this feature.',
-              () => {
-                const current = [...selectedVerses];
-                const startVerse = Math.min(...current);
-                const endVerse = Math.max(...current);
-                clearSelection();
-                navigation.navigate(route.journalEntry, {
-                  bookName: currentBook,
-                  chapter: currentChapter,
-                  verseStart: startVerse,
-                  verseEnd: current.length > 1 ? endVerse : startVerse,
-                });
-              },
-            )
-          }
         />
       )}
 
@@ -559,6 +573,25 @@ export default function Bible() {
             onRemoveHighlight={removeHighlight}
             onExplain={vn => {
               getverseExplanation([vn], currentBook, currentChapter);
+            }}
+            onShare={vn =>
+              guard('Sharing requires a free account.', () =>
+                shareVerses([vn]),
+              )
+            }
+            onCopy={vn =>
+              guard('Copying requires a free account.', () =>
+                copyVerses([vn]),
+              )
+            }
+            onDoubleTap={vn => {
+              clearSelection();
+              const verse = versesArray.find(v => v.num === vn);
+              setResourceVerse({
+                number: vn,
+                text: verse ? verse.text : '',
+              });
+              setResourceSheetVisible(true);
             }}
             onCloseExplanation={vn => {
               clearVerseExplanationForVerse(vn);
@@ -601,6 +634,25 @@ export default function Bible() {
           onRemoveHighlight={removeHighlight}
           onExplain={vn => {
             getverseExplanation([vn], currentBook, currentChapter);
+          }}
+          onShare={vn =>
+            guard('Sharing requires a free account.', () =>
+              shareVerses([vn]),
+            )
+          }
+          onCopy={vn =>
+            guard('Copying requires a free account.', () =>
+              copyVerses([vn]),
+            )
+          }
+          onDoubleTap={vn => {
+            clearSelection();
+            const verse = versesArray.find(v => v.num === vn);
+            setResourceVerse({
+              number: vn,
+              text: verse ? verse.text : '',
+            });
+            setResourceSheetVisible(true);
           }}
           onCloseExplanation={vn => {
             clearVerseExplanationForVerse(vn);
@@ -706,6 +758,19 @@ export default function Bible() {
         isDark={isDark}
       />
 
+      {/* ── Verse Resource Sheet (double-tap to open) ───────────────────── */}
+      {resourceVerse && (
+        <VerseResourceSheet
+          visible={resourceSheetVisible}
+          onClose={() => setResourceSheetVisible(false)}
+          bookName={currentBook}
+          chapter={currentChapter}
+          verseNumber={resourceVerse.number}
+          verseText={resourceVerse.text}
+          isDark={isDark}
+        />
+      )}
+
       {/* ── Bottom Tab — navigation gated for guests ─────────────────────── */}
       {!isFromReadingPlan && (
         <Animated.View
@@ -783,7 +848,7 @@ export default function Bible() {
         visible={modal.status}
         title={modal.title}
         message={modal.message}
-        severity={modal.severity}
+        severity={modal?.severity}
         onConfirm={dismissModal}
       />
     </View>

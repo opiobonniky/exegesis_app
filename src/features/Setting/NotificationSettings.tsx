@@ -24,6 +24,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   BORDER_RADIUS,
   FONT_SIZES,
@@ -60,6 +61,7 @@ export default function NotificationSettingsScreen() {
   const app = useContext(AppContext);
   const navigation = useNavigation<any>();
   const COLORS = getColors(app?.isDark ?? false);
+  const { translations: translation } = useLanguage();
 
   const [loading, setLoading] = useState(true);
 
@@ -187,7 +189,7 @@ export default function NotificationSettingsScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: COLORS.background }]}>
-      <ActionHeader title="Notifications" onPress={() => navigation.goBack()} />
+      <ActionHeader title={translation?.profile?.menuItems?.notifications || 'Notifications'} onPress={() => navigation.goBack()} />
 
       <ScrollView
         contentContainerStyle={s.scroll}
@@ -203,19 +205,18 @@ export default function NotificationSettingsScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[s.heroTitle, { color: COLORS.text }]}>
-              Manage reminders
+              {translation?.notificationSettings?.heroTitle || 'Manage reminders'}
             </Text>
             <Text style={[s.heroSub, { color: COLORS.muted }]}>
-              Choose when you want to be notified for the Daily Verse and your
-              Reading Plan.
+              {translation?.notificationSettings?.heroSub || 'Choose when you want to be notified for the Daily Verse and your Reading Plan.'}
             </Text>
           </View>
         </View>
 
         {/* Daily Verse */}
         <SectionHeader
-          title="Daily Verse"
-          subtitle="A gentle daily reminder to read the verse of the day."
+          title={translation?.notificationSettings?.dailyVerse || 'Daily Verse'}
+          subtitle={translation?.notificationSettings?.dailyVerseSub || 'A gentle daily reminder to read the verse of the day.'}
           icon={<Star size={16} color={COLORS.accent} />}
           COLORS={COLORS}
         />
@@ -223,14 +224,14 @@ export default function NotificationSettingsScreen() {
           style={[s.card, { backgroundColor: surface, borderColor: border }]}
         >
           <RowSwitch
-            label="Enable Daily Verse reminder"
+            label={translation?.notificationSettings?.enableDailyVerse || 'Enable Daily Verse reminder'}
             value={dailyVerseEnabled}
             onValueChange={toggleDailyVerse}
             COLORS={COLORS}
             icon={<Bell size={18} color={COLORS.accent} />}
           />
           <RowLink
-            label="Reminder time"
+            label={translation?.notificationSettings?.reminderTime || 'Reminder time'}
             value={dailyVerseTimeLabel}
             disabled={!dailyVerseEnabled || loading}
             onPress={() => openPicker('dailyVerse')}
@@ -241,8 +242,8 @@ export default function NotificationSettingsScreen() {
 
         {/* Reading Plan */}
         <SectionHeader
-          title="Reading Plan"
-          subtitle="Daily reading reminders and a completion nudge if today’s task exists."
+          title={translation?.notificationSettings?.readingPlan || 'Reading Plan'}
+          subtitle={translation?.notificationSettings?.readingPlanSub || 'Daily reading reminders and a completion nudge if today’s task exists.'}
           icon={<BookOpen size={16} color={COLORS.primary} />}
           COLORS={COLORS}
         />
@@ -250,14 +251,14 @@ export default function NotificationSettingsScreen() {
           style={[s.card, { backgroundColor: surface, borderColor: border }]}
         >
           <RowSwitch
-            label="Enable Reading Plan notifications"
+            label={translation?.notificationSettings?.enableReadingPlan || 'Enable Reading Plan notifications'}
             value={planEnabled}
             onValueChange={togglePlan}
             COLORS={COLORS}
             icon={<Bell size={18} color={COLORS.primary} />}
           />
           <RowLink
-            label="Daily reminder time"
+            label={translation?.notificationSettings?.dailyReminderTime || 'Daily reminder time'}
             value={planTimeLabel}
             disabled={!planEnabled || loading}
             onPress={() => openPicker('readingPlan')}
@@ -268,8 +269,8 @@ export default function NotificationSettingsScreen() {
 
         {/* At-Risk Reminder */}
         <SectionHeader
-          title="Missed Day Reminder"
-          subtitle="Evening reminder if today's reading assignment isn't completed."
+          title={translation?.notificationSettings?.missedDay || 'Missed Day Reminder'}
+          subtitle={translation?.notificationSettings?.missedDaySub || "Evening reminder if today's reading assignment isn't completed."}
           icon={<AlertCircle size={16} color="#F59E0B" />}
           COLORS={COLORS}
         />
@@ -277,14 +278,14 @@ export default function NotificationSettingsScreen() {
           style={[s.card, { backgroundColor: surface, borderColor: border }]}
         >
           <RowSwitch
-            label="Enable missed day reminder"
+            label={translation?.notificationSettings?.enableMissedDay || 'Enable missed day reminder'}
             value={atRiskEnabled}
             onValueChange={toggleAtRisk}
             COLORS={COLORS}
             icon={<AlertCircle size={18} color="#F59E0B" />}
           />
           <RowLink
-            label="Reminder time"
+            label={translation?.notificationSettings?.reminderTime || 'Reminder time'}
             value={atRiskTimeLabel}
             disabled={!atRiskEnabled || loading}
             onPress={() => openPicker('atRisk')}
@@ -293,9 +294,8 @@ export default function NotificationSettingsScreen() {
           />
         </View>
 
-        <Text style={[s.footerNote, { color: COLORS.muted }]}>
-          Tip: If notifications don't show, enable them in your phone settings
-          and disable battery optimizations for this app.
+        <Text style={[s.footerNote, { color: COLORS.muted }]}> 
+          {translation?.notificationSettings?.footerTip || "Tip: If notifications don't show, enable them in your phone settings and disable battery optimizations for this app."}
         </Text>
       </ScrollView>
 

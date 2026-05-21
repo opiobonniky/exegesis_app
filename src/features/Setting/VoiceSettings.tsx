@@ -36,6 +36,7 @@ import {
 } from 'lucide-react-native';
 
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   BORDER_RADIUS,
   getColors,
@@ -55,23 +56,38 @@ const PREVIEW_TEXT =
 // ─── Snap points ──────────────────────────────────────────────────────────────
 
 const RATE_SNAPS = [
-  { label: 'Slow', value: 0.35 },
-  { label: 'Calm', value: 0.5 },
-  { label: 'Normal', value: 0.65 },
-  { label: 'Quick', value: 0.8 },
-  { label: 'Fast', value: 1.0 },
+  { key: 'slow', value: 0.35 },
+  { key: 'calm', value: 0.5 },
+  { key: 'normal', value: 0.65 },
+  { key: 'quick', value: 0.8 },
+  { key: 'fast', value: 1.0 },
 ];
 
 const PITCH_SNAPS = [
-  { label: 'Low', value: 0.85 },
-  { label: 'Natural', value: 1.0 },
-  { label: 'High', value: 1.15 },
+  { key: 'low', value: 0.85 },
+  { key: 'natural', value: 1.0 },
+  { key: 'high', value: 1.15 },
 ];
+
+const FALLBACK_RATE_LABELS: Record<string, string> = {
+  slow: 'Slow',
+  calm: 'Calm',
+  normal: 'Normal',
+  quick: 'Quick',
+  fast: 'Fast',
+};
+
+const FALLBACK_PITCH_LABELS: Record<string, string> = {
+  low: 'Low',
+  natural: 'Natural',
+  high: 'High',
+};
 
 // ─── VoiceSettingsScreen ──────────────────────────────────────────────────────
 
 export default function VoiceSettingsScreen() {
   const app = useContext(AppContext);
+  const { translations: translation } = useLanguage();
   if (!app) return null;
   const { isDark } = app;
   const COLORS = getColors(isDark);
@@ -188,38 +204,38 @@ export default function VoiceSettingsScreen() {
   );
 
   const voiceLabel = useMemo(() => {
-    if (deviceLoading) return 'Loading voices…';
-    return currentVoice?.name || deviceVoiceId || 'Select a voice';
-  }, [currentVoice, deviceVoiceId, deviceLoading]);
+    if (deviceLoading) return translation?.voiceSettings?.loadingVoices || 'Loading voices…';
+    return (
+      currentVoice?.name || deviceVoiceId || translation?.voiceSettings?.selectVoice || 'Select a voice'
+    );
+  }, [currentVoice, deviceVoiceId, deviceLoading, translation]);
 
   const voiceQuality = useMemo(() => {
     if (!currentVoice) return null;
     return currentVoice.quality === 'neural'
-      ? 'Neural'
+      ? translation?.voiceSettings?.quality?.neural || 'Neural'
       : currentVoice.quality === 'enhanced'
-        ? 'Enhanced'
-        : 'Local';
-  }, [currentVoice]);
+        ? translation?.voiceSettings?.quality?.enhanced || 'Enhanced'
+        : translation?.voiceSettings?.quality?.local || 'Local';
+  }, [currentVoice, translation]);
 
-  const nearestRateLabel = useMemo(
-    () =>
-      RATE_SNAPS.reduce((a, b) =>
-        Math.abs(a.value - rateDisplay) <= Math.abs(b.value - rateDisplay)
-          ? a
-          : b,
-      ).label,
-    [rateDisplay],
-  );
+  const nearestRateLabel = useMemo(() => {
+    const nearest = RATE_SNAPS.reduce((a, b) =>
+      Math.abs(a.value - rateDisplay) <= Math.abs(b.value - rateDisplay) ? a : b,
+    );
+    return (
+      translation?.voiceSettings?.rateSnaps?.[nearest.key] || FALLBACK_RATE_LABELS[nearest.key]
+    );
+  }, [rateDisplay, translation]);
 
-  const nearestPitchLabel = useMemo(
-    () =>
-      PITCH_SNAPS.reduce((a, b) =>
-        Math.abs(a.value - pitchDisplay) <= Math.abs(b.value - pitchDisplay)
-          ? a
-          : b,
-      ).label,
-    [pitchDisplay],
-  );
+  const nearestPitchLabel = useMemo(() => {
+    const nearest = PITCH_SNAPS.reduce((a, b) =>
+      Math.abs(a.value - pitchDisplay) <= Math.abs(b.value - pitchDisplay) ? a : b,
+    );
+    return (
+      translation?.voiceSettings?.pitchSnaps?.[nearest.key] || FALLBACK_PITCH_LABELS[nearest.key]
+    );
+  }, [pitchDisplay, translation]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -239,7 +255,7 @@ export default function VoiceSettingsScreen() {
   const handleRateReset = async () => {
     await bibleTTS.resetRate();
     setRateLocal(null);
-    showToast('success', 'Speed reset: Using device default speed.');
+    showToast('success', translation?.voiceSettings?.speedReset || 'Speed reset: Using device default speed.');
     if (previewActiveRef.current) await restartPreview();
   };
 
@@ -259,7 +275,7 @@ export default function VoiceSettingsScreen() {
   const handlePitchReset = async () => {
     await bibleTTS.resetPitch();
     setPitchLocal(null);
-    showToast('success', 'Pitch reset: Using device default pitch.');
+    showToast('success', translation?.voiceSettings?.pitchReset || 'Pitch reset: Using device default pitch.');
     if (previewActiveRef.current) await restartPreview();
   };
 
@@ -267,7 +283,7 @@ export default function VoiceSettingsScreen() {
     setDeviceVoiceId(id);
     await bibleTTS.setVoice(id);
     setPickerOpen(false);
-    showToast('success', 'Voice updated');
+    showToast('success', translation?.voiceSettings?.voiceUpdated || 'Voice updated');
     if (previewActiveRef.current) await restartPreview();
   };
 
@@ -284,12 +300,12 @@ export default function VoiceSettingsScreen() {
       return;
     }
     previewActiveRef.current = true;
-    try {
-      await bibleTTS.speakVerses([{ num: 16, text: PREVIEW_TEXT }], 'John', 3);
-    } catch {
-      previewActiveRef.current = false;
-      showToast('error', 'Preview failed: Check TTS language packs.');
-    }
+      try {
+        await bibleTTS.speakVerses([{ num: 16, text: PREVIEW_TEXT }], 'John', 3);
+      } catch {
+        previewActiveRef.current = false;
+        showToast('error', translation?.voiceSettings?.previewFailed || 'Preview failed: Check TTS language packs.');
+      }
   };
 
   // ── Theme tokens ───────────────────────────────────────────────────────────
@@ -301,7 +317,7 @@ export default function VoiceSettingsScreen() {
   return (
     <View style={[styles.root, { backgroundColor: COLORS.background }]}>
       <ActionHeader
-        title="Reading Voice"
+        title={translation?.voiceSettings?.title || 'Reading Voice'}
         rightComponent={<Volume2 size={24} color={COLORS.white} />}
         onPress={() => navigation.goBack()}
       />
@@ -333,7 +349,7 @@ export default function VoiceSettingsScreen() {
             </View>
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={[styles.heroTitle, { color: gold }]}>
-                Voice & Narration
+                {translation?.voiceSettings?.title || 'Voice & Narration'}
               </Text>
               <Text
                 style={[
@@ -345,11 +361,11 @@ export default function VoiceSettingsScreen() {
                   },
                 ]}
               >
-                Configure your reading voice. Sliders marked{' '}
+                {translation?.voiceSettings?.heroSubPrefix || 'Configure your reading voice. Sliders marked '}
                 <Text style={{ color: gold, fontWeight: '700' }}>
-                  Device default
+                  {translation?.voiceSettings?.deviceDefaultBadge || 'Device default'}
                 </Text>{' '}
-                inherit your system TTS settings.
+                {translation?.voiceSettings?.heroSubSuffix || 'inherit your system TTS settings.'}
               </Text>
             </View>
           </View>
@@ -372,7 +388,7 @@ export default function VoiceSettingsScreen() {
         </LinearGradient>
 
         {/* ── Narrator voice ──────────────────────────────────────────── */}
-        <SectionLabel text="NARRATOR VOICE" isDark={isDark} />
+        <SectionLabel text={(translation?.voiceSettings?.narratorLabel || 'NARRATOR VOICE').toUpperCase()} isDark={isDark} />
         <TouchableOpacity
           onPress={() => setPickerOpen(true)}
           activeOpacity={0.75}
@@ -410,7 +426,7 @@ export default function VoiceSettingsScreen() {
         </TouchableOpacity>
 
         {/* ── Preview ─────────────────────────────────────────────────── */}
-        <SectionLabel text="PREVIEW" isDark={isDark} />
+        <SectionLabel text={(translation?.voiceSettings?.previewLabel || 'PREVIEW').toUpperCase()} isDark={isDark} />
         <View
           style={[
             styles.previewCard,
@@ -421,7 +437,7 @@ export default function VoiceSettingsScreen() {
           ]}
         >
           <View style={{ flex: 1 }}>
-            <Text style={[styles.previewRef, { color: gold }]}>John 3:16</Text>
+            <Text style={[styles.previewRef, { color: gold }]}>{translation?.voiceSettings?.previewRef || 'John 3:16'}</Text>
             <Text
               style={[
                 styles.previewSnip,
@@ -450,19 +466,19 @@ export default function VoiceSettingsScreen() {
             ) : (
               <Play size={14} color="#1A1208" />
             )}
-            <Text
-              style={[
-                styles.playBtnTxt,
-                { color: isPlaying ? '#C0392B' : '#1A1208' },
-              ]}
-            >
-              {isPlaying ? 'Stop' : 'Play'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+              <Text
+                style={[
+                  styles.playBtnTxt,
+                  { color: isPlaying ? '#C0392B' : '#1A1208' },
+                ]}
+              >
+                {isPlaying ? (translation?.voiceSettings?.stop || 'Stop') : (translation?.voiceSettings?.play || 'Play')}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
         {/* ── Speech controls ──────────────────────────────────────────── */}
-        <SectionLabel text="SPEECH CONTROLS" isDark={isDark} />
+        <SectionLabel text={(translation?.voiceSettings?.speechControlsLabel || 'SPEECH CONTROLS').toUpperCase()} isDark={isDark} />
         <View
           style={[
             styles.controlCard,
@@ -472,19 +488,22 @@ export default function VoiceSettingsScreen() {
           {/* Reading Speed */}
           <SliderBlock
             icon={<Gauge size={15} color={gold} />}
-            label="Reading Speed"
+            label={translation?.voiceSettings?.readingSpeed || 'Reading Speed'}
             snapLabel={nearestRateLabel}
             value={rateDisplay}
             isDeviceDefault={rate === null}
             min={0.35}
             max={1.0}
-            snaps={RATE_SNAPS}
+            snaps={RATE_SNAPS.map(s => ({ label: translation?.voiceSettings?.rateSnaps?.[s.key] || FALLBACK_RATE_LABELS[s.key], value: s.value }))}
             onValueChange={handleRateChange}
             onSlidingComplete={handleRateCommit}
             onReset={handleRateReset}
             trackColor={gold}
             isDark={isDark}
             COLORS={COLORS}
+            deviceDefaultLabel={translation?.voiceSettings?.deviceDefaultBadge || 'Device default'}
+            resetLabel={translation?.voiceSettings?.reset || 'Reset'}
+            deviceHintLabel={translation?.voiceSettings?.deviceHint || 'Move the slider to override your device setting'}
           />
 
           <View style={[styles.divider, { backgroundColor: border }]} />
@@ -492,19 +511,22 @@ export default function VoiceSettingsScreen() {
           {/* Voice Pitch */}
           <SliderBlock
             icon={<Music2 size={15} color={COLORS.primary} />}
-            label="Voice Pitch"
+            label={translation?.voiceSettings?.voicePitch || 'Voice Pitch'}
             snapLabel={nearestPitchLabel}
             value={pitchDisplay}
             isDeviceDefault={pitch === null}
             min={0.85}
             max={1.15}
-            snaps={PITCH_SNAPS}
+            snaps={PITCH_SNAPS.map(s => ({ label: translation?.voiceSettings?.pitchSnaps?.[s.key] || FALLBACK_PITCH_LABELS[s.key], value: s.value }))}
             onValueChange={handlePitchChange}
             onSlidingComplete={handlePitchCommit}
             onReset={handlePitchReset}
             trackColor={COLORS.primary}
             isDark={isDark}
             COLORS={COLORS}
+            deviceDefaultLabel={translation?.voiceSettings?.deviceDefaultBadge || 'Device default'}
+            resetLabel={translation?.voiceSettings?.reset || 'Reset'}
+            deviceHintLabel={translation?.voiceSettings?.deviceHint || 'Move the slider to override your device setting'}
           />
         </View>
 
@@ -530,8 +552,8 @@ export default function VoiceSettingsScreen() {
           >
             <View style={[styles.handle, { backgroundColor: gold + '40' }]} />
             <View style={styles.sheetHead}>
-              <Text style={[styles.sheetTitle, { color: COLORS.text }]}>
-                Select Voice
+              <Text style={[styles.sheetTitle, { color: COLORS.text }]}> 
+                {translation?.voiceSettings?.selectVoice || 'Select Voice'}
               </Text>
               <TouchableOpacity
                 onPress={() => setPickerOpen(false)}
@@ -557,7 +579,7 @@ export default function VoiceSettingsScreen() {
                     fontSize: 13,
                   }}
                 >
-                  Loading voices…
+                  {translation?.voiceSettings?.loadingVoices || 'Loading voices…'}
                 </Text>
               </View>
             ) : deviceVoices.length === 0 ? (
@@ -571,8 +593,7 @@ export default function VoiceSettingsScreen() {
                   },
                 ]}
               >
-                No English voices found.{'\n'}Install a TTS language pack in
-                device settings.
+                {translation?.voiceSettings?.noVoicesFound || 'No voices found.\nInstall a TTS language pack in device settings.'}
               </Text>
             ) : (
               <ScrollView
@@ -582,12 +603,12 @@ export default function VoiceSettingsScreen() {
                 {(['neural', 'enhanced', 'local'] as const).map(q => {
                   const group = deviceVoices.filter(v => v.quality === q);
                   if (!group.length) return null;
-                  const heading =
-                    q === 'neural'
-                      ? 'Neural · Requires internet'
-                      : q === 'enhanced'
-                        ? 'Enhanced'
-                        : 'Local · Works offline';
+                   const heading =
+                     q === 'neural'
+                       ? (translation?.voiceSettings?.quality?.neuralHeading || 'Neural · Requires internet')
+                       : q === 'enhanced'
+                         ? (translation?.voiceSettings?.quality?.enhancedHeading || 'Enhanced')
+                         : (translation?.voiceSettings?.quality?.localHeading || 'Local · Works offline');
                   return (
                     <View key={q}>
                       <Text style={[styles.groupLbl, { color: gold }]}>
@@ -682,6 +703,9 @@ function SliderBlock({
   trackColor,
   isDark,
   COLORS,
+  deviceDefaultLabel,
+  resetLabel,
+  deviceHintLabel,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -697,6 +721,9 @@ function SliderBlock({
   trackColor: string;
   isDark: boolean;
   COLORS: any;
+  deviceDefaultLabel?: string;
+  resetLabel?: string;
+  deviceHintLabel?: string;
 }) {
   const mutedTrack = isDark ? 'rgba(255,255,255,0.11)' : 'rgba(0,0,0,0.09)';
 
@@ -720,10 +747,10 @@ function SliderBlock({
               },
             ]}
           >
-            <Text style={[sliderStyles.defaultBadgeTxt, { color: trackColor }]}>
-              Device default
+            <Text style={[sliderStyles.defaultBadgeTxt, { color: trackColor }]}> 
+              {deviceDefaultLabel || 'Device default'}
             </Text>
-          </View>
+            </View>
         ) : (
           /* Custom value badge + reset button */
           <View style={sliderStyles.customRow}>
@@ -756,17 +783,17 @@ function SliderBlock({
                 size={12}
                 color={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.40)'}
               />
-              <Text
-                style={[
-                  sliderStyles.resetTxt,
-                  {
-                    color: isDark
-                      ? 'rgba(255,255,255,0.45)'
-                      : 'rgba(0,0,0,0.40)',
-                  },
-                ]}
-              >
-                Reset
+                <Text
+                  style={[
+                    sliderStyles.resetTxt,
+                    {
+                      color: isDark
+                        ? 'rgba(255,255,255,0.45)'
+                        : 'rgba(0,0,0,0.40)',
+                    },
+                  ]}
+                >
+                {resetLabel || 'Reset'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -774,16 +801,16 @@ function SliderBlock({
       </View>
 
       {/* Hint shown only when device default is active */}
-      {isDeviceDefault && (
-        <Text
-          style={[
-            sliderStyles.deviceHint,
-            { color: isDark ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.32)' },
-          ]}
-        >
-          Move the slider to override your device setting
-        </Text>
-      )}
+        {isDeviceDefault && (
+          <Text
+            style={[
+              sliderStyles.deviceHint,
+              { color: isDark ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.32)' },
+            ]}
+          >
+            {deviceHintLabel || 'Move the slider to override your device setting'}
+          </Text>
+        )}
 
       <Slider
         style={sliderStyles.slider}

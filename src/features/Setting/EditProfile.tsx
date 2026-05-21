@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  Platform,
 } from 'react-native';
 import {
   User,
@@ -16,6 +17,7 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   BORDER_RADIUS,
   getColors,
@@ -36,6 +38,7 @@ import { showToast } from '../../helpers/Toash.helper';
 export default function EditProfileScreen() {
   const app = useContext(AppContext);
   const navigation = useNavigation<any>();
+  const { translations, language, setLanguage, t } = useLanguage();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   if (!app || !app.userInfo) return null;
@@ -220,15 +223,15 @@ export default function EditProfileScreen() {
   
 
   const genderOptions = [
-    { label: 'Male', value: 'Male' },
-    { label: 'Female', value: 'Female' },
+    { label: t('editProfile.gender.male') || 'Male', value: 'Male' },
+    { label: t('editProfile.gender.female') || 'Female', value: 'Female' },
   ];
 
   const maritalStatusOptions = [
-    { label: 'Single', value: 'Single' },
-    { label: 'Married', value: 'Married' },
-    { label: 'Divorced', value: 'Divorced' },
-    { label: 'Widowed', value: 'Widowed' },
+    { label: t('editProfile.marital.single') || 'Single', value: 'Single' },
+    { label: t('editProfile.marital.married') || 'Married', value: 'Married' },
+    { label: t('editProfile.marital.divorced') || 'Divorced', value: 'Divorced' },
+    { label: t('editProfile.marital.widowed') || 'Widowed', value: 'Widowed' },
   ];
 
   const styles = StyleSheet.create({
@@ -441,10 +444,25 @@ export default function EditProfileScreen() {
     },
   });
 
+const floatingLang = StyleSheet.create({
+  langFloatingBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? 34 : 56,
+    right: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    zIndex: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+});
+
   return (
     <View style={styles.container}>
       <ActionHeader
-        title="Edit Profile Information"
+        title={t('editProfile.title') || 'Edit Profile Information'}
         onPress={() => navigation.goBack()}
       />
 
@@ -460,36 +478,36 @@ export default function EditProfileScreen() {
             {/* ── PROFILE PHOTO SECTION ──────────────────────────────────── */}
 
             {/* ── EXTENDED INFO LINK ─────────────────────────────────────── */}
-            <TouchableOpacity
-              style={styles.moreInfoCard}
-              onPress={() => navigation.navigate(route.extendedProfile)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.moreInfoContent}>
-                <View style={styles.moreInfoLeft}>
+              <TouchableOpacity
+                style={styles.moreInfoCard}
+                onPress={() => navigation.navigate(route.extendedProfile)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.moreInfoContent}>
+                  <View style={styles.moreInfoLeft}>
                   <Text style={styles.moreInfoTitle}>
-                    Additional Information
+                    {t('editProfile.additionalInfo.title') || 'Additional Information'}
                   </Text>
                   <Text style={styles.moreInfoDesc}>
-                    Ministry, emergency contacts, address & more
+                    {t('editProfile.additionalInfo.desc') || 'Ministry, emergency contacts, address & more'}
                   </Text>
+                  </View>
+                  <View style={styles.moreInfoIcon}>
+                    <ChevronRight size={20} color={COLORS.primary} />
+                  </View>
                 </View>
-                <View style={styles.moreInfoIcon}>
-                  <ChevronRight size={20} color={COLORS.primary} />
-                </View>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
 
             {/* ── BASIC INFO FORM ────────────────────────────────────────── */}
             <View style={styles.formCard}>
-              <Text style={styles.sectionTitle}>Personal Information</Text>
+              <Text style={styles.sectionTitle}>{t('editProfile.section.personal') || 'Personal Information'}</Text>
 
               <View style={styles.form}>
                 <View style={styles.row}>
                   <View style={styles.halfInput}>
                     <InputField
-                      label="First Name"
-                      placeholder="First name"
+                      label={t('editProfile.fields.firstName') || 'First Name'}
+                      placeholder={t('editProfile.placeholders.firstName') || 'First name'}
                       value={firstName}
                       onChangeText={text => {
                         setFirstName(text);
@@ -502,8 +520,8 @@ export default function EditProfileScreen() {
                   </View>
                   <View style={styles.halfInput}>
                     <InputField
-                      label="Last Name"
-                      placeholder="Last name"
+                      label={t('editProfile.fields.lastName') || 'Last Name'}
+                      placeholder={t('editProfile.placeholders.lastName') || 'Last name'}
                       value={lastName}
                       onChangeText={text => {
                         setLastName(text);
@@ -517,8 +535,8 @@ export default function EditProfileScreen() {
                 </View>
 
                 <InputField
-                  label="Email Address"
-                  placeholder="Email"
+                  label={t('editProfile.fields.email') || 'Email Address'}
+                  placeholder={t('editProfile.placeholders.email') || 'Email'}
                   value={email}
                   onChangeText={text => {
                     setEmail(text);
@@ -531,8 +549,8 @@ export default function EditProfileScreen() {
                 />
 
                 <InputField
-                  label="Phone Number"
-                  placeholder="Phone (optional)"
+                  label={t('editProfile.fields.phone') || 'Phone Number'}
+                  placeholder={t('editProfile.placeholders.phone') || 'Phone (optional)'}
                   value={phoneNumber}
                   onChangeText={text => {
                     setPhoneNumber(text);
@@ -545,15 +563,15 @@ export default function EditProfileScreen() {
                 />
 
                 <DatePickerInput
-                  label="Date of Birth"
-                  placeholder="Select date (optional)"
+                  label={t('editProfile.fields.dob') || 'Date of Birth'}
+                  placeholder={t('editProfile.placeholders.dob') || 'Select date (optional)'}
                   value={dateOfBirth}
                   onChangeDate={setDateOfBirth}
                 />
 
                 {/* Gender */}
                 <View style={styles.pickerContainer}>
-                  <Text style={styles.label}>Gender</Text>
+                  <Text style={styles.label}>{t('editProfile.fields.gender') || 'Gender'}</Text>
                   <View style={styles.optionsContainer}>
                     {genderOptions.map(option => (
                       <TouchableOpacity
@@ -573,27 +591,27 @@ export default function EditProfileScreen() {
                         ]}
                         onPress={() => setGender(option.value)}
                       >
-                        <Text
-                          style={[
-                            styles.optionText,
-                            {
-                              color:
-                                gender === option.value
-                                  ? COLORS.white
-                                  : COLORS.text,
-                            },
-                          ]}
-                        >
+                          <Text
+                            style={[
+                              styles.optionText,
+                              {
+                                color:
+                                  gender === option.value
+                                    ? COLORS.white
+                                    : COLORS.text,
+                              },
+                            ]}
+                          >
                           {option.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                   </View>
                 </View>
 
                 {/* Marital Status */}
                 <View style={styles.pickerContainer}>
-                  <Text style={styles.label}>Marital Status</Text>
+                  <Text style={styles.label}>{t('editProfile.fields.marital') || 'Marital Status'}</Text>
                   <View style={styles.optionsContainer}>
                     {maritalStatusOptions.map(option => (
                       <TouchableOpacity
@@ -613,21 +631,21 @@ export default function EditProfileScreen() {
                         ]}
                         onPress={() => setMaritalStatus(option.value)}
                       >
-                        <Text
-                          style={[
-                            styles.optionText,
-                            {
-                              color:
-                                maritalStatus === option.value
-                                  ? COLORS.white
-                                  : COLORS.text,
-                            },
-                          ]}
-                        >
+                          <Text
+                            style={[
+                              styles.optionText,
+                              {
+                                color:
+                                  maritalStatus === option.value
+                                    ? COLORS.white
+                                    : COLORS.text,
+                              },
+                            ]}
+                          >
                           {option.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                   </View>
                 </View>
               </View>
@@ -636,7 +654,7 @@ export default function EditProfileScreen() {
             {/* ── ACTION BUTTONS ─────────────────────────────────────────── */}
             <View style={styles.actionButtons}>
               <PrimaryButton
-                title={loading ? 'Saving...' : 'Save Changes'}
+                title={loading ? (t('editProfile.saving') || 'Saving...') : (t('editProfile.save') || 'Save Changes')}
                 onPress={handleSave}
                 disabled={loading}
                 loading={loading}
@@ -646,7 +664,7 @@ export default function EditProfileScreen() {
             {/* Info */}
             <View style={styles.infoCard}>
               <Text style={styles.infoText}>
-                💡 Changes to your email may require verification
+                {t('editProfile.info.emailChange') || '💡 Changes to your email may require verification'}
               </Text>
             </View>
           </ScrollView>

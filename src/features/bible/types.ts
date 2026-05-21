@@ -56,6 +56,7 @@ export interface SelectionActionBarProps {
   totalVerses: number;
   onRangeChange: (start: number, end: number) => void;
   onListen: () => void;
+  onExplain?: () => void;
   onHighlight: () => void;
   onNote: () => void;
   onFavorite: () => void;
@@ -140,6 +141,16 @@ export interface ExplanationModalProps {
   currentBook: string;
   currentChapter: number;
   onReadMore: () => void;
+  isDark: boolean;
+}
+
+export interface VerseResourceSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  bookName: string;
+  chapter: number;
+  verseNumber: number;
+  verseText: string;
   isDark: boolean;
 }
 

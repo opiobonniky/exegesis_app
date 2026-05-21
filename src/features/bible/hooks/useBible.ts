@@ -15,6 +15,7 @@ import {
   Animated,
   FlatList,
   Clipboard,
+  Share,
 } from 'react-native';
 import { bibleApi, checkOnlineStatus } from '../../../services/bibleApi';
 import {
@@ -1005,17 +1006,21 @@ export const useBible = () => {
 
   // ─── Share / Copy ───────────────────────────────────────────────────────────
   const shareVerses = useCallback(
-    (versesArg: number[]) => {
+    async (versesArg: number[]) => {
       const text = versesArg
         .map(
           v =>
             `${v}. ${verses[v] || getVerseText(currentBook, currentChapter, v)}`,
         )
         .join('\n');
-      Clipboard.setString(
-        `${currentBook} ${currentChapter}:${versesArg.join(',')}\n\n${text}`,
-      );
-      showToast('success', 'Copied to clipboard');
+      const message = `${currentBook} ${currentChapter}:${versesArg.join(',')}\n\n${text}\n\n— Shared from Exegesis`;
+      try {
+        await Share.share({ message });
+      } catch (err: any) {
+        if (err?.message !== 'User did not share') {
+          console.warn('Share failed', err);
+        }
+      }
     },
     [currentBook, currentChapter, verses],
   );
@@ -1028,7 +1033,9 @@ export const useBible = () => {
             `${v}. ${verses[v] || getVerseText(currentBook, currentChapter, v)}`,
         )
         .join('\n');
-      Clipboard.setString(text);
+      Clipboard.setString(
+        `${currentBook} ${currentChapter}:${versesArg.join(',')}\n\n${text}`,
+      );
       showToast('success', 'Copied to clipboard');
     },
     [currentBook, currentChapter, verses],
@@ -1048,37 +1055,42 @@ export const useBible = () => {
 
   // ─── Explanation / Notes ────────────────────────────────────────────────────
   const getverseExplanation = useCallback(
-    async (verseNumbers: number[], bookName: string, chapter: number) => {
+    async (verseNumbers: number[], bookName: string, chapter: number): Promise<boolean> => {
       try {
-        if (!verseNumbers || verseNumbers.length === 0) return;
+        if (!verseNumbers || verseNumbers.length === 0) return false;
 
         // Backend provides get-verse-explanation for a single verse.
         // Call it for each requested verse and combine results.
-        const promises = verseNumbers.map(vn =>
-          sendPostRequest<any>('bible', 'get-verse-explanation', {
-            bookName,
-            chapter,
-            verseNumber: vn,
-          }).then(res => ({ vn, res })).catch(err => ({ vn, err })),
+        const results = await Promise.allSettled(
+          verseNumbers.map(vn =>
+            sendPostRequest<any>('bible', 'get-verse-explanation', {
+              bookName,
+              chapter,
+              verseNumber: vn,
+            }),
+          ),
         );
 
-        const results = await Promise.all(promises);
         const explanations: Record<number, string> = {};
-        for (const r of results) {
-          if (r.res && r.res.returnCode === 200 && r.res.returnData) {
-            // res.returnData is the explanation object
-            const item = r.res.returnData;
-            // backend returns a single explanation object
-            explanations[item.verseNumber] = item.explanation || '';
+        results.forEach((result, idx) => {
+          if (result.status === 'fulfilled' && result.value) {
+            const res = result.value;
+            if (res.returnCode === 200 && res.returnData) {
+              const item = res.returnData;
+              explanations[item.verseNumber] = item.explanation || '';
+            }
           }
-        }
+        });
 
         if (Object.keys(explanations).length > 0) {
           setVerseExplanationMap(prev => ({ ...prev, ...explanations }));
           setShowExplanation(true);
+          return true;
         }
+        return false;
       } catch (err) {
         console.warn('Failed to get explanation', err);
+        return false;
       }
     },
     [],

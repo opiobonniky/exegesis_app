@@ -15,8 +15,8 @@ import {
   Switch,
   ActivityIndicator,
   Animated,
+  Platform,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import {
   Moon,
   Sun,
@@ -25,6 +25,7 @@ import {
   Heart,
   Star,
   Bell,
+  Globe,
   ChevronRight,
   Edit,
   History,
@@ -38,6 +39,9 @@ import {
   Calendar,
 } from 'lucide-react-native';
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { showToast } from '../../helpers/Toash.helper';
+import LanguagePickerModal from '../../component/LanguagePickerModal';
 import {
   BORDER_RADIUS,
   getColors,
@@ -80,12 +84,26 @@ export default function ProfileScreen() {
     message: '',
     severity: 'info',
   });
+  const [langModalOpen, setLangModalOpen] = useState(false);
 
   if (!app || !app.userInfo) return null;
 
   const { userInfo, isDark, toggleTheme, logout } = app;
   const user = userInfo as any;
   const COLORS = getColors(isDark);
+  const { translations, setLanguage, language, t } = useLanguage();
+
+  const cycleLanguage = () => {
+    const langs = ['en', 'es', 'fr', 'ar'];
+    const idx = langs.indexOf(language as string);
+    const next = langs[(idx + 1) % langs.length];
+    setLanguage(next as any);
+    const names: Record<string, string> = { en: 'English', es: 'Español', fr: 'Français', ar: 'العربية' };
+    showToast(
+      'success',
+      `${t('profile.menuItems.language') || 'Language'}: ${names[next] || next}`,
+    );
+  };
 
   useEffect(() => {
     loadProfileData();
@@ -159,31 +177,31 @@ export default function ProfileScreen() {
   const statCards = useMemo(
     () => [
       {
-        label: 'Books',
+        label: t('profile.stats.books') || (translations.profile && translations.profile.stats?.books) || 'Books',
         value: stats.booksRead.toString(),
         icon: BookOpen,
         color: COLORS.primary,
       },
       {
-        label: 'Chapters',
+        label: t('profile.stats.chapters') || (translations.profile && translations.profile.stats?.chapters) || 'Chapters',
         value: stats.chaptersRead.toString(), // ✅ correct now
         icon: Target,
         color: '#3B82F6',
       },
       {
-        label: 'Highlights',
+        label: t('profile.stats.highlights') || (translations.profile && translations.profile.stats?.highlights) || 'Highlights',
         value: stats.highlights.toString(),
         icon: Star,
         color: '#F59E0B',
       },
       {
-        label: 'Notes',
+        label: t('profile.stats.notes') || (translations.profile && translations.profile.stats?.notes) || 'Notes',
         value: stats.notes.toString(),
         icon: FileText,
         color: '#8B5CF6',
       },
     ],
-    [stats, COLORS.primary],
+    [stats, COLORS.primary, translations, t],
   );
 
   const handleScroll = useCallback(
@@ -209,17 +227,17 @@ export default function ProfileScreen() {
   const menuSections = useMemo(
     () => [
       {
-        title: 'Bible Study',
+        title: t('profile.menuSections.bibleStudy') || (translations.profile && translations.profile.menuSections?.bibleStudy) || 'Bible Study',
         items: [
           {
             icon: BookOpen,
-            label: 'Continue Reading',
+            label: t('profile.menuItems.continueReading') || (translations.profile && translations.profile.menuItems?.continueReading) || 'Continue Reading',
             route: route.bible,
             color: COLORS.primary,
           },
           {
             icon: Star,
-            label: 'My Highlights',
+            label: t('profile.menuItems.myHighlights') || (translations.profile && translations.profile.menuItems?.myHighlights) || 'My Highlights',
             route: route.Highlights,
             badge:
               stats.highlights > 0 ? stats.highlights.toString() : undefined,
@@ -227,21 +245,21 @@ export default function ProfileScreen() {
           },
           {
             icon: Heart,
-            label: 'Favorites',
+            label: t('profile.menuItems.favorites') || (translations.profile && translations.profile.menuItems?.favorites) || 'Favorites',
             route: route.favorites,
             badge: stats.favorites > 0 ? stats.favorites.toString() : undefined,
             color: '#EF4444',
           },
           {
             icon: FileText,
-            label: 'My Notes',
+            label: t('profile.menuItems.myNotes') || (translations.profile && translations.profile.menuItems?.myNotes) || 'My Notes',
             route: route.notes,
             badge: stats.notes > 0 ? stats.notes.toString() : undefined,
             color: '#8B5CF6',
           },
           {
             icon: History,
-            label: 'Reading History',
+            label: t('profile.menuItems.readingHistory') || (translations.profile && translations.profile.menuItems?.readingHistory) || 'Reading History',
             route: route.readHistory,
             color: '#10B981',
             badge:
@@ -252,11 +270,13 @@ export default function ProfileScreen() {
         ],
       },
       {
-        title: 'Settings',
+        title: t('profile.menuSections.settings') || (translations.profile && translations.profile.menuSections?.settings) || 'Settings',
         items: [
           {
             icon: isDark ? Moon : Sun,
-            label: `${isDark ? 'Light' : 'Dark'} Mode`,
+            label: isDark
+              ? t('profile.menuItems.lightMode') || (translations.profile && translations.profile.menuItems?.lightMode) || 'Light Mode'
+              : t('profile.menuItems.darkMode') || (translations.profile && translations.profile.menuItems?.darkMode) || 'Dark Mode',
             isSwitch: true,
             value: isDark,
             onToggle: toggleTheme,
@@ -264,32 +284,51 @@ export default function ProfileScreen() {
           },
           {
             icon: Bell,
-            label: 'Notifications',
+            label: t('profile.menuItems.notifications') || (translations.profile && translations.profile.menuItems?.notifications) || 'Notifications',
             onPress: () => navigation.navigate(route.notificationSettings),
             color: '#EC4899',
           },
           {
+            icon: CircleUserRoundIcon,
+            label: t('profile.menuItems.language') || (translations.profile && translations.profile.menuItems?.language) || 'Language',
+            onPress: () => setLangModalOpen(true),
+            color: '#8B5CF6',
+          },
+          {
             icon: User,
-            label: 'Edit Profile',
+            label: t('profile.menuItems.editProfile') || (translations.profile && translations.profile.menuItems?.editProfile) || 'Edit Profile',
             onPress: () => navigation.navigate(route.editProfile),
             color: '#06B6D4',
           },
           {
             icon: Settings2,
-            label: 'Reading Settings',
+            label: t('profile.menuItems.readingSettings') || (translations.profile && translations.profile.menuItems?.readingSettings) || 'Reading Settings',
             onPress: () => navigation.navigate(route.readingSettings),
             color: COLORS.primary,
           },
         ],
       },
     ],
-    [COLORS.primary, COLORS.accent, isDark, stats],
+    [COLORS.primary, COLORS.accent, isDark, stats, translations, t],
   );
 
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
-      <ActionHeader title="Profile Information"         onPress={()=>navigation.goBack()}
- />
+      <ActionHeader
+        title={t('profile.title') || (translations?.profile?.title) || 'Profile Informations'}
+        onPress={() => navigation.goBack()}
+      />
+      {/* floating language button (small) for quick access */}
+      <TouchableOpacity
+        style={[
+          floatingLang.langFloatingBtn,
+          { borderColor: COLORS.border, backgroundColor: COLORS.surface },
+        ]}
+        onPress={() => setLangModalOpen(true)}
+      >
+        <Globe size={16} color={COLORS.text} style={{ marginRight: 8 }} />
+        <Text style={{ color: COLORS.text, fontWeight: '600' }}>{language.toUpperCase()}</Text>
+      </TouchableOpacity>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -337,8 +376,8 @@ export default function ProfileScreen() {
             <View style={styles.detailRow}>
               <View style={styles.detailLabel}>
                 <Mail size={14} color={COLORS.muted} />
-                <Text style={[styles.detailLabelText, { color: COLORS.muted }]}>
-                  Email
+                <Text style={[styles.detailLabelText, { color: COLORS.muted }]}> 
+                  {t('profile.fields.email') || (translations.profile && translations.profile.fields?.email) || 'Email'}
                 </Text>
               </View>
               <Text
@@ -356,7 +395,7 @@ export default function ProfileScreen() {
                   <Text
                     style={[styles.detailLabelText, { color: COLORS.muted }]}
                   >
-                    Phone
+                    {t('profile.fields.phone') || (translations.profile && translations.profile.fields?.phone) || 'Phone'}
                   </Text>
                 </View>
                 <Text style={[styles.detailValue, { color: COLORS.text }]}>
@@ -368,8 +407,8 @@ export default function ProfileScreen() {
             <View style={styles.detailRow}>
               <View style={styles.detailLabel}>
                 <Calendar size={14} color={COLORS.muted} />
-                <Text style={[styles.detailLabelText, { color: COLORS.muted }]}>
-                  Member since
+                <Text style={[styles.detailLabelText, { color: COLORS.muted }]}> 
+                  {t('profile.fields.memberSince') || (translations.profile && translations.profile.fields?.memberSince) || 'Member since'}
                 </Text>
               </View>
               <Text style={[styles.detailValue, { color: COLORS.text }]}>
@@ -545,8 +584,10 @@ export default function ProfileScreen() {
               <LogOut size={20} color={COLORS.error} />
             )}
           </View>
-          <Text style={[styles.logoutText, { color: COLORS.error }]}>
-            {loggingOut ? 'Logging out…' : 'Logout'}
+          <Text style={[styles.logoutText, { color: COLORS.error }]}> 
+            {loggingOut
+              ? t('profile.logout.loggingOut') || (translations.profile && translations.profile.logout?.loggingOut) || 'Logging out…'
+              : t('profile.logout.logout') || (translations.profile && translations.profile.logout?.logout) || 'Logout'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -555,12 +596,17 @@ export default function ProfileScreen() {
       <ActionModal
         visible={showLogout}
         severity="warning"
-        title="Logout"
-        message="Are you sure you want to logout from your account?"
-        confirmLabel="Logout"
-        cancelLabel="Cancel"
+        title={t('profile.logout.confirmTitle') || (translations.profile && translations.profile.logout?.confirmTitle) || 'Logout'}
+        message={t('profile.logout.confirmMessage') || (translations.profile && translations.profile.logout?.confirmMessage) || 'Are you sure you want to logout from your account?'}
+        confirmLabel={t('profile.logout.confirmLabel') || (translations.profile && translations.profile.logout?.confirmLabel) || 'Logout'}
+        cancelLabel={t('profile.logout.cancelLabel') || (translations.profile && translations.profile.logout?.cancelLabel) || 'Cancel'}
         onCancel={() => setShowLogout(false)}
         onConfirm={handleLogout}
+      />
+
+      <LanguagePickerModal
+        visible={langModalOpen}
+        onRequestClose={() => setLangModalOpen(false)}
       />
 
       <ActionModal
@@ -870,5 +916,20 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: FONT_SIZES.md,
     fontWeight: '700',
+  },
+});
+
+const floatingLang = StyleSheet.create({
+  langFloatingBtn: {
+    position: 'absolute',
+    top: 56,
+    right: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    zIndex: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

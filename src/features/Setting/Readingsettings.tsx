@@ -32,6 +32,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   BORDER_RADIUS,
   getColors,
@@ -56,6 +57,8 @@ export default function ReadingSettingsScreen() {
   if (!app) return null;
   const { isDark, toggleTheme, bibleVersionId, setBibleVersion } = app;
   const COLORS = getColors(isDark);
+  // expose the translations object as `translation` for easier developer access
+  const { translations: translation } = useLanguage();
 
   // Bible hook for connection status
   const { isOnline } = useBible();
@@ -145,10 +148,17 @@ export default function ReadingSettingsScreen() {
   const surface = COLORS.cardBackground;
   const border = COLORS.border;
 
+  const statusLabel =
+    isOnline === null
+      ? (translation?.readingSettings?.status?.checking || 'Checking...')
+      : isOnline
+        ? (translation?.readingSettings?.status?.online || 'Online')
+        : (translation?.readingSettings?.status?.offline || 'Offline');
+
   return (
     <View style={[s.root, { backgroundColor: COLORS.background }]}>
       <ActionHeader
-        title="Reading Settings"
+        title={translation?.readingSettings?.title || 'Reading Settings'}
         onPress={() => navigation.goBack()}
       />
 
@@ -167,33 +177,29 @@ export default function ReadingSettingsScreen() {
             justifyContent: 'space-between',
           }}
         >
-          <SectionHeader
-            icon={
-              <BookMarked size={15} color={COLORS.primary} strokeWidth={2} />
-            }
-            label="Bible Translation"
-            COLORS={COLORS}
-          />
-          <Text style={{ fontSize: 10, color: isOnline ? '#10B981' : '#888' }}>
-            {isOnline === null
-              ? 'Checking...'
-              : isOnline
-                ? 'Online'
-                : 'Offline'}
-          </Text>
+            <SectionHeader
+              icon={
+                <BookMarked size={15} color={COLORS.primary} strokeWidth={2} />
+              }
+              label={translation?.readingSettings?.bibleTranslation || 'Bible Translation'}
+              COLORS={COLORS}
+            />
+            <Text style={{ fontSize: 10, color: isOnline ? '#10B981' : '#888' }}>
+              {statusLabel}
+            </Text>
         </View>
 
         {/* Loading indicator for translations */}
         {loadingTranslations && allTranslations.length === 0 && (
           <View style={[s.loadingContainer, { backgroundColor: surface }]}>
             <Loader size={20} color={COLORS.primary} />
-            <Text
-              style={[s.loadingText, { color: COLORS.muted, marginTop: 8 }]}
-            >
-              Loading translations…
-            </Text>
-          </View>
-        )}
+              <Text
+                style={[s.loadingText, { color: COLORS.muted, marginTop: 8 }]}
+              >
+                {translation?.readingSettings?.loadingTranslations || 'Loading translations…'}
+              </Text>
+            </View>
+          )}
 
         {/* Show offline indicator when using local data */}
         {!loadingTranslations && isOnline === false && (
@@ -204,7 +210,7 @@ export default function ReadingSettingsScreen() {
             ]}
           >
             <Text style={[s.loadingText, { color: '#F59E0B' }]}>
-              Using offline translations (connect to internet for more)
+              {translation?.readingSettings?.offlineFallback || 'Using offline translations (connect to internet for more)'}
             </Text>
           </View>
         )}
@@ -217,17 +223,17 @@ export default function ReadingSettingsScreen() {
           ]}
         >
           <Search size={15} color={COLORS.muted} strokeWidth={2} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search translations — NIV, KJV, ESV…"
-            placeholderTextColor={COLORS.muted}
-            style={[s.searchInput, { color: COLORS.text }]}
-            autoCorrect={false}
-            autoCapitalize="none"
-            returnKeyType="search"
-            selectionColor={COLORS.primary}
-          />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder={translation?.readingSettings?.searchPlaceholder || 'Search translations — NIV, KJV, ESV…'}
+              placeholderTextColor={COLORS.muted}
+              style={[s.searchInput, { color: COLORS.text }]}
+              autoCorrect={false}
+              autoCapitalize="none"
+              returnKeyType="search"
+              selectionColor={COLORS.primary}
+            />
           {query.length > 0 && (
             <TouchableOpacity
               onPress={() => setQuery('')}
@@ -251,13 +257,13 @@ export default function ReadingSettingsScreen() {
         >
           {filtered.length === 0 ? (
             <View style={s.emptyWrap}>
-              <Text style={[s.emptyTitle, { color: COLORS.text }]}>
-                No results
-              </Text>
-              <Text style={[s.emptySub, { color: COLORS.muted }]}>
-                Try "NIV", "KJV", "ESV"…
-              </Text>
-            </View>
+                <Text style={[s.emptyTitle, { color: COLORS.text }]}>
+                  {translation?.readingSettings?.noResults || 'No results'}
+                </Text>
+                 <Text style={[s.emptySub, { color: COLORS.muted }]}>
+                   {translation?.readingSettings?.trySuggestions || 'Try "NIV", "KJV", "ESV"…'}
+                </Text>
+              </View>
           ) : (
             filtered.map((v: any, i: number) => {
               const frontendId = v.frontendId || v.id;
@@ -363,7 +369,7 @@ export default function ReadingSettingsScreen() {
         ══════════════════════════════════════════════════════════════════ */}
         <SectionHeader
           icon={<Type size={15} color={COLORS.primary} strokeWidth={2} />}
-          label="Text Size"
+          label={translation?.readingSettings?.textSize || 'Text Size'}
           COLORS={COLORS}
           style={{ marginTop: SPACING.xl }}
         />
@@ -439,7 +445,7 @@ export default function ReadingSettingsScreen() {
             { backgroundColor: surface, borderColor: border },
           ]}
         >
-          <Text style={[s.previewHint, { color: COLORS.muted }]}>PREVIEW</Text>
+          <Text style={[s.previewHint, { color: COLORS.muted }]}>{translation?.readingSettings?.previewLabel || 'PREVIEW'}</Text>
           <Text
             style={{
               color: COLORS.text,
@@ -459,9 +465,7 @@ export default function ReadingSettingsScreen() {
               {'"'}
             </Text>
           </Text>
-          <Text style={[s.previewRef, { color: COLORS.muted }]}>
-            — John 3:16
-          </Text>
+          <Text style={[s.previewRef, { color: COLORS.muted }]}> {translation?.readingSettings?.preview?.ref || '— John 3:16'}</Text>
         </View>
 
         {/* ═════════════════════════════════════════════════════════════════
@@ -469,7 +473,7 @@ export default function ReadingSettingsScreen() {
         ══════════════════════════════════════════════════════════════════ */}
         <SectionHeader
           icon={<Volume2 size={15} color="#10B981" strokeWidth={2} />}
-          label="Reading Voice"
+          label={translation?.readingSettings?.readingVoice || 'Reading Voice'}
           COLORS={COLORS}
           style={{ marginTop: SPACING.xl }}
         />
@@ -483,12 +487,8 @@ export default function ReadingSettingsScreen() {
             <Volume2 size={18} color="#10B981" strokeWidth={2} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.linkLabel, { color: COLORS.text }]}>
-              Voice Settings
-            </Text>
-            <Text style={[s.linkSub, { color: COLORS.muted }]}>
-              Speed, pitch, narrator voice
-            </Text>
+            <Text style={[s.linkLabel, { color: COLORS.text }]}>{translation?.readingSettings?.voiceSettings?.label || 'Voice Settings'}</Text>
+            <Text style={[s.linkSub, { color: COLORS.muted }]}>{translation?.readingSettings?.voiceSettings?.subtitle || 'Speed, pitch, narrator voice'}</Text>
           </View>
           <ChevronRight size={16} color={COLORS.muted} strokeWidth={2} />
         </TouchableOpacity>
@@ -498,7 +498,7 @@ export default function ReadingSettingsScreen() {
         ══════════════════════════════════════════════════════════════════ */}
         <SectionHeader
           icon={<Palette size={15} color={COLORS.accent} strokeWidth={2} />}
-          label="Appearance"
+          label={translation?.readingSettings?.appearance?.label || 'Appearance'}
           COLORS={COLORS}
           style={{ marginTop: SPACING.xl }}
         />
@@ -515,12 +515,12 @@ export default function ReadingSettingsScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[s.linkLabel, { color: COLORS.text }]}>
-              {isDark ? 'Light Mode' : 'Dark Mode'}
+              {isDark ? (translation?.readingSettings?.appearance?.lightMode || 'Light Mode') : (translation?.readingSettings?.appearance?.darkMode || 'Dark Mode')}
             </Text>
             <Text style={[s.linkSub, { color: COLORS.muted }]}>
               {isDark
-                ? 'Switch to a brighter theme'
-                : 'Switch to a darker theme'}
+                ? (translation?.readingSettings?.appearance?.lightDesc || 'Switch to a brighter theme')
+                : (translation?.readingSettings?.appearance?.darkDesc || 'Switch to a darker theme')}
             </Text>
           </View>
           <Switch

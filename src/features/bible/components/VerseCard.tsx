@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Heart, X, Lightbulb, BookText } from 'lucide-react-native';
+import { Heart, X, Lightbulb, BookText, Share2, Copy } from 'lucide-react-native';
 import ExpandableText from '../../bible/ExpandableText';
 import { bibleTTS } from '../../../utilits/bibleTTS';
 import { route } from '../../../component/navigations/routes';
@@ -34,6 +34,9 @@ type VerseCardProps = {
   onPress: () => void;
   onRemoveHighlight: (verseNumber: number) => void;
   onExplain?: () => void;
+  onShare?: () => void;
+  onCopy?: () => void;
+  onDoubleTap?: () => void;
   onCloseExplanation?: () => void;
   showExplanation?: boolean;
   explanationText?: string;
@@ -60,6 +63,9 @@ export default function VerseCard({
   onPress,
   onRemoveHighlight,
   onExplain,
+  onShare,
+  onCopy,
+  onDoubleTap,
   onCloseExplanation,
   showExplanation,
   explanationText,
@@ -279,13 +285,35 @@ export default function VerseCard({
     return () => highlightAnim.removeListener(id);
   }, [isTargetHighlight, highlightAnim]);
 
+  // ── Double-tap detection ────────────────────────────────────────────
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    };
+  }, []);
+
+  const handlePress = useCallback(() => {
+    if (tapTimerRef.current) {
+      clearTimeout(tapTimerRef.current);
+      tapTimerRef.current = null;
+      onDoubleTap?.();
+    } else {
+      tapTimerRef.current = setTimeout(() => {
+        tapTimerRef.current = null;
+        onPress?.();
+      }, 250);
+    }
+  }, [onPress, onDoubleTap]);
+
   return (
     <Pressable
       style={({ pressed }) => [
         styles.verseTouchable,
         pressed && styles.versePressed,
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       android_ripple={{ color: `${accent}1A` }}
     >
       {/* OUTER plain View — no animated props, never claimed by any driver */}
@@ -365,39 +393,95 @@ export default function VerseCard({
         <View style={styles.verseContent}>
           <View style={styles.verseTextContainer}>
             {renderVerseText()}
+
+            {/* Action row: Explain + Copy + Share */}
+            <View style={localStyles.actionRow}>
+              {onExplain && (
+                <TouchableOpacity
+                  onPress={onExplain}
+                  activeOpacity={0.7}
+                  style={localStyles.actionRowBtn}
+                >
+                  <Lightbulb size={11} color={colors.primary} strokeWidth={2} />
+                  <Text
+                    style={[localStyles.actionRowText, { color: colors.primary }]}
+                  >
+                    Explain
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {onCopy && (
+                <TouchableOpacity
+                  onPress={onCopy}
+                  activeOpacity={0.7}
+                  style={localStyles.actionRowBtn}
+                >
+                  <Copy size={11} color={colors.primary} strokeWidth={2} />
+                  <Text
+                    style={[localStyles.actionRowText, { color: colors.primary }]}
+                  >
+                    Copy
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {onShare && (
+                <TouchableOpacity
+                  onPress={onShare}
+                  activeOpacity={0.7}
+                  style={localStyles.actionRowBtn}
+                >
+                  <Share2 size={11} color={colors.primary} strokeWidth={2} />
+                  <Text
+                    style={[localStyles.actionRowText, { color: colors.primary }]}
+                  >
+                    Share
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
             {showExplanation && (
               <View
                 style={[
                   localStyles.inlineExpWrap,
-                  { backgroundColor: `${colors.primary}08` },
+                  {
+                    backgroundColor: `${colors.primary}06`,
+                    borderLeftColor: colors.primary,
+                  },
+                  highlightColor
+                    ? { borderLeftColor: highlightColor }
+                    : undefined,
                 ]}
               >
+                {/* Explanation header */}
+                {explanationText && (
+                  <View style={localStyles.expHeader}>
+                    <Lightbulb
+                      size={12}
+                      color={colors.primary}
+                      strokeWidth={2.5}
+                    />
+                    <Text
+                      style={[
+                        localStyles.expHeaderText,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      Explanation
+                    </Text>
+                  </View>
+                )}
+
                 {explanationText ? (
                   <ExpandableText
                     text={explanationText}
-                    initialLines={8}
-                    stepLines={20}
+                    initialLines={6}
+                    stepLines={15}
                     expandLabel="Read more"
                     closeLabel="Close"
                     onClose={onCloseExplanation}
                     containerStyle={localStyles.expandableContainer}
                   />
-                ) : onExplain ? (
-                  <TouchableOpacity
-                    onPress={onExplain}
-                    activeOpacity={0.7}
-                    style={localStyles.inlineExplainBtn}
-                  >
-                    <Lightbulb size={10} color={colors.primary} />
-                    <Text
-                      style={[
-                        localStyles.inlineExplainBtnText,
-                        { color: colors.primary },
-                      ]}
-                    >
-                      Explain
-                    </Text>
-                  </TouchableOpacity>
                 ) : null}
 
                 {/* Journal Prompts */}
@@ -523,19 +607,42 @@ const localStyles = StyleSheet.create({
     pointerEvents: 'none',
   },
   inlineExpWrap: {
-    marginTop: 6,
-    padding: 6,
-    borderRadius: 6,
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderLeftWidth: 3,
   },
   expandableContainer: {
     marginTop: 0,
   },
-  inlineExplainBtn: {
+  expHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 5,
+    marginBottom: 8,
   },
-  inlineExplainBtnText: {
+  expHeaderText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 6,
+  },
+  actionRowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+  },
+  actionRowText: {
     fontSize: 11,
     fontWeight: '600',
   },

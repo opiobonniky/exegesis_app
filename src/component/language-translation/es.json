@@ -120,4 +120,131 @@
     "confirm": "Confirmar"
   },
   "appTagline": "Tu compañero espiritual diario"
+  ,
+  "profile": {
+    "title": "Información del perfil",
+    "stats": {
+      "books": "Libros",
+      "chapters": "Capítulos",
+      "highlights": "Destacados",
+      "notes": "Notas"
+    },
+    "menuSections": {
+      "bibleStudy": "Estudio Bíblico",
+      "settings": "Ajustes"
+    },
+    "menuItems": {
+      "continueReading": "Continuar leyendo",
+      "myHighlights": "Mis destacados",
+      "favorites": "Favoritos",
+      "myNotes": "Mis notas",
+      "readingHistory": "Historial de lectura",
+      "lightMode": "Modo claro",
+      "darkMode": "Modo oscuro",
+      "notifications": "Notificaciones",
+      "editProfile": "Editar perfil",
+      "readingSettings": "Ajustes de lectura",
+      "language": "Idioma"
+    },
+    "fields": {
+      "email": "Correo",
+      "phone": "Teléfono",
+      "memberSince": "Miembro desde"
+    },
+    "logout": {
+      "logout": "Cerrar sesión",
+      "loggingOut": "Cerrando sesión…",
+      "confirmTitle": "Cerrar sesión",
+      "confirmMessage": "¿Estás seguro que deseas cerrar sesión de tu cuenta?",
+      "confirmLabel": "Cerrar sesión",
+      "cancelLabel": "Cancelar"
+    }
+  }
+  ,
+  "readingSettings": {
+    "title": "Ajustes de lectura",
+    "status": {
+      "checking": "Comprobando...",
+      "online": "En línea",
+      "offline": "Sin conexión"
+    },
+    "bibleTranslation": "Traducción de la Biblia",
+    "loadingTranslations": "Cargando traducciones…",
+    "offlineFallback": "Usando traducciones sin conexión (conéctese a internet para más)",
+    "searchPlaceholder": "Buscar traducciones — NIV, KJV, ESV…",
+    "noResults": "Sin resultados",
+    "trySuggestions": "Pruebe \"NIV\", \"KJV\", \"ESV\"…",
+    "textSize": "Tamaño del texto",
+    "previewLabel": "VISTA PREVIA",
+    "preview": { "ref": "— Juan 3:16" },
+    "readingVoice": "Voz de lectura",
+    "voiceSettings": {
+      "label": "Configuración de voz",
+      "subtitle": "Velocidad, tono, voz del narrador"
+    },
+    "appearance": {
+      "label": "Apariencia",
+      "lightMode": "Modo claro",
+      "darkMode": "Modo oscuro",
+      "lightDesc": "Cambiar a un tema más brillante",
+      "darkDesc": "Cambiar a un tema más oscuro"
+    }
+  }
+  ,
+  "notificationSettings": {
+    "heroTitle": "Administrar recordatorios",
+    "heroSub": "Elige cuándo deseas recibir notificaciones para el Verso del día y tu Plan de lectura.",
+    "dailyVerse": "Verso del día",
+    "dailyVerseSub": "Un recordatorio diario suave para leer el verso del día.",
+    "enableDailyVerse": "Activar recordatorio del Verso del día",
+    "reminderTime": "Hora del recordatorio",
+    "readingPlan": "Plan de lectura",
+    "readingPlanSub": "Recordatorios diarios de lectura y un empujón de finalización si existe la tarea de hoy.",
+    "enableReadingPlan": "Activar notificaciones del Plan de lectura",
+    "dailyReminderTime": "Hora de recordatorio diaria",
+    "missedDay": "Recordatorio de día perdido",
+    "missedDaySub": "Recordatorio vespertino si la asignación de lectura de hoy no está completada.",
+    "enableMissedDay": "Activar recordatorio de día perdido",
+    "footerTip": "Consejo: Si las notificaciones no aparecen, actívalas en la configuración del teléfono y desactiva las optimizaciones de batería para esta app."
+  }
+  ,
+  "voiceSettings": {
+    "title": "Voz y Narración",
+    "loadingVoices": "Cargando voces…",
+    "selectVoice": "Seleccione una voz",
+    "quality": {
+      "neural": "Neural",
+      "enhanced": "Mejorada",
+      "local": "Local"
+    },
+    "rateSnaps": {
+      "slow": "Lento",
+      "calm": "Calmado",
+      "normal": "Normal",
+      "quick": "Rápido",
+      "fast": "Muy rápido"
+    },
+    "pitchSnaps": {
+      "low": "Bajo",
+      "natural": "Natural",
+      "high": "Alto"
+    },
+    "speedReset": "Velocidad restablecida: usando la velocidad predeterminada del dispositivo.",
+    "pitchReset": "Tono restablecido: usando el tono predeterminado del dispositivo.",
+    "voiceUpdated": "Voz actualizada",
+    "previewFailed": "Previsualización fallida: comprueba los paquetes TTS del idioma.",
+    "heroSubPrefix": "Configura la voz de lectura. Los controles marcados ",
+    "deviceDefaultBadge": "Predeterminado del dispositivo",
+    "heroSubSuffix": "heredan la configuración TTS del sistema.",
+    "narratorLabel": "Voz del narrador",
+    "previewLabel": "VISTA PREVIA",
+    "previewRef": "Juan 3:16",
+    "stop": "Detener",
+    "play": "Reproducir",
+    "speechControlsLabel": "CONTROLES DE VOZ",
+    "readingSpeed": "Velocidad de lectura",
+    "voicePitch": "Tono de voz",
+    "reset": "Restablecer",
+    "deviceHint": "Mueva el control para anular la configuración de su dispositivo"
+  }
 }

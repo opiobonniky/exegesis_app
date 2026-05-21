@@ -121,6 +121,7 @@ export default function SelectionActionBar({
   totalVerses,
   onRangeChange,
   onListen,
+  onExplain,
   onHighlight,
   onNote,
   onFavorite,
@@ -161,6 +162,20 @@ export default function SelectionActionBar({
     },
 
     {
+      key: 'journal',
+      label: 'Journal',
+      icon: <BookText size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
+      onPress: onJournal,
+    },
+
+    {
+      key: 'explain',
+      label: 'Explain',
+      icon: <Lightbulb size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
+      onPress: onExplain,
+    },
+
+    {
       key: 'highlight',
       label: 'Highlight',
       icon: <Edit3 size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
@@ -180,12 +195,7 @@ export default function SelectionActionBar({
       icon: <Star size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onFavorite,
     },
-    {
-      key: 'journal',
-      label: 'Journal',
-      icon: <BookText size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
-      onPress: onJournal,
-    },
+
     {
       key: 'share',
       label: 'Share',

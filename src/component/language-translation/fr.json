@@ -120,4 +120,131 @@
     "confirm": "Confirmer"
   },
   "appTagline": "Votre compagnon spirituel quotidien"
+  ,
+  "profile": {
+    "title": "Informations du profil",
+    "stats": {
+      "books": "Livres",
+      "chapters": "Chapitres",
+      "highlights": "Points forts",
+      "notes": "Notes"
+    },
+    "menuSections": {
+      "bibleStudy": "Étude biblique",
+      "settings": "Paramètres"
+    },
+    "menuItems": {
+      "continueReading": "Continuer la lecture",
+      "myHighlights": "Mes surlignages",
+      "favorites": "Favoris",
+      "myNotes": "Mes notes",
+      "readingHistory": "Historique de lecture",
+      "lightMode": "Mode clair",
+      "darkMode": "Mode sombre",
+      "notifications": "Notifications",
+      "editProfile": "Modifier le profil",
+      "readingSettings": "Paramètres de lecture",
+      "language": "Langue"
+    },
+    "fields": {
+      "email": "E‑mail",
+      "phone": "Téléphone",
+      "memberSince": "Membre depuis"
+    },
+    "logout": {
+      "logout": "Se déconnecter",
+      "loggingOut": "Déconnexion…",
+      "confirmTitle": "Se déconnecter",
+      "confirmMessage": "Êtes‑vous sûr de vouloir vous déconnecter ?",
+      "confirmLabel": "Se déconnecter",
+      "cancelLabel": "Annuler"
+    }
+  }
+  ,
+  "readingSettings": {
+    "title": "Paramètres de lecture",
+    "status": {
+      "checking": "Vérification...",
+      "online": "En ligne",
+      "offline": "Hors ligne"
+    },
+    "bibleTranslation": "Traduction de la Bible",
+    "loadingTranslations": "Chargement des traductions…",
+    "offlineFallback": "Utilisation des traductions hors ligne (connectez-vous à Internet pour en obtenir plus)",
+    "searchPlaceholder": "Rechercher des traductions — NIV, KJV, ESV…",
+    "noResults": "Aucun résultat",
+    "trySuggestions": "Essayez \"NIV\", \"KJV\", \"ESV\"…",
+    "textSize": "Taille du texte",
+    "previewLabel": "APERÇU",
+    "preview": { "ref": "— Jean 3:16" },
+    "readingVoice": "Voix de lecture",
+    "voiceSettings": {
+      "label": "Paramètres de la voix",
+      "subtitle": "Vitesse, tonalité, voix du narrateur"
+    },
+    "appearance": {
+      "label": "Apparence",
+      "lightMode": "Mode clair",
+      "darkMode": "Mode sombre",
+      "lightDesc": "Passer à un thème plus clair",
+      "darkDesc": "Passer à un thème plus sombre"
+    }
+  }
+  ,
+  "notificationSettings": {
+    "heroTitle": "Gérer les rappels",
+    "heroSub": "Choisissez quand vous souhaitez être notifié pour le Verset du jour et votre Plan de lecture.",
+    "dailyVerse": "Verset du jour",
+    "dailyVerseSub": "Un rappel quotidien discret pour lire le verset du jour.",
+    "enableDailyVerse": "Activer le rappel du Verset du jour",
+    "reminderTime": "Heure du rappel",
+    "readingPlan": "Plan de lecture",
+    "readingPlanSub": "Rappels de lecture quotidiens et une incitation à terminer si la tâche du jour existe.",
+    "enableReadingPlan": "Activer les notifications du Plan de lecture",
+    "dailyReminderTime": "Heure de rappel quotidienne",
+    "missedDay": "Rappel de jour manqué",
+    "missedDaySub": "Rappel du soir si la tâche de lecture d'aujourd'hui n'est pas terminée.",
+    "enableMissedDay": "Activer le rappel de jour manqué",
+    "footerTip": "Astuce : Si les notifications n'apparaissent pas, activez-les dans les paramètres de votre téléphone et désactivez les optimisations de batterie pour cette application."
+  }
+  ,
+  "voiceSettings": {
+    "title": "Voix et narration",
+    "loadingVoices": "Chargement des voix…",
+    "selectVoice": "Sélectionnez une voix",
+    "quality": {
+      "neural": "Neural",
+      "enhanced": "Améliorée",
+      "local": "Locale"
+    },
+    "rateSnaps": {
+      "slow": "Lent",
+      "calm": "Calme",
+      "normal": "Normal",
+      "quick": "Rapide",
+      "fast": "Très rapide"
+    },
+    "pitchSnaps": {
+      "low": "Bas",
+      "natural": "Naturel",
+      "high": "Haut"
+    },
+    "speedReset": "Vitesse réinitialisée : utilisation de la vitesse par défaut de l'appareil.",
+    "pitchReset": "Hauteur réinitialisée : utilisation de la hauteur par défaut de l'appareil.",
+    "voiceUpdated": "Voix mise à jour",
+    "previewFailed": "Prévisualisation échouée : vérifiez les packs de langue TTS.",
+    "heroSubPrefix": "Configurez votre voix de lecture. Les curseurs marqués ",
+    "deviceDefaultBadge": "Par défaut de l'appareil",
+    "heroSubSuffix": "héritent des paramètres TTS du système.",
+    "narratorLabel": "Voix du narrateur",
+    "previewLabel": "APERÇU",
+    "previewRef": "Jean 3:16",
+    "stop": "Arrêter",
+    "play": "Lire",
+    "speechControlsLabel": "COMMANDES VOCALE",
+    "readingSpeed": "Vitesse de lecture",
+    "voicePitch": "Hauteur de la voix",
+    "reset": "Réinitialiser",
+    "deviceHint": "Déplacez le curseur pour remplacer le paramètre de votre appareil"
+  }
 }

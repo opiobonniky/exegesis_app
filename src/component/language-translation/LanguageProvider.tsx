@@ -29,6 +29,7 @@ const STORAGE_KEY = '@app:language';
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const [language, setLanguageState] = useState<Language>('en');
+  const [loaded, setLoaded] = useState(false);
 
   const translationsMap: Record<Language, Translations> = { en, es, fr, ar };
 
@@ -86,11 +87,16 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
       } catch (e) {
         // ignore read errors
       }
+      // mark loaded even if read failed - prevents consumers rendering before we know persisted value
+      if (mounted) setLoaded(true);
     })();
     return () => {
       mounted = false;
     };
   }, []);
+
+  // Do not render children until we have attempted to load persisted language
+  if (!loaded) return null;
 
   return (
     <LanguageContext.Provider

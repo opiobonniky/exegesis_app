@@ -199,6 +199,9 @@ export type VerseListProps = {
   onVersePress: (verseNumber: number) => void;
   onRemoveHighlight: (verseNumber: number) => void;
   onExplain?: (verseNumber: number) => void;
+  onShare?: (verseNumber: number) => void;
+  onCopy?: (verseNumber: number) => void;
+  onDoubleTap?: (verseNumber: number) => void;
   onCloseExplanation?: (verseNumber: number) => void;
   explanationMap?: Record<number, string>;
   onExplainOpen?: (verseNumber: number) => void;
@@ -234,6 +237,9 @@ export default function VerseList({
   onVersePress,
   onRemoveHighlight,
   onExplain,
+  onShare,
+  onCopy,
+  onDoubleTap,
   onCloseExplanation,
   explanationMap,
   onExplainOpen,
@@ -267,10 +273,10 @@ export default function VerseList({
     const highlightColor = highlight?.color;
     const isTargetHighlight = highlightedVerse === verseNumber;
     const isActiveAudio = activeAudioVerse === verseNumber;
-    const showExp = isSelected && selectedVerses.length === 1;
     const expText = explanationMap?.[verseNumber];
-    // Show the panel if verse is selected (to show Explain button) OR has explanation text
-    const shouldShowExpPanel = showExp || !!expText;
+    // Show explanation panel only when explanation text exists
+    // Explain button is always visible in the action row below the verse
+    const shouldShowExpPanel = !!expText;
 
     return (
       <VerseCard
@@ -289,6 +295,9 @@ export default function VerseList({
         styles={styles}
         onPress={() => onVersePress(verseNumber)}
         onRemoveHighlight={onRemoveHighlight}
+        onShare={onShare ? () => onShare(verseNumber) : undefined}
+        onCopy={onCopy ? () => onCopy(verseNumber) : undefined}
+        onDoubleTap={onDoubleTap ? () => onDoubleTap(verseNumber) : undefined}
         onExplain={
           onExplain
             ? () => {

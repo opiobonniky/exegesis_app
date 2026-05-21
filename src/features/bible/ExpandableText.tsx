@@ -20,6 +20,35 @@ type Props = {
   containerStyle?: any;
 };
 
+function formatParagraphs(text: string): string {
+  if (!text) return '';
+  const trimmed = text.trim();
+  if (!trimmed) return '';
+
+  // Split on double newlines first (explicit paragraph breaks)
+  const parts = trimmed.split(/\n\s*\n/);
+
+  // If no double newlines, auto-detect sentence boundaries and group
+  if (parts.length <= 1) {
+    const sentenceRegex = /[.!?]\s+(?=[A-Z"'(])/g;
+    const sentences = trimmed
+      .split(sentenceRegex)
+      .map((s, i, arr) => (i < arr.length - 1 ? s + '.' : s))
+      .filter(s => s.trim().length > 0);
+
+    if (sentences.length >= 4) {
+      const grouped: string[] = [];
+      const groupSize = Math.max(2, Math.min(3, Math.ceil(sentences.length / 4)));
+      for (let i = 0; i < sentences.length; i += groupSize) {
+        grouped.push(sentences.slice(i, i + groupSize).join(' '));
+      }
+      return grouped.join('\n\n');
+    }
+  }
+
+  return parts.filter(p => p.trim().length > 0).join('\n\n');
+}
+
 export default function ExpandableText({
   text = '',
   initialLines = 8,
@@ -29,10 +58,14 @@ export default function ExpandableText({
   onClose,
   containerStyle,
 }: Props) {
-  const app:any = useContext(AppContext);
+  const app: any = useContext(AppContext);
   const COLORS = useMemo(() => getColors(app?.isDark), [app?.isDark]);
 
   const cleanText = (text ?? '').trim();
+  const formattedText = useMemo(
+    () => formatParagraphs(cleanText),
+    [cleanText],
+  );
 
   const [maxLines, setMaxLines] = useState(initialLines);
   const [expanded, setExpanded] = useState(false);
@@ -42,6 +75,11 @@ export default function ExpandableText({
       setMaxLines(initialLines);
     }
   }, [expanded, maxLines, initialLines]);
+
+  useEffect(() => {
+    setMaxLines(initialLines);
+    setExpanded(false);
+  }, [text]);
 
   const showMore = useCallback(() => {
     setMaxLines(prev => prev + stepLines);
@@ -67,16 +105,21 @@ export default function ExpandableText({
     [expanded, maxLines],
   );
 
-  if (!cleanText) return null;
+  if (!formattedText) return null;
+
+  const lineHeight = 22;
 
   return (
     <View style={containerStyle}>
       <Text
-        style={[styles.text, { color: COLORS.text }]}
+        style={[
+          styles.text,
+          { color: COLORS.text, lineHeight },
+        ]}
         numberOfLines={maxLines}
         onTextLayout={handleTextLayout}
       >
-        {cleanText}
+        {formattedText}
       </Text>
 
       <View style={styles.footer}>
@@ -102,8 +145,9 @@ export default function ExpandableText({
 
 const styles = StyleSheet.create({
   text: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 22,
+    letterSpacing: 0.2,
   },
   footer: {
     flexDirection: 'row',
