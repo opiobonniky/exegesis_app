@@ -5,76 +5,16 @@ const { width } = Dimensions.get('window');
 
 export const createStyles = (COLORS: any) =>
   StyleSheet.create({
+    // ── Root ───────────────────────────────────────────────────────────────
     container: { flex: 1, backgroundColor: COLORS.background },
-    header: {
-      paddingBottom: 15,
-      paddingHorizontal: SPACING.lg,
-      borderBottomLeftRadius: BORDER_RADIUS.xl,
-      borderBottomRightRadius: BORDER_RADIUS.xl,
-      justifyContent: 'center',
-      alignContent: 'center',
-    },
-    greeting: {
-      fontSize: FONT_SIZES.md,
-      color: COLORS.white,
-      opacity: 0.9,
-      fontWeight: '500',
-    },
-    userName: {
-      fontSize: FONT_SIZES.xxl,
-      fontWeight: '700',
-      color: COLORS.white,
-      marginTop: 2,
-    },
-    // App name styles
-    appNameContainer: {
-      marginTop: SPACING.sm,
-    },
-    appName: {
-      fontSize: FONT_SIZES.sm,
-      color: COLORS.white,
-      opacity: 0.8,
-      fontWeight: '800',
-      letterSpacing: 0.5,
-    },
-    // Theme toggle
-    themeToggle: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.3)',
-    },
-    profileButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      overflow: 'hidden',
-      borderWidth: 2,
-      borderColor: 'rgba(255,255,255,0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    profileImage: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-    },
-    profilePlaceholder: {
-      borderRadius: 22,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    profileInitial: {
-      fontSize: FONT_SIZES.xl,
-      fontWeight: '700',
-      color: COLORS.white,
-    },
     scrollView: { flex: 1 },
-    scrollContent: { padding: SPACING.lg, paddingBottom: 100 },
-    section: { marginBottom: SPACING.lg },
+    scrollContent: { paddingBottom: 110 },
+
+    // ── Section layout ─────────────────────────────────────────────────────
+    section: {
+      marginBottom: SPACING.lg,
+      paddingHorizontal: SPACING.lg,
+    },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -85,95 +25,250 @@ export const createStyles = (COLORS: any) =>
       fontSize: FONT_SIZES.lg,
       fontWeight: '700',
       color: COLORS.text,
+      marginBottom: SPACING.sm,
     },
     sectionAction: {
       fontSize: FONT_SIZES.sm,
       fontWeight: '600',
     },
 
-    // Verse Card
+    // ── Daily Verse Card ───────────────────────────────────────────────────
     verseCard: {
-      borderRadius: BORDER_RADIUS.xl,
+      marginHorizontal: SPACING.lg,
+      marginTop: SPACING.lg,
+      marginBottom: SPACING.md,
+      backgroundColor: COLORS.surface,
+      borderRadius: BORDER_RADIUS.lg,
       overflow: 'hidden',
-      marginBottom: SPACING.lg,
+      // shadow
+      shadowColor: COLORS.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
     },
-    verseImage: {
-      ...StyleSheet.absoluteFillObject,
-      width: '100%',
-      height: '100%',
-      resizeMode: 'cover',
-      opacity: 0.2,
-    },
-    verseOverlay: { flex: 1, padding: SPACING.md },
-    verseHeader: {
+    verseCardHeader: {
       flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      backgroundColor: '#396284',
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.sm + 2,
     },
-    verseHeaderLeft: {
+    verseCardHeaderLeft: {
       flexDirection: 'row',
       alignItems: 'center',
-      flexShrink: 1,
+      gap: SPACING.sm,
     },
-    verseIconWrap: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
+    verseIconBox: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      backgroundColor: 'rgba(255,255,255,0.2)',
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: 'rgba(0,0,0,0.22)',
-      marginRight: 10,
     },
-    verseLabel: {
-      fontSize: FONT_SIZES.lg,
-      fontWeight: '600',
-      color: COLORS.accent,
-    },
-    verseDate: {
-      marginTop: 2,
-      fontSize: FONT_SIZES.xs,
-      color: COLORS.white,
-      opacity: 0.85,
-      fontWeight: '500',
-    },
-    verseLoader: {
-      paddingTop: SPACING.sm,
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: 64,
-    },
-    verseLoaderText: {
-      marginTop: SPACING.xs,
-      fontSize: FONT_SIZES.sm,
-      color: COLORS.white,
-      opacity: 0.9,
-      fontWeight: '500',
-    },
-    verseText: {
+    verseCardTitle: {
       fontSize: FONT_SIZES.md,
-      color: COLORS.white,
-      lineHeight: 22,
-      marginTop: SPACING.sm,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    verseCardDate: {
+      fontSize: FONT_SIZES.xs,
+      color: 'rgba(255,255,255,0.75)',
+      marginTop: 1,
+    },
+    lordsBookTag: {
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      borderRadius: BORDER_RADIUS.round,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: 5,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.3)',
+    },
+    lordsBookTagText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+    verseCardDivider: {
+      height: 1,
+      backgroundColor: COLORS.border,
+    },
+    verseLoadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: SPACING.lg,
+      gap: SPACING.sm,
+    },
+    verseLoadingText: {
+      fontSize: FONT_SIZES.sm,
+      color: COLORS.muted,
     },
     verseReferenceRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: SPACING.sm,
+      justifyContent: 'space-between',
+      paddingHorizontal: SPACING.md,
+      paddingTop: SPACING.md,
+      paddingBottom: SPACING.xs,
     },
-    verseDivider: {
-      flex: 1,
-      height: 1,
-      backgroundColor: 'rgba(255,255,255,0.22)',
-      marginRight: SPACING.sm,
+    verseRefLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     },
-    verseReference: {
+    verseRefText: {
       fontSize: FONT_SIZES.sm,
-      color: COLORS.white,
+      fontWeight: '700',
+      color: COLORS.primary,
+    },
+    verseTranslation: {
+      fontWeight: '500',
+      color: COLORS.muted,
+    },
+    audioBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: COLORS.cardBackground,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    verseBodyText: {
+      fontSize: FONT_SIZES.md,
       fontWeight: '600',
-      paddingVertical: 4,
+      color: COLORS.text,
+      lineHeight: 24,
+      paddingHorizontal: SPACING.md,
+      paddingTop: SPACING.xs,
+      paddingBottom: SPACING.md,
+    },
+    verseActions: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: COLORS.border,
+    },
+    verseActionBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: SPACING.sm + 2,
+    },
+    verseActionText: {
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '600',
+      color: COLORS.primary,
     },
 
-    // Quick Actions compact
+    // ── Content Banner Rows ─────────────────────────────────────────────────
+    bannersSection: {
+      marginHorizontal: SPACING.lg,
+      marginBottom: SPACING.md,
+      borderRadius: BORDER_RADIUS.lg,
+      overflow: 'hidden',
+      gap: 2,
+    },
+    bannerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: SPACING.lg,
+      paddingHorizontal: SPACING.lg,
+      gap: SPACING.md,
+    },
+    bannerFirst: {
+      borderTopLeftRadius: BORDER_RADIUS.lg,
+      borderTopRightRadius: BORDER_RADIUS.lg,
+    },
+    bannerLast: {
+      borderBottomLeftRadius: BORDER_RADIUS.lg,
+      borderBottomRightRadius: BORDER_RADIUS.lg,
+    },
+    bannerIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    bannerLabel: {
+      flex: 1,
+      fontSize: FONT_SIZES.md,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      letterSpacing: 0.1,
+    },
+
+    // ── Faith Reel Featured Card ────────────────────────────────────────────
+    faithReelCard: {
+      marginHorizontal: SPACING.lg,
+      marginBottom: SPACING.xs,
+      borderRadius: BORDER_RADIUS.lg,
+      overflow: 'hidden',
+      shadowColor: COLORS.shadowColor,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    faithReelInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: SPACING.md,
+      gap: SPACING.sm,
+    },
+    faithReelPlayBtn: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    faithReelInfo: {
+      flex: 1,
+    },
+    faithReelTitle: {
+      fontSize: FONT_SIZES.md,
+      fontWeight: '700',
+    },
+    faithReelDate: {
+      fontSize: FONT_SIZES.xs,
+      marginTop: 2,
+    },
+
+    // ── Faith Reels Footer ──────────────────────────────────────────────────
+    faithReelsFooter: {
+      alignItems: 'center',
+      paddingVertical: SPACING.sm,
+      marginBottom: SPACING.md,
+    },
+    faithReelsFooterText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '600',
+      letterSpacing: 0.5,
+    },
+
+    explainSection: {
+      padding: SPACING.lg,
+      backgroundColor: COLORS.surface,
+      marginTop: SPACING.md,
+      borderRadius: BORDER_RADIUS.lg,
+    },
+    explainText: {
+      fontSize: FONT_SIZES.md,
+      color: COLORS.text,
+      marginBottom: SPACING.sm,
+    },
+    explainToggleBtn: {
+      alignSelf: 'flex-start',
+    },
+    explainToggleText: {
+      color: COLORS.primary,
+      fontWeight: '600',
+    },
     quickLinksCompact: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -185,12 +280,12 @@ export const createStyles = (COLORS: any) =>
       marginBottom: SPACING.sm,
     },
     quickLinkCompactIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 48,
+      height: 48,
+      borderRadius: 16,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 4,
+      marginBottom: 6,
     },
     quickLinkCompactText: {
       fontSize: FONT_SIZES.xs,
@@ -199,228 +294,44 @@ export const createStyles = (COLORS: any) =>
       textAlign: 'center',
     },
 
-    // Progress
-    progressRow: {
+    // ── Stats Grid ─────────────────────────────────────────────────────────
+    statsGrid: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: SPACING.sm,
-    },
-    progressCard: {
-      flex: 1,
-      marginRight: SPACING.sm,
-      backgroundColor: COLORS.cardBackground,
-      borderRadius: BORDER_RADIUS.lg,
-      padding: SPACING.sm,
-    },
-    progressLabel: {
-      fontSize: FONT_SIZES.xs,
-      color: COLORS.primaryLight,
-      fontWeight: '600',
-    },
-    progressNumber: {
-      fontSize: FONT_SIZES.md,
-      fontWeight: '700',
-      color: COLORS.accent,
-      marginBottom: SPACING.xs,
-    },
-    progressBar: { height: 6, borderRadius: 3, marginTop: SPACING.xs },
-
-    // Activity
-    activityItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: COLORS.cardBackground,
-      borderRadius: BORDER_RADIUS.lg,
-      padding: SPACING.sm,
-      marginBottom: SPACING.sm,
-    },
-    activityIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: COLORS.surface,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: SPACING.sm,
-    },
-    activityTitle: {
-      fontSize: FONT_SIZES.sm,
-      fontWeight: '600',
-      color: COLORS.text,
-    },
-    activityTime: { fontSize: FONT_SIZES.xs, color: COLORS.muted },
-
-    // Achievement
-    achievementCard: {
-      borderRadius: BORDER_RADIUS.xl,
-      overflow: 'hidden',
-      marginTop: SPACING.lg,
-    },
-    achievementGradient: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: SPACING.lg,
-    },
-    achievementContent: { marginLeft: SPACING.md, flex: 1 },
-    achievementTitle: {
-      fontSize: FONT_SIZES.md,
-      fontWeight: '700',
-      color: COLORS.accent,
-    },
-    achievementSubtitle: {
-      fontSize: FONT_SIZES.xs,
-      color: COLORS.white,
-      opacity: 0.9,
-    },
-    audioButton: {
-      bottom: 4,
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    audioButtonPlaying: {
-      backgroundColor: 'rgba(255,255,255,0.25)',
-      transform: [{ scale: 1.05 }],
-    },
-    buttonContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginHorizontal: SPACING.md,
-    },
-    inforButton: {
-      bottom: 4,
-      width: 100,
-      height: 48,
-      borderRadius: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: COLORS.accent,
-      flexDirection: 'row',
-    },
-    inforButtonText: {
-      fontSize: FONT_SIZES.md,
-      fontWeight: '600',
-      color: COLORS.accent,
-      marginLeft: 8,
-    },
-
-    // Daily Devotion
-    devotionCard: {
-      backgroundColor: COLORS.cardBackground,
-      borderRadius: BORDER_RADIUS.lg,
-      padding: SPACING.md,
-      marginBottom: SPACING.md,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-    },
-    devotionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: SPACING.xs,
-    },
-    devotionIconWrap: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: COLORS.accent + '20',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: SPACING.xs,
-    },
-    devotionLabel: {
-      fontSize: FONT_SIZES.xs,
-      fontWeight: '600',
-      color: COLORS.accent,
-      letterSpacing: 1,
-      flex: 1,
-    },
-    devotionTag: {
-      backgroundColor: COLORS.primary + '20',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-    },
-    devotionTagText: {
-      fontSize: 9,
-      fontWeight: '600',
-      color: COLORS.primary,
-    },
-    devotionTitle: {
-      fontSize: FONT_SIZES.md,
-      fontWeight: '700',
-      color: COLORS.text,
-      marginBottom: 4,
-    },
-    devotionContent: {
-      fontSize: FONT_SIZES.xs,
-      color: COLORS.textSecondary,
-      lineHeight: 16,
-    },
-
-    // Compact Verse Card
-    verseCardCompact: {
-      backgroundColor: COLORS.cardBackground,
-      borderRadius: BORDER_RADIUS.lg,
-      padding: SPACING.md,
-      marginBottom: SPACING.md,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-    },
-    verseHeaderCompact: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: SPACING.xs,
-    },
-    verseIconCompact: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: COLORS.accent + '20',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: SPACING.xs,
-    },
-    verseLabelCompact: {
-      fontSize: FONT_SIZES.xs,
-      fontWeight: '600',
-      color: COLORS.accent,
-      letterSpacing: 1,
-      flex: 1,
-    },
-    verseDateCompact: {
-      fontSize: FONT_SIZES.xs,
-      color: COLORS.muted,
-    },
-    verseTextCompact: {
-      fontSize: FONT_SIZES.sm,
-      color: COLORS.text,
-      lineHeight: 20,
-      fontStyle: 'italic',
-      marginBottom: SPACING.xs,
-    },
-    verseRefCompact: {
-      fontSize: FONT_SIZES.xs,
-      color: COLORS.primary,
-      fontWeight: '600',
-      marginBottom: SPACING.sm,
-    },
-    verseActionsCompact: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
       gap: SPACING.sm,
     },
-    verseActionBtn: {
-      padding: SPACING.xs,
+    statCard: {
+      flex: 1,
+      borderRadius: BORDER_RADIUS.md,
+      padding: SPACING.sm,
+      alignItems: 'center',
     },
+    statValue: {
+      fontSize: FONT_SIZES.xl,
+      fontWeight: '800',
+    },
+    statLabel: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '500',
+      marginTop: 2,
+    },
+
+    // ── Bottom Tab ─────────────────────────────────────────────────────────
     bottomTabWrapper: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
     },
+    showMoreBtn: {
+  flexDirection: 'row',
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingVertical: 10,
+  marginTop: 8,
+},
+showMoreText: {
+  color: COLORS.primary,
+  fontWeight: '600',
+  marginRight: 6,
+},
   });

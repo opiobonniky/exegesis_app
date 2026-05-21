@@ -23,18 +23,20 @@ import {
   ArrowRight,
   MenuSquareIcon,
   Clock,
-  StarsIcon,
   CalendarDays,
-  HandHeart,
-  Mic2,
   Brain,
   BookMarked,
   Globe,
   HelpCircle,
   CheckCircle,
+  Volume2,
+  Share2,
+  ChevronDown,
+  Play,
+  BookOpen,
+  GraduationCap,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-
 import { AppContext } from '../../common/AppContext';
 import { getColors } from '../../constants/theme';
 import BottomTab from '../../component/navigations/BottomTab';
@@ -44,10 +46,8 @@ import { formatWhatsAppTime } from '../../utilits/bibleUtils';
 import ActionHeader from '../../reusable/ActionHeader';
 import { createStyles } from './homeStyle';
 import { bibleTTS } from '../../utilits/bibleTTS';
-import { connectSocket } from '../../services/socket/socketClient';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
 type ActivityType = 'read' | 'highlight' | 'note' | 'favorite' | 'plan';
 
 type RecentActivityItem = {
@@ -67,8 +67,14 @@ type Stats = {
   bookmarks: number;
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+type DailyVerse = {
+  reference: string;
+  translation: string;
+  text: string;
+  date: string;
+};
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const getGreeting = (): string => {
   const h = new Date().getHours();
   if (h < 12) return 'Good Morning,';
@@ -79,8 +85,15 @@ const getGreeting = (): string => {
 const safeNumber = (v: any): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : 0;
 
-// ── Component ─────────────────────────────────────────────────────────────────
+const getTodayLabel = (): string => {
+  return new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+};
 
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
@@ -91,121 +104,52 @@ export default function Home() {
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
 
   // ── State ──────────────────────────────────────────────────────────────────
-
-  const [refreshing, setRefreshing] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [stats, setStats] = useState<Stats>({
     chaptersRead: 0,
     highlights: 0,
     notes: 0,
     bookmarks: 0,
   });
-  const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>(
-    [],
-  );
+  const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [bottomTabVisible, setBottomTabVisible] = useState(true);
+  const [dailyVerse, setDailyVerse] = useState<DailyVerse | null>(null);
+  const [verseLoading, setVerseLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const scrollViewRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
+
   const tabBarAnimation = useRef(new Animated.Value(1)).current;
 
-  const VERSE_POLL_MS = __DEV__ ? 6000 : 5 * 60 * 1000;
-
-  // ── Content buttons ────────────────────────────────────────────────────────
-
-  const contentButtons = useMemo(
+  // ── Banners & Quick Links ─────────────────────────────────────────────────
+  const contentBanners = useMemo(
     () => [
-      {
-        id: '1',
-        label: 'Exegesis Bible',
-        icon: CalendarDays,
-        color: '#1565C0',
-        onPress: () => navigation.navigate(route.bible),
-      },
-      {
-        id: '2',
-        label: 'Daily Devotions',
-        icon: HandHeart,
-        color: '#2E7D32',
-        onPress: () => navigation.navigate(route.dailyDevotional), // replace with your prayer wall route
-      },
-      {
-        id: '3',
-        label: 'Daily Verse',
-        icon: BookMarked,
-        color: '#6A1B9A',
-        onPress: () => navigation.navigate(route.dailyVerse),
-      },
-      {
-        id: '4',
-        label: 'Testify',
-        icon: Mic2,
-        color: '#E65100',
-        onPress: () => navigation.navigate(route.home), // replace with testify route
-      },
-      {
-        id: '5',
-        label: 'Bible Trivia',
-        icon: Brain,
-        color: '#F9A825',
-        onPress: () => navigation.navigate(route.home), // replace with trivia route
-      },
-
-      {
-        id: '6',
-        label: 'Reading Plan',
-        icon: Globe,
-        color: '#00695C',
-        onPress: () => navigation.navigate(route.readingPlan),
-      },
-      {
-        id: '7',
-        label: 'Support',
-        icon: HelpCircle,
-        color: '#C62828',
-        onPress: () => navigation.navigate(route.home), // replace with support route
-      },
+      { id: 'bible', label: 'Bible', icon: BookOpen, color: '#2E7D32', onPress: () => navigation.navigate(route.bible) },
+      { id: 'journal', label: 'Journal', icon: BookMarked, color: '#00695C', onPress: () => navigation.navigate(route.journal) },
+      { id: 'study', label: 'Bible Study', icon: GraduationCap, color: '#1A2F52', onPress: () => navigation.navigate(route.bible) },
+      { id: 'trivial', label: 'Bible Trivial', icon: Brain, color: '#8B5CF6', onPress: () => navigation.navigate(route.home) },
+      { id: 'plan', label: 'Bible Plan', icon: CalendarDays, color: '#E8A317', onPress: () => navigation.navigate(route.readingPlan) },
+      { id: 'resources', label: 'Resources', icon: Globe, color: '#0D47A1', onPress: () => navigation.navigate(route.home) },
+      { id: 'support', label: 'Support', icon: HelpCircle, color: '#D32F2F', onPress: () => navigation.navigate(route.home) },
     ],
     [navigation],
   );
 
-  // ── Quick links ────────────────────────────────────────────────────────────
-
   const quickLinks = useMemo(
     () => [
-      {
-        id: '1',
-        title: 'Notes',
-        icon: MenuSquareIcon,
-        color: COLORS.primary,
-        route: route.notes,
-      },
-      {
-        id: '2',
-        title: 'History',
-        icon: History,
-        color: '#10B981',
-        route: route.readHistory,
-      },
-      {
-        id: '3',
-        title: 'Highlights',
-        icon: Star,
-        color: '#F59E0B',
-        route: route.Highlights,
-      },
-      {
-        id: '4',
-        title: 'Favorites',
-        icon: Heart,
-        color: '#8B5CF6',
-        route: route.favorites,
-      },
+      { id: '1', title: 'Notes', icon: MenuSquareIcon, color: COLORS.primary, route: route.notes },
+      { id: '2', title: 'History', icon: History, color: '#10B981', route: route.readHistory },
+      { id: '3', title: 'Highlights', icon: Star, color: '#F59E0B', route: route.Highlights },
+      { id: '4', title: 'Favorites', icon: Heart, color: '#8B5CF6', route: route.favorites },
     ],
     [COLORS.primary],
   );
 
-  // ── Data fetching ──────────────────────────────────────────────────────────
-
+  // ── Data Fetching ─────────────────────────────────────────────────────────
   const formatActivityTime = (act: any): string => {
     try {
       const timeVal = act.time;
@@ -223,6 +167,26 @@ export default function Home() {
     }
   };
 
+  const loadDailyVerse = useCallback(async () => {
+    setVerseLoading(true);
+    try {
+      const res = await sendPostRequest('bible', 'get-daily-verse', {});
+      if (res.returnCode === 200 && res.returnData) {
+        const d = res.returnData;
+        setDailyVerse({
+          reference: d.reference ?? '',
+          translation: d.translation ?? 'NKJV',
+          text: d.text ?? '',
+          date: getTodayLabel(),
+        });
+      }
+    } catch (e) {
+      console.error('Error loading daily verse:', e);
+    } finally {
+      setVerseLoading(false);
+    }
+  }, []);
+
   const loadHomeStats = useCallback(async () => {
     try {
       const [statsRes, activityRes] = await Promise.all([
@@ -238,9 +202,6 @@ export default function Home() {
           notes: d.noteCount ?? 0,
           bookmarks: d.favoriteCount ?? 0,
         });
-
-        console.log('Home Stats response:', JSON.stringify(statsRes));
-        console.log('Recent Activity response:', JSON.stringify(activityRes));
 
         const activities = (activityRes.returnData || []).map((act: any) => ({
           type: act.type,
@@ -258,18 +219,20 @@ export default function Home() {
     }
   }, []);
 
-  // ── Effects ────────────────────────────────────────────────────────────────
-
+  // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (userInfo) {
       loadHomeStats();
+      loadDailyVerse();
     }
-    const unsubscribe = bibleTTS.subscribe(state => {
+
+    const unsubscribe = bibleTTS.subscribe((state: any) => {
       setIsPlaying(state.isPlaying);
       setIsPaused(state.isPaused);
     });
+
     return unsubscribe;
-  }, [loadHomeStats, userInfo]);
+  }, [loadHomeStats, loadDailyVerse, userInfo]);
 
   useFocusEffect(
     useCallback(() => {
@@ -278,16 +241,15 @@ export default function Home() {
     }, [loadHomeStats, userInfo]),
   );
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await loadHomeStats();
+      await Promise.all([loadHomeStats(), loadDailyVerse()]);
     } finally {
       setRefreshing(false);
     }
-  }, [loadHomeStats]);
+  }, [loadHomeStats, loadDailyVerse]);
 
   const handleScroll = useCallback(
     (event: any) => {
@@ -303,19 +265,16 @@ export default function Home() {
           useNativeDriver: true,
         }).start();
       }
-
       scrollY.current = currentOffset;
     },
     [bottomTabVisible, tabBarAnimation],
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
+  // ── Render ────────────────────────────────────────────────────────────────
   if (!app || !userInfo) return null;
 
   return (
     <View style={styles.container}>
-      {/* ── Header ──────────────────────────────────────────────────────── */}
       <ActionHeader
         mode="home"
         greeting={getGreeting()}
@@ -327,8 +286,8 @@ export default function Home() {
         onProfilePress={() => navigation.navigate(route.profile)}
       />
 
-      {/* ── Scrollable body ─────────────────────────────────────────────── */}
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -342,50 +301,199 @@ export default function Home() {
           />
         }
       >
-        {/* ── Content Buttons ────────────────────────────────────────────── */}
-        <View style={contentStyles.section}>
-          <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>
-            Content
-          </Text>
-          {contentButtons.map(btn => {
+        {/* Daily Verse Card */}
+        <View style={styles.verseCard}>
+          <View style={styles.verseCardHeader}>
+            <View style={styles.verseCardHeaderLeft}>
+              <View style={styles.verseIconBox}>
+                <BookOpen size={16} color="#FFFFFF" strokeWidth={2} />
+              </View>
+              <View>
+                <Text style={styles.verseCardTitle}>Daily Verse</Text>
+                <Text style={styles.verseCardDate}>{getTodayLabel()}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.lordsBookTag}
+              onPress={() => navigation.navigate(route.dailyVerse)}
+            >
+              <Text style={styles.lordsBookTagText}>Exegesis Daily's</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.verseCardDivider} />
+
+          {verseLoading ? (
+            <View style={styles.verseLoadingRow}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.verseLoadingText}>Loading verse...</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.verseReferenceRow}>
+                <View style={styles.verseRefLeft}>
+                  <BookMarked size={14} color={COLORS.primary} />
+                  <Text style={styles.verseRefText}>
+                    {dailyVerse?.reference ?? 'John 3:16'}{' '}
+                    <Text style={styles.verseTranslation}>
+                      ({dailyVerse?.translation ?? 'NKJV'})
+                    </Text>
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.audioBtn}
+                  onPress={() => {
+                    if (dailyVerse?.text) {
+                      bibleTTS.speak(dailyVerse.text, dailyVerse.reference);
+                    }
+                  }}
+                >
+                  <Volume2
+                    size={18}
+                    color={isPlaying ? COLORS.accent : COLORS.muted}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.verseBodyText}>
+                {dailyVerse?.text ??
+                  'For God so loved the world that He gave His only begotten Son, that whoever believes in Him should not perish but have everlasting life.'}
+              </Text>
+
+              {/* Enhanced Explanation with Show More */}
+              {showExplanation && (
+                <View style={styles.explainSection}>
+                  <Text style={styles.explainText}>
+                    This is one of the most famous and powerful verses in the Bible. 
+                    It beautifully summarizes God's love and the plan of salvation through Jesus Christ.
+                  </Text>
+
+                  {showMore && (
+                    <Text style={styles.explainText}>
+                      {'\n'}Spoken by Jesus to Nicodemus (a Pharisee and member of the Sanhedrin) at night, 
+                      this verse emphasizes that eternal life is not earned through religious effort or good works, 
+                      but is a free gift received by faith.{'\n\n'}
+
+                      The phrase "only begotten Son" highlights Jesus' unique relationship with the Father. 
+                      "Whoever believes" makes salvation available to every person regardless of background, status, 
+                      or past mistakes.{'\n\n'}
+
+                      <Text style={{ fontWeight: '600' }}>Practical Application:</Text> In our daily lives, this verse 
+                      invites us to trust in God's love rather than our own performance. It challenges us to share this 
+                      good news with others and live with the confidence of eternal life.
+                    </Text>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.showMoreBtn}
+                    onPress={() => {
+                      if (showMore) {
+                        setShowMore(false);
+                        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                      } else {
+                        setShowMore(true);
+                      }
+                    }}
+                  >
+                    <Text style={styles.showMoreText}>
+                      {showMore ? 'Show Less ▲' : 'Show More ▼'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={styles.verseActions}>
+                  <TouchableOpacity
+                    style={styles.verseActionBtn}
+                    onPress={() => {
+                      const closing = showExplanation;
+                      setShowExplanation(!showExplanation);
+                      if (closing) {
+                        setShowMore(false); // Reset when closing
+                        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                      }
+                    }}
+                  >
+                  <ChevronDown size={15} color={COLORS.primary} />
+                  <Text style={styles.verseActionText}>
+                    {showExplanation ? 'Hide Explanation' : 'Explain verse'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.verseActionBtn}>
+                  <Share2 size={14} color={COLORS.primary} />
+                  <Text style={styles.verseActionText}>Share verse</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Content Banners */}
+        <View style={styles.bannersSection}>
+          {contentBanners.map((btn, idx) => {
             const Icon = btn.icon;
             return (
               <TouchableOpacity
                 key={btn.id}
-                activeOpacity={0.82}
+                activeOpacity={0.85}
                 onPress={btn.onPress}
-                style={[contentStyles.button, { backgroundColor: btn.color }]}
+                style={[
+                  styles.bannerRow,
+                  { backgroundColor: btn.color },
+                  idx === 0 && styles.bannerFirst,
+                  idx === contentBanners.length - 1 && styles.bannerLast,
+                ]}
               >
-                <View style={contentStyles.iconWrap}>
-                  <Icon
-                    size={22}
-                    color="rgba(255,255,255,0.9)"
-                    strokeWidth={1.8}
-                  />
+                <View style={styles.bannerIconWrap}>
+                  <Icon size={22} color="#FFFFFF" strokeWidth={1.8} />
                 </View>
-                <Text style={contentStyles.label}>{btn.label}</Text>
-                <ArrowRight size={18} color="rgba(255,255,255,0.6)" />
+                <Text style={styles.bannerLabel}>{btn.label}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* ── Quick Actions ──────────────────────────────────────────────── */}
+        {/* Faith Reel */}
+        <View style={[styles.faithReelCard, { backgroundColor: COLORS.cardBackground }]}>
+          <View style={styles.faithReelInner}>
+            <View style={[styles.faithReelPlayBtn, { backgroundColor: COLORS.accent + '20' }]}>
+              <Play size={22} color={COLORS.accent} fill={COLORS.accent} />
+            </View>
+            <View style={styles.faithReelInfo}>
+              <Text style={[styles.faithReelTitle, { color: COLORS.text }]}>Faith Reel</Text>
+              <Text style={[styles.faithReelDate, { color: COLORS.muted }]}>{getTodayLabel()}</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.lordsBookTag, { borderColor: COLORS.primary + '40' }]}
+              onPress={() => navigation.navigate(route.home)}
+            >
+              <Text style={[styles.lordsBookTagText, { color: COLORS.primary }]}>
+                Lordsbook Daily's
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.faithReelsFooter}>
+          <Text style={[styles.faithReelsFooterText, { color: COLORS.muted }]}>
+            🎉 FAITH REELS — {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }).toUpperCase()} 🎉
+          </Text>
+        </View>
+
+        {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickLinksCompact}>
-            {quickLinks.map(link => (
+            {quickLinks.map((link) => (
               <TouchableOpacity
                 key={link.id}
                 style={styles.quickLinkCompactCard}
                 onPress={() => navigation.navigate(link.route)}
               >
-                <View
-                  style={[
-                    styles.quickLinkCompactIcon,
-                    { backgroundColor: link.color + '20' },
-                  ]}
-                >
+                <View style={[styles.quickLinkCompactIcon, { backgroundColor: link.color + '20' }]}>
                   <link.icon size={20} color={link.color} />
                 </View>
                 <Text style={styles.quickLinkCompactText} numberOfLines={1}>
@@ -396,61 +504,38 @@ export default function Home() {
           </View>
         </View>
 
-        {/* ── Stats ─────────────────────────────────────────────────────── */}
+        {/* Stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Stats</Text>
-
-          <View style={styles.progressRow}>
-            <View style={[styles.progressCard, { marginRight: 0 }]}>
-              <Text style={styles.progressLabel}>Chapters Visited</Text>
-              <Text style={styles.progressNumber}>
-                {safeNumber(stats.chaptersRead)}
-              </Text>
-            </View>
-            <View style={[styles.progressCard, { marginRight: 0 }]}>
-              <Text style={styles.progressLabel}>Highlights</Text>
-              <Text style={styles.progressNumber}>
-                {safeNumber(stats.highlights)}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.progressRow}>
-            <View style={[styles.progressCard, { marginRight: 0 }]}>
-              <Text style={styles.progressLabel}>Notes</Text>
-              <Text style={styles.progressNumber}>
-                {safeNumber(stats.notes)}
-              </Text>
-            </View>
-            <View style={[styles.progressCard, { marginRight: 0 }]}>
-              <Text style={styles.progressLabel}>Favorites</Text>
-              <Text style={styles.progressNumber}>
-                {safeNumber(stats.bookmarks)}
-              </Text>
-            </View>
+          <View style={styles.statsGrid}>
+            {[
+              { label: 'Chapters', value: safeNumber(stats.chaptersRead), color: COLORS.primary },
+              { label: 'Highlights', value: safeNumber(stats.highlights), color: '#F59E0B' },
+              { label: 'Notes', value: safeNumber(stats.notes), color: '#10B981' },
+              { label: 'Favorites', value: safeNumber(stats.bookmarks), color: '#8B5CF6' },
+            ].map((stat, idx) => (
+              <View
+                key={`stat-${idx}`}
+                style={[styles.statCard, { backgroundColor: COLORS.cardBackground }]}
+              >
+                <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
+                <Text style={[styles.statLabel, { color: COLORS.muted }]}>{stat.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
-        {/* ── Recent Activity ────────────────────────────────────────────── */}
+        {/* Recent Activity */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate(route.readHistory)}
-            >
-              <Text style={[styles.sectionAction, { color: COLORS.primary }]}>
-                See All
-              </Text>
+            <TouchableOpacity onPress={() => navigation.navigate(route.readHistory)}>
+              <Text style={[styles.sectionAction, { color: COLORS.primary }]}>See All</Text>
             </TouchableOpacity>
           </View>
 
           {recentActivity.length === 0 ? (
-            <View
-              style={[
-                activityStyles.emptyCard,
-                { backgroundColor: COLORS.cardBackground },
-              ]}
-            >
+            <View style={[activityStyles.emptyCard, { backgroundColor: COLORS.cardBackground }]}>
               <Text style={[activityStyles.emptyText, { color: COLORS.muted }]}>
                 Start reading to see your activity here
               </Text>
@@ -458,44 +543,25 @@ export default function Home() {
           ) : (
             <View style={activityStyles.activityList}>
               {recentActivity.map((act, idx) => {
-                const ActivityIcon =
-                  act.type === 'read'
-                    ? Clock
-                    : act.type === 'highlight'
-                      ? Star
-                      : act.type === 'note'
-                        ? MenuSquareIcon
-                        : act.type === 'plan'
-                          ? CheckCircle
-                          : Heart;
-                const iconColor =
-                  act.type === 'read'
-                    ? '#6366F1'
-                    : act.type === 'highlight'
-                      ? '#F59E0B'
-                      : act.type === 'note'
-                        ? '#10B981'
-                        : act.type === 'plan'
-                          ? '#00695C'
-                          : '#EC4899';
-                const label =
-                  act.type === 'read'
-                    ? 'Reading'
-                    : act.type === 'highlight'
-                      ? 'Highlighted'
-                      : act.type === 'note'
-                        ? 'Noted'
-                        : act.type === 'plan'
-                          ? 'Plan Progress'
-                          : 'Favorited';
+                const ActivityIcon = act.type === 'read' ? Clock
+                  : act.type === 'highlight' ? Star
+                  : act.type === 'note' ? MenuSquareIcon
+                  : act.type === 'plan' ? CheckCircle : Heart;
+
+                const iconColor = act.type === 'read' ? '#6366F1'
+                  : act.type === 'highlight' ? '#F59E0B'
+                  : act.type === 'note' ? '#10B981'
+                  : act.type === 'plan' ? '#00695C' : '#EC4899';
+
+                const label = act.type === 'read' ? 'Reading'
+                  : act.type === 'highlight' ? 'Highlighted'
+                  : act.type === 'note' ? 'Noted'
+                  : act.type === 'plan' ? 'Plan Progress' : 'Favorited';
 
                 return (
                   <TouchableOpacity
                     key={idx}
-                    style={[
-                      activityStyles.activityCard,
-                      { backgroundColor: COLORS.cardBackground },
-                    ]}
+                    style={[activityStyles.activityCard, { backgroundColor: COLORS.cardBackground }]}
                     onPress={() =>
                       act.type === 'plan'
                         ? navigation.navigate(route.readingPlan)
@@ -505,39 +571,19 @@ export default function Home() {
                           })
                     }
                   >
-                    <View
-                      style={[
-                        activityStyles.iconBox,
-                        { backgroundColor: iconColor + '20' },
-                      ]}
-                    >
+                    <View style={[activityStyles.iconBox, { backgroundColor: iconColor + '20' }]}>
                       <ActivityIcon size={18} color={iconColor} />
                     </View>
                     <View style={activityStyles.activityContent}>
                       <View style={activityStyles.activityTop}>
-                        <Text
-                          style={[
-                            activityStyles.activityLabel,
-                            { color: iconColor },
-                          ]}
-                        >
+                        <Text style={[activityStyles.activityLabel, { color: iconColor }]}>
                           {label}
                         </Text>
-                        <Text
-                          style={[
-                            activityStyles.activityTime,
-                            { color: COLORS.muted },
-                          ]}
-                        >
+                        <Text style={[activityStyles.activityTime, { color: COLORS.muted }]}>
                           {act.time}
                         </Text>
                       </View>
-                      <Text
-                        style={[
-                          activityStyles.activityVerse,
-                          { color: COLORS.text },
-                        ]}
-                      >
+                      <Text style={[activityStyles.activityVerse, { color: COLORS.text }]}>
                         {act.book} {act.chapter}:{act.verse}
                       </Text>
                     </View>
@@ -550,7 +596,7 @@ export default function Home() {
         </View>
       </ScrollView>
 
-      {/* ── Bottom Tab ──────────────────────────────────────────────────── */}
+      {/* Bottom Tab */}
       <Animated.View
         style={[
           styles.bottomTabWrapper,
@@ -573,58 +619,11 @@ export default function Home() {
   );
 }
 
-// ── Content button styles (self-contained) ────────────────────────────────────
-
-const contentStyles = StyleSheet.create({
-  section: {
-    marginBottom: 20,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  iconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  label: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: 0.1,
-  },
-});
-
-// ── Activity styles ───────────────────────────────────────────────────────────────
-
+// Activity Styles
 const activityStyles = StyleSheet.create({
-  emptyCard: {
-    padding: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  activityList: {
-    gap: 8,
-  },
+  emptyCard: { padding: 24, borderRadius: 12, alignItems: 'center' },
+  emptyText: { fontSize: 14, textAlign: 'center' },
+  activityList: { gap: 8 },
   activityCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -639,9 +638,7 @@ const activityStyles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  activityContent: {
-    flex: 1,
-  },
+  activityContent: { flex: 1 },
   activityTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -654,11 +651,6 @@ const activityStyles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  activityTime: {
-    fontSize: 11,
-  },
-  activityVerse: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  activityTime: { fontSize: 11 },
+  activityVerse: { fontSize: 14, fontWeight: '500' },
 });
