@@ -462,9 +462,8 @@ export default function Register() {
                   >
                     <ChevronLeft size={22} color={C.text} />
                   </TouchableOpacity>
-                </View>
 
-                <View style={s.titleSection}>
+                   <View style={s.titleSection}>
                   <Text style={[s.title, { color: C.text }]}>
                     {googleSignUp
                       ? translations.register?.title || 'Complete Registration'
@@ -478,6 +477,9 @@ export default function Register() {
                         'Fill in your details to get started'}
                   </Text>
                 </View>
+                </View>
+
+               
 
                 <View
                   style={[s.formCard, { backgroundColor: C.cardBackground }]}
@@ -923,6 +925,7 @@ export default function Register() {
 const s = StyleSheet.create({
   root: {
     flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 20,
   },
   scrollContent: {
     flexGrow: 1,
@@ -933,6 +936,8 @@ const s = StyleSheet.create({
   },
   headerSection: {
     marginBottom: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButton: {
     width: 42,
@@ -944,6 +949,8 @@ const s = StyleSheet.create({
   },
   titleSection: {
     marginBottom: SPACING.xl,
+    flex: 1,
+    marginLeft: SPACING.md,
   },
   title: {
     fontSize: FONT_SIZES.xxxl + 2,
@@ -1003,9 +1010,7 @@ const s = StyleSheet.create({
     padding: SPACING.md,
     borderBottomWidth: 1,
   },
-  genderText: {
-    fontSize: FONT_SIZES.md,
-  },
+
   strengthRow: {
     flexDirection: 'row',
     alignItems: 'center',
