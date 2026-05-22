@@ -43,14 +43,27 @@
     "emailRequired": "El correo es obligatorio",
     "invalidEmail": "Por favor ingrese un correo válido",
     "passwordRequired": "La contraseña es obligatoria",
-    "passwordMin": "La contraseña debe tener al menos 6 caracteres"
+    "passwordMin": "La contraseña debe tener al menos 6 caracteres",
+    "usernameRequired": "El nombre de usuario es obligatorio",
+    "usernameMin": "El nombre de usuario debe tener al menos 3 caracteres",
+    "usernameFormat": "Solo letras, números y guiones bajos",
+    "firstNameRequired": "El nombre es obligatorio",
+    "lastNameRequired": "El apellido es obligatorio",
+    "phoneInvalid": "El teléfono debe tener entre 10 y 15 dígitos",
+    "confirmPassword": "Por favor confirme su contraseña",
+    "missingPrefix": "Falta:"
   },
   "errors": {
     "googleFailed": "Fallo en el inicio de sesión con Google",
     "noIdToken": "No se encontró token de ID",
     "unknown": "Error desconocido",
     "unexpected": "Ocurrió un error inesperado",
-    "warning": "Advertencia"
+    "warning": "Advertencia",
+    "noInternet": "Sin conexión a internet. Por favor intente de nuevo.",
+    "enterVerificationCode": "Por favor ingrese el código de 6 dígitos",
+    "registrationFailed": "El registro falló. Por favor intente de nuevo.",
+    "tryAgainLater": "Por favor intente más tarde",
+    "failedResendCode": "Fallo al reenviar el código"
   },
 
   "welcome": {
@@ -59,6 +72,9 @@
   },
   "register": {
     "title": "Registrarse",
+    "username": "Nombre de usuario",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
     "button": "Crear cuenta",
     "firstName": "Nombre",
     "lastName": "Apellido",
@@ -83,7 +99,14 @@
       "Un número",
       "Un carácter especial"
     ],
-    "useDifferentAccount": "Usar otra cuenta"
+    "useDifferentAccount": "Usar otra cuenta",
+    "genderMale": "Masculino",
+    "genderFemale": "Femenino",
+    "genderNotSpecified": "No especificado",
+    "successCreated": "¡Cuenta creada exitosamente!",
+    "successVerifyEmail": "Verifique su correo para ver el código de verificación.",
+    "successEmailVerified": "¡Correo verificado! Redirigiendo al inicio de sesión...",
+    "successCodeResent": "¡Código reenviado!"
   },
   "passwords": {
     "strong": "Fuerte",
@@ -246,5 +269,55 @@
     "voicePitch": "Tono de voz",
     "reset": "Restablecer",
     "deviceHint": "Mueva el control para anular la configuración de su dispositivo"
+  }
+  ,
+  "home": {
+    "greetings": {
+      "morning": "Buenos días,",
+      "afternoon": "Buenas tardes,",
+      "evening": "Buenas noches,"
+    },
+    "dailyVerseTitle": "Verso del día",
+    "lordsBookTag": "Exegesis Diario",
+    "lordsBookTagAlt": "Lordsbook Diario",
+    "loadingVerse": "Cargando verso...",
+    "explainIntro": "Este es uno de los versículos más famosos y poderosos de la Biblia. Resume hermosamente el amor de Dios y el plan de salvación a través de Jesucristo.",
+    "explainMore": "Hablado por Jesús a Nicodemo por la noche, este versículo enfatiza que la vida eterna no se gana por el esfuerzo religioso o las buenas obras, sino que es un regalo gratuito recibido por la fe.",
+    "explainMoreFull": "Hablado por Jesús a Nicodemo (un fariseo y miembro del Sanedrín) en la noche, este versículo enfatiza que la vida eterna no se gana por el esfuerzo religioso o las buenas obras, sino que es un regalo gratuito recibido por la fe.\n\nLa frase \"Hijo unigénito\" resalta la relación única de Jesús con el Padre. \"Quien cree\" hace que la salvación esté disponible para toda persona, independientemente de su origen, estatus o errores pasados.\n\nAplicación práctica: En nuestra vida diaria, este versículo nos invita a confiar en el amor de Dios en lugar de nuestro propio desempeño. Nos desafía a compartir esta buena noticia con otros y vivir con la confianza de la vida eterna.",
+    "showMore": "Mostrar más ▼",
+    "showLess": "Mostrar menos ▲",
+    "explainVerse": "Explicar verso",
+    "hideExplanation": "Ocultar explicación",
+    "shareVerse": "Compartir verso",
+    "faithReelTitle": "Faith Reel",
+    "faithReelsFooter": "🎉 FAITH REELS —",
+    "quickActionsTitle": "Acciones rápidas",
+    "yourStatsTitle": "Tus estadísticas",
+    "recentActivityTitle": "Actividad reciente",
+    "seeAll": "Ver todo",
+    "startReadingTip": "Comienza a leer para ver tu actividad aquí",
+    "recentLabel": "Reciente",
+    "banners": {
+      "bible": "Biblia",
+      "journal": "Diario",
+      "study": "Estudio bíblico",
+      "trivial": "Trivial bíblico",
+      "plan": "Plan bíblico",
+      "resources": "Recursos",
+      "support": "Soporte"
+    },
+    "quickLinks": {
+      "notes": "Notas",
+      "history": "Historial",
+      "highlights": "Destacados",
+      "favorites": "Favoritos"
+    },
+    "activityLabels": {
+      "reading": "Lectura",
+      "highlighted": "Destacado",
+      "noted": "Anotado",
+      "planProgress": "Progreso del plan",
+      "favorited": "Favorito"
+    }
   }
 }

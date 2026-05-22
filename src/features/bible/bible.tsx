@@ -481,7 +481,11 @@ export default function Bible() {
           }
           onExplain={async () => {
             if (selectedVerses.length > 0) {
-              const found = await getverseExplanation(selectedVerses, currentBook, currentChapter);
+              const found = await getverseExplanation(
+                selectedVerses,
+                currentBook,
+                currentChapter,
+              );
               if (found) {
                 setExplanationOpen(true);
               }
@@ -575,14 +579,10 @@ export default function Bible() {
               getverseExplanation([vn], currentBook, currentChapter);
             }}
             onShare={vn =>
-              guard('Sharing requires a free account.', () =>
-                shareVerses([vn]),
-              )
+              guard('Sharing requires a free account.', () => shareVerses([vn]))
             }
             onCopy={vn =>
-              guard('Copying requires a free account.', () =>
-                copyVerses([vn]),
-              )
+              guard('Copying requires a free account.', () => copyVerses([vn]))
             }
             onDoubleTap={vn => {
               clearSelection();
@@ -636,14 +636,10 @@ export default function Bible() {
             getverseExplanation([vn], currentBook, currentChapter);
           }}
           onShare={vn =>
-            guard('Sharing requires a free account.', () =>
-              shareVerses([vn]),
-            )
+            guard('Sharing requires a free account.', () => shareVerses([vn]))
           }
           onCopy={vn =>
-            guard('Copying requires a free account.', () =>
-              copyVerses([vn]),
-            )
+            guard('Copying requires a free account.', () => copyVerses([vn]))
           }
           onDoubleTap={vn => {
             clearSelection();

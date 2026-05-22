@@ -111,6 +111,23 @@ export default function Register() {
     },
   ]);
 
+  useEffect(() => {
+    const currentDefaultPwdReqs = (translations.register &&
+      (translations.register as any).pwdReqs) || [
+      'At least 8 characters',
+      'One lowercase letter',
+      'One uppercase letter',
+      'One number',
+      'One special character',
+    ];
+    setPwdReqs(prev =>
+      prev.map((r, i) => ({
+        ...r,
+        label: currentDefaultPwdReqs[i] || r.label,
+      })),
+    );
+  }, [translations]);
+
   const [verificationCode, setVerificationCode] = useState([
     '',
     '',
@@ -267,7 +284,7 @@ export default function Register() {
       e.phoneNumber =
         translations.validation?.phoneInvalid || 'Phone must be 10-15 digits';
     if (!password) {
-      e.password = translations.validation.passwordRequired;
+      e.password = translations.validation?.passwordRequired || 'Password is required';
     } else {
       const unmet = pwdReqs.filter(r => !r.met);
       if (unmet.length > 0) {
@@ -290,7 +307,7 @@ export default function Register() {
   const handleRegister = async () => {
     if (!validateDetails()) return;
     if (!(await checkInternetConnection())) {
-      showToast('error', 'No internet connection. Please try again.');
+      showToast('error', translations.errors?.noInternet || 'No internet connection. Please try again.');
       return;
     }
 
@@ -340,13 +357,13 @@ export default function Register() {
           await setUserInfo(info);
           showToast(
             'success',
-            returnMessage || 'Account created successfully!',
+            returnMessage || translations.register?.successCreated || 'Account created successfully!',
           );
           setTimeout(() => navigation.navigate(route.homeLogin), 1500);
         } else {
           showToast(
             'success',
-            returnMessage || 'Check your email for verification code.',
+            returnMessage || translations.register?.successVerifyEmail || 'Check your email for verification code.',
           );
           setTimeout(() => goToStep('verify'), 1500);
         }
@@ -355,12 +372,12 @@ export default function Register() {
       } else {
         showToast(
           'error',
-          returnMessage || 'Registration failed. Please try again.',
+          returnMessage || translations.errors?.registrationFailed || 'Registration failed. Please try again.',
         );
       }
     } catch (e: any) {
       const returnCode = e?.returnCode;
-      const returnMessage = e?.message || 'Please try again later';
+      const returnMessage = e?.message || translations.errors?.tryAgainLater || 'Please try again later';
       showToast(returnCode === 401 ? 'warning' : 'error', returnMessage);
     } finally {
       setLoading(false);
@@ -370,7 +387,7 @@ export default function Register() {
   const handleVerification = async () => {
     const code = verificationCode.join('');
     if (code.length !== 6) {
-      showToast('warning', 'Please enter the 6-digit code');
+      showToast('warning', translations.errors?.enterVerificationCode || 'Please enter the 6-digit code');
       return;
     }
     try {
@@ -382,16 +399,72 @@ export default function Register() {
       const { returnCode, returnMessage } = res;
 
       if (returnCode === 200) {
-        showToast(
-          'success',
-          returnMessage || 'Email verified! Redirecting to login...',
-        );
-        setTimeout(() => navigation.navigate(route.login), 1500);
+        // Try to auto-login the user after successful verification.
+        // Some backends may return a token directly from verify-account; otherwise
+        // fall back to calling the login endpoint with the email and password
+        // the user entered during registration.
+        try {
+          // If verify returned a token, use it.
+          const tokenData: any = (res as any).returnData;
+          if (tokenData && tokenData.token) {
+            const info = {
+              token: tokenData.token,
+              tokenType: tokenData.tokenType,
+              username: tokenData.username,
+              email: tokenData.email,
+              firstName: tokenData.firstName,
+              lastName: tokenData.lastName,
+              profilePhotoUrl: tokenData.profilePhotoUrl,
+              userRole: tokenData.userRole,
+              roleName: tokenData.roleName,
+            };
+            await setUserInfo(info);
+            showToast('success', returnMessage || translations.register?.successEmailVerified || 'Email verified! Redirecting...');
+            const dashboardRoute = info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
+            setTimeout(() => navigation.navigate(dashboardRoute), 800);
+            return;
+          }
+
+          // Otherwise attempt to login with the provided credentials
+          // (password is still available in component state).
+          const loginRes: any = await sendPostRequest('auth', 'login', {
+            username: email.toLowerCase().trim(),
+            password,
+          });
+          if (loginRes.returnCode === 200 && loginRes.returnData) {
+            const d = loginRes.returnData;
+            const info = {
+              token: d.token,
+              tokenType: d.tokenType,
+              username: d.username,
+              email: d.email,
+              firstName: d.firstName,
+              lastName: d.lastName,
+              profilePhotoUrl: d.profilePhotoUrl,
+              userRole: d.userRole,
+              roleName: d.roleName,
+            };
+            await setUserInfo(info);
+            showToast('success', loginRes.returnMessage || translations.register?.successEmailVerified || 'Email verified! Redirecting...');
+            const dashboardRoute = info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
+            setTimeout(() => navigation.navigate(dashboardRoute), 800);
+            return;
+          }
+
+          // If login didn't succeed, fall back to notifying user to login.
+          showToast('success', returnMessage || translations.register?.successEmailVerified || 'Email verified! Redirecting to login...');
+          setTimeout(() => navigation.navigate(route.login), 1500);
+        } catch (e: any) {
+          // If auto-login fails for any reason, navigate to login screen so user
+          // can sign in manually.
+          showToast('success', returnMessage || translations.register?.successEmailVerified || 'Email verified! Redirecting to login...');
+          setTimeout(() => navigation.navigate(route.login), 1500);
+        }
       } else {
-        showToast('error', returnMessage || 'Invalid code');
+        showToast('error', returnMessage || translations.errors?.unexpected || 'Invalid code');
       }
     } catch (e: any) {
-      showToast('error', e.message || 'An error occurred. Please try again.');
+      showToast('error', e.message || translations.errors?.unexpected || 'An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -405,25 +478,23 @@ export default function Register() {
         email,
       });
       if (res.returnCode === 200) {
-        showToast('success', res.returnMessage || 'Code resent!');
+        showToast('success', res.returnMessage || translations.register?.successCodeResent || 'Code resent!');
         startResendTimer();
       } else {
-        showToast('error', res.returnMessage || 'Failed to resend code');
+        showToast('error', res.returnMessage || translations.errors?.failedResendCode || 'Failed to resend code');
       }
     } catch (e: any) {
-      showToast('error', e.message || 'Failed to resend code');
+      showToast('error', e.message || translations.errors?.failedResendCode || 'Failed to resend code');
     } finally {
       setLoading(false);
     }
   };
 
-  const genderOptions: string[] = (translations.register &&
-    (translations.register as any).genders) || [
-    'Male',
-    'Female',
-    'Not Specified',
+  const genders = [
+    { value: 'Male', label: translations.register?.genderMale || 'Male' },
+    { value: 'Female', label: translations.register?.genderFemale || 'Female' },
+    { value: 'Not Specified', label: translations.register?.genderNotSpecified || 'Not Specified' },
   ];
-  const genders = genderOptions;
 
   return (
     <View
@@ -610,7 +681,7 @@ export default function Register() {
                         ]}
                       >
                         <Text style={[s.genderText, { color: C.text }]}>
-                          {gender}
+                          {genders.find(g => g.value === gender)?.label || gender}
                         </Text>
                       </TouchableOpacity>
                       {genderDropdown && (
@@ -625,9 +696,9 @@ export default function Register() {
                         >
                           {genders.map(g => (
                             <TouchableOpacity
-                              key={g}
+                              key={g.value}
                               onPress={() => {
-                                setGender(g);
+                                setGender(g.value);
                                 setGenderDropdown(false);
                               }}
                               style={[
@@ -638,7 +709,7 @@ export default function Register() {
                               <Text
                                 style={[s.genderOptionText, { color: C.text }]}
                               >
-                                {g}
+                                {g.label}
                               </Text>
                             </TouchableOpacity>
                           ))}
@@ -925,7 +996,7 @@ export default function Register() {
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 20,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 40,
   },
   scrollContent: {
     flexGrow: 1,

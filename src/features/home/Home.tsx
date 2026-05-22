@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Animated,
   StyleSheet,
+  Image,
 } from 'react-native';
 import {
   Star,
@@ -42,10 +43,11 @@ import { getColors } from '../../constants/theme';
 import BottomTab from '../../component/navigations/BottomTab';
 import { route } from '../../component/navigations/routes';
 import { sendPostRequest } from '../../services/api';
-import { formatWhatsAppTime } from '../../utilits/bibleUtils';
+import { formatWhatsAppTime, getVerseText } from '../../utilits/bibleUtils';
 import ActionHeader from '../../reusable/ActionHeader';
 import { createStyles } from './homeStyle';
 import { bibleTTS } from '../../utilits/bibleTTS';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ActivityType = 'read' | 'highlight' | 'note' | 'favorite' | 'plan';
@@ -75,18 +77,21 @@ type DailyVerse = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const getGreeting = (): string => {
+// Greeting resolver now accepts translations so it can return localized strings
+const getGreeting = (translations?: any): string => {
   const h = new Date().getHours();
-  if (h < 12) return 'Good Morning,';
-  if (h < 17) return 'Good Afternoon,';
-  return 'Good Evening,';
+  if (h < 12) return translations?.home?.greetings?.morning ?? 'Good Morning,';
+  if (h < 17) return translations?.home?.greetings?.afternoon ?? 'Good Afternoon,';
+  return translations?.home?.greetings?.evening ?? 'Good Evening,';
 };
 
 const safeNumber = (v: any): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : 0;
 
-const getTodayLabel = (): string => {
-  return new Date().toLocaleDateString('en-US', {
+const getTodayLabel = (languageCode = 'en'): string => {
+  // try to use the active language for locale formatting; fall back to en-US
+  const locale = languageCode === 'en' ? 'en-US' : languageCode;
+  return new Date().toLocaleDateString(locale, {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -125,28 +130,31 @@ export default function Home() {
 
   const tabBarAnimation = useRef(new Animated.Value(1)).current;
 
+  // languages / translations used on this screen
+   const { language, translations: translation } = useLanguage();
+
   // ── Banners & Quick Links ─────────────────────────────────────────────────
   const contentBanners = useMemo(
     () => [
-      { id: 'bible', label: 'Bible', icon: BookOpen, color: '#2E7D32', onPress: () => navigation.navigate(route.bible) },
-      { id: 'journal', label: 'Journal', icon: BookMarked, color: '#00695C', onPress: () => navigation.navigate(route.journal) },
-      { id: 'study', label: 'Bible Study', icon: GraduationCap, color: '#1A2F52', onPress: () => navigation.navigate(route.bible) },
-      { id: 'trivial', label: 'Bible Trivial', icon: Brain, color: '#8B5CF6', onPress: () => navigation.navigate(route.home) },
-      { id: 'plan', label: 'Bible Plan', icon: CalendarDays, color: '#E8A317', onPress: () => navigation.navigate(route.readingPlan) },
-      { id: 'resources', label: 'Resources', icon: Globe, color: '#0D47A1', onPress: () => navigation.navigate(route.home) },
-      { id: 'support', label: 'Support', icon: HelpCircle, color: '#D32F2F', onPress: () => navigation.navigate(route.home) },
+      { id: 'bible', label: translation?.home?.banners?.bible || 'Bible', icon: BookOpen, color: '#2E7D32', onPress: () => navigation.navigate(route.bible) },
+      { id: 'journal', label: translation?.home?.banners?.journal || 'Journal', icon: BookMarked, color: '#00695C', onPress: () => navigation.navigate(route.journal) },
+      { id: 'study', label: translation?.home?.banners?.study || 'Bible Study', icon: GraduationCap, color: '#1A2F52', onPress: () => navigation.navigate(route.bible) },
+      { id: 'trivial', label: translation?.home?.banners?.trivial || 'Bible Trivial', icon: Brain, color: '#8B5CF6', onPress: () => navigation.navigate(route.home) },
+      { id: 'plan', label: translation?.home?.banners?.plan || 'Bible Plan', icon: CalendarDays, color: '#E8A317', onPress: () => navigation.navigate(route.readingPlan) },
+      { id: 'resources', label: translation?.home?.banners?.resources || 'Resources', icon: Globe, color: '#0D47A1', onPress: () => navigation.navigate(route.home) },
+      { id: 'support', label: translation?.home?.banners?.support || 'Support', icon: HelpCircle, color: '#D32F2F', onPress: () => navigation.navigate(route.home) },
     ],
-    [navigation],
+    [navigation, translation],
   );
 
   const quickLinks = useMemo(
     () => [
-      { id: '1', title: 'Notes', icon: MenuSquareIcon, color: COLORS.primary, route: route.notes },
-      { id: '2', title: 'History', icon: History, color: '#10B981', route: route.readHistory },
-      { id: '3', title: 'Highlights', icon: Star, color: '#F59E0B', route: route.Highlights },
-      { id: '4', title: 'Favorites', icon: Heart, color: '#8B5CF6', route: route.favorites },
+      { id: '1', title: translation?.home?.quickLinks?.notes || 'Notes', icon: MenuSquareIcon, color: COLORS.primary, route: route.notes },
+      { id: '2', title: translation?.home?.quickLinks?.history || 'History', icon: History, color: '#10B981', route: route.readHistory },
+      { id: '3', title: translation?.home?.quickLinks?.highlights || 'Highlights', icon: Star, color: '#F59E0B', route: route.Highlights },
+      { id: '4', title: translation?.home?.quickLinks?.favorites || 'Favorites', icon: Heart, color: '#8B5CF6', route: route.favorites },
     ],
-    [COLORS.primary],
+    [COLORS.primary, translation],
   );
 
   // ── Data Fetching ─────────────────────────────────────────────────────────
@@ -155,15 +163,15 @@ export default function Home() {
       const timeVal = act.time;
       if (!timeVal || typeof timeVal !== 'object') {
         if (typeof timeVal === 'string') return formatWhatsAppTime(timeVal);
-        return 'Recent';
+        return translation?.home?.recentLabel || 'Recent';
       }
       const timeStr = timeVal.createdOn || timeVal.updatedOn;
-      if (!timeStr) return 'Recent';
+      if (!timeStr) return translation?.home?.recentLabel || 'Recent';
       const time = new Date(timeStr);
-      if (isNaN(time.getTime())) return 'Recent';
+      if (isNaN(time.getTime())) return translation?.home?.recentLabel || 'Recent';
       return formatWhatsAppTime(timeStr);
     } catch {
-      return 'Recent';
+      return translation?.home?.recentLabel || 'Recent';
     }
   };
 
@@ -265,7 +273,7 @@ export default function Home() {
           useNativeDriver: true,
         }).start();
       }
-      scrollY.current = currentOffset;
+      scrollY.current = currentOffset;  
     },
     [bottomTabVisible, tabBarAnimation],
   );
@@ -277,9 +285,11 @@ export default function Home() {
     <View style={styles.container}>
       <ActionHeader
         mode="home"
-        greeting={getGreeting()}
+        // use the book icon as the home logo (falls back to default elsewhere)
+        logoComponent={<BookOpen size={40} color={COLORS.primary} />}
+        greeting={getGreeting(translation)}
         userName={userInfo?.lastName || 'Friend'}
-        tagline="Your Practical Application Bible for Daily Guidance"
+        tagline={translation?.appTagline || 'Your Practical Application Bible for Daily Guidance'}
         isDarkMode={isDark}
         onThemeToggle={toggleTheme}
         profilePhotoUrl={userInfo?.profilePhotoUrl}
@@ -309,8 +319,8 @@ export default function Home() {
                 <BookOpen size={16} color="#FFFFFF" strokeWidth={2} />
               </View>
               <View>
-                <Text style={styles.verseCardTitle}>Daily Verse</Text>
-                <Text style={styles.verseCardDate}>{getTodayLabel()}</Text>
+                <Text style={styles.verseCardTitle}>{translation?.home?.dailyVerseTitle || 'Daily Verse'}</Text>
+                <Text style={styles.verseCardDate}>{getTodayLabel(language)}</Text>
               </View>
             </View>
 
@@ -318,7 +328,7 @@ export default function Home() {
               style={styles.lordsBookTag}
               onPress={() => navigation.navigate(route.dailyVerse)}
             >
-              <Text style={styles.lordsBookTagText}>Exegesis Daily's</Text>
+              <Text style={styles.lordsBookTagText}>{translation?.home?.lordsBookTag || "Exegesis Daily's"}</Text>
             </TouchableOpacity>
           </View>
 
@@ -327,7 +337,7 @@ export default function Home() {
           {verseLoading ? (
             <View style={styles.verseLoadingRow}>
               <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={styles.verseLoadingText}>Loading verse...</Text>
+              <Text style={styles.verseLoadingText}>{translation?.home?.loadingVerse || 'Loading verse...'}</Text>
             </View>
           ) : (
             <>
@@ -358,32 +368,22 @@ export default function Home() {
               </View>
 
               <Text style={styles.verseBodyText}>
-                {dailyVerse?.text ??
-                  'For God so loved the world that He gave His only begotten Son, that whoever believes in Him should not perish but have everlasting life.'}
+                {(dailyVerse?.text && String(dailyVerse.text).trim().length > 0)
+                  ? dailyVerse.text
+                  : getVerseText( 'John', 3, 16)}
               </Text>
 
               {/* Enhanced Explanation with Show More */}
               {showExplanation && (
                 <View style={styles.explainSection}>
-                  <Text style={styles.explainText}>
-                    This is one of the most famous and powerful verses in the Bible. 
-                    It beautifully summarizes God's love and the plan of salvation through Jesus Christ.
-                  </Text>
+                    <Text style={styles.explainText}>
+                      {translation?.home?.explainIntro || 'This is one of the most famous and powerful verses in the Bible. It beautifully summarizes God\'s love and the plan of salvation through Jesus Christ.'}
+                    </Text>
 
                   {showMore && (
-                    <Text style={styles.explainText}>
-                      {'\n'}Spoken by Jesus to Nicodemus (a Pharisee and member of the Sanhedrin) at night, 
-                      this verse emphasizes that eternal life is not earned through religious effort or good works, 
-                      but is a free gift received by faith.{'\n\n'}
-
-                      The phrase "only begotten Son" highlights Jesus' unique relationship with the Father. 
-                      "Whoever believes" makes salvation available to every person regardless of background, status, 
-                      or past mistakes.{'\n\n'}
-
-                      <Text style={{ fontWeight: '600' }}>Practical Application:</Text> In our daily lives, this verse 
-                      invites us to trust in God's love rather than our own performance. It challenges us to share this 
-                      good news with others and live with the confidence of eternal life.
-                    </Text>
+                      <Text style={styles.explainText}>
+                        {translation?.home?.explainMoreFull || translation?.home?.explainMore}
+                      </Text>
                   )}
 
                   <TouchableOpacity
@@ -398,7 +398,7 @@ export default function Home() {
                     }}
                   >
                     <Text style={styles.showMoreText}>
-                      {showMore ? 'Show Less ▲' : 'Show More ▼'}
+                      {showMore ? (translation?.home?.showLess || 'Show Less ▲') : (translation?.home?.showMore || 'Show More ▼')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -418,13 +418,13 @@ export default function Home() {
                   >
                   <ChevronDown size={15} color={COLORS.primary} />
                   <Text style={styles.verseActionText}>
-                    {showExplanation ? 'Hide Explanation' : 'Explain verse'}
+                    {showExplanation ? (translation?.home?.hideExplanation || 'Hide Explanation') : (translation?.home?.explainVerse || 'Explain verse')}
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.verseActionBtn}>
                   <Share2 size={14} color={COLORS.primary} />
-                  <Text style={styles.verseActionText}>Share verse</Text>
+                  <Text style={styles.verseActionText}>{translation?.home?.shareVerse || 'Share verse'}</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -456,36 +456,11 @@ export default function Home() {
           })}
         </View>
 
-        {/* Faith Reel */}
-        <View style={[styles.faithReelCard, { backgroundColor: COLORS.cardBackground }]}>
-          <View style={styles.faithReelInner}>
-            <View style={[styles.faithReelPlayBtn, { backgroundColor: COLORS.accent + '20' }]}>
-              <Play size={22} color={COLORS.accent} fill={COLORS.accent} />
-            </View>
-            <View style={styles.faithReelInfo}>
-              <Text style={[styles.faithReelTitle, { color: COLORS.text }]}>Faith Reel</Text>
-              <Text style={[styles.faithReelDate, { color: COLORS.muted }]}>{getTodayLabel()}</Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.lordsBookTag, { borderColor: COLORS.primary + '40' }]}
-              onPress={() => navigation.navigate(route.home)}
-            >
-              <Text style={[styles.lordsBookTagText, { color: COLORS.primary }]}>
-                Lordsbook Daily's
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.faithReelsFooter}>
-          <Text style={[styles.faithReelsFooterText, { color: COLORS.muted }]}>
-            🎉 FAITH REELS — {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }).toUpperCase()} 🎉
-          </Text>
-        </View>
+      
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{translation?.home?.quickActionsTitle || 'Quick Actions'}</Text>
           <View style={styles.quickLinksCompact}>
             {quickLinks.map((link) => (
               <TouchableOpacity
@@ -496,23 +471,23 @@ export default function Home() {
                 <View style={[styles.quickLinkCompactIcon, { backgroundColor: link.color + '20' }]}>
                   <link.icon size={20} color={link.color} />
                 </View>
-                <Text style={styles.quickLinkCompactText} numberOfLines={1}>
-                  {link.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                   <Text style={styles.quickLinkCompactText} numberOfLines={1}>
+                   {link.title}
+                 </Text>
+                </TouchableOpacity>
+              ))}
           </View>
         </View>
 
         {/* Stats */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Stats</Text>
+          <Text style={styles.sectionTitle}>{translation?.home?.yourStatsTitle || 'Your Stats'}</Text>
           <View style={styles.statsGrid}>
             {[
-              { label: 'Chapters', value: safeNumber(stats.chaptersRead), color: COLORS.primary },
-              { label: 'Highlights', value: safeNumber(stats.highlights), color: '#F59E0B' },
-              { label: 'Notes', value: safeNumber(stats.notes), color: '#10B981' },
-              { label: 'Favorites', value: safeNumber(stats.bookmarks), color: '#8B5CF6' },
+              { label: translation?.profile?.stats?.chapters || 'Chapters', value: safeNumber(stats.chaptersRead), color: COLORS.primary },
+              { label: translation?.profile?.stats?.highlights || 'Highlights', value: safeNumber(stats.highlights), color: '#F59E0B' },
+              { label: translation?.profile?.stats?.notes || 'Notes', value: safeNumber(stats.notes), color: '#10B981' },
+              { label: translation?.profile?.menuItems?.favorites || 'Favorites', value: safeNumber(stats.bookmarks), color: '#8B5CF6' },
             ].map((stat, idx) => (
               <View
                 key={`stat-${idx}`}
@@ -528,16 +503,16 @@ export default function Home() {
         {/* Recent Activity */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <Text style={styles.sectionTitle}>{translation?.home?.recentActivityTitle || 'Recent Activity'}</Text>
             <TouchableOpacity onPress={() => navigation.navigate(route.readHistory)}>
-              <Text style={[styles.sectionAction, { color: COLORS.primary }]}>See All</Text>
+              <Text style={[styles.sectionAction, { color: COLORS.primary }]}>{translation?.home?.seeAll || 'See All'}</Text>
             </TouchableOpacity>
           </View>
 
           {recentActivity.length === 0 ? (
             <View style={[activityStyles.emptyCard, { backgroundColor: COLORS.cardBackground }]}>
-              <Text style={[activityStyles.emptyText, { color: COLORS.muted }]}>
-                Start reading to see your activity here
+              <Text style={[activityStyles.emptyText, { color: COLORS.muted }]}> 
+                {translation?.home?.startReadingTip || 'Start reading to see your activity here'}
               </Text>
             </View>
           ) : (
@@ -553,10 +528,10 @@ export default function Home() {
                   : act.type === 'note' ? '#10B981'
                   : act.type === 'plan' ? '#00695C' : '#EC4899';
 
-                const label = act.type === 'read' ? 'Reading'
-                  : act.type === 'highlight' ? 'Highlighted'
-                  : act.type === 'note' ? 'Noted'
-                  : act.type === 'plan' ? 'Plan Progress' : 'Favorited';
+                const label = act.type === 'read' ? (translation?.home?.activityLabels?.reading || 'Reading')
+                  : act.type === 'highlight' ? (translation?.home?.activityLabels?.highlighted || 'Highlighted')
+                  : act.type === 'note' ? (translation?.home?.activityLabels?.noted || 'Noted')
+                  : act.type === 'plan' ? (translation?.home?.activityLabels?.planProgress || 'Plan Progress') : (translation?.home?.activityLabels?.favorited || 'Favorited');
 
                 return (
                   <TouchableOpacity

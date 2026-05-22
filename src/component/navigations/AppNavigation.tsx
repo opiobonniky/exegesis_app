@@ -51,7 +51,7 @@ const AppNavigation = () => {
   const screenOptions = useCallback(
     ({ route: r }: any) => {
       const animation = getAnimation(r.name);
-      const presentation: 'card' | 'modal' | 'transparentModal' | 'containedModal' | 'containedTransparentModal' | 'fullScreenModal' | 'formSheet' | 'pageSheet' = animation === 'slide_from_bottom' ? 'modal' : 'card';
+      const presentation: 'card' | 'modal' | 'transparentModal' | 'containedModal' | 'containedTransparentModal' | 'fullScreenModal' | 'formSheet' | 'pageSheet' = animation === 'slide_from_bottom' ? 'fullScreenModal' : 'card';
       return {
         headerShown: false,
         animation,

@@ -6,6 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { AppContext } from '../../common/AppContext';
 import {
@@ -297,7 +298,18 @@ export default function DailyVerseScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
-      <ActionHeader title={headerTitle} onPress={() => navigation.goBack()} />
+      <ActionHeader
+        title={headerTitle}
+        onPress={() => navigation.goBack()}
+        // pass exegesis logo for daily verse header
+        logoComponent={
+          <Image
+            source={require('../../assets/logos/exegesis-logo.png')}
+            style={{ width: 56, height: 56 }}
+            resizeMode="contain"
+          />
+        }
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

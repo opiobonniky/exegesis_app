@@ -579,10 +579,19 @@ class BibleTTSManager {
       );
 
       await new Promise<void>(resolve => {
-        this._pendingResolve = resolve;
-        this._utteranceStarted = false;
+        // ── IMPORTANT: delay setting _pendingResolve if we must stop first ─────
+        // When the previous utterance is still speaking, Tts.stop() fires
+        // tts-cancel for the OLD utterance. If _pendingResolve is already set,
+        // the cancel handler resolves the NEW promise prematurely — before the
+        // new verse has started speaking. This causes speakVerseAtIndex to run
+        // its auto-advance logic early, skipping verses and breaking sync.
+        // Fix: only set _pendingResolve after Tts.stop() completes.
+        // ──────────────────────────────────────────────────────────────────────
 
         const doSpeak = () => {
+          this._pendingResolve = resolve;
+          this._utteranceStarted = false;
+
           console.log(
             '[BibleTTS] doSpeak called, stopRequested:',
             this.stopRequested,
@@ -639,19 +648,22 @@ class BibleTTSManager {
         };
 
         if (this._isTtsSpeaking) {
+          // Don't set _pendingResolve yet — wait for stop to complete first
+          // to prevent the old utterance's tts-cancel from resolving this promise.
           Tts.stop()
             .then(doSpeak)
             .catch(() => {
               // Android 14 can throw "IllegalStateException: not speaking" here.
-              // Mark engine as not speaking and force re-init on next call.
+              // The engine isn't speaking, so there's nothing to stop — just
+              // speak the new text directly. NEVER resolve without speaking,
+              // otherwise speakVerseAtIndex will auto-advance before audio starts.
               this._isTtsSpeaking = false;
-              this._clearUtteranceTimeout();
               this.initialized = false; // force re-init: engine state may be corrupt
-              this._pendingResolve = null;
-              this._utteranceStarted = false;
-              resolve();
+              doSpeak();
             });
         } else {
+          this._pendingResolve = resolve;
+          this._utteranceStarted = false;
           doSpeak();
         }
       });

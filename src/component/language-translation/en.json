@@ -43,14 +43,27 @@
     "emailRequired": "Email is required",
     "invalidEmail": "Please enter a valid email",
     "passwordRequired": "Password is required",
-    "passwordMin": "Password must be at least 6 characters"
+    "passwordMin": "Password must be at least 6 characters",
+    "usernameRequired": "Username is required",
+    "usernameMin": "Username must be at least 3 characters",
+    "usernameFormat": "Only letters, numbers, underscores",
+    "firstNameRequired": "First name required",
+    "lastNameRequired": "Last name required",
+    "phoneInvalid": "Phone must be 10-15 digits",
+    "confirmPassword": "Please confirm password",
+    "missingPrefix": "Missing:"
   },
   "errors": {
     "googleFailed": "Google sign-in failed",
     "noIdToken": "No ID token found",
     "unknown": "Unknown error",
     "unexpected": "An unexpected error occurred",
-    "warning": "Warning"
+    "warning": "Warning",
+    "noInternet": "No internet connection. Please try again.",
+    "enterVerificationCode": "Please enter the 6-digit code",
+    "registrationFailed": "Registration failed. Please try again.",
+    "tryAgainLater": "Please try again later",
+    "failedResendCode": "Failed to resend code"
   },
 
   "register": {
@@ -82,7 +95,14 @@
       "One number",
       "One special character"
     ],
-    "useDifferentAccount": "Use a different account"
+    "useDifferentAccount": "Use a different account",
+    "genderMale": "Male",
+    "genderFemale": "Female",
+    "genderNotSpecified": "Not Specified",
+    "successCreated": "Account created successfully!",
+    "successVerifyEmail": "Check your email for verification code.",
+    "successEmailVerified": "Email verified! Redirecting to login...",
+    "successCodeResent": "Code resent!"
   },
   "passwords": {
     "strong": "Strong",
@@ -241,5 +261,55 @@
     "voicePitch": "Voice Pitch",
     "reset": "Reset",
     "deviceHint": "Move the slider to override your device setting"
+  }
+  ,
+    "home": {
+    "greetings": {
+      "morning": "Good Morning,",
+      "afternoon": "Good Afternoon,",
+      "evening": "Good Evening,"
+    },
+    "dailyVerseTitle": "Daily Verse",
+    "lordsBookTag": "Exegesis Daily",
+    "lordsBookTagAlt": "Lordsbook Daily",
+    "loadingVerse": "Loading verse...",
+    "explainIntro": "This is one of the most famous and powerful verses in the Bible. It beautifully summarizes God's love and the plan of salvation through Jesus Christ.",
+    "explainMore": "Spoken by Jesus to Nicodemus at night, this verse emphasizes that eternal life is not earned through religious effort or good works, but is a free gift received by faith. Practical Application: trust in God's love and share the good news.",
+    "explainMoreFull": "Spoken by Jesus to Nicodemus (a Pharisee and member of the Sanhedrin) at night, this verse emphasizes that eternal life is not earned through religious effort or good works, but is a free gift received by faith.\n\nThe phrase \"only begotten Son\" highlights Jesus' unique relationship with the Father. \"Whoever believes\" makes salvation available to every person regardless of background, status, or past mistakes.\n\nPractical Application: In our daily lives, this verse invites us to trust in God's love rather than our own performance. It challenges us to share this good news with others and live with the confidence of eternal life.",
+    "showMore": "Show More ▼",
+    "showLess": "Show Less ▲",
+    "explainVerse": "Explain verse",
+    "hideExplanation": "Hide Explanation",
+    "shareVerse": "Share verse",
+    "faithReelTitle": "Faith Reel",
+    "faithReelsFooter": "🎉 FAITH REELS —",
+    "quickActionsTitle": "Quick Actions",
+    "yourStatsTitle": "Your Stats",
+    "recentActivityTitle": "Recent Activity",
+    "seeAll": "See All",
+    "startReadingTip": "Start reading to see your activity here",
+    "recentLabel": "Recent",
+    "banners": {
+      "bible": "Bible",
+      "journal": "Journal",
+      "study": "Bible Study",
+      "trivial": "Bible Trivial",
+      "plan": "Bible Plan",
+      "resources": "Resources",
+      "support": "Support"
+    },
+    "quickLinks": {
+      "notes": "Notes",
+      "history": "History",
+      "highlights": "Highlights",
+      "favorites": "Favorites"
+    },
+    "activityLabels": {
+      "reading": "Reading",
+      "highlighted": "Highlighted",
+      "noted": "Noted",
+      "planProgress": "Plan Progress",
+      "favorited": "Favorited"
+    }
   }
 }

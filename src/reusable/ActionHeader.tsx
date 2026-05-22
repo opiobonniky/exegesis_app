@@ -11,9 +11,10 @@ import {
 import React, { useContext, useEffect, useRef } from 'react';
 import { FONT_SIZES, getColors, SPACING } from '../constants/theme';
 import LinearGradient from 'react-native-linear-gradient';
-import { ChevronLeft, Moon, Sun, User } from 'lucide-react-native';
+import { ChevronLeft, Moon, Sun, User, BookOpen } from 'lucide-react-native';
 import { useLanguage } from '../component/language-translation/LanguageProvider';
 import { AppContext } from '../common/AppContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,8 @@ type StandardProps = BaseProps & {
   subtitle?: string;
   onPress?: () => void;
   rightComponent?: React.ReactNode;
+  // Optional custom logo component for standard headers
+  logoComponent?: React.ReactNode;
 };
 
 /** Home header — logo + greeting row + profile/theme controls */
@@ -41,57 +44,50 @@ type HomeProps = BaseProps & {
   onThemeToggle: () => void;
   profilePhotoUrl?: string | null;
   onProfilePress: () => void;
+  // Controls whether the greeting row (second row with name & tagline) is shown.
+  showGreeting?: boolean;
+  // Optional custom logo component to render instead of the default emblem+wordmark.
+  logoComponent?: React.ReactNode;
+  // Optional overrides for app name and tagline shown in the lockup
+  appName?: string;
+  taglineText?: string;
 };
 
 type Props = StandardProps | HomeProps;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ANDROID_TOP =
-  Platform.OS === 'android' ? (StatusBar.currentHeight ?? 34) : 44;
+// Default top inset for platforms when safe area is not available
+const DEFAULT_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
 // ── Logo lockup ───────────────────────────────────────────────────────────────
 
-const LogoLockup = ({
-  compact = false,
-  isLight = false,
-}: {
-  compact?: boolean;
-  isLight?: boolean;
-}) => {
+const LogoLockup = ({ compact = false, appName, tagline }: { compact?: boolean; appName?: string; tagline?: string }) => {
   const { translations } = useLanguage();
+
+  // Emblem: gradient circle with a book icon for a cleaner, modern look.
   return (
     <View style={logo.wrap}>
-      <Image
-        source={require('../assets/logos/exegesis-logo.png')}
-        style={compact ? logo.imageCompact : logo.image}
-        resizeMode="contain"
-      />
-      <View
-        style={[
-          logo.divider,
-          compact && { height: 32 },
-          isLight && { backgroundColor: 'rgba(0,0,0,0.1)' },
-        ]}
-      />
+      <LinearGradient
+        colors={['#6D28D9', '#4F46E5']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[logo.emblem, compact ? logo.emblemCompact : {}]}
+      >
+        <BookOpen size={compact ? 18 : 22} color="#FFFFFF" strokeWidth={2} />
+      </LinearGradient>
+
       <View style={logo.textBlock}>
         <Text
           style={[
             logo.appNameBold,
-            compact && { fontSize: 13, lineHeight: 17 },
-            isLight && { color: '#0f2744' },
+            compact && { fontSize: 14, lineHeight: 18 },
           ]}
         >
-          Exegesis
+          {appName || 'Exegesis'}
         </Text>
-        <Text
-          style={[
-            logo.tagline,
-            compact && { fontSize: 8 },
-            isLight && { color: '#F0B429' },
-          ]}
-        >
-          {translations.appTagline || 'Your Daily Spiritual Companion'}
+        <Text style={[logo.tagline, compact && { fontSize: 10 }]}> 
+          {tagline || translations.appTagline || 'Your Daily Spiritual Companion'}
         </Text>
       </View>
     </View>
@@ -112,11 +108,22 @@ const logo = StyleSheet.create({
     width: 44,
     height: 44,
   },
-  divider: {
-    width: 1,
+  emblem: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+  },
+  emblemCompact: {
+    width: 44,
     height: 44,
-    borderRadius: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 22,
   },
   textBlock: {
     justifyContent: 'center',
@@ -129,19 +136,19 @@ const logo = StyleSheet.create({
     lineHeight: 17,
   },
   appNameBold: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#0f2744',
     letterSpacing: 0.1,
     lineHeight: 20,
   },
   tagline: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#F0B429',
-    letterSpacing: 0.5,
+    color: '#6B7280',
+    letterSpacing: 0.3,
     marginTop: 3,
-    lineHeight: 14,
+    lineHeight: 16,
   },
 });
 
@@ -176,6 +183,15 @@ const ActionHeader = (props: Props) => {
   if (!app) return null;
   const { isDark } = app as any;
   const COLORS = getColors(isDark);
+  const insets = useSafeAreaInsets();
+  // Normalize top inset: on iOS devices with large notches the inset can be
+  // large. Subtract a small offset for visual balance so the header doesn't
+  // appear to have too much empty space. Always clamp to DEFAULT_TOP.
+  const rawTop = insets.top || DEFAULT_TOP;
+  // Add extra top spacing on Android as requested; keep iOS using the
+  // measured safe-area inset. The extra 8px gives more breathing room under
+  // Android status bars.
+  const topInset = Platform.OS === 'android' ? rawTop + 8 : rawTop;
 
   // ── HOME MODE ──────────────────────────────────────────────────────────────
   if (props.mode === 'home') {
@@ -187,8 +203,14 @@ const ActionHeader = (props: Props) => {
       onThemeToggle,
       profilePhotoUrl,
       onProfilePress,
-    } = props;
+      showGreeting = true,
+      logoComponent,
+      appName,
+      taglineText,
+    } = props as HomeProps;
 
+    // Custom compact home header layout - profile + greeting in one row,
+    // reduced vertical footprint.
     return (
       <View style={[styles.shadowWrapper, isDark && styles.shadowWrapperDark]}>
         <StatusBar
@@ -196,139 +218,49 @@ const ActionHeader = (props: Props) => {
           translucent
           barStyle={isDark ? 'light-content' : 'dark-content'}
         />
-        {isDark ? (
-          <LinearGradient
-            colors={COLORS.headgradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.container}
-          >
-            <View style={styles.shimmerLine} />
-            <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
-              <View style={{ paddingTop: 6 }}>
-                <LogoLockup compact isLight={false} />
-              </View>
-              <View style={styles.homeControls}>
-                <TouchableOpacity
-                  style={styles.iconBtn}
-                  onPress={onThemeToggle}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.75}
-                >
-                  {isDarkMode ? (
-                    <Sun size={18} color="#F0B429" />
-                  ) : (
-                    <Moon size={18} color="#F0B429" />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.avatarBtn}
-                  onPress={onProfilePress}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.8}
-                >
-                  {profilePhotoUrl ? (
-                    <Image
-                      source={{ uri: profilePhotoUrl }}
-                      style={styles.avatarImage}
-                    />
-                  ) : (
-                    <User size={20} color="rgba(255,255,255,0.9)" />
-                  )}
-                </TouchableOpacity>
+        <View style={[styles.container, { paddingTop: 0, backgroundColor: isDark ? undefined : COLORS.background }]}> 
+          <View style={styles.shimmerLine} />
+          <View style={[styles.homeCompactTop, { paddingTop: topInset }]}> 
+            <View style={styles.homeLeft}> 
+              <View style={{ marginRight: 8 }}>{logoComponent ? logoComponent : <LogoLockup compact appName={appName} tagline={taglineText} />}</View>
+              <View>
+                {showGreeting && <Text style={[styles.greeting, { color: COLORS.textSecondary }]}>{greeting}</Text>}
+                <Text style={[styles.userName, { color: COLORS.text }]}>{userName} 👋</Text>
               </View>
             </View>
-            <View style={styles.separator} />
-            <Animated.View
-              style={[
-                styles.greetingRow,
-                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-              ]}
-            >
-              <Text style={styles.greeting}>{greeting}</Text>
-              <Text style={styles.userName}>{userName} 👋</Text>
-              {!!tagline && <Text style={styles.tagline}>{tagline}</Text>}
-            </Animated.View>
-          </LinearGradient>
-        ) : (
-          <View
-            style={[styles.container, { backgroundColor: COLORS.background }]}
-          >
-            <View
-              style={[
-                styles.shimmerLine,
-                { backgroundColor: COLORS.primary + '20' },
-              ]}
-            />
-            <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
-              <View style={{ paddingTop: 6 }}>
-                <LogoLockup compact isLight={true} />
-              </View>
-              <View style={styles.homeControls}>
-                <TouchableOpacity
-                  style={[
-                    styles.iconBtn,
-                    {
-                      backgroundColor: COLORS.primary + '15',
-                      borderColor: COLORS.primary + '30',
-                    },
-                  ]}
-                  onPress={onThemeToggle}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.75}
-                >
-                  {isDarkMode ? (
-                    <Sun size={18} color={COLORS.primary} />
-                  ) : (
-                    <Moon size={18} color={COLORS.primary} />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.avatarBtn,
-                    {
-                      backgroundColor: COLORS.surface,
-                      borderColor: COLORS.border,
-                    },
-                  ]}
-                  onPress={onProfilePress}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.8}
-                >
-                  {profilePhotoUrl ? (
-                    <Image
-                      source={{ uri: profilePhotoUrl }}
-                      style={styles.avatarImage}
-                    />
-                  ) : (
-                    <User size={20} color={COLORS.text} />
-                  )}
-                </TouchableOpacity>
-              </View>
+
+            <View style={styles.homeRight}> 
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={onThemeToggle}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.75}
+              >
+                {isDarkMode ? (
+                  <Sun size={18} color="#F0B429" />
+                ) : (
+                  <Moon size={18} color={COLORS.primary} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.avatarBtn, { marginLeft: 8, backgroundColor: isDark ? undefined : COLORS.surface, borderColor: isDark ? undefined : COLORS.border }]}
+                onPress={onProfilePress}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.8}
+              >
+                {profilePhotoUrl ? (
+                  <Image
+                    source={{ uri: profilePhotoUrl }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <User size={20} color={isDark ? 'rgba(255,255,255,0.9)' : COLORS.text} />
+                )}
+              </TouchableOpacity>
             </View>
-            <View
-              style={[styles.separator, { backgroundColor: COLORS.border }]}
-            />
-            <Animated.View
-              style={[
-                styles.greetingRow,
-                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-              ]}
-            >
-              <Text style={[styles.greeting, { color: COLORS.textSecondary }]}>
-                {greeting}
-              </Text>
-              <Text style={[styles.userName, { color: COLORS.text }]}>
-                {userName} 👋
-              </Text>
-              {!!tagline && (
-                <Text style={[styles.tagline, { color: COLORS.accent }]}>
-                  {tagline}
-                </Text>
-              )}
-            </Animated.View>
           </View>
-        )}
+          <View style={[styles.separator, { backgroundColor: isDark ? undefined : COLORS.border }]} />
+        </View>
       </View>
     );
   }
@@ -336,6 +268,7 @@ const ActionHeader = (props: Props) => {
   // ── STANDARD MODE ─────────────────────────────────────────────────────────
   const { title, subtitle, onPress, rightComponent, hideBack } =
     props as StandardProps;
+  const stdLogo = (props as StandardProps).logoComponent;
 
   return (
     <View style={[styles.shadowWrapper, isDark && styles.shadowWrapperDark]}>
@@ -352,7 +285,7 @@ const ActionHeader = (props: Props) => {
           style={styles.container}
         >
           <View style={styles.shimmerLine} />
-          <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
+          <View style={[styles.topBar, { paddingTop: topInset }]}> 
             {onPress && !hideBack ? (
               <>
                 <TouchableOpacity
@@ -369,8 +302,8 @@ const ActionHeader = (props: Props) => {
                     />
                   </View>
                 </TouchableOpacity>
-                <View style={{ paddingTop: 10 }}>
-                  <LogoLockup compact isLight={false} />
+                <View style={{ paddingTop: 6 }}>
+                  {stdLogo ? stdLogo : <LogoLockup compact />}
                 </View>
                 {rightComponent ? (
                   <View style={[styles.sideSlot, { alignItems: 'flex-end' }]}>
@@ -382,8 +315,8 @@ const ActionHeader = (props: Props) => {
               </>
             ) : (
               <>
-                <View style={{ paddingTop: 10 }}>
-                  <LogoLockup compact isLight={false} />
+                <View style={{ paddingTop: 6 }}>
+                  {stdLogo ? stdLogo : <LogoLockup compact />}
                 </View>
                 <View style={{ flex: 1 }} />
                 {rightComponent && (
@@ -421,7 +354,7 @@ const ActionHeader = (props: Props) => {
               { backgroundColor: COLORS.primary + '20' },
             ]}
           />
-          <View style={[styles.topBar, { paddingTop: ANDROID_TOP }]}>
+           <View style={[styles.topBar, { paddingTop: topInset }]}> 
             {onPress && !hideBack ? (
               <>
                 <TouchableOpacity
@@ -447,7 +380,7 @@ const ActionHeader = (props: Props) => {
                   </View>
                 </TouchableOpacity>
                 <View style={{ paddingTop: 10 }}>
-                  <LogoLockup compact isLight={true} />
+                  {stdLogo ? stdLogo : <LogoLockup compact />}
                 </View>
                 {rightComponent ? (
                   <View style={[styles.sideSlot, { alignItems: 'flex-end' }]}>
@@ -469,9 +402,9 @@ const ActionHeader = (props: Props) => {
               </>
             ) : (
               <>
-                <View style={{ paddingTop: 10 }}>
-                  <LogoLockup compact isLight={true} />
-                </View>
+                 <View style={{ paddingTop: 6 }}>
+                   <LogoLockup compact />
+                 </View>
                 <View style={{ flex: 1 }} />
                 {rightComponent && (
                   <View style={[styles.sideSlot, { alignItems: 'flex-end' }]}>
@@ -544,7 +477,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     overflow: 'hidden',
-    paddingBottom: SPACING.md,
+    paddingBottom: SPACING.sm,
   },
 
   shimmerLine: {
@@ -563,8 +496,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.sm,
+    paddingBottom: SPACING.xs,
     paddingTop: SPACING.xs,
+  },
+
+  // Compact home layout
+  homeCompactTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.xs,
+  },
+
+  homeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  homeRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   separator: {
@@ -627,9 +580,9 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(240,180,41,0.12)',
     borderWidth: 1,
     borderColor: 'rgba(240,180,41,0.28)',
@@ -637,9 +590,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.3)',
@@ -648,9 +601,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   avatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
 
   // ── Home: greeting row (row 2) ────────────────────────────────────────────

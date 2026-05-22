@@ -43,14 +43,27 @@
     "emailRequired": "L'email est requis",
     "invalidEmail": "Veuillez entrer un email valide",
     "passwordRequired": "Le mot de passe est requis",
-    "passwordMin": "Le mot de passe doit comporter au moins 6 caractères"
+    "passwordMin": "Le mot de passe doit comporter au moins 6 caractères",
+    "usernameRequired": "Le nom d'utilisateur est requis",
+    "usernameMin": "Le nom d'utilisateur doit comporter au moins 3 caractères",
+    "usernameFormat": "Uniquement des lettres, chiffres et tirets bas",
+    "firstNameRequired": "Le prénom est requis",
+    "lastNameRequired": "Le nom est requis",
+    "phoneInvalid": "Le téléphone doit comporter entre 10 et 15 chiffres",
+    "confirmPassword": "Veuillez confirmer votre mot de passe",
+    "missingPrefix": "Manquant :"
   },
   "errors": {
     "googleFailed": "Échec de la connexion Google",
     "noIdToken": "Aucun jeton d'identification trouvé",
     "unknown": "Erreur inconnue",
     "unexpected": "Une erreur inattendue est survenue",
-    "warning": "Attention"
+    "warning": "Attention",
+    "noInternet": "Pas de connexion Internet. Veuillez réessayer.",
+    "enterVerificationCode": "Veuillez entrer le code à 6 chiffres",
+    "registrationFailed": "Échec de l'inscription. Veuillez réessayer.",
+    "tryAgainLater": "Veuillez réessayer plus tard",
+    "failedResendCode": "Échec du renvoi du code"
   },
 
   "welcome": {
@@ -59,6 +72,9 @@
   },
   "register": {
     "title": "S'inscrire",
+    "username": "Nom d'utilisateur",
+    "email": "E‑mail",
+    "password": "Mot de passe",
     "button": "Créer un compte",
     "firstName": "Prénom",
     "lastName": "Nom",
@@ -83,7 +99,14 @@
       "Un chiffre",
       "Un caractère spécial"
     ],
-    "useDifferentAccount": "Utiliser un autre compte"
+    "useDifferentAccount": "Utiliser un autre compte",
+    "genderMale": "Masculin",
+    "genderFemale": "Féminin",
+    "genderNotSpecified": "Non spécifié",
+    "successCreated": "Compte créé avec succès !",
+    "successVerifyEmail": "Vérifiez votre e‑mail pour le code de vérification.",
+    "successEmailVerified": "E‑mail vérifié ! Redirection vers la page de connexion...",
+    "successCodeResent": "Code renvoyé !"
   },
   "passwords": {
     "strong": "Fort",
@@ -246,5 +269,55 @@
     "voicePitch": "Hauteur de la voix",
     "reset": "Réinitialiser",
     "deviceHint": "Déplacez le curseur pour remplacer le paramètre de votre appareil"
+  }
+  ,
+  "home": {
+    "greetings": {
+      "morning": "Bonjour,",
+      "afternoon": "Bon après‑midi,",
+      "evening": "Bonsoir,"
+    },
+    "dailyVerseTitle": "Verset du jour",
+    "lordsBookTag": "Exegesis Quotidien",
+    "lordsBookTagAlt": "Lordsbook Quotidien",
+    "loadingVerse": "Chargement du verset...",
+    "explainIntro": "Ceci est l'un des versets les plus célèbres et puissants de la Bible. Il résume magnifiquement l'amour de Dieu et le plan du salut par Jésus‑Christ.",
+    "explainMore": "Prononcé par Jésus à Nicodème la nuit, ce verset souligne que la vie éternelle n'est pas gagnée par l'effort religieux ou les bonnes œuvres, mais est un don reçu par la foi.",
+    "explainMoreFull": "Prononcé par Jésus à Nicodème (un pharisiens et membre du Sanhédrin) la nuit, ce verset souligne que la vie éternelle n'est pas gagnée par l'effort religieux ou les bonnes œuvres, mais est un don reçu par la foi.\n\nL'expression \"Fils unique\" souligne la relation unique de Jésus avec le Père. \"Quiconque croit\" rend le salut accessible à toute personne, quel que soit son passé, son statut ou son origine.\n\nApplication pratique : Dans notre vie quotidienne, ce verset nous invite à faire confiance à l'amour de Dieu plutôt qu'à nos propres efforts. Il nous encourage à partager cette bonne nouvelle et à vivre avec la certitude de la vie éternelle.",
+    "showMore": "Afficher plus ▼",
+    "showLess": "Afficher moins ▲",
+    "explainVerse": "Expliquer le verset",
+    "hideExplanation": "Masquer l'explication",
+    "shareVerse": "Partager le verset",
+    "faithReelTitle": "Faith Reel",
+    "faithReelsFooter": "🎉 FAITH REELS —",
+    "quickActionsTitle": "Actions rapides",
+    "yourStatsTitle": "Vos statistiques",
+    "recentActivityTitle": "Activité récente",
+    "seeAll": "Tout voir",
+    "startReadingTip": "Commencez à lire pour voir votre activité ici",
+    "recentLabel": "Récente",
+    "banners": {
+      "bible": "Bible",
+      "journal": "Journal",
+      "study": "Étude biblique",
+      "trivial": "Trivial biblique",
+      "plan": "Plan biblique",
+      "resources": "Ressources",
+      "support": "Assistance"
+    },
+    "quickLinks": {
+      "notes": "Notes",
+      "history": "Historique",
+      "highlights": "Points forts",
+      "favorites": "Favoris"
+    },
+    "activityLabels": {
+      "reading": "Lecture",
+      "highlighted": "Surligné",
+      "noted": "Noté",
+      "planProgress": "Progrès du plan",
+      "favorited": "Favori"
+    }
   }
 }

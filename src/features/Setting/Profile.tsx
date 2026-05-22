@@ -170,9 +170,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const initials = useMemo(() => {
-    return `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`.toUpperCase();
-  }, [user?.firstName, user?.lastName]);
+
 
   const statCards = useMemo(
     () => [
@@ -318,17 +316,7 @@ export default function ProfileScreen() {
         title={t('profile.title') || (translations?.profile?.title) || 'Profile Informations'}
         onPress={() => navigation.goBack()}
       />
-      {/* floating language button (small) for quick access */}
-      <TouchableOpacity
-        style={[
-          floatingLang.langFloatingBtn,
-          { borderColor: COLORS.border, backgroundColor: COLORS.surface },
-        ]}
-        onPress={() => setLangModalOpen(true)}
-      >
-        <Globe size={16} color={COLORS.text} style={{ marginRight: 8 }} />
-        <Text style={{ color: COLORS.text, fontWeight: '600' }}>{language.toUpperCase()}</Text>
-      </TouchableOpacity>
+   
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
