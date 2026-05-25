@@ -177,12 +177,6 @@ export const useBible = () => {
   /** Set when user initiates next/prev navigation. Prevents the auto-advance
    *  logic inside speakVerseAtIndex from racing with user navigation. */
   const _userNavigatingRef = useRef<boolean>(false);
-  
-  /** Stores the original afterPlayBehaviour before user navigation so 
-   *  repeat modes work correctly after pressing next/prev. */
-  const _originalAfterPlayRef = useRef<
-    'stop' | 'repeat_one' | 'repeat' | 'continue'
-  >('continue');
 
   /** Tracks the target verse index for the current playback request.
    *  Used to ensure audio and UI stay synchronized - only proceed if target matches. */
@@ -440,10 +434,7 @@ useEffect(() => {
       audioVerseIndexRef.current = index;
 confirmedAudioIndexRef.current = index;
 setAudioVerseIndex(index);
-
-if (!fromUserNav) {
-  setActiveAudioVerse(verse.num);
-}
+setActiveAudioVerse(verse.num);
 
       // Scroll the verse into view immediately
       flatListRef.current?.scrollToIndex({
@@ -657,15 +648,26 @@ if (!fromUserNav) {
   const goToNextSelectedVerse = useCallback(async () => {
     _userNavigatingRef.current = true;
     _requestIdRef.current++;
-    _originalAfterPlayRef.current = afterPlayBehaviourRef.current;
 
     const playlist = audioPlaylistRef.current;
-    // Use the VERIFIED (engine-confirmed) index, not the setup index that
-    // auto-advance may have bumped before TTS actually started speaking.
-    const currentIndex =
-      confirmedAudioIndexRef.current >= 0
-        ? confirmedAudioIndexRef.current
-        : audioVerseIndexRef.current;
+    // Use the last TTS-CONFIRMED verse number to find the actual playing index.
+    // This prevents rapid Next presses from "skipping" verses because
+    // confirmedAudioIndexRef is updated immediately by speakVerseAtIndex
+    // BEFORE TTS actually starts, but lastTTSVerseNumRef is only set when
+    // the engine fires tts-start (the true source of truth).
+    let currentIndex = -1;
+    const lastNum = lastTTSVerseNumRef.current;
+    if (lastNum !== null) {
+      currentIndex = playlist.findIndex(v => v.num === lastNum);
+    }
+    // Fallback to confirmedAudioIndexRef / audioVerseIndexRef if no
+    // TTS-confirmed verse exists yet (e.g. just started playback).
+    if (currentIndex < 0) {
+      currentIndex =
+        confirmedAudioIndexRef.current >= 0
+          ? confirmedAudioIndexRef.current
+          : audioVerseIndexRef.current;
+    }
     const nextIndex = currentIndex + 1;
 
     if (nextIndex >= playlist.length) {
@@ -681,12 +683,20 @@ if (!fromUserNav) {
   const goToPreviousSelectedVerse = useCallback(async () => {
     _userNavigatingRef.current = true;
     _requestIdRef.current++;
-    _originalAfterPlayRef.current = afterPlayBehaviourRef.current;
 
-    const currentIndex =
-      confirmedAudioIndexRef.current >= 0
-        ? confirmedAudioIndexRef.current
-        : audioVerseIndexRef.current;
+    const playlist = audioPlaylistRef.current;
+    // Same approach: use lastTTSVerseNumRef as the true source of truth.
+    let currentIndex = -1;
+    const lastNum = lastTTSVerseNumRef.current;
+    if (lastNum !== null) {
+      currentIndex = playlist.findIndex(v => v.num === lastNum);
+    }
+    if (currentIndex < 0) {
+      currentIndex =
+        confirmedAudioIndexRef.current >= 0
+          ? confirmedAudioIndexRef.current
+          : audioVerseIndexRef.current;
+    }
     const prevIndex = currentIndex - 1;
 
     if (prevIndex < 0) return;
