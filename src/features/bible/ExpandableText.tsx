@@ -18,6 +18,7 @@ type Props = {
   closeLabel?: string;
   onClose?: () => void;
   containerStyle?: any;
+  textStyle?: any;
 };
 
 function formatParagraphs(text: string): string {
@@ -57,6 +58,7 @@ export default function ExpandableText({
   closeLabel = 'Close',
   onClose,
   containerStyle,
+  textStyle,
 }: Props) {
   const app: any = useContext(AppContext);
   const COLORS = useMemo(() => getColors(app?.isDark), [app?.isDark]);
@@ -115,6 +117,7 @@ export default function ExpandableText({
         style={[
           styles.text,
           { color: COLORS.text, lineHeight },
+          textStyle,
         ]}
         numberOfLines={maxLines}
         onTextLayout={handleTextLayout}

@@ -288,6 +288,9 @@ export default function Bible() {
     verseJournalPrompts,
     chapterJournalPrompts,
     loadChapterPrompts,
+    dailyVerseRefMap,
+    getDailyVerseRef,
+    clearDailyVerseRef,
   } = useBible();
 
   // ── Initialize from route params (bookName, chapter) when navigating from
@@ -591,14 +594,14 @@ export default function Bible() {
             }}
             onRemoveHighlight={removeHighlight}
             onExplain={vn => {
+              if (isGuest) {
+                showGate('Sign in to see explanations.');
+                return;
+              }
               getverseExplanation([vn], currentBook, currentChapter);
             }}
-            onShare={vn =>
-              guard('Sharing requires a free account.', () => shareVerses([vn]))
-            }
-            onCopy={vn =>
-              guard('Copying requires a free account.', () => copyVerses([vn]))
-            }
+            onShare={vn => shareVerses([vn])}
+            onCopy={vn => copyVerses([vn])}
             onDoubleTap={vn => {
               clearSelection();
               const verse = versesArray.find(v => v.num === vn);
@@ -614,6 +617,13 @@ export default function Bible() {
             }}
             onExplainOpen={() => setExplanationOpen(true)}
             explanationMap={verseExplanationMap}
+            onDailyVerse={vn => {
+              getDailyVerseRef(vn, currentBook, currentChapter);
+            }}
+            onCloseDailyVerse={vn => {
+              clearDailyVerseRef(vn);
+            }}
+            dailyVerseRefMap={dailyVerseRefMap}
             verseJournalPrompts={verseJournalPrompts}
             navigation={navigation}
           />
@@ -648,14 +658,14 @@ export default function Bible() {
           }}
           onRemoveHighlight={removeHighlight}
           onExplain={vn => {
+            if (isGuest) {
+              showGate('Sign in to see explanations.');
+              return;
+            }
             getverseExplanation([vn], currentBook, currentChapter);
           }}
-          onShare={vn =>
-            guard('Sharing requires a free account.', () => shareVerses([vn]))
-          }
-          onCopy={vn =>
-            guard('Copying requires a free account.', () => copyVerses([vn]))
-          }
+          onShare={vn => shareVerses([vn])}
+          onCopy={vn => copyVerses([vn])}
           onDoubleTap={vn => {
             clearSelection();
             const verse = versesArray.find(v => v.num === vn);
@@ -671,6 +681,13 @@ export default function Bible() {
           }}
           onExplainOpen={() => setExplanationOpen(true)}
           explanationMap={verseExplanationMap}
+          onDailyVerse={vn => {
+            getDailyVerseRef(vn, currentBook, currentChapter);
+          }}
+          onCloseDailyVerse={vn => {
+            clearDailyVerseRef(vn);
+          }}
+          dailyVerseRefMap={dailyVerseRefMap}
           verseJournalPrompts={verseJournalPrompts}
           navigation={navigation}
         />

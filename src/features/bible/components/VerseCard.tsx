@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Heart, X, Lightbulb, BookText, Share2, Copy } from 'lucide-react-native';
+import { Heart, X, Lightbulb, BookText, Share2, Copy, Sun } from 'lucide-react-native';
 import ExpandableText from '../../bible/ExpandableText';
 import { bibleTTS } from '../../../utilits/bibleTTS';
 import { route } from '../../../component/navigations/routes';
@@ -40,6 +40,10 @@ type VerseCardProps = {
   onCloseExplanation?: () => void;
   showExplanation?: boolean;
   explanationText?: string;
+  onDailyVerse?: () => void;
+  onCloseDailyVerse?: () => void;
+  showDailyVerse?: boolean;
+  dailyVerseData?: { reflection?: string; explanation?: string; learnMore?: string };
   journalPrompts?: any[];
   navigation?: any;
   currentBook?: string;
@@ -69,6 +73,10 @@ export default function VerseCard({
   onCloseExplanation,
   showExplanation,
   explanationText,
+  onDailyVerse,
+  onCloseDailyVerse,
+  showDailyVerse,
+  dailyVerseData,
   journalPrompts = [],
   navigation,
   currentBook,
@@ -410,6 +418,20 @@ export default function VerseCard({
                   </Text>
                 </TouchableOpacity>
               )}
+              {onDailyVerse && (
+                <TouchableOpacity
+                  onPress={onDailyVerse}
+                  activeOpacity={0.7}
+                  style={localStyles.actionRowBtn}
+                >
+                  <Sun size={11} color={colors.primary} strokeWidth={2} />
+                  <Text
+                    style={[localStyles.actionRowText, { color: colors.primary }]}
+                  >
+                    Daily Verse
+                  </Text>
+                </TouchableOpacity>
+              )}
               {onCopy && (
                 <TouchableOpacity
                   onPress={onCopy}
@@ -440,35 +462,103 @@ export default function VerseCard({
               )}
             </View>
 
+            {showDailyVerse && dailyVerseData && (
+              <View style={localStyles.dvContainer}>
+                <View style={localStyles.dvHeader}>
+                  <View style={localStyles.dvHeaderLeft}>
+                    <Sun size={14} color="#D97706" strokeWidth={2.5} />
+                    <Text style={localStyles.dvHeaderTitle}>Devotional</Text>
+                  </View>
+                  <TouchableOpacity onPress={onCloseDailyVerse} style={localStyles.dvCloseBtn}>
+                    <X size={13} color="#92400E" />
+                  </TouchableOpacity>
+                </View>
+
+                {dailyVerseData.reflection ? (
+                  <>
+                    <Text style={localStyles.dvSectionLabel}>Reflection</Text>
+                    <ExpandableText
+                      text={dailyVerseData.reflection}
+                      initialLines={5}
+                      stepLines={10}
+                      expandLabel="Read more"
+                      closeLabel="Close"
+                      containerStyle={localStyles.dvExpandableContainer}
+                      textStyle={localStyles.dvReflectionText}
+                    />
+                  </>
+                ) : null}
+
+                {dailyVerseData.explanation && dailyVerseData.reflection ? (
+                  <View style={localStyles.dvDivider} />
+                ) : null}
+
+                {dailyVerseData.explanation ? (
+                  <>
+                    <Text style={localStyles.dvSectionLabel}>Explanation</Text>
+                    <ExpandableText
+                      text={dailyVerseData.explanation}
+                      initialLines={4}
+                      stepLines={10}
+                      expandLabel="Read more"
+                      closeLabel="Close"
+                      containerStyle={localStyles.dvExpandableContainer}
+                      textStyle={localStyles.dvBodyText}
+                    />
+                  </>
+                ) : null}
+
+                {dailyVerseData.learnMore && (dailyVerseData.reflection || dailyVerseData.explanation) ? (
+                  <View style={localStyles.dvDivider} />
+                ) : null}
+
+                {dailyVerseData.learnMore ? (
+                  <>
+                    <Text style={localStyles.dvSectionLabel}>Learn More</Text>
+                    <ExpandableText
+                      text={dailyVerseData.learnMore}
+                      initialLines={4}
+                      stepLines={10}
+                      expandLabel="Read more"
+                      closeLabel="Close"
+                      containerStyle={localStyles.dvExpandableContainer}
+                      textStyle={localStyles.dvBodyText}
+                    />
+                  </>
+                ) : null}
+              </View>
+            )}
+
             {showExplanation && (
               <View
                 style={[
-                  localStyles.inlineExpWrap,
-                  {
-                    backgroundColor: `${colors.primary}06`,
-                    borderLeftColor: colors.primary,
-                  },
+                  localStyles.expContainer,
+                  { backgroundColor: `${colors.primary}08`, borderColor: `${colors.primary}25` },
                   highlightColor
-                    ? { borderLeftColor: highlightColor }
+                    ? { borderColor: highlightColor }
                     : undefined,
                 ]}
               >
-                {/* Explanation header */}
                 {explanationText && (
-                  <View style={localStyles.expHeader}>
-                    <Lightbulb
-                      size={12}
-                      color={colors.primary}
-                      strokeWidth={2.5}
-                    />
-                    <Text
-                      style={[
-                        localStyles.expHeaderText,
-                        { color: colors.primary },
-                      ]}
-                    >
-                      Explanation
-                    </Text>
+                  <View style={localStyles.expHeaderRow}>
+                    <View style={localStyles.expHeaderLeft}>
+                      <Lightbulb
+                        size={14}
+                        color={colors.primary}
+                        strokeWidth={2.5}
+                      />
+                      <Text style={[localStyles.expHeaderTitle, { color: colors.primary }]}>
+                        Explanation
+                      </Text>
+                    </View>
+                    {onCloseExplanation && (
+                      <TouchableOpacity
+                        onPress={onCloseExplanation}
+                        style={[localStyles.expCloseBtn, { backgroundColor: `${colors.primary}12` }]}
+                      >
+                        <X size={13} color={colors.primary} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
 
@@ -480,7 +570,8 @@ export default function VerseCard({
                     expandLabel="Read more"
                     closeLabel="Close"
                     onClose={onCloseExplanation}
-                    containerStyle={localStyles.expandableContainer}
+                    containerStyle={localStyles.exExpandableContainer}
+                    textStyle={localStyles.exBodyText}
                   />
                 ) : null}
 
@@ -606,27 +697,43 @@ const localStyles = StyleSheet.create({
     borderRadius: 8,
     pointerEvents: 'none',
   },
-  inlineExpWrap: {
-    marginTop: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderLeftWidth: 3,
+  expContainer: {
+    marginTop: 10,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
   },
-  expandableContainer: {
-    marginTop: 0,
+  expHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  expHeader: {
+  expHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginBottom: 8,
+    gap: 6,
   },
-  expHeaderText: {
-    fontSize: 11,
+  expHeaderTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  expCloseBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exBodyText: {
+    fontSize: 15,
+    lineHeight: 24,
+    letterSpacing: 0.2,
+  },
+  exExpandableContainer: {
+    marginTop: 0,
+    marginBottom: 2,
   },
   actionRow: {
     flexDirection: 'row',
@@ -709,6 +816,66 @@ const localStyles = StyleSheet.create({
   promptText: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  dvContainer: {
+    marginTop: 10,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  dvHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  dvHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dvHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#92400E',
+    letterSpacing: 0.3,
+  },
+  dvCloseBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dvSectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#B45309',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  dvReflectionText: {
+    fontSize: 16,
+    lineHeight: 26,
+    letterSpacing: 0.3,
+  },
+  dvBodyText: {
+    fontSize: 15,
+    lineHeight: 24,
+    letterSpacing: 0.2,
+  },
+  dvExpandableContainer: {
+    marginTop: 0,
+    marginBottom: 2,
+  },
+  dvDivider: {
+    height: 1,
+    backgroundColor: '#FDE68A',
+    marginVertical: 12,
   },
 });
 

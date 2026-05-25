@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Image,
+  Alert,
+  Share,
 } from 'react-native';
 import { AppContext } from '../../common/AppContext';
 import {
@@ -24,6 +26,8 @@ import {
   Lightbulb,
   GraduationCap,
   BookMarked,
+  Copy,
+  Share2,
 } from 'lucide-react-native';
 import { sendPostRequest } from '../../services/api';
 import { getVersionById } from '../../assets/bibleVersion/json/bibleVersions';
@@ -262,6 +266,36 @@ export default function DailyVerseScreen() {
     }
   };
 
+  const handleShare = async () => {
+    if (!dailyVerse) return;
+    const ref = `${dailyVerse.bookName} ${dailyVerse.chapter}:${dailyVerse.verseNumber}`;
+    const msg = `"${verseText}" — ${ref}\n\nvia Exegesis Bible App`;
+    try {
+      await Share.share({ message: msg });
+    } catch {}
+  };
+
+  const handleCopy = async () => {
+    if (!dailyVerse) return;
+    const ref = `${dailyVerse.bookName} ${dailyVerse.chapter}:${dailyVerse.verseNumber}`;
+    const text = `"${verseText}" — ${ref}`;
+    try {
+      const Clipboard = require('@react-native-clipboard/clipboard').default;
+      Clipboard.setString(text);
+      Alert.alert('Copied', 'Verse copied to clipboard');
+    } catch {
+      Alert.alert('Copied', text);
+    }
+  };
+
+  const handleExplain = () => {
+    navigation.navigate('FullVerseExplanation', {
+      bookName: dailyVerse?.bookName,
+      chapter: dailyVerse?.chapter,
+      verseNumber: dailyVerse?.verseNumber,
+    });
+  };
+
   const borderColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
   const dividerColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
 
@@ -343,8 +377,36 @@ export default function DailyVerseScreen() {
               )}
             </View>
           </View>
+
+          {/* Action Row: Explain + Copy + Share */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: accent + '12' }]}
+              onPress={handleExplain}
+              activeOpacity={0.7}
+            >
+              <Lightbulb size={13} color={accent} strokeWidth={2} />
+              <Text style={[styles.actionBtnText, { color: accent }]}>Explain</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: accent + '12' }]}
+              onPress={handleCopy}
+              activeOpacity={0.7}
+            >
+              <Copy size={13} color={accent} strokeWidth={2} />
+              <Text style={[styles.actionBtnText, { color: accent }]}>Copy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: accent + '12' }]}
+              onPress={handleShare}
+              activeOpacity={0.7}
+            >
+              <Share2 size={13} color={accent} strokeWidth={2} />
+              <Text style={[styles.actionBtnText, { color: accent }]}>Share</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-       
+
         {/* Reflection Card */}
         {dailyVerse.reflection && (
           <View style={[styles.contentCard, { backgroundColor: COLORS.cardBackground, borderColor }]}>
@@ -573,5 +635,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     fontStyle: 'italic',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING.xl,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

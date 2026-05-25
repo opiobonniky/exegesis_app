@@ -206,6 +206,9 @@ export type VerseListProps = {
   explanationMap?: Record<number, string>;
   onExplainOpen?: (verseNumber: number) => void;
   verseJournalPrompts?: Record<number, any[]>;
+  onDailyVerse?: (verseNumber: number) => void;
+  onCloseDailyVerse?: (verseNumber: number) => void;
+  dailyVerseRefMap?: Record<number, { reflection?: string; explanation?: string; learnMore?: string }>;
   navigation?: any;
 };
 
@@ -245,6 +248,9 @@ export default function VerseList({
   onExplainOpen,
   verseJournalPrompts = {},
   navigation,
+  onDailyVerse,
+  onCloseDailyVerse,
+  dailyVerseRefMap,
 }: VerseListProps) {
   if (loading) {
     return (
@@ -277,6 +283,8 @@ export default function VerseList({
     // Show explanation panel only when explanation text exists
     // Explain button is always visible in the action row below the verse
     const shouldShowExpPanel = !!expText;
+    const dvData = dailyVerseRefMap?.[verseNumber];
+    const shouldShowDvPanel = !!dvData;
 
     return (
       <VerseCard
@@ -326,6 +334,10 @@ export default function VerseList({
         }
         showExplanation={shouldShowExpPanel}
         explanationText={expText}
+        onDailyVerse={onDailyVerse ? () => onDailyVerse(verseNumber) : undefined}
+        onCloseDailyVerse={onCloseDailyVerse ? () => onCloseDailyVerse(verseNumber) : undefined}
+        showDailyVerse={shouldShowDvPanel}
+        dailyVerseData={dvData}
         journalPrompts={verseJournalPrompts[verseNumber] || []}
         navigation={navigation}
         currentBook={currentBook}

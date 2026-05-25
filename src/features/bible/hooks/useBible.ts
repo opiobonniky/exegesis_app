@@ -102,6 +102,9 @@ export const useBible = () => {
   const [verseExplanationMap, setVerseExplanationMap] = useState<
     Record<number, string>
   >({});
+  const [dailyVerseRefMap, setDailyVerseRefMap] = useState<
+    Record<number, { reflection?: string; explanation?: string; learnMore?: string }>
+  >({});
   const [noteText, setNoteText] = useState<string>('');
   const [noteSaving, setNoteSaving] = useState<boolean>(false);
   const [fontSize, setFontSize] = useState<number>(18);
@@ -1098,6 +1101,43 @@ lastTTSVerseNumRef.current = verse.num;
     });
   }, []);
 
+  const getDailyVerseRef = useCallback(
+    async (verseNumber: number, bookName: string, chapter: number) => {
+      try {
+        const res = await sendPostRequest<any>('bible', 'get-daily-verse-by-ref', {
+          bookName,
+          chapter,
+          verseNumber,
+        });
+        if (res.returnCode === 200 && res.returnData) {
+          const dv = res.returnData;
+          setDailyVerseRefMap(prev => ({
+            ...prev,
+            [verseNumber]: {
+              reflection: dv.reflection || '',
+              explanation: dv.explanation || '',
+              learnMore: dv.learnMore || '',
+            },
+          }));
+          return true;
+        }
+        return false;
+      } catch (err) {
+        console.warn('Failed to get daily verse ref', err);
+        return false;
+      }
+    },
+    [],
+  );
+
+  const clearDailyVerseRef = useCallback((verseNumber: number) => {
+    setDailyVerseRefMap(prev => {
+      const m = { ...prev };
+      delete m[verseNumber];
+      return m;
+    });
+  }, []);
+
   const openNoteModal = useCallback(() => setShowNoteModal(true), []);
   const closeNoteModal = useCallback(() => {
     setShowNoteModal(false);
@@ -1231,6 +1271,9 @@ lastTTSVerseNumRef.current = verse.num;
     getVerseTextAsync,
     getverseExplanation,
     clearVerseExplanationForVerse,
+    dailyVerseRefMap,
+    getDailyVerseRef,
+    clearDailyVerseRef,
     activeVerseWordMap,
     modal,
     dismissModal,
