@@ -12,6 +12,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Pressable,
+  Modal,
   RefreshControl,
   ActivityIndicator,
   Animated,
@@ -35,8 +36,10 @@ import {
   Volume2,
   Share2,
   ChevronDown,
+  ChevronLeft,
   BookOpen,
   GraduationCap,
+  X,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { AppContext } from '../../common/AppContext';
@@ -49,6 +52,7 @@ import ActionHeader from '../../reusable/ActionHeader';
 import { createStyles } from './homeStyle';
 import { bibleTTS } from '../../utilits/bibleTTS';
 import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { showToast } from '../../helpers/Toash.helper';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ActivityType = 'read' | 'highlight' | 'note' | 'favorite' | 'plan';
@@ -126,6 +130,15 @@ export default function Home() {
   const [dailyVerse, setDailyVerse] = useState<DailyVerse | any>(null);
   const [verseLoading, setVerseLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [customDailyVerse, setCustomDailyVerse] = useState<DailyVerse | any>(
+    null,
+  );
+  const [customDateLoading, setCustomDateLoading] = useState(false);
+  const [isCustomDate, setIsCustomDate] = useState(false);
+  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
   const sharingRef = useRef(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
@@ -244,22 +257,72 @@ export default function Home() {
   };
 
   const loadDailyVerse = useCallback(async () => {
+    // Reset custom date when loading today's verse
+    setIsCustomDate(false);
+    setSelectedDate('');
+    setCustomDailyVerse(null);
     setVerseLoading(true);
     try {
-      const res = await sendPostRequest('bible', 'get-daily-verse', {});
+      const res = await sendPostRequest('bible', 'get-todays-verse', {});
       if (res.returnCode === 200 && res.returnData) {
         const d = res.returnData;
         setDailyVerse({
-          reference: d.reference ?? '',
+          reference:
+            (d.reference ?? d.bookName)
+              ? `${d.bookName} ${d.chapter}:${d.verseNumber}`
+              : 'John 3:16',
           translation: d.translation ?? 'NKJV',
           text: d.text ?? '',
           date: getTodayLabel(),
         });
+      }else {
+        showToast("warning", "No daily verse found for today");
       }
     } catch (e) {
       console.error('Error loading daily verse:', e);
     } finally {
       setVerseLoading(false);
+    }
+  }, []);
+
+  const loadVerseByDate = useCallback(async (dateStr: string) => {
+    setCustomDateLoading(true);
+    try {
+      const res = await sendPostRequest('bible', 'get-verse-by-date', {
+        date: dateStr,
+      });
+      console.log('Verse by date response:', JSON.stringify(res));
+      if (res.returnCode === 200 && res.returnData) {
+        const d = res.returnData;
+        setCustomDailyVerse({
+          reference:
+            (d.reference ?? d.bookName)
+              ? `${d.bookName} ${d.chapter}:${d.verseNumber}`
+              : 'John 3:16',
+          translation: d.translation ?? 'NKJV',
+          text: d.text ?? '',
+          date: dateStr,
+          bookName: d.bookName,
+          chapter: d.chapter,
+          verseNumber: d.verseNumber,
+        });
+        setIsCustomDate(true);
+        // Auto-play the selected verse
+        if (d.text) {
+          bibleTTS.speak(
+            d.text,
+            d.reference ?? `${d.bookName} ${d.chapter}:${d.verseNumber}`,
+          );
+        }
+      } else {
+        showToast("warning", "No verse found for the selected date");
+      }
+    } catch (e) {
+      console.error('Error loading verse by date:', e);
+      showToast("error", "Failed to load verse for the selected date. Please try again.");
+      
+    } finally {
+      setCustomDateLoading(false);
     }
   }, []);
 
@@ -322,13 +385,16 @@ export default function Home() {
     if (sharingRef.current) return;
     sharingRef.current = true;
 
+    const activeVerse =
+      isCustomDate && customDailyVerse ? customDailyVerse : dailyVerse;
+
     const verseText =
-      dailyVerse?.text && String(dailyVerse.text).trim().length > 0
-        ? dailyVerse.text
+      activeVerse?.text && String(activeVerse.text).trim().length > 0
+        ? activeVerse.text
         : getVerseText('John', 3, 16);
 
-    const ref = dailyVerse?.reference ?? 'John 3:16';
-    const ver = dailyVerse?.translation ?? 'NKJV';
+    const ref = activeVerse?.reference ?? 'John 3:16';
+    const ver = activeVerse?.translation ?? 'NKJV';
 
     const message = `📖 ${ref} (${ver})\n\n"${verseText}"\n\n— Shared from Exegesis`;
 
@@ -431,15 +497,25 @@ export default function Home() {
                   {translation?.home?.dailyVerseTitle || 'Daily Verse'}
                 </Text>
                 <Text style={styles.verseCardDate}>
-                  {getTodayLabel(language)}
+                  {isCustomDate && selectedDate
+                    ? new Date(selectedDate + 'T00:00:00').toLocaleDateString(
+                        language === 'en' ? 'en-US' : language,
+                        {
+                          weekday: 'long',
+                          month: 'long',
+                          day: 'numeric',
+                        },
+                      )
+                    : getTodayLabel(language)}
                 </Text>
               </View>
             </View>
 
             <TouchableOpacity
               style={styles.lordsBookTag}
-              onPress={() => navigation.navigate(route.dailyVerse)}
+              onPress={() => setShowDatePicker(true)}
             >
+              <CalendarDays size={13} color="#FFFFFF" strokeWidth={2} />
               <Text style={styles.lordsBookTagText}>
                 {translation?.home?.lordsBookTag || "Exegesis Daily's"}
               </Text>
@@ -448,7 +524,7 @@ export default function Home() {
 
           <View style={styles.verseCardDivider} />
 
-          {verseLoading ? (
+          {verseLoading || (isCustomDate && customDateLoading) ? (
             <View style={styles.verseLoadingRow}>
               <ActivityIndicator size="small" color={COLORS.primary} />
               <Text style={styles.verseLoadingText}>
@@ -459,34 +535,67 @@ export default function Home() {
             <>
               <View style={styles.verseReferenceRow}>
                 <View style={styles.verseRefLeft}>
+                  {isCustomDate && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setIsCustomDate(false);
+                        setSelectedDate('');
+                        setCustomDailyVerse(null);
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <ChevronLeft size={14} color={COLORS.primary} />
+                    </TouchableOpacity>
+                  )}
                   <BookMarked size={14} color={COLORS.primary} />
                   <Text style={styles.verseRefText}>
-                    {dailyVerse?.reference ?? 'John 3:16'}{' '}
+                    {isCustomDate && customDailyVerse
+                      ? customDailyVerse.reference
+                      : (dailyVerse?.reference ?? 'John 3:16')}{' '}
                     <Text style={styles.verseTranslation}>
-                      ({dailyVerse?.translation ?? 'NKJV'})
+                      (
+                      {isCustomDate && customDailyVerse
+                        ? customDailyVerse.translation
+                        : (dailyVerse?.translation ?? 'NKJV')}
+                      )
                     </Text>
                   </Text>
                 </View>
-
                 <TouchableOpacity
-                  style={styles.audioBtn}
+                  style={[
+                    styles.audioBtn,
+                    (isPlaying || customDateLoading) && {
+                      backgroundColor: COLORS.primary + '30',
+                    },
+                  ]}
                   onPress={() => {
-                    if (dailyVerse?.text) {
-                      bibleTTS.speak(dailyVerse.text, dailyVerse.reference);
+                    const verse =
+                      isCustomDate && customDailyVerse
+                        ? customDailyVerse
+                        : dailyVerse;
+                    if (verse?.text) {
+                      bibleTTS.speak(verse.text, verse.reference);
                     }
                   }}
                 >
-                  <Volume2
-                    size={18}
-                    color={isPlaying ? COLORS.accent : COLORS.accent}
-                  />
+                  {customDateLoading ? (
+                    <ActivityIndicator size={16} color={COLORS.accent} />
+                  ) : (
+                    <Volume2
+                      size={18}
+                      color={isPlaying ? COLORS.accent : COLORS.accent}
+                    />
+                  )}
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.verseBodyText}>
-                {dailyVerse?.text && String(dailyVerse.text).trim().length > 0
-                  ? dailyVerse.text
-                  : getVerseText('John', 3, 16)}
+                {isCustomDate && customDailyVerse
+                  ? customDailyVerse.text || getVerseText('John', 3, 16)
+                  : dailyVerse?.text &&
+                      String(dailyVerse.text).trim().length > 0
+                    ? dailyVerse.text
+                    : getVerseText('John', 3, 16)}
               </Text>
 
               {/* Explanation Section */}
@@ -563,6 +672,42 @@ export default function Home() {
             </>
           )}
         </View>
+
+        {/* ── Back to Today Banner (when viewing custom date) ── */}
+        {isCustomDate && (
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              marginHorizontal: 20,
+              marginBottom: 12,
+              paddingVertical: 10,
+              paddingHorizontal: 20,
+              borderRadius: 12,
+              backgroundColor: COLORS.primary + '15',
+              borderWidth: 1,
+              borderColor: COLORS.primary + '30',
+            }}
+            onPress={() => {
+              setIsCustomDate(false);
+              setSelectedDate('');
+              setCustomDailyVerse(null);
+            }}
+          >
+            <CalendarDays size={16} color={COLORS.primary} />
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '600',
+                color: COLORS.primary,
+              }}
+            >
+              Back to Today's Verse
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* ── Content Banners ── */}
         <View style={styles.bannersSection}>
@@ -790,6 +935,379 @@ export default function Home() {
           )}
         </View>
       </ScrollView>
+
+      {/* ── Date Picker Modal ── */}
+      <Modal
+        visible={showDatePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          onPress={() => setShowDatePicker(false)}
+        >
+          <Pressable
+            style={{
+              width: '90%',
+              maxWidth: 360,
+              backgroundColor: COLORS.cardBackground,
+              borderRadius: 20,
+              padding: 24,
+              elevation: 10,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 10,
+              maxHeight: '85%',
+            }}
+            onPress={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 16,
+              }}
+            >
+              <Text
+                style={{ fontSize: 18, fontWeight: '800', color: COLORS.text }}
+              >
+                {translation?.home?.selectDateTitle || 'Select a Date'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(false)}
+                hitSlop={12}
+              >
+                <X size={22} color={COLORS.muted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text
+              style={{
+                fontSize: 13,
+                color: COLORS.muted,
+                marginBottom: 16,
+                textAlign: 'center',
+                lineHeight: 20,
+              }}
+            >
+              {`Pick a date to read and listen to that day's daily verse`}
+            </Text>
+
+            {/* ── This Week Quick Row ── */}
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '700',
+                color: COLORS.muted,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                marginBottom: 8,
+              }}
+            >
+              {'This Week'}
+            </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: 6,
+                marginBottom: 20,
+                justifyContent: 'center',
+              }}
+            >
+              {Array.from({ length: 7 }, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() + i);
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const dayName = d.toLocaleDateString('en-US', {
+                  weekday: 'short',
+                });
+                const dayNum = d.getDate();
+                const isToday = i === 0;
+                const isSelected = selectedDate === dateStr;
+                return (
+                  <TouchableOpacity
+                    key={dateStr}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      alignItems: 'center',
+                      backgroundColor: isSelected
+                        ? COLORS.primary
+                        : isToday
+                          ? COLORS.primary + '20'
+                          : COLORS.surface,
+                      borderWidth: 1,
+                      borderColor: isSelected ? COLORS.primary : COLORS.border,
+                    }}
+                    onPress={() => {
+                      setSelectedDate(dateStr);
+                      setShowDatePicker(false);
+                      loadVerseByDate(dateStr);
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        fontWeight: '700',
+                        color: isSelected ? '#FFFFFF' : COLORS.muted,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.3,
+                      }}
+                    >
+                      {dayName}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: '800',
+                        color: isSelected ? '#FFFFFF' : COLORS.text,
+                        marginTop: 1,
+                      }}
+                    >
+                      {dayNum}
+                    </Text>
+                    {isToday && (
+                      <Text
+                        style={{
+                          fontSize: 8,
+                          fontWeight: '600',
+                          color: isSelected ? '#FFFFFF' : COLORS.primary,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                          marginTop: 1,
+                        }}
+                      >
+                        {'Today'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* ── Month / Year Picker ── */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 12,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => {
+                  if (pickerMonth === 0) {
+                    setPickerMonth(11);
+                    setPickerYear(p => p - 1);
+                  } else {
+                    setPickerMonth(p => p - 1);
+                  }
+                }}
+                hitSlop={12}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: COLORS.surface,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <ChevronLeft size={18} color={COLORS.text} />
+              </TouchableOpacity>
+
+              <Text
+                style={{ fontSize: 16, fontWeight: '800', color: COLORS.text }}
+              >
+                {new Date(pickerYear, pickerMonth).toLocaleDateString('en-US', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => {
+                  if (pickerMonth === 11) {
+                    setPickerMonth(0);
+                    setPickerYear(p => p + 1);
+                  } else {
+                    setPickerMonth(p => p + 1);
+                  }
+                }}
+                hitSlop={12}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: COLORS.surface,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <ArrowRight size={18} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* ── Calendar Grid ── */}
+            <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                <View
+                  key={`weekday-header-${index}`}
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}
+                >
+                
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: '700',
+                      color: COLORS.muted,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {day}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Day cells */}
+            {(() => {
+              const daysInMonth = new Date(
+                pickerYear,
+                pickerMonth + 1,
+                0,
+              ).getDate();
+              const firstDayOfWeek = new Date(
+                pickerYear,
+                pickerMonth,
+                1,
+              ).getDay(); // 0 = Sun
+              const today = new Date();
+              const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+              const cells: React.ReactNode[] = [];
+
+              // Empty cells before first day
+              for (let i = 0; i < firstDayOfWeek; i++) {
+                cells.push(
+                  <View
+                    key={`empty-${i}`}
+                    style={{ flex: 1, aspectRatio: 1 }}
+                  />,
+                );
+              }
+
+              for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${pickerYear}-${String(pickerMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = dateStr === todayStr;
+                const isSelected = selectedDate === dateStr;
+
+                cells.push(
+                  <TouchableOpacity
+                    key={dateStr}
+                    style={{
+                      flex: 1,
+                      aspectRatio: 1,
+                      borderRadius: 10,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      backgroundColor: isSelected
+                        ? COLORS.primary
+                        : isToday
+                          ? COLORS.primary + '20'
+                          : 'transparent',
+                    }}
+                    onPress={() => {
+                      setSelectedDate(dateStr);
+                      setShowDatePicker(false);
+                      loadVerseByDate(dateStr);
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: isToday || isSelected ? '800' : '500',
+                        color: isSelected
+                          ? '#FFFFFF'
+                          : isToday
+                            ? COLORS.primary
+                            : COLORS.text,
+                      }}
+                    >
+                      {day}
+                    </Text>
+                  </TouchableOpacity>,
+                );
+              }
+
+              // Build week rows
+              const rows: React.ReactNode[] = [];
+              for (let i = 0; i < cells.length; i += 7) {
+                const weekCells = cells.slice(i, i + 7);
+                rows.push(
+                  <View
+                    key={`week-${i}`}
+                    style={{ flexDirection: 'row', gap: 2, marginBottom: 2 }}
+                  >
+                    {weekCells}
+                  </View>,
+                );
+              }
+              return rows;
+            })()}
+
+            {/* Divider */}
+            <View
+              style={{
+                height: 1,
+                backgroundColor: COLORS.border,
+                marginVertical: 16,
+              }}
+            />
+
+            {/* Navigate to full Daily Verse page */}
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                paddingVertical: 12,
+                borderRadius: 12,
+                backgroundColor: COLORS.surface,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                borderStyle: 'dashed',
+              }}
+              onPress={() => {
+                setShowDatePicker(false);
+                navigation.navigate(route.dailyVerse);
+              }}
+            >
+              <BookOpen size={16} color={COLORS.primary} />
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: COLORS.primary,
+                }}
+              >
+                {'Full Daily Verse Page'}
+              </Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* ── Bottom Tab ── */}
       <Animated.View

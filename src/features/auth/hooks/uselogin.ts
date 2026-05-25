@@ -100,7 +100,7 @@ export default function useLogin() {
         showPlayServicesUpdateDialog: true,
       });
       const signInResult = await GoogleSignin.signIn();
-      const { idToken, user } = signInResult.data;
+      const { idToken, user }:any = signInResult.data;
       if (!idToken) {
         const msg = translations?.errors?.noIdToken || 'No ID token found';
         throw new Error(msg);

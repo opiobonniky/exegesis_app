@@ -79,6 +79,9 @@ export const createStyles = (COLORS: any) =>
       marginTop: 1,
     },
     lordsBookTag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
       backgroundColor: 'rgba(255,255,255,0.15)',
       borderRadius: BORDER_RADIUS.round,
       paddingHorizontal: SPACING.md,

@@ -435,6 +435,7 @@ useEffect(() => {
 confirmedAudioIndexRef.current = index;
 setAudioVerseIndex(index);
 setActiveAudioVerse(verse.num);
+lastTTSVerseNumRef.current = verse.num;
 
       // Scroll the verse into view immediately
       flatListRef.current?.scrollToIndex({
@@ -650,24 +651,10 @@ setActiveAudioVerse(verse.num);
     _requestIdRef.current++;
 
     const playlist = audioPlaylistRef.current;
-    // Use the last TTS-CONFIRMED verse number to find the actual playing index.
-    // This prevents rapid Next presses from "skipping" verses because
-    // confirmedAudioIndexRef is updated immediately by speakVerseAtIndex
-    // BEFORE TTS actually starts, but lastTTSVerseNumRef is only set when
-    // the engine fires tts-start (the true source of truth).
-    let currentIndex = -1;
-    const lastNum = lastTTSVerseNumRef.current;
-    if (lastNum !== null) {
-      currentIndex = playlist.findIndex(v => v.num === lastNum);
-    }
-    // Fallback to confirmedAudioIndexRef / audioVerseIndexRef if no
-    // TTS-confirmed verse exists yet (e.g. just started playback).
-    if (currentIndex < 0) {
-      currentIndex =
-        confirmedAudioIndexRef.current >= 0
-          ? confirmedAudioIndexRef.current
-          : audioVerseIndexRef.current;
-    }
+    const currentIndex =
+      confirmedAudioIndexRef.current >= 0
+        ? confirmedAudioIndexRef.current
+        : audioVerseIndexRef.current;
     const nextIndex = currentIndex + 1;
 
     if (nextIndex >= playlist.length) {
@@ -685,18 +672,10 @@ setActiveAudioVerse(verse.num);
     _requestIdRef.current++;
 
     const playlist = audioPlaylistRef.current;
-    // Same approach: use lastTTSVerseNumRef as the true source of truth.
-    let currentIndex = -1;
-    const lastNum = lastTTSVerseNumRef.current;
-    if (lastNum !== null) {
-      currentIndex = playlist.findIndex(v => v.num === lastNum);
-    }
-    if (currentIndex < 0) {
-      currentIndex =
-        confirmedAudioIndexRef.current >= 0
-          ? confirmedAudioIndexRef.current
-          : audioVerseIndexRef.current;
-    }
+    const currentIndex =
+      confirmedAudioIndexRef.current >= 0
+        ? confirmedAudioIndexRef.current
+        : audioVerseIndexRef.current;
     const prevIndex = currentIndex - 1;
 
     if (prevIndex < 0) return;

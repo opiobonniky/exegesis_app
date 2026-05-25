@@ -347,6 +347,9 @@ export const getAllDailyVerses = async (
     endDate?: string;
     smartDefault?: boolean;
     futureDays?: number;
+    bookName?: string;
+    chapter?: number;
+    verseNumber?: number;
   },
 ): Promise<DailyVerseResponse> => {
   const response = await sendPostRequest<DailyVerseResponse>(

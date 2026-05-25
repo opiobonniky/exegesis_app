@@ -132,6 +132,7 @@ class BibleTTSManager {
 
   private _charIndexBase = 0; // set per-utterance in speak()
   private _lastRawCharIndex = -1; // previous raw engine charIndex
+  private _activeUtteranceId: string | number | null = null;
 
   constructor() {
     this.setupListeners();
@@ -143,7 +144,12 @@ class BibleTTSManager {
     if (!Tts) return;
 
     // ── tts-start ─────────────────────────────────────────────────────────────
-    Tts.addEventListener('tts-start', () => {
+    Tts.addEventListener('tts-start', (e?: any) => {
+      const utteranceId = e && typeof e === 'object' ? e.utteranceId : e;
+      if (utteranceId !== undefined && this._activeUtteranceId !== null && utteranceId !== this._activeUtteranceId) {
+        console.log('[BibleTTS] tts-start ignored for old utterance:', utteranceId);
+        return;
+      }
       this._isTtsSpeaking = true;
       this._progressEventsFired = 0;
       this._lastRawCharIndex = -1;
@@ -164,6 +170,10 @@ class BibleTTSManager {
     // ── tts-progress ─────────────────────────────────────────────────────────
     //
     Tts.addEventListener('tts-progress', (e: any) => {
+      const utteranceId = e && typeof e === 'object' ? e.utteranceId : e;
+      if (utteranceId !== undefined && this._activeUtteranceId !== null && utteranceId !== this._activeUtteranceId) {
+        return;
+      }
       if (this.stopRequested) return;
 
       const charIndex: number =
@@ -216,7 +226,12 @@ class BibleTTSManager {
     });
 
     // ── tts-finish ────────────────────────────────────────────────────────────
-    Tts.addEventListener('tts-finish', () => {
+    Tts.addEventListener('tts-finish', (e?: any) => {
+      const utteranceId = e && typeof e === 'object' ? e.utteranceId : e;
+      if (utteranceId !== undefined && this._activeUtteranceId !== null && utteranceId !== this._activeUtteranceId) {
+        console.log('[BibleTTS] tts-finish ignored for old utterance:', utteranceId);
+        return;
+      }
       console.log('[BibleTTS] tts-finish event fired');
       this._isTtsSpeaking = false;
       this._clearUtteranceTimeout();
@@ -236,7 +251,12 @@ class BibleTTSManager {
     });
 
     // ── tts-cancel ────────────────────────────────────────────────────────────
-    Tts.addEventListener('tts-cancel', () => {
+    Tts.addEventListener('tts-cancel', (e?: any) => {
+      const utteranceId = e && typeof e === 'object' ? e.utteranceId : e;
+      if (utteranceId !== undefined && this._activeUtteranceId !== null && utteranceId !== this._activeUtteranceId) {
+        console.log('[BibleTTS] tts-cancel ignored for old utterance:', utteranceId);
+        return;
+      }
       console.log('[BibleTTS] tts-cancel event fired');
       this._isTtsSpeaking = false;
       this._clearUtteranceTimeout();
@@ -529,6 +549,7 @@ class BibleTTSManager {
     this._onProgressCallback = onProgress || null;
     this._baseWordIndex = baseWordIndex;
     this._currentVerseNum = verseNum;
+    this._activeUtteranceId = 'transitioning';
 
     this.stopRequested = false;
     const clean = alreadyClean ? text : this.prepareText(text);
@@ -636,7 +657,10 @@ class BibleTTSManager {
           }, 30_000);
 
           Promise.resolve(Tts.speak(clean))
-            .then(() => console.log('[BibleTTS] Tts.speak resolved'))
+            .then((id) => {
+              this._activeUtteranceId = id;
+              console.log('[BibleTTS] Tts.speak resolved, utteranceId:', id);
+            })
             .catch(err => {
               console.error('[BibleTTS] Tts.speak error:', err);
               this._clearUtteranceTimeout();
@@ -648,8 +672,13 @@ class BibleTTSManager {
         };
 
         if (this._isTtsSpeaking) {
-          // Don't set _pendingResolve yet — wait for stop to complete first
-          // to prevent the old utterance's tts-cancel from resolving this promise.
+          // Resolve and nullify the old promise immediately so its auto-advance checks
+          // are executed (and fail/return early because indices have shifted).
+          // This prevents the old cancellation event from resolving the upcoming new promise.
+          const oldResolve = this._pendingResolve;
+          this._pendingResolve = null;
+          oldResolve?.();
+
           Tts.stop()
             .then(doSpeak)
             .catch(() => {
@@ -959,6 +988,7 @@ class BibleTTSManager {
     try {
       this.stopRequested = true;
       this._isTtsSpeaking = false;
+      this._activeUtteranceId = null;
       this._pauseInProgress = false;
       this._pausedText = '';
       this._pausedPrefixLen = 0;
