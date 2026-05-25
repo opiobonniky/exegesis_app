@@ -1,5 +1,5 @@
 // src/screens/reading-plans/DailyReadingScreen.tsx
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Easing,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { AppContext } from '../../common/AppContext';
@@ -28,13 +29,14 @@ import {
   CheckCircle2,
   HelpCircle,
   MessageSquare,
+  Sparkles,
 } from 'lucide-react-native';
 import ActionModal from '../../reusable/ActionModal';
-import ActionHeader from '../../reusable/ActionHeader';
 import { sendPostRequest } from '../../services/api';
 import { showToast } from '../../helpers/Toash.helper';
 import { route } from '../../component/navigations/routes';
 import LinearGradient from 'react-native-linear-gradient';
+import ProgressCircle from './ProgressCircle';
 import {
   scheduleDailyReminder,
   isPlanNotificationsEnabled,
@@ -107,6 +109,126 @@ const getQuizPerformance = (correct: number, total: number) => {
     color: '#6366F1',
     passed: true,
   };
+};
+
+// ─────────────────────────────────────────────
+// Confetti Component
+// ─────────────────────────────────────────────
+interface ConfettiPiece {
+  id: number;
+  x: number;
+  color: string;
+  size: number;
+  animX: Animated.Value;
+  animY: Animated.Value;
+  animRotate: Animated.Value;
+  animOpacity: Animated.Value;
+}
+const CONFETTI_COLORS = [
+  '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899',
+  '#6366F1', '#14B8A6', '#F97316', '#84CC16',
+];
+
+const CONFETTI_PIECES = 25;
+
+const Confetti = () => {
+  const piecesRef = useRef<ConfettiPiece[]>([]);
+  const [pieces, setPieces] = useState<ConfettiPiece[]>([]);
+
+  useEffect(() => {
+    const newPieces: ConfettiPiece[] = Array.from({ length: CONFETTI_PIECES }, (_, i) => ({
+      id: i,
+      x: Math.random() * SW,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      size: 6 + Math.random() * 8,
+      animX: new Animated.Value(0),
+      animY: new Animated.Value(-20),
+      animRotate: new Animated.Value(0),
+      animOpacity: new Animated.Value(1),
+    }));
+
+    piecesRef.current = newPieces;
+    setPieces(newPieces);
+
+    // Start all animations with staggered delays
+    const animations = newPieces.map((p, i) =>
+      Animated.parallel([
+        Animated.timing(p.animY, {
+          toValue: 400 + Math.random() * 300,
+          duration: 1500 + Math.random() * 1000,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(p.animX, {
+            toValue: (Math.random() - 0.5) * 150,
+            duration: 800,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(p.animX, {
+            toValue: (Math.random() - 0.5) * 100,
+            duration: 700,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.timing(p.animRotate, {
+          toValue: Math.random() > 0.5 ? 360 : -360,
+          duration: 1500 + Math.random() * 1000,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.delay(1000 + Math.random() * 500),
+          Animated.timing(p.animOpacity, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+    );
+
+    Animated.stagger(40, animations).start();
+
+    return () => {
+      piecesRef.current.forEach((p) => {
+        p.animX.stopAnimation();
+        p.animY.stopAnimation();
+        p.animRotate.stopAnimation();
+        p.animOpacity.stopAnimation();
+      });
+    };
+  }, []);
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {pieces.map((p) => (
+        <Animated.View
+          key={p.id}
+          style={[
+            {
+              position: 'absolute',
+              left: p.x,
+              width: p.size,
+              height: p.size * 0.6,
+              borderRadius: 2,
+              backgroundColor: p.color,
+              opacity: p.animOpacity,
+              transform: [
+                { translateX: p.animX },
+                { translateY: p.animY },
+                { rotate: p.animRotate.interpolate({
+                  inputRange: [-360, 0, 360],
+                  outputRange: ['-360deg', '0deg', '360deg'],
+                })},
+              ],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
 };
 
 // ─────────────────────────────────────────────
@@ -187,11 +309,20 @@ export default function DailyReadingScreen() {
   const [quizDone, setQuizDone] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fadeAnim] = useState(new Animated.Value(1));
-  const [ponderedReflections, setPonderedReflections] = useState<Set<number>>(
-    new Set(),
-  );
   const submittedIds = useRef<Set<number>>(new Set());
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
+  const [autoNavigateTimer, setAutoNavigateTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [ponderedReflections, setPonderedReflections] = useState<Set<number>>(new Set());
+  const [revealedCorrectAnswer, setRevealedCorrectAnswer] = useState<number | null>(null);
+
+  // ── animation refs ────────────────────────────
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const optionsEnterAnim = useRef(new Animated.Value(0)).current;
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+  const optionScaleAnims = useRef<Animated.Value[]>([]);
+  const scoreRingAnim = useRef(new Animated.Value(0)).current;
+  const autoAdvanceBarAnim = useRef(new Animated.Value(1)).current;
 
   const [modal, setModal] = useState<{
     status: boolean;
@@ -203,15 +334,41 @@ export default function DailyReadingScreen() {
   // ── effects ───────────────────────────────────
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day]);
+
+  // Cleanup auto-advance timer
+  useEffect(() => {
+    return () => {
+      if (autoNavigateTimer) clearTimeout(autoNavigateTimer);
+    };
+  }, [autoNavigateTimer]);
+
+  // Animate score ring when quiz is done
+  useEffect(() => {
+    if (quizDone && hasQuiz) {
+      scoreRingAnim.setValue(0);
+      Animated.timing(scoreRingAnim, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+      // Show confetti for high scores
+      const pct = quizTotal > 0 ? (correctCount / quizTotal) * 100 : 0;
+      if (pct >= 70) {
+        const t = setTimeout(() => setShowConfetti(true), 300);
+        return () => clearTimeout(t);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quizDone]);
 
   // ── data ──────────────────────────────────────
   const loadData = async () => {
     setLoading(true);
     try {
-      // First load assignment to get completion status
       await loadAssignment();
-      // Then load plan info with completion status
       await loadPlanInfo(isCompleted);
     } catch (e) {
       console.error(e);
@@ -223,32 +380,26 @@ export default function DailyReadingScreen() {
   const loadPlanInfo = async (completed: boolean = false) => {
     try {
       const r = await sendPostRequest('reading-plans', 'get-all', {});
-      if (r?.returnCode === 200 && Array.isArray(r.returnData)) {
-        const meta = r.returnData.find((p: any) => p.planId === planId);
+      if (r?.returnCode === 200) {
+        const plansList = Array.isArray(r.returnData)
+          ? r.returnData
+          : r.returnData?.plans || [];
+        const meta = plansList.find((p: any) => p.planId === planId);
         if (meta) {
           setPlanTitle(meta.title || 'Reading Plan');
           setTotalDays(meta.totalDays || 0);
 
-          // Schedule daily reminder for this plan
           const planEnabled = await isPlanNotificationsEnabled();
           if (planEnabled) {
-            await scheduleDailyReminder(
-              planId,
-              meta.title || 'Reading Plan',
-              day,
-            );
+            await scheduleDailyReminder(planId, meta.title || 'Reading Plan', day);
           }
 
-          // Schedule at-risk reminder if enabled
           const atRiskEnabled = await isAtRiskReminderEnabled();
           if (atRiskEnabled && !completed) {
             const { h, m } = await getAtRiskReminderTime();
             await scheduleStreakAtRiskReminder(
-              planId,
-              meta.title || 'Reading Plan',
-              meta.currentStreak ?? 0,
-              h,
-              m,
+              planId, meta.title || 'Reading Plan',
+              meta.currentStreak ?? 0, h, m,
             );
           }
         }
@@ -272,14 +423,7 @@ export default function DailyReadingScreen() {
         setAssignment(returnData);
         setIsCompleted(returnData.completed ?? false);
 
-        // Check if user has any previous answers for this specific day
-        const hasPreviousAnswers =
-          Array.isArray(returnData.quizQuestions) &&
-          returnData.quizQuestions.some(
-            (q: QuizQuestion) => q.userAnswer !== null,
-          );
-
-        // Always start fresh - show first question without results
+        // Always start fresh
         setCurrentQ(0);
         setSelected(null);
         setShowResult(false);
@@ -287,6 +431,25 @@ export default function DailyReadingScreen() {
         setQuizDone(false);
         setCorrectCount(0);
         submittedIds.current = new Set();
+        setShowConfetti(false);
+        setLastAnswerCorrect(null);
+        setRevealedCorrectAnswer(null);
+        setAutoNavigateTimer((prev) => {
+          if (prev) clearTimeout(prev);
+          return null;
+        });
+
+        // Initialize option animations for the first question
+        if (
+          Array.isArray(returnData.quizQuestions) &&
+          returnData.quizQuestions.length > 0
+        ) {
+          optionScaleAnims.current = returnData.quizQuestions[0].options.map(
+            () => new Animated.Value(1),
+          );
+        } else {
+          optionScaleAnims.current = [];
+        }
 
         if (
           Array.isArray(returnData.quizQuestions) &&
@@ -313,6 +476,8 @@ export default function DailyReadingScreen() {
   };
 
   // ── completion ────────────────────────────────
+  const [showNextDayPrompt, setShowNextDayPrompt] = useState(false);
+
   const markComplete = async () => {
     if (isCompleted) return;
     try {
@@ -324,17 +489,8 @@ export default function DailyReadingScreen() {
         setIsCompleted(true);
         loadData();
         showToast('success', `🎉 Day Complete! Day ${day} marked as done!`);
-
-        // Automatically move to the next day if available
         if (day < totalDays) {
-          setTimeout(() => {
-            navigation.replace(route.dailyReading, {
-              planId,
-              day: day + 1,
-              planTitle,
-              totalDays,
-            });
-          }, 1500); // Give user time to see the success toast
+          setShowNextDayPrompt(true);
         }
       } else showToast('error', `Error: ${r.returnMessage || 'Failed'}`);
     } catch (e: any) {
@@ -360,36 +516,54 @@ export default function DailyReadingScreen() {
   };
 
   const handleOpenBible = (book: string, chapter: number) => {
-    // Add to read history when opening
     sendPostRequest('bible', 'add-read-history', {
       bookName: book,
       chapter,
-      verseNumber: 1, // Default to first verse
+      verseNumber: 1,
     }).catch(console.error);
 
-    navigation.navigate(route.bible, { bookName: book, chapter });
+    const params: Record<string, any> = {
+      bookName: book,
+      chapter,
+    };
+
+    // Pass reflection questions and plan context if available
+    if (
+      Array.isArray(assignment?.reflectionQuestions) &&
+      assignment!.reflectionQuestions.length > 0
+    ) {
+      params.reflectionQuestions = assignment!.reflectionQuestions;
+      params.planTitle = planTitle;
+      params.dayTitle = assignment!.title || `Day ${day}`;
+      params.planId = planId;
+      params.day = day;
+    }
+
+    navigation.navigate(route.bible, params);
   };
 
   // ── quiz: jump to a specific question index ───
-  // Used by tappable dots AND the skip button
   const jumpToQuestion = (idx: number) => {
     if (!assignment?.quizQuestions) return;
     const targetQ = assignment.quizQuestions[idx];
 
+    // Reset animation refs
+    optionsEnterAnim.setValue(0);
+    optionScaleAnims.current = targetQ.options.map(() => new Animated.Value(1));
+
     Animated.timing(fadeAnim, {
       toValue: 0,
-      duration: 140,
+      duration: 120,
       useNativeDriver: true,
     }).start(() => {
       setCurrentQ(idx);
+      setRevealedCorrectAnswer(targetQ.correctAnswer);
 
       if (targetQ.userAnswer !== null && targetQ.userAnswer !== undefined) {
-        // Already answered → show in review mode
         setSelected(targetQ.userAnswer);
         setShowResult(true);
         setIsReviewing(true);
       } else {
-        // Unanswered → fresh mode
         setSelected(null);
         setShowResult(false);
         setIsReviewing(false);
@@ -397,22 +571,60 @@ export default function DailyReadingScreen() {
 
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 140,
+        duration: 120,
         useNativeDriver: true,
-      }).start();
+      }).start(() => {
+        // Staggered entrance for options
+        Animated.stagger(
+          60,
+          optionScaleAnims.current.map((anim) =>
+            Animated.sequence([
+              Animated.timing(anim, {
+                toValue: 0.95,
+                duration: 100,
+                useNativeDriver: true,
+              }),
+              Animated.timing(anim, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+              }),
+            ]),
+          ),
+        ).start();
+      });
     });
   };
 
   // ── quiz: select answer ────────────────────────
   const handleSelect = (idx: number) => {
     if (isReviewing) {
-      // Exit review → unlock resubmit with chosen option
       setIsReviewing(false);
       setShowResult(false);
       setSelected(idx);
       return;
     }
-    if (!showResult) setSelected(idx);
+    if (!showResult) {
+      setSelected(idx);
+      // Spring animation on selection
+      const anim = optionScaleAnims.current[idx];
+      if (anim) {
+        Animated.sequence([
+          Animated.spring(anim, {
+            toValue: 1.03,
+            tension: 150,
+            friction: 4,
+            useNativeDriver: true,
+          }),
+          Animated.spring(anim, {
+            toValue: 1,
+            tension: 100,
+            friction: 6,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    }
   };
 
   // ── quiz: submit ───────────────────────────────
@@ -420,7 +632,6 @@ export default function DailyReadingScreen() {
     if (selected === null || !assignment?.quizQuestions || isSubmitting) return;
     const q = assignment.quizQuestions[currentQ];
 
-    // Same answer guard — just show result without re-POSTing
     if (q.userAnswer !== null && q.userAnswer === selected) {
       setShowResult(true);
       return;
@@ -437,9 +648,47 @@ export default function DailyReadingScreen() {
       if (res?.returnCode === 200 && res.returnData) {
         const { isCorrect, correctAnswer, explanation, numberAttempt } =
           res.returnData;
-        if (isCorrect) setCorrectCount(p => p + 1);
+        setLastAnswerCorrect(isCorrect);
+
+        if (isCorrect) {
+          setCorrectCount((p) => p + 1);
+          // Show confetti on correct!
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 2500);
+        } else {
+          // Shake animation on wrong answer
+          Animated.sequence([
+            Animated.timing(shakeAnim, {
+              toValue: 10,
+              duration: 60,
+              useNativeDriver: true,
+            }),
+            Animated.timing(shakeAnim, {
+              toValue: -10,
+              duration: 60,
+              useNativeDriver: true,
+            }),
+            Animated.timing(shakeAnim, {
+              toValue: 8,
+              duration: 60,
+              useNativeDriver: true,
+            }),
+            Animated.timing(shakeAnim, {
+              toValue: -8,
+              duration: 60,
+              useNativeDriver: true,
+            }),
+            Animated.timing(shakeAnim, {
+              toValue: 0,
+              duration: 60,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        }
+
+        setRevealedCorrectAnswer(correctAnswer ?? q.correctAnswer);
         submittedIds.current.add(q.questionId);
-        setAssignment(prev => {
+        setAssignment((prev) => {
           if (!prev?.quizQuestions) return prev;
           const qs = [...prev.quizQuestions];
           qs[currentQ] = {
@@ -452,6 +701,26 @@ export default function DailyReadingScreen() {
           };
           return { ...prev, quizQuestions: qs };
         });
+
+        // Auto-advance on correct answers
+        if (isCorrect && currentQ < assignment.quizQuestions.length - 1) {
+          autoAdvanceBarAnim.setValue(1);
+          Animated.timing(autoAdvanceBarAnim, {
+            toValue: 0,
+            duration: 2500,
+            easing: Easing.linear,
+            useNativeDriver: false,
+          }).start();
+
+          const timer = setTimeout(() => {
+            setShowResult(false);
+            setSelected(null);
+            setCurrentQ((q) => q + 1);
+            setLastAnswerCorrect(null);
+            setRevealedCorrectAnswer(null);
+          }, 2500);
+          setAutoNavigateTimer(timer);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -463,6 +732,13 @@ export default function DailyReadingScreen() {
 
   // ── quiz: next ─────────────────────────────────
   const handleNext = () => {
+    // Cancel any auto-advance
+    if (autoNavigateTimer) {
+      clearTimeout(autoNavigateTimer);
+      setAutoNavigateTimer(null);
+    }
+    setShowConfetti(false);
+
     if (!assignment?.quizQuestions) return;
     if (currentQ < assignment.quizQuestions.length - 1) {
       jumpToQuestion(currentQ + 1);
@@ -483,13 +759,23 @@ export default function DailyReadingScreen() {
     }
   };
 
-  // ── quiz: retry (enter review) ─────────────────
+  // ── quiz: retry ─────────────────
   const retryQuiz = () => {
     const already =
-      assignment?.quizQuestions?.filter(q => q.isCorrect === true).length ?? 0;
+      assignment?.quizQuestions?.filter((q) => q.isCorrect === true).length ?? 0;
     setCorrectCount(already);
     setQuizDone(false);
-    jumpToQuestion(0); // jumpToQuestion sets isReviewing correctly
+    setShowConfetti(false);
+    jumpToQuestion(0);
+  };
+
+  // ── Cancel auto-advance ────────────────────────
+  const cancelAutoNavigate = () => {
+    if (autoNavigateTimer) {
+      clearTimeout(autoNavigateTimer);
+      setAutoNavigateTimer(null);
+    }
+    autoAdvanceBarAnim.setValue(0);
   };
 
   // ── derived ───────────────────────────────────
@@ -540,7 +826,6 @@ export default function DailyReadingScreen() {
   // Render helpers
   // ─────────────────────────────────────────────
 
-  // ── Day info strip — sits below ActionHeader ──────────────────────────────
   const renderDayStrip = () => (
     <View
       style={[
@@ -548,7 +833,6 @@ export default function DailyReadingScreen() {
         { backgroundColor: C.cardBackground, borderBottomColor: C.border },
       ]}
     >
-      {/* Day pill */}
       <View
         style={[
           s.dayPill,
@@ -561,7 +845,6 @@ export default function DailyReadingScreen() {
         </Text>
       </View>
 
-      {/* Progress bar */}
       {!loading && totalDays > 0 && (
         <View style={s.stripProgress}>
           <View style={[s.stripTrack, { backgroundColor: C.border }]}>
@@ -578,15 +861,11 @@ export default function DailyReadingScreen() {
         </View>
       )}
 
-      {/* Complete button */}
       <TouchableOpacity
         style={[
           s.completeBtn,
           isCompleted
-            ? {
-                backgroundColor: C.success + '25',
-                borderColor: C.success + '50',
-              }
+            ? { backgroundColor: C.success + '25', borderColor: C.success + '50' }
             : { backgroundColor: C.border, borderColor: C.border },
         ]}
         activeOpacity={canMarkComplete ? 0.7 : 1}
@@ -615,11 +894,9 @@ export default function DailyReadingScreen() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 60 }}
     >
-      <View
-        style={[s.card, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}
-      >
+      <View style={[s.card, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
         <Sk w={120} h={12} r={6} style={{ marginBottom: 16 }} />
-        {[1, 2].map(i => (
+        {[1, 2].map((i) => (
           <View
             key={i}
             style={[
@@ -636,13 +913,11 @@ export default function DailyReadingScreen() {
           </View>
         ))}
       </View>
-      <View
-        style={[s.card, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}
-      >
+      <View style={[s.card, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
         <Sk w={160} h={12} r={6} style={{ marginBottom: 16 }} />
         <Sk w="90%" h={16} r={6} style={{ marginBottom: 8 }} />
         <Sk w="70%" h={16} r={6} style={{ marginBottom: 20 }} />
-        {[1, 2, 3, 4].map(i => (
+        {[1, 2, 3, 4].map((i) => (
           <View
             key={i}
             style={[
@@ -675,15 +950,12 @@ export default function DailyReadingScreen() {
           },
         ]}
       >
-        <View
-          style={[s.emptyIconCircle, { backgroundColor: C.primary + '18' }]}
-        >
+        <View style={[s.emptyIconCircle, { backgroundColor: C.primary + '18' }]}>
           <BookOpen size={36} color={C.primary} />
         </View>
         <Text style={[s.emptyTitle, { color: C.text }]}>Coming Soon</Text>
         <Text style={[s.emptySubtitle, { color: C.textSecondary }]}>
-          Day {day}'s reading assignment hasn't been added yet.{'\n'}Check back
-          soon!
+          Day {day}'s reading assignment hasn't been added yet.{'\n'}Check back soon!
         </Text>
       </View>
       {renderDayNav()}
@@ -749,9 +1021,7 @@ export default function DailyReadingScreen() {
         ) : notYetAdded ? (
           renderNotYetAdded()
         ) : (
-          <View
-            style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-          >
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <Text style={{ color: C.text, fontSize: 15 }}>
               Assignment not found
             </Text>
@@ -844,27 +1114,21 @@ export default function DailyReadingScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
       >
+        {/* ── Assignment intro ── */}
         <View style={s.assignmentIntro}>
           <Text style={[s.assignmentTitle, { color: C.text }]}>
             {assignment.title || `Reading for Day ${day}`}
           </Text>
           {assignment.chapters && (
             <View style={s.assignmentMetaRow}>
-              <View
-                style={[
-                  s.assignmentBadge,
-                  { backgroundColor: C.primary + '10' },
-                ]}
-              >
+              <View style={[s.assignmentBadge, { backgroundColor: C.primary + '10' }]}>
                 <BookOpen size={12} color={C.primary} />
                 <Text style={[s.assignmentBadgeText, { color: C.primary }]}>
                   {assignment.chapters.length} Chapters
                 </Text>
               </View>
               {hasQuiz && (
-                <View
-                  style={[s.assignmentBadge, { backgroundColor: '#8b5cf615' }]}
-                >
+                <View style={[s.assignmentBadge, { backgroundColor: '#8b5cf615' }]}>
                   <HelpCircle size={12} color="#8b5cf6" />
                   <Text style={[s.assignmentBadgeText, { color: '#8b5cf6' }]}>
                     {quizTotal} Quiz
@@ -889,20 +1153,14 @@ export default function DailyReadingScreen() {
                 style={[
                   s.modernChapterCard,
                   {
-                    borderColor: isDark
-                      ? 'rgba(255,255,255,0.08)'
-                      : 'rgba(0,0,0,0.05)',
-                    backgroundColor: isDark
-                      ? 'rgba(255,255,255,0.03)'
-                      : 'rgba(0,0,0,0.02)',
+                    borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                   },
                 ]}
                 onPress={() => handleOpenBible(ch.book, ch.chapter)}
                 activeOpacity={0.7}
               >
-                <View
-                  style={[s.chapterIconCircle, { backgroundColor: C.primary }]}
-                >
+                <View style={[s.chapterIconCircle, { backgroundColor: C.primary }]}>
                   <PlayCircle size={20} color="#fff" />
                 </View>
                 <View style={s.chapterInfoBody}>
@@ -913,9 +1171,7 @@ export default function DailyReadingScreen() {
                     Chapter {ch.chapter}
                   </Text>
                 </View>
-                <View
-                  style={[s.readCta, { backgroundColor: C.primary + '15' }]}
-                >
+                <View style={[s.readCta, { backgroundColor: C.primary + '15' }]}>
                   <Text style={[s.readCtaText, { color: C.primary }]}>
                     READ
                   </Text>
@@ -925,7 +1181,7 @@ export default function DailyReadingScreen() {
           </View>
         </View>
 
-        {/* ── Reflection Questions (no-quiz) ── */}
+        {/* ── Reflection Questions ── */}
         {!hasQuiz &&
           Array.isArray(assignment.reflectionQuestions) &&
           assignment.reflectionQuestions.length > 0 && (
@@ -936,8 +1192,7 @@ export default function DailyReadingScreen() {
                 color="#f59e0b"
               />
               <Text style={[s.reflectionSubtitle, { color: C.muted }]}>
-                Take a moment to meditate on these questions as you read today's
-                scripture.
+                Take a moment to meditate on these questions as you read today's scripture.
               </Text>
               {assignment.reflectionQuestions.map((q, idx) => {
                 const isPondered = ponderedReflections.has(idx);
@@ -954,9 +1209,7 @@ export default function DailyReadingScreen() {
                     style={[
                       s.modernReflectionRow,
                       {
-                        backgroundColor: isDark
-                          ? 'rgba(255,255,255,0.03)'
-                          : 'rgba(0,0,0,0.02)',
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                         borderColor: isPondered ? '#f59e0b40' : 'transparent',
                         borderWidth: 1,
                       },
@@ -966,11 +1219,7 @@ export default function DailyReadingScreen() {
                       <View
                         style={[
                           s.reflectionIconBox,
-                          {
-                            backgroundColor: isPondered
-                              ? '#f59e0b'
-                              : '#f59e0b20',
-                          },
+                          { backgroundColor: isPondered ? '#f59e0b' : '#f59e0b20' },
                         ]}
                       >
                         {isPondered ? (
@@ -985,9 +1234,7 @@ export default function DailyReadingScreen() {
                           {
                             color: C.text,
                             opacity: isPondered ? 0.6 : 1,
-                            textDecorationLine: isPondered
-                              ? 'line-through'
-                              : 'none',
+                            textDecorationLine: isPondered ? 'line-through' : 'none',
                           },
                         ]}
                       >
@@ -996,9 +1243,7 @@ export default function DailyReadingScreen() {
                     </View>
                     {!isPondered && (
                       <View style={s.ponderAction}>
-                        <Text
-                          style={[s.ponderActionText, { color: '#f59e0b' }]}
-                        >
+                        <Text style={[s.ponderActionText, { color: '#f59e0b' }]}>
                           PONDER
                         </Text>
                       </View>
@@ -1015,6 +1260,9 @@ export default function DailyReadingScreen() {
         {hasQuiz && !quizDone && activeQ && (
           <Animated.View style={{ opacity: fadeAnim }}>
             <View style={[s.card, { backgroundColor: C.cardBackground }]}>
+              {/* Confetti overlay */}
+              {showConfetti && <Confetti />}
+
               {/* ── Review banner ── */}
               {isReviewing && (
                 <View
@@ -1030,6 +1278,46 @@ export default function DailyReadingScreen() {
                   <Text style={s.reviewBannerText}>
                     Review mode — tap a dot to jump, or tap an option to retry
                   </Text>
+                </View>
+              )}
+
+              {/* Auto-advance banner */}
+              {autoNavigateTimer && lastAnswerCorrect && (
+                <View
+                  style={[
+                    s.autoAdvanceBanner,
+                    {
+                      backgroundColor: isDark ? '#064E3B' : '#ECFDF5',
+                      borderColor: isDark ? '#10B98140' : '#A7F3D0',
+                    },
+                  ]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.autoAdvanceText, { color: isDark ? '#6EE7B7' : '#065F46' }]}>
+                      ✓ Correct! Next question in a moment…
+                    </Text>
+                    <View
+                      style={[s.autoAdvanceTrack, { backgroundColor: isDark ? '#065F46' : '#D1FAE5' }]}
+                    >
+                      <Animated.View
+                        style={[
+                          s.autoAdvanceFill,
+                          {
+                            backgroundColor: '#10B981',
+                            width: autoAdvanceBarAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: ['0%', '100%'],
+                            }),
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={cancelAutoNavigate} style={s.autoAdvanceCancel}>
+                    <Text style={[s.autoAdvanceCancelText, { color: isDark ? '#6EE7B7' : '#065F46' }]}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -1069,90 +1357,87 @@ export default function DailyReadingScreen() {
                 {activeQ.question}
               </Text>
 
-              {/* Options */}
-              <View style={s.optionsWrap}>
-                {activeQ.options.map((opt, idx) => {
-                  const isSel = selected === idx;
-                  const isCorrect = showResult && activeQ.correctAnswer === idx;
-                  const isWrong = showResult && isSel && !isCorrect;
+              {/* Options with staggered entrance */}
+              <Animated.View
+                style={{
+                  transform: [{ translateX: shakeAnim }],
+                }}
+              >
+                <View style={s.optionsWrap}>
+                  {activeQ.options.map((opt, idx) => {
+                    const isSel = selected === idx;
+                    const correctIdx = revealedCorrectAnswer ?? activeQ.correctAnswer;
+                    const isCorrect = showResult && correctIdx === idx;
+                    const isWrong = showResult && isSel && !isCorrect;
 
-                  const borderCol = isCorrect
-                    ? '#10B981'
-                    : isWrong
-                      ? '#EF4444'
-                      : isSel && !showResult
-                        ? C.primary
-                        : isDark
-                          ? '#2D3748'
-                          : '#E5E7EB';
-                  const bgCol = isCorrect
-                    ? isDark
-                      ? '#064E3B'
-                      : '#D1FAE5'
-                    : isWrong
-                      ? isDark
-                        ? '#450A0A'
-                        : '#FEE2E2'
-                      : isSel && !showResult
-                        ? C.primary + '14'
-                        : 'transparent';
-                  const textCol = isCorrect
-                    ? '#10B981'
-                    : isWrong
-                      ? '#EF4444'
-                      : C.text;
-                  const badgeBg = isCorrect
-                    ? '#10B981'
-                    : isWrong
-                      ? '#EF4444'
-                      : isSel && !showResult
-                        ? C.primary
-                        : isDark
-                          ? '#2D3748'
-                          : '#F3F4F6';
+                    const borderCol = isCorrect
+                      ? '#10B981'
+                      : isWrong
+                        ? '#EF4444'
+                        : isSel && !showResult
+                          ? C.primary
+                          : isDark
+                            ? '#2D3748'
+                            : '#E5E7EB';
+                    const bgCol = isCorrect
+                      ? isDark ? '#064E3B' : '#D1FAE5'
+                      : isWrong
+                        ? isDark ? '#450A0A' : '#FEE2E2'
+                        : isSel && !showResult
+                          ? C.primary + '14'
+                          : 'transparent';
+                    const textCol = isCorrect ? '#10B981' : isWrong ? '#EF4444' : C.text;
+                    const badgeBg = isCorrect
+                      ? '#10B981'
+                      : isWrong
+                        ? '#EF4444'
+                        : isSel && !showResult
+                          ? C.primary
+                          : isDark ? '#2D3748' : '#F3F4F6';
 
-                  return (
-                    <TouchableOpacity
-                      key={idx}
-                      style={[
-                        s.answerRow,
-                        { borderColor: borderCol, backgroundColor: bgCol },
-                        isReviewing && isSel && s.answerRowReview,
-                      ]}
-                      onPress={() => handleSelect(idx)}
-                      // Remove disabled — all logic lives in handleSelect
-                      activeOpacity={0.75}
-                    >
-                      <View
-                        style={[s.answerBadge, { backgroundColor: badgeBg }]}
+                    const scaleAnim = optionScaleAnims.current[idx] || new Animated.Value(1);
+
+                    return (
+                      <Animated.View
+                        key={idx}
+                        style={{ transform: [{ scale: scaleAnim }] }}
                       >
-                        {showResult && isCorrect ? (
-                          <CheckCircle size={16} color="white" />
-                        ) : showResult && isWrong ? (
-                          <XCircle size={16} color="white" />
-                        ) : (
-                          <Text
-                            style={[
-                              s.answerLetter,
-                              {
-                                color:
-                                  isSel && !showResult
-                                    ? 'white'
-                                    : C.textSecondary,
-                              },
-                            ]}
-                          >
-                            {String.fromCharCode(65 + idx)}
+                        <TouchableOpacity
+                          style={[
+                            s.answerRow,
+                            { borderColor: borderCol, backgroundColor: bgCol },
+                            isReviewing && isSel && s.answerRowReview,
+                          ]}
+                          onPress={() => handleSelect(idx)}
+                          activeOpacity={0.75}
+                        >
+                          <View style={[s.answerBadge, { backgroundColor: badgeBg }]}>
+                            {showResult && isCorrect ? (
+                              <CheckCircle size={16} color="white" />
+                            ) : showResult && isWrong ? (
+                              <XCircle size={16} color="white" />
+                            ) : (
+                              <Text
+                                style={[
+                                  s.answerLetter,
+                                  {
+                                    color: isSel && !showResult ? 'white' : C.textSecondary,
+                                  },
+                                ]}
+                              >
+                                {String.fromCharCode(65 + idx)}
+                              </Text>
+                            )}
+                          </View>
+                          <Text style={[s.answerText, { color: textCol }]}>
+                            {opt}
                           </Text>
-                        )}
-                      </View>
-                      <Text style={[s.answerText, { color: textCol }]}>
-                        {opt}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                        </TouchableOpacity>
+                      </Animated.View>
+                    );
+                  })}
+                </View>
+              </Animated.View>
 
               {/* Explanation */}
               {showResult && activeQ.explanation ? (
@@ -1161,17 +1446,12 @@ export default function DailyReadingScreen() {
                     s.explanationBox,
                     {
                       backgroundColor:
-                        selected === activeQ.correctAnswer
-                          ? isDark
-                            ? '#064E3B'
-                            : '#ECFDF5'
-                          : isDark
-                            ? '#450A0A'
-                            : '#FEF2F2',
+                        selected === (revealedCorrectAnswer ?? activeQ.correctAnswer)
+                          ? isDark ? '#064E3B' : '#ECFDF5'
+                          : isDark ? '#450A0A' : '#FEF2F2',
                       borderLeftColor:
-                        selected === activeQ.correctAnswer
-                          ? '#10B981'
-                          : '#EF4444',
+                        selected === (revealedCorrectAnswer ?? activeQ.correctAnswer)
+                          ? '#10B981' : '#EF4444',
                     },
                   ]}
                 >
@@ -1180,21 +1460,17 @@ export default function DailyReadingScreen() {
                       s.explanationLabel,
                       {
                         color:
-                          selected === activeQ.correctAnswer
-                            ? '#10B981'
-                            : '#EF4444',
+                          selected === (revealedCorrectAnswer ?? activeQ.correctAnswer)
+                            ? '#10B981' : '#EF4444',
                       },
                     ]}
                   >
-                    {selected === activeQ.correctAnswer
+                    {selected === (revealedCorrectAnswer ?? activeQ.correctAnswer)
                       ? '✓ Correct'
                       : '✗ Incorrect'}
                   </Text>
                   <Text
-                    style={[
-                      s.explanationText,
-                      { color: isDark ? '#D1FAE5' : '#374151' },
-                    ]}
+                    style={[s.explanationText, { color: isDark ? '#D1FAE5' : '#374151' }]}
                   >
                     {activeQ.explanation}
                   </Text>
@@ -1203,27 +1479,18 @@ export default function DailyReadingScreen() {
 
               {/* ── Action buttons ── */}
               {isReviewing ? (
-                // REVIEW MODE: skip this question OR go to next
+                // REVIEW MODE
                 <View style={s.reviewActions}>
-                  {/* Skip button — jumps to next unanswered or next question */}
                   {(() => {
-                    // Find the next question index to skip to (wraps to results if last)
-                    const skipTarget =
-                      currentQ < quizTotal - 1 ? currentQ + 1 : null;
-
+                    const skipTarget = currentQ < quizTotal - 1 ? currentQ + 1 : null;
                     return (
                       <View style={s.reviewBtnRow}>
-                        {/* Skip always visible in review mode */}
                         <TouchableOpacity
-                          style={[
-                            s.skipBtn,
-                            { borderColor: isDark ? '#374151' : '#E5E7EB' },
-                          ]}
+                          style={[s.skipBtn, { borderColor: isDark ? '#374151' : '#E5E7EB' }]}
                           onPress={() => {
                             if (skipTarget !== null) {
                               jumpToQuestion(skipTarget);
                             } else {
-                              // Last question — skip straight to results
                               Animated.timing(fadeAnim, {
                                 toValue: 0,
                                 duration: 140,
@@ -1242,9 +1509,7 @@ export default function DailyReadingScreen() {
                           activeOpacity={0.7}
                         >
                           <SkipForward size={15} color={C.textSecondary} />
-                          <Text
-                            style={[s.skipBtnText, { color: C.textSecondary }]}
-                          >
+                          <Text style={[s.skipBtnText, { color: C.textSecondary }]}>
                             Skip
                           </Text>
                         </TouchableOpacity>
@@ -1259,9 +1524,7 @@ export default function DailyReadingScreen() {
                           activeOpacity={0.8}
                         >
                           <Text style={s.actionBtnText}>
-                            {currentQ < quizTotal - 1
-                              ? 'Next Question'
-                              : 'See Results'}
+                            {currentQ < quizTotal - 1 ? 'Next Question' : 'See Results'}
                           </Text>
                           <ChevronRight size={18} color="white" />
                         </TouchableOpacity>
@@ -1270,16 +1533,12 @@ export default function DailyReadingScreen() {
                   })()}
                 </View>
               ) : !showResult ? (
-                // FRESH / RESUBMIT: Submit (+ Skip if this is a resubmit attempt)
+                // FRESH / RESUBMIT
                 <View>
                   {assignment.quizQuestions![currentQ].userAnswer !== null && (
-                    // Already answered before — show Skip so user can move on without resubmitting
                     <View style={[s.reviewBtnRow, { marginTop: 14 }]}>
                       <TouchableOpacity
-                        style={[
-                          s.skipBtn,
-                          { borderColor: isDark ? '#374151' : '#E5E7EB' },
-                        ]}
+                        style={[s.skipBtn, { borderColor: isDark ? '#374151' : '#E5E7EB' }]}
                         onPress={() => {
                           if (currentQ < quizTotal - 1) {
                             jumpToQuestion(currentQ + 1);
@@ -1302,11 +1561,7 @@ export default function DailyReadingScreen() {
                         activeOpacity={0.7}
                       >
                         <SkipForward size={15} color={C.textSecondary} />
-                        <Text
-                          style={[s.skipBtnText, { color: C.textSecondary }]}
-                        >
-                          Skip
-                        </Text>
+                        <Text style={[s.skipBtnText, { color: C.textSecondary }]}>Skip</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -1317,9 +1572,7 @@ export default function DailyReadingScreen() {
                             backgroundColor:
                               selected !== null && !isSubmitting
                                 ? C.primary
-                                : isDark
-                                  ? '#374151'
-                                  : '#D1D5DB',
+                                : isDark ? '#374151' : '#D1D5DB',
                             marginTop: 0,
                           },
                         ]}
@@ -1331,7 +1584,7 @@ export default function DailyReadingScreen() {
                           <ActivityIndicator size="small" color="white" />
                         ) : (
                           <Text style={s.actionBtnText}>
-                            Resubmit Answer
+                            Update Answer
                             {assignment.quizQuestions![currentQ].numberAttempt
                               ? ` (Try ${assignment.quizQuestions![currentQ].numberAttempt! + 1})`
                               : ''}
@@ -1342,7 +1595,6 @@ export default function DailyReadingScreen() {
                   )}
 
                   {assignment.quizQuestions![currentQ].userAnswer === null && (
-                    // First time answering — no skip, just Submit
                     <TouchableOpacity
                       style={[
                         s.actionBtn,
@@ -1350,9 +1602,7 @@ export default function DailyReadingScreen() {
                           backgroundColor:
                             selected !== null && !isSubmitting
                               ? C.primary
-                              : isDark
-                                ? '#374151'
-                                : '#D1D5DB',
+                              : isDark ? '#374151' : '#D1D5DB',
                         },
                       ]}
                       onPress={handleSubmit}
@@ -1368,7 +1618,7 @@ export default function DailyReadingScreen() {
                   )}
                 </View>
               ) : (
-                // RESULT SHOWN: Next / See Results
+                // RESULT SHOWN
                 <TouchableOpacity
                   style={[s.actionBtn, { backgroundColor: C.primary }]}
                   onPress={handleNext}
@@ -1389,6 +1639,9 @@ export default function DailyReadingScreen() {
         ══════════════════════════════════════ */}
         {hasQuiz && quizDone && (
           <View style={[s.card, { backgroundColor: C.cardBackground }]}>
+            {/* Confetti overlay */}
+            {showConfetti && <Confetti />}
+
             <SectionHeading
               icon={<Star size={14} color={perf.color} />}
               title="Your Results"
@@ -1397,10 +1650,15 @@ export default function DailyReadingScreen() {
 
             {/* Score ring */}
             <View style={s.scoreBlock}>
-              <View
-                style={[s.scoreRingOuter, { borderColor: perf.color + '30' }]}
-              >
-                <View style={[s.scoreRingInner, { borderColor: perf.color }]}>
+              <View style={[s.scoreRingOuter, { borderColor: perf.color + '30' }]}>
+                <ProgressCircle
+                  percent={accuracyPct}
+                  size={160}
+                  strokeWidth={12}
+                  color={perf.color}
+                  backgroundColor={isDark ? '#2D3748' : '#E5E7EB'}
+                />
+                <View style={s.scoreOverlay}>
                   <Text style={s.scoreEmoji}>{perf.emoji}</Text>
                   <Text style={[s.scoreNum, { color: perf.color }]}>
                     {correctCount}/{quizTotal}
@@ -1410,6 +1668,18 @@ export default function DailyReadingScreen() {
                   </Text>
                 </View>
               </View>
+
+              {/* Perfect score celebration */}
+              {accuracyPct === 100 && (
+                <View style={s.perfectScoreRow}>
+                  <Sparkles size={16} color="#6366F1" />
+                  <Text style={[s.perfectScoreText, { color: '#6366F1' }]}>
+                    Perfect Score! Amazing!
+                  </Text>
+                  <Sparkles size={16} color="#6366F1" />
+                </View>
+              )}
+
               <Text style={[s.scoreLabel, { color: C.text }]}>
                 {perf.label}
               </Text>
@@ -1426,7 +1696,23 @@ export default function DailyReadingScreen() {
               </Text>
             </View>
 
-            {/* Per-question summary — tappable rows to jump directly */}
+            {/* Score badges */}
+            <View style={s.scoreBadgesRow}>
+              <View style={[s.scoreBadge, { backgroundColor: isDark ? '#064E3B30' : '#D1FAE5', borderColor: isDark ? '#10B98140' : '#A7F3D0' }]}>
+                <CheckCircle size={14} color="#10B981" />
+                <Text style={[s.scoreBadgeText, { color: '#10B981' }]}>
+                  {correctCount} Correct
+                </Text>
+              </View>
+              <View style={[s.scoreBadge, { backgroundColor: isDark ? '#450A0A30' : '#FEE2E2', borderColor: isDark ? '#EF444440' : '#FECACA' }]}>
+                <XCircle size={14} color="#EF4444" />
+                <Text style={[s.scoreBadgeText, { color: '#EF4444' }]}>
+                  {quizTotal - correctCount} Wrong
+                </Text>
+              </View>
+            </View>
+
+            {/* Per-question summary */}
             <View
               style={[
                 s.summaryBox,
@@ -1436,54 +1722,66 @@ export default function DailyReadingScreen() {
                 },
               ]}
             >
-              {assignment.quizQuestions!.map((q, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={[
-                    s.summaryRow,
-                    idx < assignment.quizQuestions!.length - 1 && {
-                      borderBottomWidth: 1,
-                      borderBottomColor: isDark ? '#2D3748' : '#EEF0F3',
-                    },
-                  ]}
-                  onPress={() => {
-                    setCorrectCount(
-                      assignment.quizQuestions!.filter(
-                        qq => qq.isCorrect === true,
-                      ).length,
-                    );
-                    setQuizDone(false);
-                    jumpToQuestion(idx);
-                  }}
-                  activeOpacity={0.65}
-                >
-                  <View
+              <View style={[s.summaryHeader, { borderBottomColor: isDark ? '#2D3748' : '#EEF0F3' }]}>
+                <Text style={[s.summaryHeaderText, { color: C.muted }]}>
+                  Question Summary
+                </Text>
+              </View>
+              <View style={s.summaryScroll}>
+                {assignment.quizQuestions!.map((q, idx) => (
+                  <TouchableOpacity
+                    key={idx}
                     style={[
-                      s.summaryDot,
-                      q.isCorrect === true && s.summaryDotOk,
-                      q.isCorrect === false && s.summaryDotBad,
+                      s.summaryRow,
+                      idx < assignment.quizQuestions!.length - 1 && {
+                        borderBottomWidth: 1,
+                        borderBottomColor: isDark ? '#2D3748' : '#EEF0F3',
+                      },
                     ]}
-                  />
-                  <Text
-                    style={[s.summaryText, { color: C.textSecondary }]}
-                    numberOfLines={2}
+                    onPress={() => {
+                      setCorrectCount(
+                        assignment.quizQuestions!.filter((qq) => qq.isCorrect === true).length,
+                      );
+                      setShowConfetti(false);
+                      setQuizDone(false);
+                      setIsReviewing(true);
+                      jumpToQuestion(idx);
+                    }}
+                    activeOpacity={0.65}
                   >
-                    Q{idx + 1}: {q.question}
-                  </Text>
-                  <View style={s.summaryRight}>
-                    <Text style={[s.summaryAttempts, { color: C.muted }]}>
-                      ×{q.numberAttempt ?? 0}
+                    <View
+                      style={[
+                        s.summaryDot,
+                        q.isCorrect === true && s.summaryDotOk,
+                        q.isCorrect === false && s.summaryDotBad,
+                      ]}
+                    />
+                    <Text
+                      style={[s.summaryText, { color: C.textSecondary }]}
+                      numberOfLines={2}
+                    >
+                      Q{idx + 1}: {q.question}
                     </Text>
-                    <ChevronRight size={13} color={C.muted} />
-                  </View>
-                </TouchableOpacity>
-              ))}
+                    <View style={s.summaryRight}>
+                      {q.numberAttempt && q.numberAttempt > 1 && (
+                        <Text style={[s.summaryAttempts, { color: '#F59E0B' }]}>
+                          {q.numberAttempt} tries
+                        </Text>
+                      )}
+                      <ChevronRight size={13} color={C.muted} />
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
             {/* Review & Retry */}
             <TouchableOpacity
               style={[s.outlineBtn, { borderColor: C.primary }]}
-              onPress={retryQuiz}
+              onPress={() => {
+                setShowConfetti(false);
+                retryQuiz();
+              }}
               activeOpacity={0.7}
             >
               <View style={s.outlineBtnInner}>
@@ -1511,7 +1809,9 @@ export default function DailyReadingScreen() {
             {isCompleted && (
               <View style={s.completedBadge}>
                 <CheckCircle size={16} color="#10B981" />
-                <Text style={s.completedBadgeText}>Day {day} completed ✓</Text>
+                <Text style={s.completedBadgeText}>
+                  Day {day} completed ✓
+                </Text>
               </View>
             )}
           </View>
@@ -1546,7 +1846,27 @@ export default function DailyReadingScreen() {
         title={modal.title}
         message={modal.message}
         severity={modal.severity}
-        onConfirm={() => setModal(p => ({ ...p, status: false }))}
+        onConfirm={() => setModal((p) => ({ ...p, status: false }))}
+      />
+
+      {/* Next day prompt */}
+      <ActionModal
+        visible={showNextDayPrompt}
+        title={`Day ${day} Complete! 🎉`}
+        message="Would you like to proceed to the next day or finish for now?"
+        severity="success"
+        confirmLabel="Next Day"
+        cancelLabel="Finish"
+        onConfirm={() => {
+          setShowNextDayPrompt(false);
+          navigation.replace(route.dailyReading, {
+            planId,
+            day: day + 1,
+            planTitle,
+            totalDays,
+          });
+        }}
+        onCancel={() => setShowNextDayPrompt(false)}
       />
     </View>
   );
@@ -1558,7 +1878,7 @@ export default function DailyReadingScreen() {
 const s = StyleSheet.create({
   container: { flex: 1 },
 
-  // ── Day strip (sits below ActionHeader) ───────────────────────────────────
+  // ── Day strip ─────────────────────────────────
   dayStrip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1578,18 +1898,9 @@ const s = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.4,
   },
-  stripProgress: {
-    flex: 1,
-  },
-  stripTrack: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  stripFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
+  stripProgress: { flex: 1 },
+  stripTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
+  stripFill: { height: '100%', borderRadius: 2 },
   completeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1599,10 +1910,7 @@ const s = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
-  completeBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
+  completeBtnText: { fontSize: 12, fontWeight: '700' },
 
   // Card
   card: {
@@ -1625,44 +1933,42 @@ const s = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
-  chapterIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  chapterMeta: { flex: 1, marginLeft: 14 },
-  chapterName: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
-  chapterHint: { fontSize: 12 },
-  chapterArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
 
-  // Reflection
-  reflectionRow: {
+  // Auto-advance
+  autoAdvanceBanner: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderLeftWidth: 3,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 10,
-  },
-  reflectionNum: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    flexShrink: 0,
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14,
   },
-  reflectionNumText: { fontSize: 13, fontWeight: '800', color: 'white' },
-  reflectionText: { flex: 1, fontSize: 15, lineHeight: 23 },
+  autoAdvanceText: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  autoAdvanceTrack: {
+    height: 3,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  autoAdvanceFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  autoAdvanceCancel: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(16,185,129,0.15)',
+  },
+  autoAdvanceCancelText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
 
   // Quiz meta
   quizMeta: {
@@ -1672,19 +1978,7 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   quizMetaText: { fontSize: 12, fontWeight: '600' },
-  dotRow: { flexDirection: 'row', gap: 5, alignItems: 'center' },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E5E7EB' },
-  dotTappable: { width: 12, height: 12, borderRadius: 6 }, // slightly larger hit target when interactive
-  dotActive: { backgroundColor: '#6366F1', width: 22 },
-  dotActiveDone: { width: 22 },
-  dotCorrect: { backgroundColor: '#10B981' },
-  dotWrong: { backgroundColor: '#EF4444' },
-  progressTrack: {
-    height: 4,
-    borderRadius: 2,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
+  progressTrack: { height: 4, borderRadius: 2, marginBottom: 16, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 2 },
   questionText: {
     fontSize: 18,
@@ -1790,21 +2084,17 @@ const s = StyleSheet.create({
   scoreRingOuter: {
     width: 160,
     height: 160,
-    borderRadius: 80,
-    borderWidth: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    position: 'relative',
   },
-  scoreRingInner: {
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    borderWidth: 3,
+  scoreOverlay: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scoreEmoji: { fontSize: 32, marginBottom: 2 },
+  scoreEmoji: { fontSize: 24, marginBottom: 2 },
   scoreNum: { fontSize: 28, fontWeight: '900', lineHeight: 32 },
   scorePct: { fontSize: 13, fontWeight: '600' },
   scoreLabel: { fontSize: 22, fontWeight: '800', marginBottom: 6 },
@@ -1815,13 +2105,60 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
   },
 
+  // Score badges
+  scoreBadgesRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  scoreBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Perfect score
+  perfectScoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  perfectScoreText: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+
   // Summary
   summaryBox: {
     borderWidth: 1,
     borderRadius: 14,
     overflow: 'hidden',
     marginTop: 4,
+    marginBottom: 4,
   },
+  summaryHeader: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  summaryHeaderText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  summaryScroll: {},
   summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1838,8 +2175,8 @@ const s = StyleSheet.create({
   summaryDotOk: { backgroundColor: '#10B981' },
   summaryDotBad: { backgroundColor: '#EF4444' },
   summaryText: { flex: 1, fontSize: 13, lineHeight: 18 },
-  summaryRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  summaryAttempts: { fontSize: 11, fontWeight: '700' },
+  summaryRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  summaryAttempts: { fontSize: 10, fontWeight: '700', color: '#F59E0B' },
 
   // Completed
   completedBadge: {
@@ -1885,7 +2222,7 @@ const s = StyleSheet.create({
   emptyTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
   emptySubtitle: { fontSize: 14, lineHeight: 22, textAlign: 'center' },
 
-  // Modern Headers & Assignments
+  // Modern Headers
   modernHeader: {
     paddingTop: 50,
     paddingHorizontal: SPACING.lg,
@@ -1920,52 +2257,31 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 15,
   },
-  headerDayCol: {
-    flex: 1,
-  },
+  headerDayCol: { flex: 1 },
   headerDayLabel: {
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
     marginBottom: 4,
   },
-  headerDayValue: {
-    fontSize: 22,
-    fontWeight: '900',
-  },
+  headerDayValue: { fontSize: 22, fontWeight: '900' },
   headerStatusPill: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
   },
-  headerStatusText: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  headerProgressTrack: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  headerProgressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  assignmentIntro: {
-    marginBottom: 25,
-  },
+  headerStatusText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  headerProgressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  headerProgressFill: { height: '100%', borderRadius: 3 },
+  assignmentIntro: { marginBottom: 25 },
   assignmentTitle: {
     fontSize: 24,
     fontWeight: '900',
     lineHeight: 32,
     marginBottom: 10,
   },
-  assignmentMetaRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  assignmentMetaRow: { flexDirection: 'row', gap: 8 },
   assignmentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1974,16 +2290,10 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
-  assignmentBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
+  assignmentBadgeText: { fontSize: 11, fontWeight: '800' },
 
   // Chapters List
-  chaptersList: {
-    gap: 12,
-    marginTop: 5,
-  },
+  chaptersList: { gap: 12, marginTop: 5 },
   modernChapterCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2003,35 +2313,18 @@ const s = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  chapterInfoBody: {
-    flex: 1,
-  },
-  chapterBookName: {
-    fontSize: 17,
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  chapterNumberLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  chapterInfoBody: { flex: 1 },
+  chapterBookName: { fontSize: 17, fontWeight: '800', marginBottom: 2 },
+  chapterNumberLabel: { fontSize: 13, fontWeight: '600' },
   readCta: {
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 10,
   },
-  readCtaText: {
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
+  readCtaText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
 
   // Reflections
-  reflectionSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 15,
-  },
+  reflectionSubtitle: { fontSize: 14, lineHeight: 20, marginBottom: 15 },
   modernReflectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2060,13 +2353,6 @@ const s = StyleSheet.create({
     lineHeight: 22,
     flex: 1,
   },
-  ponderAction: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  ponderActionText: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
+  ponderAction: { paddingHorizontal: 10, paddingVertical: 5 },
+  ponderActionText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
 });

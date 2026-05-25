@@ -338,6 +338,7 @@ export default function BibleReadingPlan() {
                 navigation.navigate(route.dailyReading, {
                   planId: plan.planId,
                   day: nextDay,
+                  totalDays: plan.totalDays,
                 })
               }
               onSummary={() =>
@@ -384,6 +385,7 @@ export default function BibleReadingPlan() {
                     navigation.navigate(route.dailyReading, {
                       planId: plan.planId,
                       day: 1,
+                      totalDays: plan.totalDays,
                     })
                   }
                   onSummary={() =>

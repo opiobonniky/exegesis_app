@@ -11,11 +11,13 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   RefreshControl,
   ActivityIndicator,
   Animated,
   StyleSheet,
-  Image,
+  Share,
+  Alert,
 } from 'react-native';
 import {
   Star,
@@ -33,7 +35,6 @@ import {
   Volume2,
   Share2,
   ChevronDown,
-  Play,
   BookOpen,
   GraduationCap,
 } from 'lucide-react-native';
@@ -77,11 +78,11 @@ type DailyVerse = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-// Greeting resolver now accepts translations so it can return localized strings
 const getGreeting = (translations?: any): string => {
   const h = new Date().getHours();
   if (h < 12) return translations?.home?.greetings?.morning ?? 'Good Morning,';
-  if (h < 17) return translations?.home?.greetings?.afternoon ?? 'Good Afternoon,';
+  if (h < 17)
+    return translations?.home?.greetings?.afternoon ?? 'Good Afternoon,';
   return translations?.home?.greetings?.evening ?? 'Good Evening,';
 };
 
@@ -89,7 +90,6 @@ const safeNumber = (v: any): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : 0;
 
 const getTodayLabel = (languageCode = 'en'): string => {
-  // try to use the active language for locale formatting; fall back to en-US
   const locale = languageCode === 'en' ? 'en-US' : languageCode;
   return new Date().toLocaleDateString(locale, {
     weekday: 'long',
@@ -117,42 +117,109 @@ export default function Home() {
     notes: 0,
     bookmarks: 0,
   });
-  const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>(
+    [],
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [bottomTabVisible, setBottomTabVisible] = useState(true);
-  const [dailyVerse, setDailyVerse] = useState<DailyVerse | null>(null);
+  const [dailyVerse, setDailyVerse] = useState<DailyVerse | any>(null);
   const [verseLoading, setVerseLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const sharingRef = useRef(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
-
   const tabBarAnimation = useRef(new Animated.Value(1)).current;
 
-  // languages / translations used on this screen
-   const { language, translations: translation } = useLanguage();
+  const { language, translations: translation } = useLanguage();
 
   // ── Banners & Quick Links ─────────────────────────────────────────────────
   const contentBanners = useMemo(
     () => [
-      { id: 'bible', label: translation?.home?.banners?.bible || 'Bible', icon: BookOpen, color: '#2E7D32', onPress: () => navigation.navigate(route.bible) },
-      { id: 'journal', label: translation?.home?.banners?.journal || 'Journal', icon: BookMarked, color: '#00695C', onPress: () => navigation.navigate(route.journal) },
-      { id: 'study', label: translation?.home?.banners?.study || 'Bible Study', icon: GraduationCap, color: '#1A2F52', onPress: () => navigation.navigate(route.bible) },
-      { id: 'trivial', label: translation?.home?.banners?.trivial || 'Bible Trivial', icon: Brain, color: '#8B5CF6', onPress: () => navigation.navigate(route.home) },
-      { id: 'plan', label: translation?.home?.banners?.plan || 'Bible Plan', icon: CalendarDays, color: '#E8A317', onPress: () => navigation.navigate(route.readingPlan) },
-      { id: 'resources', label: translation?.home?.banners?.resources || 'Resources', icon: Globe, color: '#0D47A1', onPress: () => navigation.navigate(route.home) },
-      { id: 'support', label: translation?.home?.banners?.support || 'Support', icon: HelpCircle, color: '#D32F2F', onPress: () => navigation.navigate(route.home) },
+      {
+        id: 'bible',
+        label: translation?.home?.banners?.bible || 'Bible',
+        icon: BookOpen,
+        color: '#2E7D32',
+        onPress: () => navigation.navigate(route.bible),
+      },
+      {
+        id: 'journal',
+        label: translation?.home?.banners?.journal || 'Journal',
+        icon: BookMarked,
+        color: '#00695C',
+        onPress: () => navigation.navigate(route.journal),
+      },
+      {
+        id: 'study',
+        label: translation?.home?.banners?.study || 'Bible Study',
+        icon: GraduationCap,
+        color: '#1A2F52',
+        onPress: () => navigation.navigate(route.bible),
+      },
+      {
+        id: 'trivial',
+        label: translation?.home?.banners?.trivial || 'Bible Trivial',
+        icon: Brain,
+        color: '#8B5CF6',
+        onPress: () => navigation.navigate(route.home),
+      },
+      {
+        id: 'plan',
+        label: translation?.home?.banners?.plan || 'Bible Plan',
+        icon: CalendarDays,
+        color: '#E8A317',
+        onPress: () => navigation.navigate(route.readingPlan),
+      },
+      {
+        id: 'resources',
+        label: translation?.home?.banners?.resources || 'Resources',
+        icon: Globe,
+        color: '#0D47A1',
+        onPress: () => navigation.navigate(route.home),
+      },
+      {
+        id: 'support',
+        label: translation?.home?.banners?.support || 'Support',
+        icon: HelpCircle,
+        color: '#D32F2F',
+        onPress: () => navigation.navigate(route.home),
+      },
     ],
     [navigation, translation],
   );
 
   const quickLinks = useMemo(
     () => [
-      { id: '1', title: translation?.home?.quickLinks?.notes || 'Notes', icon: MenuSquareIcon, color: COLORS.primary, route: route.notes },
-      { id: '2', title: translation?.home?.quickLinks?.history || 'History', icon: History, color: '#10B981', route: route.readHistory },
-      { id: '3', title: translation?.home?.quickLinks?.highlights || 'Highlights', icon: Star, color: '#F59E0B', route: route.Highlights },
-      { id: '4', title: translation?.home?.quickLinks?.favorites || 'Favorites', icon: Heart, color: '#8B5CF6', route: route.favorites },
+      {
+        id: '1',
+        title: translation?.home?.quickLinks?.notes || 'Notes',
+        icon: MenuSquareIcon,
+        color: COLORS.primary,
+        route: route.notes,
+      },
+      {
+        id: '2',
+        title: translation?.home?.quickLinks?.history || 'History',
+        icon: History,
+        color: '#10B981',
+        route: route.readHistory,
+      },
+      {
+        id: '3',
+        title: translation?.home?.quickLinks?.highlights || 'Highlights',
+        icon: Star,
+        color: '#F59E0B',
+        route: route.Highlights,
+      },
+      {
+        id: '4',
+        title: translation?.home?.quickLinks?.favorites || 'Favorites',
+        icon: Heart,
+        color: '#8B5CF6',
+        route: route.favorites,
+      },
     ],
     [COLORS.primary, translation],
   );
@@ -168,7 +235,8 @@ export default function Home() {
       const timeStr = timeVal.createdOn || timeVal.updatedOn;
       if (!timeStr) return translation?.home?.recentLabel || 'Recent';
       const time = new Date(timeStr);
-      if (isNaN(time.getTime())) return translation?.home?.recentLabel || 'Recent';
+      if (isNaN(time.getTime()))
+        return translation?.home?.recentLabel || 'Recent';
       return formatWhatsAppTime(timeStr);
     } catch {
       return translation?.home?.recentLabel || 'Recent';
@@ -249,6 +317,44 @@ export default function Home() {
     }, [loadHomeStats, userInfo]),
   );
 
+  // ── Share Handler ─────────────────────────────────────────────────────────
+  const handleShare = () => {
+    if (sharingRef.current) return;
+    sharingRef.current = true;
+
+    const verseText =
+      dailyVerse?.text && String(dailyVerse.text).trim().length > 0
+        ? dailyVerse.text
+        : getVerseText('John', 3, 16);
+
+    const ref = dailyVerse?.reference ?? 'John 3:16';
+    const ver = dailyVerse?.translation ?? 'NKJV';
+
+    const message = `📖 ${ref} (${ver})\n\n"${verseText}"\n\n— Shared from Exegesis`;
+
+    Share.share(
+      {
+        message,
+        title: ref,
+      },
+      {
+        dialogTitle: ref,
+        subject: ref,
+      },
+    )
+      .then(result => {
+        if (result.action === Share.sharedAction) {
+          console.log('Verse shared via:', result.activityType);
+        }
+      })
+      .catch(error => {
+        Alert.alert('Share Error', error.message);
+      })
+      .finally(() => {
+        sharingRef.current = false;
+      });
+  };
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -273,7 +379,7 @@ export default function Home() {
           useNativeDriver: true,
         }).start();
       }
-      scrollY.current = currentOffset;  
+      scrollY.current = currentOffset;
     },
     [bottomTabVisible, tabBarAnimation],
   );
@@ -285,11 +391,13 @@ export default function Home() {
     <View style={styles.container}>
       <ActionHeader
         mode="home"
-        // use the book icon as the home logo (falls back to default elsewhere)
         logoComponent={<BookOpen size={40} color={COLORS.primary} />}
         greeting={getGreeting(translation)}
         userName={userInfo?.lastName || 'Friend'}
-        tagline={translation?.appTagline || 'Your Practical Application Bible for Daily Guidance'}
+        tagline={
+          translation?.appTagline ||
+          'Your Practical Application Bible for Daily Guidance'
+        }
         isDarkMode={isDark}
         onThemeToggle={toggleTheme}
         profilePhotoUrl={userInfo?.profilePhotoUrl}
@@ -311,7 +419,7 @@ export default function Home() {
           />
         }
       >
-        {/* Daily Verse Card */}
+        {/* ── Daily Verse Card ── */}
         <View style={styles.verseCard}>
           <View style={styles.verseCardHeader}>
             <View style={styles.verseCardHeaderLeft}>
@@ -319,8 +427,12 @@ export default function Home() {
                 <BookOpen size={16} color="#FFFFFF" strokeWidth={2} />
               </View>
               <View>
-                <Text style={styles.verseCardTitle}>{translation?.home?.dailyVerseTitle || 'Daily Verse'}</Text>
-                <Text style={styles.verseCardDate}>{getTodayLabel(language)}</Text>
+                <Text style={styles.verseCardTitle}>
+                  {translation?.home?.dailyVerseTitle || 'Daily Verse'}
+                </Text>
+                <Text style={styles.verseCardDate}>
+                  {getTodayLabel(language)}
+                </Text>
               </View>
             </View>
 
@@ -328,7 +440,9 @@ export default function Home() {
               style={styles.lordsBookTag}
               onPress={() => navigation.navigate(route.dailyVerse)}
             >
-              <Text style={styles.lordsBookTagText}>{translation?.home?.lordsBookTag || "Exegesis Daily's"}</Text>
+              <Text style={styles.lordsBookTagText}>
+                {translation?.home?.lordsBookTag || "Exegesis Daily's"}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -337,7 +451,9 @@ export default function Home() {
           {verseLoading ? (
             <View style={styles.verseLoadingRow}>
               <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={styles.verseLoadingText}>{translation?.home?.loadingVerse || 'Loading verse...'}</Text>
+              <Text style={styles.verseLoadingText}>
+                {translation?.home?.loadingVerse || 'Loading verse...'}
+              </Text>
             </View>
           ) : (
             <>
@@ -362,28 +478,31 @@ export default function Home() {
                 >
                   <Volume2
                     size={18}
-                    color={isPlaying ? COLORS.accent : COLORS.muted}
+                    color={isPlaying ? COLORS.accent : COLORS.accent}
                   />
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.verseBodyText}>
-                {(dailyVerse?.text && String(dailyVerse.text).trim().length > 0)
+                {dailyVerse?.text && String(dailyVerse.text).trim().length > 0
                   ? dailyVerse.text
-                  : getVerseText( 'John', 3, 16)}
+                  : getVerseText('John', 3, 16)}
               </Text>
 
-              {/* Enhanced Explanation with Show More */}
+              {/* Explanation Section */}
               {showExplanation && (
                 <View style={styles.explainSection}>
-                    <Text style={styles.explainText}>
-                      {translation?.home?.explainIntro || 'This is one of the most famous and powerful verses in the Bible. It beautifully summarizes God\'s love and the plan of salvation through Jesus Christ.'}
-                    </Text>
+                  <Text style={styles.explainText}>
+                    {translation?.home?.explainIntro ||
+                      "This is one of the most famous and powerful verses in the Bible. It beautifully summarizes God's love and the plan of salvation through Jesus Christ."}
+                  </Text>
 
                   {showMore && (
-                      <Text style={styles.explainText}>
-                        {translation?.home?.explainMoreFull || translation?.home?.explainMore}
-                      </Text>
+                    <Text style={styles.explainText}>
+                      {translation?.home?.explainMoreFull ||
+                        translation?.home?.explainMore ||
+                        'God demonstrated His immense love by sending His only Son, Jesus Christ, to earth. Anyone who believes in Him receives forgiveness of sins and the gift of eternal life. This salvation is freely available to all people through faith alone — not by works, but by grace.'}
+                    </Text>
                   )}
 
                   <TouchableOpacity
@@ -391,47 +510,61 @@ export default function Home() {
                     onPress={() => {
                       if (showMore) {
                         setShowMore(false);
-                        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                        scrollViewRef.current?.scrollTo({
+                          y: 0,
+                          animated: true,
+                        });
                       } else {
                         setShowMore(true);
                       }
                     }}
                   >
                     <Text style={styles.showMoreText}>
-                      {showMore ? (translation?.home?.showLess || 'Show Less ▲') : (translation?.home?.showMore || 'Show More ▼')}
+                      {showMore
+                        ? translation?.home?.showLess || 'Show Less ▲'
+                        : translation?.home?.showMore || 'Show More ▼'}
                     </Text>
                   </TouchableOpacity>
                 </View>
               )}
 
               <View style={styles.verseActions}>
-                  <TouchableOpacity
-                    style={styles.verseActionBtn}
-                    onPress={() => {
-                      const closing = showExplanation;
-                      setShowExplanation(!showExplanation);
-                      if (closing) {
-                        setShowMore(false); // Reset when closing
-                        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                      }
-                    }}
-                  >
+                <TouchableOpacity
+                  style={styles.verseActionBtn}
+                  onPress={() => {
+                    const closing = showExplanation;
+                    setShowExplanation(!showExplanation);
+                    if (closing) {
+                      setShowMore(false);
+                      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                    }
+                  }}
+                >
                   <ChevronDown size={15} color={COLORS.primary} />
                   <Text style={styles.verseActionText}>
-                    {showExplanation ? (translation?.home?.hideExplanation || 'Hide Explanation') : (translation?.home?.explainVerse || 'Explain verse')}
+                    {showExplanation
+                      ? translation?.home?.hideExplanation || 'Hide Explanation'
+                      : translation?.home?.explainVerse || 'Explain verse'}
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.verseActionBtn}>
+                {/* Share Button */}
+                <TouchableOpacity
+                  style={styles.verseActionBtn}
+                  activeOpacity={0.6}
+                  onPress={() => handleShare()}
+                >
                   <Share2 size={14} color={COLORS.primary} />
-                  <Text style={styles.verseActionText}>{translation?.home?.shareVerse || 'Share verse'}</Text>
+                  <Text style={styles.verseActionText}>
+                    {translation?.home?.shareVerse || 'Share verse'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </>
           )}
         </View>
 
-        {/* Content Banners */}
+        {/* ── Content Banners ── */}
         <View style={styles.bannersSection}>
           {contentBanners.map((btn, idx) => {
             const Icon = btn.icon;
@@ -456,87 +589,154 @@ export default function Home() {
           })}
         </View>
 
-      
-
-        {/* Quick Actions */}
+        {/* ── Quick Actions ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{translation?.home?.quickActionsTitle || 'Quick Actions'}</Text>
+          <Text style={styles.sectionTitle}>
+            {translation?.home?.quickActionsTitle || 'Quick Actions'}
+          </Text>
           <View style={styles.quickLinksCompact}>
-            {quickLinks.map((link) => (
+            {quickLinks.map(link => (
               <TouchableOpacity
                 key={link.id}
                 style={styles.quickLinkCompactCard}
                 onPress={() => navigation.navigate(link.route)}
               >
-                <View style={[styles.quickLinkCompactIcon, { backgroundColor: link.color + '20' }]}>
+                <View
+                  style={[
+                    styles.quickLinkCompactIcon,
+                    { backgroundColor: link.color + '20' },
+                  ]}
+                >
                   <link.icon size={20} color={link.color} />
                 </View>
-                   <Text style={styles.quickLinkCompactText} numberOfLines={1}>
-                   {link.title}
-                 </Text>
-                </TouchableOpacity>
-              ))}
+                <Text style={styles.quickLinkCompactText} numberOfLines={1}>
+                  {link.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
-        {/* Stats */}
+        {/* ── Stats ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{translation?.home?.yourStatsTitle || 'Your Stats'}</Text>
+          <Text style={styles.sectionTitle}>
+            {translation?.home?.yourStatsTitle || 'Your Stats'}
+          </Text>
           <View style={styles.statsGrid}>
             {[
-              { label: translation?.profile?.stats?.chapters || 'Chapters', value: safeNumber(stats.chaptersRead), color: COLORS.primary },
-              { label: translation?.profile?.stats?.highlights || 'Highlights', value: safeNumber(stats.highlights), color: '#F59E0B' },
-              { label: translation?.profile?.stats?.notes || 'Notes', value: safeNumber(stats.notes), color: '#10B981' },
-              { label: translation?.profile?.menuItems?.favorites || 'Favorites', value: safeNumber(stats.bookmarks), color: '#8B5CF6' },
+              {
+                label: translation?.profile?.stats?.chapters || 'Chapters',
+                value: safeNumber(stats.chaptersRead),
+                color: COLORS.primary,
+              },
+              {
+                label: translation?.profile?.stats?.highlights || 'Highlights',
+                value: safeNumber(stats.highlights),
+                color: '#F59E0B',
+              },
+              {
+                label: translation?.profile?.stats?.notes || 'Notes',
+                value: safeNumber(stats.notes),
+                color: '#10B981',
+              },
+              {
+                label:
+                  translation?.profile?.menuItems?.favorites || 'Favorites',
+                value: safeNumber(stats.bookmarks),
+                color: '#8B5CF6',
+              },
             ].map((stat, idx) => (
               <View
                 key={`stat-${idx}`}
-                style={[styles.statCard, { backgroundColor: COLORS.cardBackground }]}
+                style={[
+                  styles.statCard,
+                  { backgroundColor: COLORS.cardBackground },
+                ]}
               >
-                <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
-                <Text style={[styles.statLabel, { color: COLORS.muted }]}>{stat.label}</Text>
+                <Text style={[styles.statValue, { color: stat.color }]}>
+                  {stat.value}
+                </Text>
+                <Text style={[styles.statLabel, { color: COLORS.muted }]}>
+                  {stat.label}
+                </Text>
               </View>
             ))}
           </View>
         </View>
 
-        {/* Recent Activity */}
+        {/* ── Recent Activity ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{translation?.home?.recentActivityTitle || 'Recent Activity'}</Text>
-            <TouchableOpacity onPress={() => navigation.navigate(route.readHistory)}>
-              <Text style={[styles.sectionAction, { color: COLORS.primary }]}>{translation?.home?.seeAll || 'See All'}</Text>
+            <Text style={styles.sectionTitle}>
+              {translation?.home?.recentActivityTitle || 'Recent Activity'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate(route.readHistory)}
+            >
+              <Text style={[styles.sectionAction, { color: COLORS.primary }]}>
+                {translation?.home?.seeAll || 'See All'}
+              </Text>
             </TouchableOpacity>
           </View>
 
           {recentActivity.length === 0 ? (
-            <View style={[activityStyles.emptyCard, { backgroundColor: COLORS.cardBackground }]}>
-              <Text style={[activityStyles.emptyText, { color: COLORS.muted }]}> 
-                {translation?.home?.startReadingTip || 'Start reading to see your activity here'}
+            <View
+              style={[
+                activityStyles.emptyCard,
+                { backgroundColor: COLORS.cardBackground },
+              ]}
+            >
+              <Text style={[activityStyles.emptyText, { color: COLORS.muted }]}>
+                {translation?.home?.startReadingTip ||
+                  'Start reading to see your activity here'}
               </Text>
             </View>
           ) : (
             <View style={activityStyles.activityList}>
               {recentActivity.map((act, idx) => {
-                const ActivityIcon = act.type === 'read' ? Clock
-                  : act.type === 'highlight' ? Star
-                  : act.type === 'note' ? MenuSquareIcon
-                  : act.type === 'plan' ? CheckCircle : Heart;
+                const ActivityIcon =
+                  act.type === 'read'
+                    ? Clock
+                    : act.type === 'highlight'
+                      ? Star
+                      : act.type === 'note'
+                        ? MenuSquareIcon
+                        : act.type === 'plan'
+                          ? CheckCircle
+                          : Heart;
 
-                const iconColor = act.type === 'read' ? '#6366F1'
-                  : act.type === 'highlight' ? '#F59E0B'
-                  : act.type === 'note' ? '#10B981'
-                  : act.type === 'plan' ? '#00695C' : '#EC4899';
+                const iconColor =
+                  act.type === 'read'
+                    ? '#6366F1'
+                    : act.type === 'highlight'
+                      ? '#F59E0B'
+                      : act.type === 'note'
+                        ? '#10B981'
+                        : act.type === 'plan'
+                          ? '#00695C'
+                          : '#EC4899';
 
-                const label = act.type === 'read' ? (translation?.home?.activityLabels?.reading || 'Reading')
-                  : act.type === 'highlight' ? (translation?.home?.activityLabels?.highlighted || 'Highlighted')
-                  : act.type === 'note' ? (translation?.home?.activityLabels?.noted || 'Noted')
-                  : act.type === 'plan' ? (translation?.home?.activityLabels?.planProgress || 'Plan Progress') : (translation?.home?.activityLabels?.favorited || 'Favorited');
+                const label =
+                  act.type === 'read'
+                    ? translation?.home?.activityLabels?.reading || 'Reading'
+                    : act.type === 'highlight'
+                      ? translation?.home?.activityLabels?.highlighted ||
+                        'Highlighted'
+                      : act.type === 'note'
+                        ? translation?.home?.activityLabels?.noted || 'Noted'
+                        : act.type === 'plan'
+                          ? translation?.home?.activityLabels?.planProgress ||
+                            'Plan Progress'
+                          : translation?.home?.activityLabels?.favorited ||
+                            'Favorited';
 
                 return (
                   <TouchableOpacity
                     key={idx}
-                    style={[activityStyles.activityCard, { backgroundColor: COLORS.cardBackground }]}
+                    style={[
+                      activityStyles.activityCard,
+                      { backgroundColor: COLORS.cardBackground },
+                    ]}
                     onPress={() =>
                       act.type === 'plan'
                         ? navigation.navigate(route.readingPlan)
@@ -546,19 +746,39 @@ export default function Home() {
                           })
                     }
                   >
-                    <View style={[activityStyles.iconBox, { backgroundColor: iconColor + '20' }]}>
+                    <View
+                      style={[
+                        activityStyles.iconBox,
+                        { backgroundColor: iconColor + '20' },
+                      ]}
+                    >
                       <ActivityIcon size={18} color={iconColor} />
                     </View>
                     <View style={activityStyles.activityContent}>
                       <View style={activityStyles.activityTop}>
-                        <Text style={[activityStyles.activityLabel, { color: iconColor }]}>
+                        <Text
+                          style={[
+                            activityStyles.activityLabel,
+                            { color: iconColor },
+                          ]}
+                        >
                           {label}
                         </Text>
-                        <Text style={[activityStyles.activityTime, { color: COLORS.muted }]}>
+                        <Text
+                          style={[
+                            activityStyles.activityTime,
+                            { color: COLORS.muted },
+                          ]}
+                        >
                           {act.time}
                         </Text>
                       </View>
-                      <Text style={[activityStyles.activityVerse, { color: COLORS.text }]}>
+                      <Text
+                        style={[
+                          activityStyles.activityVerse,
+                          { color: COLORS.text },
+                        ]}
+                      >
                         {act.book} {act.chapter}:{act.verse}
                       </Text>
                     </View>
@@ -571,7 +791,7 @@ export default function Home() {
         </View>
       </ScrollView>
 
-      {/* Bottom Tab */}
+      {/* ── Bottom Tab ── */}
       <Animated.View
         style={[
           styles.bottomTabWrapper,
@@ -594,7 +814,7 @@ export default function Home() {
   );
 }
 
-// Activity Styles
+// ── Activity Styles ────────────────────────────────────────────────────────────
 const activityStyles = StyleSheet.create({
   emptyCard: { padding: 24, borderRadius: 12, alignItems: 'center' },
   emptyText: { fontSize: 14, textAlign: 'center' },

@@ -1,5 +1,5 @@
 import React, { use, useEffect, useState } from 'react';
-import { Alert, Linking, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Platform, StyleSheet, View } from 'react-native';
 import AppNavigation from './src/component/navigations/AppNavigation';
 import { AppProvider } from './src/common/AppContext';
 import { initializeNotifications } from './src/utilits/firebaseService';
@@ -14,6 +14,7 @@ import ActionModal from './src/reusable/ActionModal';
 const App = () => {
 
   const [isAppUpdated, setIsAppUpdated] = useState(true);
+  const isAndroid = Platform.OS === 'android';
 
   useEffect(() => {
   const checkAppVersion = async () => {
@@ -21,20 +22,14 @@ const App = () => {
       const latestVersion = await getLatestAppVersion();
       const currentVersion = getVersion();
 
-      console.log('Latest version from Firestore:', latestVersion);
-      console.log('Current app version:', currentVersion);
-
       if (latestVersion && currentVersion) {
         setIsAppUpdated(latestVersion === currentVersion);
-        console.log('Is app updated?', latestVersion === currentVersion+ ' is app updated?' + isAppUpdated);
       } else {
-        console.warn('Could not determine app version.');
-        
-        setIsAppUpdated(true); // Assume updated if we can't check
+        setIsAppUpdated(true);
       }
     } catch (error:any) {
       console.error('Error fetching app version:', error.message);
-      setIsAppUpdated(true); // Assume updated in case of error
+      setIsAppUpdated(true);
     }
   }
   checkAppVersion();
@@ -73,7 +68,7 @@ const App = () => {
           <Toast config={toastConfig} />
         </View>
       <ActionModal
-        visible={!isAppUpdated}
+        visible={isAndroid && !isAppUpdated}
         severity='warning'
         title='Update Available'
         message='A newer version of Exegesis is available. Please update to continue.'

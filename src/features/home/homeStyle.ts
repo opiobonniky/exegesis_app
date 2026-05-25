@@ -323,15 +323,15 @@ export const createStyles = (COLORS: any) =>
       right: 0,
     },
     showMoreBtn: {
-  flexDirection: 'row',
-  justifyContent: 'center',
-  alignItems: 'center',
-  paddingVertical: 10,
-  marginTop: 8,
-},
-showMoreText: {
-  color: COLORS.primary,
-  fontWeight: '600',
-  marginRight: 6,
-},
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 10,
+      marginTop: 8,
+    },
+    showMoreText: {
+      color: COLORS.primary,
+      fontWeight: '600',
+      marginRight: 6,
+    },
   });

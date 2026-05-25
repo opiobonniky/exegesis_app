@@ -169,7 +169,6 @@ export const connectSocket = async (opts?: {
 
   socket.on('connect', () => {
     setState('connected');
-    log('connected', { id: socket?.id });
     try {
       const transportName = socket?.io?.engine?.transport?.name;
       if (transportName) log('transport', transportName);
@@ -183,7 +182,6 @@ export const connectSocket = async (opts?: {
       socket?.emit('client:auth', { token });
     }
 
-    log('emit', 'client:hello');
     socket?.emit('client:hello', { platform: Platform.OS });
 
     // Subscribe to topics/channels (server-defined)
@@ -194,11 +192,7 @@ export const connectSocket = async (opts?: {
   });
 
   socket.on('connect_error', err => {
-    log('connect_error', {
-      message: err?.message ?? String(err),
-      description: (err as any)?.description,
-      type: (err as any)?.type,
-    });
+   
     setState('error');
   });
 
@@ -213,30 +207,22 @@ export const connectSocket = async (opts?: {
   });
 
   socket.io.on('reconnect_attempt', attempt => {
-    log('reconnect_attempt', attempt);
     setState('reconnecting');
   });
   socket.io.on('reconnect', attempt => {
-    log('reconnect', attempt);
     setState('connected');
   });
 
   socket.io.on('reconnect_error', err => {
-    log('reconnect_error', {
-      message: err?.message ?? String(err),
-      description: (err as any)?.description,
-      type: (err as any)?.type,
-    });
+   
     setState('error');
   });
   socket.io.on('reconnect_failed', () => {
-    log('reconnect_failed');
     setState('error');
   });
 
   // Keepalive if server pings
   socket.on('server:ping', payload => {
-    log('recv', 'server:ping');
     socket?.emit('client:pong', payload);
   });
 

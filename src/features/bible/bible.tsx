@@ -193,6 +193,8 @@ export default function Bible() {
   const isGuest = !app?.userInfo;
 
   const {
+    setCurrentBook,
+    setCurrentChapter,
     isDark,
     navigation,
     books,
@@ -287,6 +289,19 @@ export default function Bible() {
     chapterJournalPrompts,
     loadChapterPrompts,
   } = useBible();
+
+  // ── Initialize from route params (bookName, chapter) when navigating from
+  //  ReadingPlan daily screen, search results or other screens ──────────
+  //  Uses empty deps because route params are snapshots — React Navigation
+  //  creates a new screen instance on each push.
+  useEffect(() => {
+    const { bookName, chapter } = routeParams;
+    if (bookName && chapter) {
+      setCurrentBook(bookName);
+      setCurrentChapter(chapter);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Load chapter journal prompts whenever book/chapter/auth changes ─────────
   // (must live here — after useBible() — so currentBook, currentChapter,
@@ -661,6 +676,95 @@ export default function Bible() {
         />
       )}
 
+      {/* ── Reflection Questions Panel (from Reading Plan) ──────────────── */}
+      {isFromReadingPlan && (
+        <View style={rpStyles.wrapper}>
+          {/* Toggle bar */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={toggleReflection}
+            style={[
+              rpStyles.toggleButton,
+              reflectionOpen && { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
+            ]}
+          >
+            <View style={rpStyles.toggleLeft}>
+              <View style={rpStyles.iconCircle}>
+                <Lightbulb size={18} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={rpStyles.toggleTitle}>
+                  {planTitle || 'Reading Plan'} — Reflections
+                </Text>
+                <Text style={rpStyles.toggleSubtitle}>
+                  {dayTitle || `Day ${routeParams.day || ''}`}
+                </Text>
+              </View>
+            </View>
+            <View style={rpStyles.toggleArrow}>
+              {reflectionOpen ? (
+                <ChevronDown size={20} color="#FFFFFF" />
+              ) : (
+                <ChevronUp size={20} color="#FFFFFF" />
+              )}
+            </View>
+          </TouchableOpacity>
+
+          {/* Expanded reflection cards */}
+          {reflectionOpen && (
+            <ScrollView
+              style={rpStyles.listContent}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              {reflectionQuestions.map((q: string, idx: number) => (
+                <View
+                  key={idx}
+                  style={[
+                    rpStyles.card,
+                    {
+                      backgroundColor: COLORS.cardBackground,
+                      borderColor: COLORS.border,
+                    },
+                  ]}
+                >
+                  <View style={rpStyles.cardTopRow}>
+                    <View style={rpStyles.numBadge}>
+                      <Text style={rpStyles.numText}>{idx + 1}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => {
+                        navigation.navigate(route.journalEntry, {
+                          bookName: currentBook,
+                          chapter: currentChapter,
+                          promptText: q,
+                        });
+                      }}
+                      style={[
+                        rpStyles.journalLink,
+                        { backgroundColor: COLORS.primary + '20' },
+                      ]}
+                    >
+                      <Text style={[rpStyles.journalLinkText, { color: COLORS.primary }]}>
+                        Journal
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text
+                    style={[
+                      rpStyles.questionText,
+                      { color: COLORS.textSecondary },
+                    ]}
+                  >
+                    {q}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      )}
+
       {/* ── Modals (book/chapter selectors always open for guests) ────────── */}
 
       <BookSelectorModal
@@ -951,6 +1055,8 @@ const rpStyles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: 'transparent',
+    zIndex: 100,
+    elevation: 10,
   },
   toggleButton: {
     flexDirection: 'row',
@@ -961,11 +1067,26 @@ const rpStyles = StyleSheet.create({
     paddingVertical: SPACING.md,
     borderTopLeftRadius: BORDER_RADIUS.lg,
     borderTopRightRadius: BORDER_RADIUS.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
   toggleLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
+    flex: 1,
+  },
+  toggleArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: SPACING.sm,
   },
   iconCircle: {
     width: 32,
@@ -980,16 +1101,30 @@ const rpStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  toggleSubtitle: {
+    fontSize: FONT_SIZES.xs,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+    marginTop: 2,
+  },
   listContent: {
+    maxHeight: 320,
     backgroundColor: '#F59E0B',
     paddingHorizontal: SPACING.lg,
-    paddingBottom: Platform.OS === 'ios' ? 26 : 18,
+    paddingTop: SPACING.sm,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
     gap: SPACING.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 6,
   },
   card: {
     borderWidth: 1,
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
+    marginBottom: SPACING.sm,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -1009,5 +1144,19 @@ const rpStyles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  journalLink: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.round,
+  },
+  journalLinkText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '700',
+  },
+  questionText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
+    lineHeight: 22,
   },
 });

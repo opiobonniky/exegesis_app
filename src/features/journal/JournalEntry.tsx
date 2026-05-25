@@ -14,12 +14,14 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
 import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { route } from '../../component/navigations/routes';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   createJournalEntry,
   updateJournalEntry,
@@ -32,6 +34,7 @@ import {
   Save,
   BookOpen,
   X,
+  ChevronLeft,
 } from 'lucide-react-native';
 
 const CATEGORIES = [
@@ -189,21 +192,23 @@ const JournalEntryScreen = () => {
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={COLORS.textMuted}
+        placeholderTextColor={COLORS.muted}
         multiline={multiline}
       />
     </View>
   );
 
   return (
+    <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: COLORS.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: COLORS.background }]}
+      style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Header */}
       <View style={[styles.header, { backgroundColor: COLORS.surface }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={COLORS.text} />
+          <ChevronLeft size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: COLORS.text }]}>
           {isEditMode ? 'Edit Entry' : 'New Entry'}
@@ -310,7 +315,7 @@ const JournalEntryScreen = () => {
               value={bookName}
               onChangeText={setBookName}
               placeholder="Book"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={COLORS.muted}
             />
             <TextInput
               style={[
@@ -324,7 +329,7 @@ const JournalEntryScreen = () => {
               value={chapter}
               onChangeText={setChapter}
               placeholder="Ch"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={COLORS.muted}
               keyboardType="number-pad"
             />
             <TextInput
@@ -339,7 +344,7 @@ const JournalEntryScreen = () => {
               value={verseNumber}
               onChangeText={setVerseNumber}
               placeholder="Vs"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={COLORS.muted}
               keyboardType="number-pad"
             />
           </View>
@@ -354,6 +359,7 @@ const JournalEntryScreen = () => {
         <View style={{ height: SPACING.xxl }} />
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

@@ -2,9 +2,18 @@
  * JournalList.tsx
  * ─────────────────────────────────────────────────────────────────────────────
  * User journal entries list screen
+ * Enhanced with mood display, debounced search, swipe-to-delete,
+ * relative time, verse preview, and better empty state.
  */
 
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import {
   View,
   Text,
@@ -13,8 +22,17 @@ import {
   TouchableOpacity,
   RefreshControl,
   TextInput,
+  Animated,
+  Alert,
+  Platform,
+  ActionSheetIOS,
+  StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getColors } from '../../constants/theme';
 import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
@@ -27,18 +45,23 @@ import {
   toggleJournalFavorite,
   deleteJournalEntry,
 } from '../../services/api';
+import { getVerseText } from '../../utilits/bibleUtils';
 import {
   Search,
   Plus,
   Star,
-  StarOff,
   BookOpen,
-  Calendar,
+  ChevronLeft,
   ChevronRight,
   Trash2,
   Loader2,
+  PenLine,
+  MessageSquareQuote,
+  Clock,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
+
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
   { value: 'all', label: 'All' },
@@ -49,6 +72,209 @@ const CATEGORIES = [
   { value: 'reflection', label: 'Reflection' },
   { value: 'application', label: 'Application' },
 ];
+
+const MOOD_EMOJIS: Record<string, string> = {
+  happy: '😊',
+  grateful: '🙏',
+  peaceful: '🕊️',
+  thoughtful: '🤔',
+  motivated: '💪',
+  hopeful: '🌟',
+  challenged: '🧗',
+  blessed: '✨',
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  study: '#3B82F6',
+  prayer: '#8B5CF6',
+  gratitude: '#F59E0B',
+  reflection: '#10B981',
+  application: '#EF4444',
+  general: '#6B7280',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  study: 'Bible Study',
+  prayer: 'Prayer',
+  gratitude: 'Gratitude',
+  reflection: 'Reflection',
+  application: 'Application',
+  general: 'General',
+};
+
+// ── Relative time helper ─────────────────────────────────────────────────────
+
+const getRelativeTime = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+};
+
+const getFormattedDate = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
+
+// ── Empty state component ────────────────────────────────────────────────────
+
+const EmptyState = ({
+  hasSearch,
+  currentCategory,
+  onCreateNew,
+  colors,
+}: {
+  hasSearch: boolean;
+  currentCategory: string;
+  onCreateNew: () => void;
+  colors: ReturnType<typeof getColors>;
+}) => {
+  const hasCategoryFilter = currentCategory !== 'all';
+  let title = 'No journal entries yet';
+  let subtitle =
+    'Start writing your first journal entry to track your spiritual journey.';
+  let icon = <BookOpen size={48} color={colors.textMuted} />;
+
+  if (hasSearch && hasCategoryFilter) {
+    title = 'No matching entries';
+    subtitle = 'Try adjusting your search or clearing the category filter.';
+    icon = <Search size={48} color={colors.textMuted} />;
+  } else if (hasSearch) {
+    title = 'No results found';
+    subtitle = 'Try a different search term.';
+    icon = <Search size={48} color={colors.textMuted} />;
+  } else if (hasCategoryFilter) {
+    title = `No ${CATEGORY_LABELS[currentCategory] || currentCategory} entries`;
+    subtitle = 'Try selecting a different category.';
+    icon = <PenLine size={48} color={colors.textMuted} />;
+  }
+
+  return (
+    <View style={styles.emptyContainer}>
+      <View
+        style={[styles.emptyIconContainer, { backgroundColor: colors.surface }]}
+      >
+        {icon}
+      </View>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>{title}</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+        {subtitle}
+      </Text>
+      {!hasSearch && (
+        <TouchableOpacity
+          style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+          onPress={onCreateNew}
+          activeOpacity={0.8}
+        >
+          <Plus size={18} color="#FFFFFF" />
+          <Text style={styles.emptyButtonText}>Create First Entry</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
+// ── Swipeable delete action ──────────────────────────────────────────────────
+
+const DeleteAction = ({
+  progress,
+  dragX,
+  colors,
+}: {
+  progress: Animated.AnimatedInterpolation<number>;
+  dragX: Animated.AnimatedInterpolation<number>;
+  colors: ReturnType<typeof getColors>;
+}) => {
+  const scale = dragX.interpolate({
+    inputRange: [-80, 0],
+    outputRange: [1, 0.5],
+    extrapolate: 'clamp',
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.deleteAction,
+        {
+          backgroundColor: '#DC2626',
+          transform: [{ scale }],
+        },
+      ]}
+    >
+      <Trash2 size={22} color="#FFFFFF" />
+      <Text style={styles.deleteActionText}>Delete</Text>
+    </Animated.View>
+  );
+};
+
+// ── Verse preview snippet ───────────────────────────────────────────────────
+
+const VersePreview = ({
+  bookName,
+  chapter,
+  verseNumber,
+  colors,
+}: {
+  bookName: string;
+  chapter: number;
+  verseNumber: number;
+  colors: ReturnType<typeof getColors>;
+}) => {
+  const verseText = useMemo(() => {
+    try {
+      return getVerseText(bookName, chapter, verseNumber);
+    } catch {
+      return null;
+    }
+  }, [bookName, chapter, verseNumber]);
+
+  if (!verseText) return null;
+
+  return (
+    <View
+      style={[
+        styles.versePreview,
+        {
+          backgroundColor: colors.primary + '10',
+          borderLeftColor: colors.primary + '40',
+        },
+      ]}
+    >
+      <MessageSquareQuote
+        size={12}
+        color={colors.primary + '60'}
+        style={styles.verseQuoteIcon}
+      />
+      <Text
+        style={[styles.versePreviewText, { color: colors.textSecondary }]}
+        numberOfLines={2}
+      >
+        "{verseText}"
+      </Text>
+    </View>
+  );
+};
+
+// ── Main component ───────────────────────────────────────────────────────────
 
 const JournalList = () => {
   const navigation = useNavigation<any>();
@@ -61,38 +287,55 @@ const JournalList = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
   const [category, setCategory] = useState('all');
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const fetchEntries = useCallback(async (pageNum = 0, refresh = false) => {
-    try {
-      if (refresh) setRefreshing(true);
-      else if (pageNum === 0) setLoading(true);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-      const payload: any = { page: pageNum, pageSize: 20 };
-      if (search) payload.search = search;
-      if (category !== 'all') payload.category = category;
+  // ── Debounced search ──────────────────────────────────────────────────────
+  const handleSearchChange = useCallback((text: string) => {
+    setSearch(text);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setSearchDebounced(text);
+    }, 400);
+  }, []);
 
-      const res = await getAllJournalEntries(payload);
-      if (res.returnCode === 200 && res.returnData) {
-        if (pageNum === 0) {
-          setEntries(res.returnData.entries || []);
-        } else {
-          setEntries(prev => [...prev, ...(res.returnData.entries || [])]);
+  // ── Data fetching ─────────────────────────────────────────────────────────
+  const fetchEntries = useCallback(
+    async (pageNum = 0, refresh = false) => {
+      try {
+        if (refresh) setRefreshing(true);
+        else if (pageNum === 0) setLoading(true);
+
+        const payload: any = { page: pageNum, pageSize: 20 };
+        if (searchDebounced) payload.search = searchDebounced;
+        if (category !== 'all') payload.category = category;
+
+        const res = await getAllJournalEntries(payload);
+        if (res.returnCode === 200 && res.returnData) {
+          if (pageNum === 0) {
+            setEntries(res.returnData.entries || []);
+          } else {
+            setEntries(prev => [...prev, ...(res.returnData.entries || [])]);
+          }
+          setHasMore(res.returnData.hasNext || false);
         }
-        setHasMore(res.returnData.hasNext || false);
+      } catch (error) {
+        console.error('Error fetching journal entries:', error);
+        showToast('error', 'Failed to load journal entries');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch (error) {
-      console.error('Error fetching journal entries:', error);
-      showToast('error', 'Failed to load journal entries');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [search, category]);
+    },
+    [searchDebounced, category],
+  );
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const res = await getJournalStats();
       if (res.returnCode === 200 && res.returnData) {
@@ -101,28 +344,30 @@ const JournalList = () => {
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    setPage(0);
     fetchEntries(0);
     fetchStats();
-  }, [category]);
+  }, [category, searchDebounced]);
 
-  const handleRefresh = () => {
+  // ── Actions ───────────────────────────────────────────────────────────────
+  const handleRefresh = useCallback(() => {
     setPage(0);
     fetchEntries(0, true);
     fetchStats();
-  };
+  }, [fetchEntries, fetchStats]);
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     if (hasMore && !loading) {
       const nextPage = page + 1;
       setPage(nextPage);
       fetchEntries(nextPage);
     }
-  };
+  }, [hasMore, loading, page, fetchEntries]);
 
-  const handleToggleFavorite = async (id: number) => {
+  const handleToggleFavorite = useCallback(async (id: number) => {
     try {
       const res = await toggleJournalFavorite(id);
       if (res.returnCode === 200) {
@@ -130,16 +375,52 @@ const JournalList = () => {
           prev.map(entry =>
             entry.id === id
               ? { ...entry, isFavorite: !entry.isFavorite }
-              : entry
-          )
+              : entry,
+          ),
         );
       }
     } catch (error) {
       showToast('error', 'Failed to update favorite');
     }
-  };
+  }, []);
 
-  const handleDelete = async (id: number) => {
+  // ── Delete with confirmation ──────────────────────────────────────────────
+  const confirmDelete = useCallback((entry: JournalEntry) => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Delete Entry'],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 0,
+          title: 'Delete Journal Entry',
+          message: entry.title
+            ? `Are you sure you want to delete "${entry.title}"?`
+            : 'Are you sure you want to delete this entry?',
+        },
+        buttonIndex => {
+          if (buttonIndex === 1) handleDelete(entry.id);
+        },
+      );
+    } else {
+      Alert.alert(
+        'Delete Journal Entry',
+        entry.title
+          ? `Are you sure you want to delete "${entry.title}"?\n\nThis action cannot be undone.`
+          : 'Are you sure you want to delete this entry?\n\nThis action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => handleDelete(entry.id),
+          },
+        ],
+      );
+    }
+  }, []);
+
+  const handleDelete = useCallback(async (id: number) => {
+    setDeletingId(id);
     try {
       const res = await deleteJournalEntry(id);
       if (res.returnCode === 200) {
@@ -148,251 +429,431 @@ const JournalList = () => {
       }
     } catch (error) {
       showToast('error', 'Failed to delete entry');
+    } finally {
+      setDeletingId(null);
     }
-  };
+  }, []);
 
-  const handleEntryPress = (entry: JournalEntry) => {
-    navigation.navigate(route.journalDetail, { entryId: entry.id });
-  };
-
-  const handleCreateNew = () => {
-    navigation.navigate(route.journalEntry, {});
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const getCategoryColor = (cat: string) => {
-    const colors: Record<string, string> = {
-      study: '#3B82F6',
-      prayer: '#8B5CF6',
-      gratitude: '#F59E0B',
-      reflection: '#10B981',
-      application: '#EF4444',
-      general: '#6B7280',
-    };
-    return colors[cat] || colors.general;
-  };
-
-  const renderEntry = ({ item }: { item: JournalEntry }) => (
-    <TouchableOpacity
-      style={[styles.entryCard, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border }]}
-      onPress={() => handleEntryPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.entryHeader}>
-        <View style={styles.entryMeta}>
-          {item.category && (
-            <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) + '20' }]}>
-              <Text style={[styles.categoryText, { color: getCategoryColor(item.category) }]}>
-                {item.category}
-              </Text>
-            </View>
-          )}
-          {item.bookName && (
-            <View style={styles.scriptureRef}>
-              <BookOpen size={12} color={COLORS.textSecondary} />
-              <Text style={[styles.scriptureText, { color: COLORS.textSecondary }]}>
-                {item.bookName} {item.chapter}:{item.verseNumber}
-              </Text>
-            </View>
-          )}
-        </View>
-        <TouchableOpacity onPress={() => handleToggleFavorite(item.id)}>
-          {item.isFavorite ? (
-            <Star size={20} color="#F59E0B" fill="#F59E0B" />
-          ) : (
-            <Star size={20} color={COLORS.textMuted} />
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {item.title && (
-        <Text style={[styles.entryTitle, { color: COLORS.text }]} numberOfLines={1}>
-          {item.title}
-        </Text>
-      )}
-
-      <Text style={[styles.entryContent, { color: COLORS.textSecondary }]} numberOfLines={3}>
-        {item.content}
-      </Text>
-
-      <View style={styles.entryFooter}>
-        <View style={styles.dateRow}>
-          <Calendar size={12} color={COLORS.textMuted} />
-          <Text style={[styles.dateText, { color: COLORS.textMuted }]}>
-            {formatDate(item.createdOn)}
-          </Text>
-        </View>
-        <ChevronRight size={16} color={COLORS.textMuted} />
-      </View>
-    </TouchableOpacity>
+  const handleEntryPress = useCallback(
+    (entry: JournalEntry) => {
+      navigation.navigate(route.journalDetail, { entryId: entry.id });
+    },
+    [navigation],
   );
 
+  const handleCreateNew = useCallback(() => {
+    navigation.navigate(route.journalEntry, {});
+  }, [navigation]);
+
+  // ── Render helpers ────────────────────────────────────────────────────────
+  const getCategoryColor = (cat: string) =>
+    CATEGORY_COLORS[cat] || CATEGORY_COLORS.general;
+
+  // ── Render entry card ─────────────────────────────────────────────────────
+  const renderEntry = ({ item }: { item: JournalEntry }) => {
+    const moodEmoji = item.mood ? MOOD_EMOJIS[item.mood] : null;
+
+    return (
+      <Swipeable
+        renderRightActions={(progress, dragX) => (
+          <DeleteAction progress={progress} dragX={dragX} colors={COLORS} />
+        )}
+        onSwipeableOpen={() => confirmDelete(item)}
+        overshootRight={false}
+        rightThreshold={40}
+      >
+        <TouchableOpacity
+          style={[
+            styles.entryCard,
+            {
+              backgroundColor: COLORS.cardBackground,
+              borderColor: COLORS.border,
+            },
+          ]}
+          onPress={() => handleEntryPress(item)}
+          activeOpacity={0.7}
+        >
+          {/* Top row: category + mood + favorite */}
+          <View style={styles.entryHeader}>
+            <View style={styles.entryMeta}>
+              {!!item.category && (
+                <View
+                  style={[
+                    styles.categoryBadge,
+                    { backgroundColor: getCategoryColor(item.category) + '20' },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      { color: getCategoryColor(item.category) },
+                    ]}
+                  >
+                    {CATEGORY_LABELS[item.category] || item.category}
+                  </Text>
+                </View>
+              )}
+              {!!moodEmoji && <Text style={styles.moodEmoji}>{moodEmoji}</Text>}
+            </View>
+            <View style={styles.headerActions}>
+              {item.isFavorite === true && (
+                <Star
+                  size={14}
+                  color="#F59E0B"
+                  fill="#F59E0B"
+                  style={styles.favoriteIndicator}
+                />
+              )}
+              <TouchableOpacity
+                onPress={() => handleToggleFavorite(item.id)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                {item.isFavorite ? (
+                  <Star size={18} color="#F59E0B" fill="#F59E0B" />
+                ) : (
+                  <Star size={18} color={COLORS.muted} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Title */}
+          {!!item.title && (
+            <Text
+              style={[styles.entryTitle, { color: COLORS.text }]}
+              numberOfLines={1}
+            >
+              {String(item.title)}
+            </Text>
+          )}
+
+          {/* Content preview */}
+          <Text
+            style={[styles.entryContent, { color: COLORS.textSecondary }]}
+            numberOfLines={3}
+          >
+            {String(item.content ?? '')}
+          </Text>
+
+          {/* Verse preview */}
+          {!!item.bookName &&
+            item.chapter != null &&
+            item.verseNumber != null && (
+              <VersePreview
+                bookName={item.bookName}
+                chapter={item.chapter}
+                verseNumber={item.verseNumber}
+                colors={COLORS}
+              />
+            )}
+
+          {/* Footer: date + scripture reference */}
+          {!!item.bookName && (
+            <View style={styles.scriptureRow}>
+              <BookOpen size={12} color={COLORS.muted} />
+              <Text style={[styles.scriptureText, { color: COLORS.muted }]}>
+                {`${String(item.bookName ?? '')} ${String(item.chapter ?? '')}:${String(item.verseNumber ?? '')}`}
+              </Text>
+            </View>
+          )}
+
+          {/* Footer: date and chevron */}
+          <View style={styles.entryFooter}>
+            <View style={styles.dateRow}>
+              <Clock size={12} color={COLORS.muted} />
+              <Text style={[styles.dateText, { color: COLORS.muted }]}>
+                {getRelativeTime(item.createdOn)}
+              </Text>
+              <Text style={[styles.dateSeparator, { color: COLORS.muted }]}>
+                ·
+              </Text>
+              <Text style={[styles.dateFull, { color: COLORS.muted }]}>
+                {getFormattedDate(item.createdOn)}
+              </Text>
+            </View>
+            <ChevronRight size={16} color={COLORS.muted} />
+          </View>
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
+
+  // ── Stats bar ─────────────────────────────────────────────────────────────
   const renderStats = () => {
     if (!stats) return null;
     return (
-      <View style={[styles.statsContainer, { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}>
+      <View
+        style={[
+          styles.statsContainer,
+          { backgroundColor: COLORS.surface, borderColor: COLORS.border },
+        ]}
+      >
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: COLORS.primary }]}>{stats.totalEntries}</Text>
-          <Text style={[styles.statLabel, { color: COLORS.textSecondary }]}>Total</Text>
+          <Text style={[styles.statValue, { color: COLORS.primary }]}>
+            {stats.totalEntries}
+          </Text>
+          <Text style={[styles.statLabel, { color: COLORS.textSecondary }]}>
+            Total
+          </Text>
         </View>
-        <View style={styles.statDivider} />
+        <View
+          style={[styles.statDivider, { backgroundColor: COLORS.border }]}
+        />
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: '#F59E0B' }]}>{stats.favoriteCount}</Text>
-          <Text style={[styles.statLabel, { color: COLORS.textSecondary }]}>Favorites</Text>
+          <Text style={[styles.statValue, { color: '#F59E0B' }]}>
+            {stats.favoriteCount}
+          </Text>
+          <Text style={[styles.statLabel, { color: COLORS.textSecondary }]}>
+            Favorites
+          </Text>
         </View>
-        <View style={styles.statDivider} />
+        <View
+          style={[styles.statDivider, { backgroundColor: COLORS.border }]}
+        />
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: '#10B981' }]}>{stats.entriesThisWeek}</Text>
-          <Text style={[styles.statLabel, { color: COLORS.textSecondary }]}>This Week</Text>
+          <Text style={[styles.statValue, { color: '#10B981' }]}>
+            {stats.entriesThisWeek}
+          </Text>
+          <Text style={[styles.statLabel, { color: COLORS.textSecondary }]}>
+            This Week
+          </Text>
         </View>
       </View>
     );
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: COLORS.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: COLORS.surface }]}>
-        <Text style={[styles.headerTitle, { color: COLORS.text }]}>My Journal</Text>
-        <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: COLORS.primary }]}
-          onPress={handleCreateNew}
-        >
-          <Plus size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+  const hasActiveFilters = search.length > 0 || category !== 'all';
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={[styles.searchBar, { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}>
-          <Search size={18} color={COLORS.textMuted} />
-          <TextInput
-            style={[styles.searchInput, { color: COLORS.text }]}
-            placeholder="Search entries..."
-            placeholderTextColor={COLORS.textMuted}
-            value={search}
-            onChangeText={setSearch}
-            onSubmitEditing={() => fetchEntries(0)}
+  return (
+    <GestureHandlerRootView
+      style={[styles.container, { backgroundColor: COLORS.background }]}
+    >
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: COLORS.surface,
+              borderBottomColor: COLORS.border,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <ChevronLeft size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleGroup}>
+            <Text style={[styles.headerTitle, { color: COLORS.text }]}>
+              My Journal
+            </Text>
+            {stats && (
+              <Text
+                style={[styles.headerSubtitle, { color: COLORS.textSecondary }]}
+              >
+                {stats.totalEntries}{' '}
+                {stats.totalEntries === 1 ? 'entry' : 'entries'} ·{' '}
+                {stats.entriesThisWeek} this week
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: COLORS.primary }]}
+            onPress={handleCreateNew}
+            activeOpacity={0.8}
+          >
+            <Plus size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View
+            style={[
+              styles.searchBar,
+              { backgroundColor: COLORS.surface, borderColor: COLORS.border },
+            ]}
+          >
+            <Search size={16} color={COLORS.muted} />
+            <TextInput
+              style={[styles.searchInput, { color: COLORS.text }]}
+              placeholder="Search entries..."
+              placeholderTextColor={COLORS.muted}
+              value={search}
+              onChangeText={handleSearchChange}
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSearch('');
+                  setSearchDebounced('');
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <View
+                  style={[
+                    styles.clearButton,
+                    { backgroundColor: COLORS.muted + '30' },
+                  ]}
+                >
+                  <Text
+                    style={[styles.clearButtonText, { color: COLORS.muted }]}
+                  >
+                    ✕
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+        {/* Category Filter */}
+        <View style={styles.categoryContainer}>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={CATEGORIES}
+            keyExtractor={item => item.value}
+            contentContainerStyle={styles.categoryList}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryChip,
+                  {
+                    backgroundColor:
+                      category === item.value ? COLORS.primary : COLORS.surface,
+                    borderColor:
+                      category === item.value ? COLORS.primary : COLORS.border,
+                  },
+                ]}
+                onPress={() => {
+                  setCategory(item.value);
+                  setPage(0);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    {
+                      color: category === item.value ? '#FFFFFF' : COLORS.text,
+                    },
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            )}
           />
         </View>
-      </View>
-
-      {/* Category Filter */}
-      <View style={styles.categoryContainer}>
+        {/* Stats */}
+        {!hasActiveFilters && renderStats()}
+        {/* Entries List */}
         <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={CATEGORIES}
-          keyExtractor={item => item.value}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[
-                styles.categoryChip,
-                {
-                  backgroundColor: category === item.value ? COLORS.primary : COLORS.surface,
-                  borderColor: category === item.value ? COLORS.primary : COLORS.border,
-                },
-              ]}
-              onPress={() => {
-                setCategory(item.value);
-                setPage(0);
-              }}
-            >
-              <Text
-                style={[
-                  styles.categoryChipText,
-                  { color: category === item.value ? '#FFFFFF' : COLORS.text },
-                ]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          )}
+          data={entries}
+          keyExtractor={item => item.id.toString()}
+          renderItem={renderEntry}
+          contentContainerStyle={[
+            styles.listContent,
+            entries.length === 0 && !loading
+              ? styles.listContentEmpty
+              : undefined,
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={COLORS.primary}
+              colors={[COLORS.primary]}
+              progressBackgroundColor={COLORS.surface}
+            />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+              </View>
+            ) : (
+              <EmptyState
+                hasSearch={search.length > 0}
+                currentCategory={category}
+                onCreateNew={handleCreateNew}
+                colors={COLORS}
+              />
+            )
+          }
+          ListFooterComponent={
+            hasMore && entries.length > 0 ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              </View>
+            ) : null
+          }
         />
-      </View>
-
-      {/* Stats */}
-      {renderStats()}
-
-      {/* Entries List */}
-      <FlatList
-        data={entries}
-        keyExtractor={item => item.id.toString()}
-        renderItem={renderEntry}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={COLORS.primary}
-          />
-        }
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        ListEmptyComponent={
-          loading ? (
-            <View style={styles.emptyContainer}>
-              <Loader2 size={32} color={COLORS.primary} />
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <BookOpen size={48} color={COLORS.textMuted} />
-              <Text style={[styles.emptyText, { color: COLORS.textMuted }]}>
-                No journal entries yet
-              </Text>
-              <TouchableOpacity
-                style={[styles.emptyButton, { backgroundColor: COLORS.primary }]}
-                onPress={handleCreateNew}
-              >
-                <Text style={styles.emptyButtonText}>Create First Entry</Text>
-              </TouchableOpacity>
-            </View>
-          )
-        }
-      />
-    </View>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 };
+
+// ── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  safeArea: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  backButton: {
+    marginRight: SPACING.sm,
+  },
+  headerTitleGroup: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
   },
+  headerSubtitle: {
+    fontSize: FONT_SIZES.xs,
+    marginTop: 2,
+  },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   searchContainer: {
     paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.xs,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingVertical: Platform.OS === 'ios' ? SPACING.sm : SPACING.xs,
     borderRadius: 12,
     borderWidth: 1,
     gap: SPACING.sm,
@@ -400,26 +861,40 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: FONT_SIZES.md,
+    paddingVertical: Platform.OS === 'ios' ? 4 : 0,
+  },
+  clearButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   categoryContainer: {
+    paddingVertical: SPACING.sm,
+  },
+  categoryList: {
     paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
   },
   categoryChip: {
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
+    paddingVertical: SPACING.xs + 2,
     borderRadius: 20,
     marginRight: SPACING.sm,
     borderWidth: 1,
   },
   categoryChipText: {
     fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
     marginHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
     padding: SPACING.md,
     borderRadius: 12,
     borderWidth: 1,
@@ -438,16 +913,21 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: '#E5E7EB',
+    marginVertical: 4,
   },
   listContent: {
     paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.sm,
     paddingBottom: SPACING.xl,
+  },
+  listContentEmpty: {
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   entryCard: {
     padding: SPACING.md,
     borderRadius: 12,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
     borderWidth: 1,
   },
   entryHeader: {
@@ -459,7 +939,15 @@ const styles = StyleSheet.create({
   entryMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
+    gap: SPACING.xs,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  favoriteIndicator: {
+    marginRight: 2,
   },
   categoryBadge: {
     paddingHorizontal: SPACING.sm,
@@ -467,16 +955,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   categoryText: {
-    fontSize: FONT_SIZES.xs,
+    fontSize: 11,
     fontWeight: '600',
+    textTransform: 'capitalize',
   },
-  scriptureRef: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  scriptureText: {
-    fontSize: FONT_SIZES.xs,
+  moodEmoji: {
+    fontSize: 16,
   },
   entryTitle: {
     fontSize: FONT_SIZES.md,
@@ -488,6 +972,33 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: SPACING.sm,
   },
+  versePreview: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: SPACING.sm,
+    borderRadius: 8,
+    marginBottom: SPACING.sm,
+    borderLeftWidth: 3,
+  },
+  verseQuoteIcon: {
+    marginRight: 6,
+    marginTop: 2,
+  },
+  versePreviewText: {
+    flex: 1,
+    fontSize: FONT_SIZES.xs,
+    fontStyle: 'italic',
+    lineHeight: 16,
+  },
+  scriptureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: SPACING.sm,
+  },
+  scriptureText: {
+    fontSize: FONT_SIZES.xs,
+  },
   entryFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -497,28 +1008,86 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flex: 1,
   },
   dateText: {
     fontSize: FONT_SIZES.xs,
+    fontWeight: '500',
+  },
+  dateSeparator: {
+    fontSize: FONT_SIZES.xs,
+    marginHorizontal: 2,
+  },
+  dateFull: {
+    fontSize: FONT_SIZES.xs,
+    flex: 1,
+  },
+  deleteAction: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    borderRadius: 12,
+    marginBottom: SPACING.sm,
+    marginLeft: SPACING.sm,
+    gap: 4,
+  },
+  deleteActionText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.xxl,
-    gap: SPACING.md,
+    paddingVertical: SPACING.xxl + 20,
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.sm,
   },
-  emptyText: {
-    fontSize: FONT_SIZES.md,
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.sm,
+  },
+  emptyTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: FONT_SIZES.sm,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: SPACING.sm,
   },
   emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: 8,
+    paddingVertical: SPACING.sm + 2,
+    borderRadius: 10,
+    gap: SPACING.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   emptyButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: FONT_SIZES.sm,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.xxl + 20,
+  },
+  footerLoader: {
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
   },
 });
 

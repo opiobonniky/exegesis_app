@@ -1173,6 +1173,8 @@ if (!fromUserNav) {
   }, []);
 
   return {
+    setCurrentBook,
+    setCurrentChapter,
     isDark,
     navigation,
     books,
@@ -1268,6 +1270,8 @@ if (!fromUserNav) {
     chapterJournalPrompts,
     loadChapterPrompts,
     isOnline,
+    setCurrentBook,
+    setCurrentChapter,
   };
 };
 

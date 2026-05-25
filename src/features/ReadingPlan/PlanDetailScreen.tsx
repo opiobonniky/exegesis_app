@@ -1825,6 +1825,7 @@ export default function PlanDetailScreen() {
                   navigation.navigate('DailyReading', {
                     planId,
                     day: selectedDay,
+                    totalDays: planDetail.total_days,
                   });
                 }}
                 activeOpacity={0.85}

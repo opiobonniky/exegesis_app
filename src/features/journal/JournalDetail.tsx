@@ -11,12 +11,14 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
 import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { route } from '../../component/navigations/routes';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   getJournalEntry,
   toggleJournalFavorite,
@@ -34,6 +36,7 @@ import {
   Heart,
   Lightbulb,
   Sparkles,
+  ChevronLeft,
 } from 'lucide-react-native';
 
 const JournalDetail = () => {
@@ -126,17 +129,19 @@ const JournalDetail = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: COLORS.background }]}>
+    <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: COLORS.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       {/* Header */}
       <View style={[styles.header, { backgroundColor: COLORS.surface }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={COLORS.text} />
+                <ChevronLeft size={24} color={COLORS.text} />
+
         </TouchableOpacity>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={handleToggleFavorite} style={styles.headerBtn}>
             <Star
               size={22}
-              color={entry.isFavorite ? '#F59E0B' : COLORS.textMuted}
+              color={entry.isFavorite ? '#F59E0B' : COLORS.muted}
               fill={entry.isFavorite ? '#F59E0B' : 'none'}
             />
           </TouchableOpacity>
@@ -174,15 +179,15 @@ const JournalDetail = () => {
         {/* Date & Scripture */}
         <View style={styles.infoRow}>
           <View style={styles.infoItem}>
-            <Calendar size={14} color={COLORS.textMuted} />
-            <Text style={[styles.infoText, { color: COLORS.textMuted }]}>
+            <Calendar size={14} color={COLORS.muted} />
+            <Text style={[styles.infoText, { color: COLORS.muted }]}>
               {formatDate(entry.createdOn)}
             </Text>
           </View>
           {entry.bookName && (
             <View style={styles.infoItem}>
-              <BookOpen size={14} color={COLORS.textMuted} />
-              <Text style={[styles.infoText, { color: COLORS.textMuted }]}>
+              <BookOpen size={14} color={COLORS.muted} />
+              <Text style={[styles.infoText, { color: COLORS.muted }]}>
                 {entry.bookName} {entry.chapter}:{entry.verseNumber}
               </Text>
             </View>
@@ -241,7 +246,7 @@ const JournalDetail = () => {
 
         <View style={{ height: SPACING.xxl }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
