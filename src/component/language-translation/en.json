@@ -135,6 +135,26 @@
     "title": "Welcome",
     "message": "Welcome to the app!"
   },
+  "onboarding": {
+    "skip": "Skip",
+    "getStarted": "Get Started",
+    "continueLabel": "Continue",
+    "slide1Highlight": "Search The Scriptures",
+    "slide1Text": "Exegesis is the process of carefully studying Scripture to discover the original meaning in its historical and literary context.",
+    "slide1Feature1": "Bibical Deep Dives",
+    "slide1Feature2": "Verse-by-Verse teachings",
+    "slide1Feature3": "Personalized Journaling",
+    "slide2Highlight": "Interpret",
+    "slide2Text": "Analyze multiple translations side-by-side to uncover the original meaning of scripture.",
+    "slide2Feature1": "Multi-Version View",
+    "slide2Feature2": "Context Analysis",
+    "slide2Feature3": "Cross References",
+    "slide3Highlight": "Reflect",
+    "slide3Text": "Save your study notes and share meaningful interpretations with your community.",
+    "slide3Feature1": "Personal Notes",
+    "slide3Feature2": "Verse Sharing",
+    "slide3Feature3": "Progress Tracking"
+  },
   "appTagline": "Your Daily Spiritual Companion",
   "bottomTab": {
     "home": "Home",
@@ -530,7 +550,53 @@
     "editNote": "Edit Note",
     "writeNotePlaceholder": "Write your note...",
     "save": "Save",
-    "historyItemsDeleted": "{count} history items deleted"
+    "historyItemsDeleted": "{count} history items deleted",
+
+    // Daily Devotional
+    "loadingDevotional": "Loading devotional\u2026",
+    "noDevotionalToday": "No devotional available today",
+    "todaysDevotion": "Today's devotion",
+    "meditationDevotionText": "Meditate on this word today.\nLet it guide your thoughts and actions.",
+    "meditationVerseText": "Meditate on this verse today.\nLet God's word guide your thoughts and actions.",
+    "dailyDevotionalTitle": "Daily Devotional",
+
+    // Daily Verse Screen
+    "loadingVerseOfDay": "Loading verse of the day\u2026",
+    "noVerseToday": "No verse available today",
+    "dailyVerseTitle": "Daily Verse",
+    "verseCopiedTitle": "Copied",
+    "verseCopiedMessage": "Verse copied to clipboard",
+
+    // Full Verse Explanation
+    "loadingExplanation": "Loading explanation\u2026",
+    "somethingWentWrong": "Something went wrong",
+    "tryAgain": "Try again",
+    "noContentAvailable": "No content available.",
+    "missingVerseReference": "Missing verse reference (book / chapter / verse).",
+    "noExplanationFound": "No explanation found for this verse.",
+    "failedToLoadExplanation": "Failed to load verse explanation",
+    "networkError": "Network error",
+    "verseExplanationTitle": "Verse Explanation",
+    "updatedLabel": "Updated",
+    "addedLabel": "Added",
+
+    // Show less/more
+    "showLess": "Show less",
+    "showMore": "Continue reading",
+    "continueReading": "Continue reading",
+
+    // Daily greeting
+    "dailyGreetingMorning": "Good morning",
+    "dailyGreetingAfternoon": "Good afternoon",
+    "dailyGreetingEvening": "Good evening",
+
+    "verseOfTheDay": "Verse of the Day",
+
+    // Action labels
+    "explain": "Explain",
+    "reflection": "Reflection",
+    "learnMore": "Learn More",
+    "verseLabel": "Verse"
   },
   "admin": {
     "analytics": "Analytics",
@@ -1142,6 +1208,38 @@
     "dailyReadingChapterBibleBtn": "Open in Bible",
     "dailyReadingDayCompleteText": "Day Complete!",
     "dailyReadingDayLabel": "Day",
+
+    // Daily Devotional
+    "loadingDevotional": "Loading devotional\u2026",
+    "noDevotionalToday": "No devotional available today",
+    "todaysDevotion": "Today's devotion",
+    "meditationDevotionText": "Meditate on this word today.\nLet it guide your thoughts and actions.",
+    "meditationVerseText": "Meditate on this verse today.\nLet God's word guide your thoughts and actions.",
+    "dailyDevotionalTitle": "Daily Devotional",
+
+    // Daily Verse Screen
+    "loadingVerseOfDay": "Loading verse of the day\u2026",
+    "noVerseToday": "No verse available today",
+    "dailyVerseTitle": "Daily Verse",
+    "verseCopiedTitle": "Copied",
+    "verseCopiedMessage": "Verse copied to clipboard",
+
+    // Full Verse Explanation
+    "loadingExplanation": "Loading explanation\u2026",
+    "somethingWentWrong": "Something went wrong",
+    "tryAgain": "Try again",
+    "noContentAvailable": "No content available.",
+    "missingVerseReference": "Missing verse reference (book / chapter / verse).",
+    "noExplanationFound": "No explanation found for this verse.",
+    "failedToLoadExplanation": "Failed to load verse explanation",
+    "networkError": "Network error",
+    "verseExplanationTitle": "Verse Explanation",
+    "updatedLabel": "Updated",
+    "addedLabel": "Added",
+
+    // Show less/more
+    "showLess": "Show less",
+    "showMore": "Show More",
 
     "planDetailDays": "{count} Days",
     "planDetailCalendar": "Calendar",

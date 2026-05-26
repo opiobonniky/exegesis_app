@@ -538,7 +538,53 @@
     "editNote": "Editar nota",
     "writeNotePlaceholder": "Escribe tu nota...",
     "save": "Guardar",
-    "historyItemsDeleted": "{count} elementos del historial eliminados"
+    "historyItemsDeleted": "{count} elementos del historial eliminados",
+
+    // Daily Devotional
+    "loadingDevotional": "Cargando devocional\u2026",
+    "noDevotionalToday": "No hay devocional disponible hoy",
+    "todaysDevotion": "Devoción de hoy",
+    "meditationDevotionText": "Medita en esta palabra hoy.\nDeja que guíe tus pensamientos y acciones.",
+    "meditationVerseText": "Medita en este versículo hoy.\nDeja que la palabra de Dios guíe tus pensamientos y acciones.",
+    "dailyDevotionalTitle": "Devocional Diario",
+
+    // Daily Verse Screen
+    "loadingVerseOfDay": "Cargando versículo del día\u2026",
+    "noVerseToday": "No hay versículo disponible hoy",
+    "dailyVerseTitle": "Versículo del Día",
+    "verseCopiedTitle": "Copiado",
+    "verseCopiedMessage": "Versículo copiado al portapapeles",
+
+    // Full Verse Explanation
+    "loadingExplanation": "Cargando explicación\u2026",
+    "somethingWentWrong": "Algo salió mal",
+    "tryAgain": "Intentar de nuevo",
+    "noContentAvailable": "No hay contenido disponible.",
+    "missingVerseReference": "Falta referencia del versículo (libro / capítulo / versículo).",
+    "noExplanationFound": "No se encontró explicación para este versículo.",
+    "failedToLoadExplanation": "Error al cargar la explicación del versículo",
+    "networkError": "Error de red",
+    "verseExplanationTitle": "Explicación del Versículo",
+    "updatedLabel": "Actualizado",
+    "addedLabel": "Agregado",
+
+    // Show less/more
+    "showLess": "Mostrar menos",
+    "showMore": "Continuar leyendo",
+    "continueReading": "Continuar leyendo",
+
+    // Daily greeting
+    "dailyGreetingMorning": "Buenos días",
+    "dailyGreetingAfternoon": "Buenas tardes",
+    "dailyGreetingEvening": "Buenas noches",
+
+    "verseOfTheDay": "Versículo del día",
+
+    // Action labels
+    "explain": "Explicar",
+    "reflection": "Reflexión",
+    "learnMore": "Saber más",
+    "verseLabel": "Versículo"
   },
   "admin": {
     "analytics": "Analíticas",

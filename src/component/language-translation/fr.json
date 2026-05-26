@@ -538,7 +538,53 @@
     "editNote": "Modifier la note",
     "writeNotePlaceholder": "Écrivez votre note...",
     "save": "Enregistrer",
-    "historyItemsDeleted": "{count} éléments de l'historique supprimés"
+    "historyItemsDeleted": "{count} éléments de l'historique supprimés",
+
+    // Daily Devotional
+    "loadingDevotional": "Chargement du dévotionnel\u2026",
+    "noDevotionalToday": "Aucun dévotionnel disponible aujourd'hui",
+    "todaysDevotion": "Dévotion du jour",
+    "meditationDevotionText": "Méditez sur cette parole aujourd'hui.\nLaissez-la guider vos pensées et vos actions.",
+    "meditationVerseText": "Méditez sur ce verset aujourd'hui.\nLaissez la parole de Dieu guider vos pensées et vos actions.",
+    "dailyDevotionalTitle": "Dévotionnel Quotidien",
+
+    // Daily Verse Screen
+    "loadingVerseOfDay": "Chargement du verset du jour\u2026",
+    "noVerseToday": "Aucun verset disponible aujourd'hui",
+    "dailyVerseTitle": "Verset du Jour",
+    "verseCopiedTitle": "Copié",
+    "verseCopiedMessage": "Verset copié dans le presse-papier",
+
+    // Full Verse Explanation
+    "loadingExplanation": "Chargement de l'explication\u2026",
+    "somethingWentWrong": "Quelque chose s'est mal passé",
+    "tryAgain": "Réessayer",
+    "noContentAvailable": "Aucun contenu disponible.",
+    "missingVerseReference": "Référence de verset manquante (livre / chapitre / verset).",
+    "noExplanationFound": "Aucune explication trouvée pour ce verset.",
+    "failedToLoadExplanation": "Échec du chargement de l'explication",
+    "networkError": "Erreur réseau",
+    "verseExplanationTitle": "Explication du Verset",
+    "updatedLabel": "Mis à jour",
+    "addedLabel": "Ajouté",
+
+    // Show less/more
+    "showLess": "Afficher moins",
+    "showMore": "Continuer la lecture",
+    "continueReading": "Continuer la lecture",
+
+    // Daily greeting
+    "dailyGreetingMorning": "Bonjour",
+    "dailyGreetingAfternoon": "Bon après-midi",
+    "dailyGreetingEvening": "Bonsoir",
+
+    "verseOfTheDay": "Verset du jour",
+
+    // Action labels
+    "explain": "Expliquer",
+    "reflection": "Réflexion",
+    "learnMore": "En savoir plus",
+    "verseLabel": "Verset"
   },
   "admin": {
     "analytics": "Analytiques",

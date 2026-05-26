@@ -37,12 +37,10 @@ import {
   TrendingUp,
   TrendingDown,
   CheckCircle,
-  AlertCircle,
-  Clock,
-  UserPlus,
   BookText,
   LayoutTemplate,
   Lightbulb,
+  Globe,
 } from 'lucide-react-native';
 import { route } from '../../component/navigations/routes';
 import useAuth from '../../hooks/useAuth';
@@ -54,6 +52,7 @@ import {
 import BottomTab from '../../component/navigations/BottomTab';
 import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import { AdminTranslations } from '../../component/language-translation/type';
+import LanguagePickerModal from '../../component/LanguagePickerModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.78;
@@ -690,6 +689,7 @@ const AdminDashboard: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('adminDashboard');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [langPickerVisible, setLangPickerVisible] = useState(false);
 
   const translateX = useRef(new Animated.Value(isRtl ? DRAWER_WIDTH : -DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -1151,12 +1151,25 @@ const AdminDashboard: React.FC = () => {
              onPress={() => navigation.navigate(route.adminDailyDevotion)}
              isRtl={isRtl}
            />
+           <QuickAction
+             icon={<Globe size={20} color="#64748b" />}
+             label={'Language'}
+             subtitle={`Current: ${language.toUpperCase()}`}
+             color="#64748b"
+             onPress={() => setLangPickerVisible(true)}
+             isRtl={isRtl}
+           />
          </View>
 
         <View style={rootStyles.bottomSpacer} />
       </ScrollView>
 
       <BottomTab activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      <LanguagePickerModal
+        visible={langPickerVisible}
+        onRequestClose={() => setLangPickerVisible(false)}
+      />
 
       {drawerMounted && (
         <Drawer

@@ -538,7 +538,53 @@
     "editNote": "تعديل الملاحظة",
     "writeNotePlaceholder": "اكتب ملاحظتك...",
     "save": "حفظ",
-    "historyItemsDeleted": "تم حذف {count} عنصر من السجل"
+    "historyItemsDeleted": "تم حذف {count} عنصر من السجل",
+
+    // Daily Devotional
+    "loadingDevotional": "جارٍ تحميل التأمل\u2026",
+    "noDevotionalToday": "لا يتوفر تأمل اليوم",
+    "todaysDevotion": "تأمل اليوم",
+    "meditationDevotionText": "تأمل في هذه الكلمة اليوم.\nدعها ترشد أفكارك وأعمالك.",
+    "meditationVerseText": "تأمل في هذه الآية اليوم.\nدع كلمة الله ترشد أفكارك وأعمالك.",
+    "dailyDevotionalTitle": "التأمل اليومي",
+
+    // Daily Verse Screen
+    "loadingVerseOfDay": "جارٍ تحميل آية اليوم\u2026",
+    "noVerseToday": "لا توجد آية متاحة اليوم",
+    "dailyVerseTitle": "آية اليوم",
+    "verseCopiedTitle": "تم النسخ",
+    "verseCopiedMessage": "تم نسخ الآية إلى الحافظة",
+
+    // Full Verse Explanation
+    "loadingExplanation": "جارٍ تحميل الشرح\u2026",
+    "somethingWentWrong": "حدث خطأ ما",
+    "tryAgain": "حاول مرة أخرى",
+    "noContentAvailable": "لا يوجد محتوى متاح.",
+    "missingVerseReference": "مرجع الآية مفقود (سفر / إصحاح / آية).",
+    "noExplanationFound": "لم يتم العثور على شرح لهذه الآية.",
+    "failedToLoadExplanation": "فشل تحميل شرح الآية",
+    "networkError": "خطأ في الشبكة",
+    "verseExplanationTitle": "شرح الآية",
+    "updatedLabel": "تم التحديث",
+    "addedLabel": "تمت الإضافة",
+
+    // Show less/more
+    "showLess": "عرض أقل",
+    "showMore": "متابعة القراءة",
+    "continueReading": "متابعة القراءة",
+
+    // Daily greeting
+    "dailyGreetingMorning": "صباح الخير",
+    "dailyGreetingAfternoon": "مساء الخير",
+    "dailyGreetingEvening": "طاب مساؤك",
+
+    "verseOfTheDay": "آية اليوم",
+
+    // Action labels
+    "explain": "شرح",
+    "reflection": "تأمل",
+    "learnMore": "اعرف المزيد",
+    "verseLabel": "آية"
   },
   "admin": {
     "analytics": "الإحصائيات",

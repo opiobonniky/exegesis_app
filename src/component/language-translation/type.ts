@@ -1,5 +1,27 @@
 export type Language = 'en' | 'es' | 'fr' | 'ar';
 
+// Onboarding / Welcome screen translations
+export type OnboardingTranslations = {
+  skip?: string;
+  getStarted?: string;
+  continueLabel?: string;
+  slide1Highlight?: string;
+  slide1Text?: string;
+  slide1Feature1?: string;
+  slide1Feature2?: string;
+  slide1Feature3?: string;
+  slide2Highlight?: string;
+  slide2Text?: string;
+  slide2Feature1?: string;
+  slide2Feature2?: string;
+  slide2Feature3?: string;
+  slide3Highlight?: string;
+  slide3Text?: string;
+  slide3Feature1?: string;
+  slide3Feature2?: string;
+  slide3Feature3?: string;
+};
+
 // Explicit translations shape so editors can autocomplete (strong typing)
 export type Translations = {
   login: {
@@ -449,6 +471,51 @@ export type BibleTranslations = {
   verseRangeLabel?: string;
   versesCount?: string;
   
+  // Daily Devotional
+  verseOfTheDay?: string;
+  loadingDevotional?: string;
+  noDevotionalToday?: string;
+  todaysDevotion?: string;
+  meditationDevotionText?: string;
+  meditationVerseText?: string;
+  dailyDevotionalTitle?: string;
+  
+  // Daily Verse Screen
+  loadingVerseOfDay?: string;
+  noVerseToday?: string;
+  dailyVerseTitle?: string;
+  verseCopiedTitle?: string;
+  verseCopiedMessage?: string;
+  
+  // Full Verse Explanation
+  loadingExplanation?: string;
+  somethingWentWrong?: string;
+  tryAgain?: string;
+  noContentAvailable?: string;
+  missingVerseReference?: string;
+  noExplanationFound?: string;
+  failedToLoadExplanation?: string;
+  networkError?: string;
+  verseExplanationTitle?: string;
+  updatedLabel?: string;
+  addedLabel?: string;
+  
+  // Show less/more
+  showLess?: string;
+  showMore?: string;
+  continueReading?: string;
+
+  // Daily greeting
+  dailyGreetingMorning?: string;
+  dailyGreetingAfternoon?: string;
+  dailyGreetingEvening?: string;
+
+  // Action labels
+  explain?: string;
+  reflection?: string;
+  learnMore?: string;
+  verseLabel?: string;
+
   // Books of the Bible
   genesis?: string;
   exodus?: string;
@@ -1310,5 +1377,5 @@ export interface LanguageContextProps {
   // callable translator that also exposes nested keys (e.g. t.login.title)
   t: Translator;
   // full translation object for dot‑notation property access
-  translations: Translations & { profile?: ProfileTranslations; editProfile?: EditProfileTranslations; extendedProfile?: ExtendedProfileTranslations; bottomTab?: BottomTabTranslations; bible?: BibleTranslations; journal?: JournalTranslations; admin?: AdminTranslations; readingPlan?: ReadingPlanTranslations };
+  translations: Translations & { profile?: ProfileTranslations; editProfile?: EditProfileTranslations; extendedProfile?: ExtendedProfileTranslations; bottomTab?: BottomTabTranslations; bible?: BibleTranslations; journal?: JournalTranslations; admin?: AdminTranslations; readingPlan?: ReadingPlanTranslations; onboarding?: OnboardingTranslations };
 }

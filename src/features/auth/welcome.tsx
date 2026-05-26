@@ -19,15 +19,10 @@ import logo from '../../assets/logos/exegesis_bg_rm.png';
 import {
   BookOpen,
   Search,
-  MessageSquare,
-  ArrowRight,
-  Shield,
-  Star,
-  CheckCircle2,
-  CircleCheckBig,
   SquareCheckBig,
 } from 'lucide-react-native';
 import { PrimaryButton } from '../../reusable/PrimaryButton';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 const { width, height } = Dimensions.get('window');
 const BOTTOM_SPACING = Platform.OS === 'ios' ? 40 : 24;
@@ -48,6 +43,7 @@ const Welcome = () => {
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
+  const { translations: t } = useLanguage();
   const appContext = React.useContext(AppContext);
 
   if (!appContext) {
@@ -66,51 +62,55 @@ const Welcome = () => {
       {
         id: 1,
         title: ' ',
-        highlight: 'Search The Scriptures',
-        text: 'Exegesis is the process of carefully studying Scripture to discover the original meaning in its historical and literary context.',
+        highlight: t?.onboarding?.slide1Highlight || 'Search The Scriptures',
+        text: t?.onboarding?.slide1Text || 'Exegesis is the process of carefully studying Scripture to discover the original meaning in its historical and literary context.',
         gradientColors: isDark
           ? ['#0F172A', '#1E293B']
           : ['#F8FAFC', '#E2E8F0'],
         icon: <BookOpen size={64} color={COLORS.accent} strokeWidth={1.5} />,
         features: [
-          'Bibical Deep Dives',
-          'Verse-by-Verse teachings',
-          'Personalized Journaling',
+          t?.onboarding?.slide1Feature1 || 'Bibical Deep Dives',
+          t?.onboarding?.slide1Feature2 || 'Verse-by-Verse teachings',
+          t?.onboarding?.slide1Feature3 || 'Personalized Journaling',
         ],
         accent: COLORS.accent,
       },
       {
         id: 2,
         title: 'Compare &',
-        highlight: 'Interpret',
-        text: 'Analyze multiple translations side-by-side to uncover the original meaning of scripture.',
+        highlight: t?.onboarding?.slide2Highlight || 'Interpret',
+        text: t?.onboarding?.slide2Text || 'Analyze multiple translations side-by-side to uncover the original meaning of scripture.',
         gradientColors: isDark
           ? ['#1E1B4B', '#312E81']
           : ['#EEF2FF', '#E0E7FF'],
         icon: <Search size={64} color={COLORS.accent} strokeWidth={1.5} />,
         features: [
-          'Multi-Version View',
-          'Context Analysis',
-          'Cross References',
+          t?.onboarding?.slide2Feature1 || 'Multi-Version View',
+          t?.onboarding?.slide2Feature2 || 'Context Analysis',
+          t?.onboarding?.slide2Feature3 || 'Cross References',
         ],
         accent: COLORS.accent,
       },
       {
         id: 3,
         title: 'Engage &',
-        highlight: 'Reflect',
-        text: 'Save your study notes and share meaningful interpretations with your community.',
+        highlight: t?.onboarding?.slide3Highlight || 'Reflect',
+        text: t?.onboarding?.slide3Text || 'Save your study notes and share meaningful interpretations with your community.',
         gradientColors: isDark
           ? ['#134E4A', '#115E59']
           : ['#F0FDFA', '#CCFBF1'],
         icon: (
           <SquareCheckBig size={64} color={COLORS.accent} strokeWidth={1.5} />
         ),
-        features: ['Personal Notes', 'Verse Sharing', 'Progress Tracking'],
+        features: [
+          t?.onboarding?.slide3Feature1 || 'Personal Notes',
+          t?.onboarding?.slide3Feature2 || 'Verse Sharing',
+          t?.onboarding?.slide3Feature3 || 'Progress Tracking',
+        ],
         accent: COLORS.accent,
       },
     ],
-    [COLORS, isDark],
+    [COLORS, isDark, t],
   );
 
   const handleGetStarted = () => markLaunched();
@@ -290,7 +290,7 @@ const Welcome = () => {
       <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
         <Image source={logo} style={styles.headerLogo} />
         <TouchableOpacity style={styles.skipBtn} onPress={handleGetStarted}>
-          <Text style={[styles.skipText, { color: COLORS.muted }]}>Skip</Text>
+          <Text style={[styles.skipText, { color: COLORS.muted }]}>{t?.onboarding?.skip || 'Skip'}</Text>
         </TouchableOpacity>
       </Animated.View>
 
@@ -360,8 +360,8 @@ const Welcome = () => {
         
 
           <PrimaryButton title={currentIndex === slides.length - 1
-                  ? 'Get Started'
-                  : 'Continue'} style={[styles.cta, {backgroundColor:currentIndex !== 1 ?COLORS.accent:COLORS.primary}]}
+                  ? t?.onboarding?.getStarted || 'Get Started'
+                  : t?.onboarding?.continueLabel || 'Continue'} style={[styles.cta, {backgroundColor:currentIndex !== 1 ?COLORS.accent:COLORS.primary}]}
             onPress={
               currentIndex === slides.length - 1
                 ? handleGetStarted
@@ -411,6 +411,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
+    direction: 'ltr',
   },
   slideContent: {
     alignItems: 'center',

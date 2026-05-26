@@ -32,6 +32,7 @@ import ExpandableText from './ExpandableText';
 import ActionHeader from '../../reusable/ActionHeader';
 import { BookOpen, RefreshCw, AlertCircle, BookText } from 'lucide-react-native';
 import { route } from '../../component/navigations/routes';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 type VerseData = {
   id?: number;
@@ -62,6 +63,7 @@ function stripBulletPrefix(line: string) {
 }
 
 export default function FullVerseExplanation({ route, navigation }: any) {
+  const { translations } = useLanguage();
   const insets = useSafeAreaInsets();
 
   const app: any = useContext(AppContext);
@@ -106,7 +108,7 @@ export default function FullVerseExplanation({ route, navigation }: any) {
   const renderTextBlocks = useCallback(
     (text?: string) => {
       if (!text?.trim()) {
-        return <Text style={styles.emptyText}>No content available.</Text>;
+        return <Text style={styles.emptyText}>{translations?.bible?.noContentAvailable || 'No content available.'}</Text>;
       }
 
       const lines = normalizeLines(text);
@@ -137,7 +139,7 @@ export default function FullVerseExplanation({ route, navigation }: any) {
   const load = useCallback(
     async (opts?: { silent?: boolean }) => {
       if (!hasParams) {
-        setError('Missing verse reference (book / chapter / verse).');
+        setError(translations?.bible?.missingVerseReference || 'Missing verse reference (book / chapter / verse).');
         setLoading(false);
         return;
       }
@@ -154,7 +156,7 @@ export default function FullVerseExplanation({ route, navigation }: any) {
 
         if (res?.returnCode === 200) {
           if (!res.returnData) {
-            setError('No explanation found for this verse.');
+            setError(translations?.bible?.noExplanationFound || 'No explanation found for this verse.');
             setData(null);
           } else {
             setData(res.returnData as VerseData);
@@ -163,11 +165,11 @@ export default function FullVerseExplanation({ route, navigation }: any) {
           }
         } else {
           setData(null);
-          setError(res?.returnMessage ?? 'Failed to load verse explanation');
+          setError(res?.returnMessage ?? (translations?.bible?.failedToLoadExplanation || 'Failed to load verse explanation'));
         }
       } catch (e: any) {
         setData(null);
-        setError(e?.message ?? 'Network error');
+        setError(e?.message ?? (translations?.bible?.networkError || 'Network error'));
       } finally {
         if (!opts?.silent) setLoading(false);
       }
@@ -200,7 +202,7 @@ export default function FullVerseExplanation({ route, navigation }: any) {
 
   const verseLabel = useMemo(() => {
     const vn = data?.verseNumber ?? verseNumber ?? '';
-    return `Verse ${vn}`;
+    return `${translations?.bible?.verseLabel || 'Verse'} ${vn}`;
   }, [data, verseNumber]);
 
   const heroGradient = isDark
@@ -215,7 +217,7 @@ export default function FullVerseExplanation({ route, navigation }: any) {
     <>
       <View style={styles.container}>
         <ActionHeader
-          title={bookName ? `${bookName} ${chapter}:${verseNumber} explanation` : 'Verse Explanation'}
+          title={bookName ? `${bookName} ${chapter}:${verseNumber} ${translations?.bible?.verseExplanationTitle?.toLowerCase() || 'explanation'}` : translations?.bible?.verseExplanationTitle || 'Verse Explanation'}
           onPress={() => navigation.goBack()}
         />
         {loading ? (
@@ -228,7 +230,7 @@ export default function FullVerseExplanation({ route, navigation }: any) {
               color={COLORS.primary}
               style={{ marginTop: SPACING.lg }}
             />
-            <Text style={styles.loadingText}>Loading explanation…</Text>
+            <Text style={styles.loadingText}>{translations?.bible?.loadingExplanation || 'Loading explanation…'}</Text>
             <Text style={styles.loadingRef}>
               {bookName} {chapter}:{verseNumber}
             </Text>
@@ -238,11 +240,11 @@ export default function FullVerseExplanation({ route, navigation }: any) {
             <View style={styles.errorIconWrap}>
               <AlertCircle size={36} color={COLORS.error} />
             </View>
-            <Text style={styles.errorTitle}>Something went wrong</Text>
+            <Text style={styles.errorTitle}>{translations?.bible?.somethingWentWrong || 'Something went wrong'}</Text>
             <Text style={styles.errorBody}>{error}</Text>
             <Pressable style={styles.retryBtn} onPress={() => load()}>
               <RefreshCw size={16} color="#fff" />
-              <Text style={styles.retryText}>Try again</Text>
+              <Text style={styles.retryText}>{translations?.bible?.tryAgain || 'Try again'}</Text>
             </Pressable>
           </View>
         ) : (
@@ -295,7 +297,7 @@ export default function FullVerseExplanation({ route, navigation }: any) {
                 {(data?.updatedOn || data?.createdOn) && (
                   <Text style={styles.heroMeta}>
                     {data?.updatedOn
-                      ? `Updated ${new Date(data.updatedOn).toLocaleDateString(
+                      ? `${translations?.bible?.updatedLabel || 'Updated'} ${new Date(data.updatedOn).toLocaleDateString(
                           'en-US',
                           {
                             month: 'short',
@@ -303,7 +305,7 @@ export default function FullVerseExplanation({ route, navigation }: any) {
                             year: 'numeric',
                           },
                         )}`
-                      : `Added ${new Date(
+                      : `${translations?.bible?.addedLabel || 'Added'} ${new Date(
                           data?.createdOn as string,
                         ).toLocaleDateString('en-US', {
                           month: 'short',
@@ -329,7 +331,7 @@ export default function FullVerseExplanation({ route, navigation }: any) {
               <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
                   <View style={styles.sectionAccentBar} />
-                  <Text style={styles.sectionTitle}>Explanation</Text>
+                  <Text style={styles.sectionTitle}>{translations?.bible?.explanation || 'Explanation'}</Text>
                 </View>
                 <View style={styles.sectionBody}>
                   {renderTextBlocks(data?.explanation)}
@@ -346,9 +348,8 @@ export default function FullVerseExplanation({ route, navigation }: any) {
                 <View style={styles.sectionHeader}>
                   <View
                     style={[styles.sectionAccentBar, styles.accentBarGold]}
-                  />
-                  <Text style={[styles.sectionTitle, styles.sectionTitleGold]}>
-                    Learn More
+                  />                    <Text style={[styles.sectionTitle, styles.sectionTitleGold]}>
+                    {translations?.bible?.learnMore || 'Learn More'}
                   </Text>
                 </View>
                 <View style={styles.sectionBody}>

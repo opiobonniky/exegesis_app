@@ -34,6 +34,7 @@ import { getVersionById } from '../../assets/bibleVersion/json/bibleVersions';
 import ActionHeader from '../../reusable/ActionHeader';
 import { useNavigation } from '@react-navigation/native';
 import useBible from '../../features/bible/hooks/useBible';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 type DailyVerse = {
   id: number;
@@ -70,13 +71,14 @@ function ExpandableContent({
   icon: Icon,
   COLORS,
   accent,
-
+  translations,
 }: {
   content: string;
   label: string;
   icon: any;
   COLORS: any;
   accent: string;
+  translations: any;
 }) {
   const INITIAL_LINES = 5;
   const [expanded, setExpanded] = useState(false);
@@ -102,7 +104,9 @@ function ExpandableContent({
             onPress={() => setExpanded(e => !e)}
           >
             <Text style={[styles.expandBtnText, { color: accent }]}>
-              {expanded ? 'Show less' : 'Continue reading'}
+              {expanded
+                ? translations?.bible?.showLess || 'Show less'
+                : translations?.bible?.continueReading || 'Continue reading'}
             </Text>
             {expanded ? (
               <ChevronUp size={14} color={accent} />
@@ -116,22 +120,22 @@ function ExpandableContent({
   );
 }
 
-function GreetingHeader() {
+function GreetingHeader({ translations }: { translations: any }) {
   const hour = new Date().getHours();
   let greeting: string;
   let icon: string;
 
   if (hour < 5) {
-    greeting = 'Good evening';
+    greeting = translations?.bible?.dailyGreetingEvening || 'Good evening';
     icon = '🌙';
   } else if (hour < 12) {
-    greeting = 'Good morning';
+    greeting = translations?.bible?.dailyGreetingMorning || 'Good morning';
     icon = '☀️';
   } else if (hour < 17) {
-    greeting = 'Good afternoon';
+    greeting = translations?.bible?.dailyGreetingAfternoon || 'Good afternoon';
     icon = '🌤️';
   } else {
-    greeting = 'Good evening';
+    greeting = translations?.bible?.dailyGreetingEvening || 'Good evening';
     icon = '🌅';
   }
 
@@ -144,6 +148,7 @@ function GreetingHeader() {
 }
 
 export default function DailyVerseScreen() {
+  const { translations } = useLanguage();
   const app = useContext(AppContext);
   const navigation = useNavigation<any>();
 
@@ -282,9 +287,15 @@ export default function DailyVerseScreen() {
     try {
       const Clipboard = require('@react-native-clipboard/clipboard').default;
       Clipboard.setString(text);
-      Alert.alert('Copied', 'Verse copied to clipboard');
+      Alert.alert(
+        translations?.bible?.verseCopiedTitle || 'Copied',
+        translations?.bible?.verseCopiedMessage || 'Verse copied to clipboard',
+      );
     } catch {
-      Alert.alert('Copied', text);
+      Alert.alert(
+        translations?.bible?.verseCopiedTitle || 'Copied',
+        text,
+      );
     }
   };
 
@@ -302,11 +313,11 @@ export default function DailyVerseScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: COLORS.background }]}>
-        <ActionHeader title={GreetingHeader()} onPress={() => navigation.goBack()} />
+        <ActionHeader title={GreetingHeader({ translations })} onPress={() => navigation.goBack()} />
         <View style={[styles.loadingContainer, themeStyle.center]}>
           <ActivityIndicator size="large" color={accent} />
           <Text style={{ color: COLORS.muted, marginTop: SPACING.md, fontSize: FONT_SIZES.sm }}>
-            Loading verse of the day…
+            {translations?.bible?.loadingVerseOfDay || 'Loading verse of the day…'}
           </Text>
         </View>
       </View>
@@ -316,11 +327,11 @@ export default function DailyVerseScreen() {
   if (!dailyVerse) {
     return (
       <View style={[styles.container, { backgroundColor: COLORS.background }]}>
-        <ActionHeader title="Daily Verse" onPress={() => navigation.goBack()} />
+        <ActionHeader title={translations?.bible?.dailyVerseTitle || 'Daily Verse'} onPress={() => navigation.goBack()} />
         <View style={[styles.loadingContainer, themeStyle.center]}>
           <BookOpen size={48} color={COLORS.muted} />
           <Text style={{ color: COLORS.muted, fontSize: FONT_SIZES.lg, marginTop: SPACING.md }}>
-            No verse available today
+            {translations?.bible?.noVerseToday || 'No verse available today'}
           </Text>
         </View>
       </View>
@@ -328,7 +339,7 @@ export default function DailyVerseScreen() {
   }
 
   const verseReference = `${dailyVerse.bookName} ${dailyVerse.chapter}:${dailyVerse.verseNumber}`;
-  const headerTitle = scrollOffset > 50 ? verseReference : GreetingHeader();
+  const headerTitle = scrollOffset > 50 ? verseReference : GreetingHeader({ translations });
 
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
@@ -361,7 +372,7 @@ export default function DailyVerseScreen() {
         <View style={[styles.verseCard, { backgroundColor: COLORS.cardBackground, borderColor }]}>
           <View style={[styles.accentBar, { backgroundColor: accent }]} />
           <View style={styles.verseCardInner}>
-            <Text style={[styles.verseLabel, { color: accent }]}>Verse of the Day</Text>
+            <Text style={[styles.verseLabel, { color: accent }]}>{translations?.bible?.verseOfTheDay || 'Verse of the Day'}</Text>
             <Text style={[styles.verseText, { color: COLORS.text }]}>
               {verseLoading ? 'Loading...' : (verseText || 'The Lord is my shepherd, I shall not want.')}
               "
@@ -386,7 +397,7 @@ export default function DailyVerseScreen() {
               activeOpacity={0.7}
             >
               <Lightbulb size={13} color={accent} strokeWidth={2} />
-              <Text style={[styles.actionBtnText, { color: accent }]}>Explain</Text>
+              <Text style={[styles.actionBtnText, { color: accent }]}>{translations?.bible?.explain || 'Explain'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: accent + '12' }]}
@@ -394,7 +405,7 @@ export default function DailyVerseScreen() {
               activeOpacity={0.7}
             >
               <Copy size={13} color={accent} strokeWidth={2} />
-              <Text style={[styles.actionBtnText, { color: accent }]}>Copy</Text>
+              <Text style={[styles.actionBtnText, { color: accent }]}>{translations?.bible?.copy || 'Copy'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: accent + '12' }]}
@@ -402,7 +413,7 @@ export default function DailyVerseScreen() {
               activeOpacity={0.7}
             >
               <Share2 size={13} color={accent} strokeWidth={2} />
-              <Text style={[styles.actionBtnText, { color: accent }]}>Share</Text>
+              <Text style={[styles.actionBtnText, { color: accent }]}>{translations?.bible?.share || 'Share'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -414,7 +425,7 @@ export default function DailyVerseScreen() {
             <View style={styles.cardInner}>
               <View style={styles.sectionHeader}>
                 <BookMarked size={18} color="#8B5CF6" />
-                <Text style={[styles.sectionTitle, { color: COLORS.text }]}>Reflection</Text>
+                <Text style={[styles.sectionTitle, { color: COLORS.text }]}>{translations?.bible?.reflection || 'Reflection'}</Text>
               </View>
               <View style={[styles.sectionDivider, { backgroundColor: dividerColor }]} />
               <ExpandableContent
@@ -423,6 +434,7 @@ export default function DailyVerseScreen() {
                 icon={BookMarked}
                 COLORS={COLORS}
                 accent="#8B5CF6"
+                translations={translations}
               />
             </View>
           </View>
@@ -435,7 +447,7 @@ export default function DailyVerseScreen() {
             <View style={styles.cardInner}>
               <View style={styles.sectionHeader}>
                 <Lightbulb size={18} color="#3B82F6" />
-                <Text style={[styles.sectionTitle, { color: COLORS.text }]}>Explanation</Text>
+                <Text style={[styles.sectionTitle, { color: COLORS.text }]}>{translations?.bible?.explanation || 'Explanation'}</Text>
               </View>
               <View style={[styles.sectionDivider, { backgroundColor: dividerColor }]} />
               <ExpandableContent
@@ -444,6 +456,7 @@ export default function DailyVerseScreen() {
                 icon={Lightbulb}
                 COLORS={COLORS}
                 accent="#3B82F6"
+                translations={translations}
               />
             </View>
           </View>
@@ -456,7 +469,7 @@ export default function DailyVerseScreen() {
             <View style={styles.cardInner}>
               <View style={styles.sectionHeader}>
                 <GraduationCap size={18} color="#10B981" />
-                <Text style={[styles.sectionTitle, { color: COLORS.text }]}>Learn More</Text>
+                <Text style={[styles.sectionTitle, { color: COLORS.text }]}>{translations?.bible?.learnMore || 'Learn More'}</Text>
               </View>
               <View style={[styles.sectionDivider, { backgroundColor: dividerColor }]} />
               <ExpandableContent
@@ -465,6 +478,7 @@ export default function DailyVerseScreen() {
                 icon={GraduationCap}
                 COLORS={COLORS}
                 accent="#10B981"
+                translations={translations}
               />
             </View>
           </View>
@@ -473,8 +487,7 @@ export default function DailyVerseScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: COLORS.muted }]}>
-            Meditate on this verse today.{'\n'}
-            Let God's word guide your thoughts and actions.
+            {translations?.bible?.meditationVerseText || 'Meditate on this verse today.\nLet God\'s word guide your thoughts and actions.'}
           </Text>
         </View>
       </ScrollView>

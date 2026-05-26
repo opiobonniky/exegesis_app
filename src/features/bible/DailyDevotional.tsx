@@ -27,6 +27,7 @@ import { getVerseText } from '../../utilits/bibleUtils';
 import { getVersionById } from '../../assets/bibleVersion/json/bibleVersions';
 import ActionHeader from '../../reusable/ActionHeader';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 type DailyVerse = {
   id: number;
@@ -88,10 +89,12 @@ function DevotionBody({
   paragraphs,
   COLORS,
   dynamicStyles,
+  translations,
 }: {
   paragraphs: string[];
   COLORS: any;
   dynamicStyles: any;
+  translations: any;
 }) {
   const INITIAL_COUNT = 3;
   const [expanded, setExpanded] = useState(false);
@@ -112,7 +115,9 @@ function DevotionBody({
           activeOpacity={0.7}
         >
           <Text style={dynamicStyles.expandBtnText}>
-            {expanded ? 'Show less' : 'Continue reading'}
+            {expanded
+              ? translations?.bible?.showLess || 'Show less'
+              : translations?.bible?.continueReading || 'Continue reading'}
           </Text>
           {expanded ? (
             <ChevronUp size={16} color={COLORS.primary} />
@@ -126,6 +131,7 @@ function DevotionBody({
 }
 
 export default function DailyDevotionalScreen() {
+  const { translations } = useLanguage();
   const app = useContext(AppContext);
   const navigation = useNavigation();
 
@@ -408,7 +414,7 @@ export default function DailyDevotionalScreen() {
             fontSize: FONT_SIZES.sm,
           }}
         >
-          Loading devotional…
+          {translations?.bible?.loadingDevotional || 'Loading devotional…'}
         </Text>
       </View>
     );
@@ -426,7 +432,7 @@ export default function DailyDevotionalScreen() {
             marginTop: SPACING.md,
           }}
         >
-          No devotional available today
+          {translations?.bible?.noDevotionalToday || 'No devotional available today'}
         </Text>
       </View>
     );
@@ -463,16 +469,16 @@ export default function DailyDevotionalScreen() {
     let icon: string;
 
     if (hour < 5) {
-      greeting = 'Good evening';
+      greeting = translations?.bible?.dailyGreetingEvening || 'Good evening';
       icon = '🌙';
     } else if (hour < 12) {
-      greeting = 'Good morning';
+      greeting = translations?.bible?.dailyGreetingMorning || 'Good morning';
       icon = '☀️';
     } else if (hour < 17) {
-      greeting = 'Good afternoon';
+      greeting = translations?.bible?.dailyGreetingAfternoon || 'Good afternoon';
       icon = '🌤️';
     } else {
-      greeting = 'Good evening';
+      greeting = translations?.bible?.dailyGreetingEvening || 'Good evening';
       icon = '🌅';
     }
 
@@ -510,7 +516,7 @@ export default function DailyDevotionalScreen() {
         <View style={s.verseCard}>
           <View style={s.verseAccentBar} />
           <View style={s.verseCardInner}>
-            <Text style={s.verseLabel}>Verse of the Day</Text>
+            <Text style={s.verseLabel}>{translations?.bible?.verseOfTheDay || 'Verse of the Day'}</Text>
             <Text style={s.openQuote}>"</Text>
             <Text style={s.verseText}>
               {verseBody ||
@@ -540,22 +546,22 @@ export default function DailyDevotionalScreen() {
         {/* ── Devotion card ── */}
         <View style={s.devotionCard}>
           <View style={s.devotionCardInner}>
-            <Text style={s.devotionLabel}>Today's devotion</Text>
+            <Text style={s.devotionLabel}>{translations?.bible?.todaysDevotion || "Today's devotion"}</Text>
 
-            <View style={s.devotionDivider} />
-            <DevotionBody
-              paragraphs={paragraphs}
-              COLORS={COLORS}
-              dynamicStyles={s}
-            />
+            <View style={s.devotionDivider} />              <DevotionBody
+                paragraphs={paragraphs}
+                COLORS={COLORS}
+                dynamicStyles={s}
+                translations={translations}
+              />
+            </View>
           </View>
-        </View>
 
         {/* ── Learn More card ── */}
         {(devotion as any).learnMore ? (
           <View style={s.devotionCard}>
             <View style={s.devotionCardInner}>
-              <Text style={s.devotionLabel}>Learn More</Text>
+              <Text style={s.devotionLabel}>{translations?.bible?.learnMore || 'Learn More'}</Text>
               <View style={s.devotionDivider} />
               <DevotionBody
                 paragraphs={(devotion as any).learnMore
@@ -563,6 +569,7 @@ export default function DailyDevotionalScreen() {
                   .filter((p: string) => p.trim())}
                 COLORS={COLORS}
                 dynamicStyles={s}
+                translations={translations}
               />
             </View>
           </View>
@@ -571,8 +578,7 @@ export default function DailyDevotionalScreen() {
         {/* Footer */}
         <View style={s.footer}>
           <Text style={s.footerText}>
-            Meditate on this word today.{'\n'}Let it guide your thoughts and
-            actions.
+            {translations?.bible?.meditationDevotionText || 'Meditate on this word today.\nLet it guide your thoughts and actions.'}
           </Text>
         </View>
       </ScrollView>
