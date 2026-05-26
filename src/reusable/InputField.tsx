@@ -17,6 +17,7 @@ type Props = {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   textAlign?: 'left' | 'right' | 'center';
+  isRtl?: boolean;
 };
 
 export default function InputField({
@@ -32,6 +33,7 @@ export default function InputField({
   leftIcon,
   rightIcon,
   textAlign = 'left',
+  isRtl = false,
   ...props
 }: Props) {
   const [showPassword, setShowPassword] = useState(false);
@@ -52,18 +54,18 @@ export default function InputField({
       {/* Input Wrapper */}
       <View
         style={{
-          flexDirection: 'row',
+          flexDirection: isRtl ? 'row-reverse' : 'row',
           alignItems: 'center',
           backgroundColor: COLORS.surface,
           borderWidth: 1,
           borderColor: error ? COLORS.error : COLORS.border,
           borderRadius: 8,
-          paddingLeft: leftIcon ? 12 : 0,
-          paddingRight: isPassword || rightIcon ? 10 : 0,
+          paddingLeft: isRtl ? (isPassword || rightIcon ? 10 : 0) : (leftIcon ? 12 : 0),
+          paddingRight: isRtl ? (leftIcon ? 12 : 0) : (isPassword || rightIcon ? 10 : 0),
         }}
       >
-        {/* Left Icon */}
-        {leftIcon && <View style={{ marginRight: 8 }}>{leftIcon}</View>}
+        {/* Left Icon (renders on right in RTL) */}
+        {leftIcon && <View style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }}>{leftIcon}</View>}
 
         <TextInput
           style={{
@@ -72,6 +74,7 @@ export default function InputField({
             paddingVertical: 12,
             color: COLORS.text,
             textAlign: textAlign,
+            writingDirection: isRtl ? 'rtl' : 'ltr',
           }}
           value={value}
           onChangeText={onChangeText}

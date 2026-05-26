@@ -139,10 +139,11 @@ const Login = () => {
         style={[
           s.langFloatingBtn,
           { borderColor: C.border, backgroundColor: C.surface },
+          isRtl && { right: undefined, left: 18 },
         ]}
         onPress={() => setShowLangModal(true)}
       >
-        <Globe size={16} color={C.text} style={{ marginRight: 8 }} />
+        <Globe size={16} color={C.text} style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
         <Text style={{ color: C.text, fontWeight: '600' }}>
           {language.toUpperCase()}
         </Text>
@@ -233,13 +234,13 @@ const Login = () => {
                       <Text style={{ color: C.text, fontSize: 16 }}>
                         {l.label}
                       </Text>
-                      <Text style={{ color: C.muted, marginLeft: 8 }}>
+                      <Text style={{ color: C.muted, [isRtl ? 'marginRight' : 'marginLeft']: 8 }}>
                         {l.code.toUpperCase()}
                       </Text>
                     </TouchableOpacity>
                   ))}
                   <TouchableOpacity
-                    style={s.modalClose}
+                    style={[s.modalClose, { alignSelf: isRtl ? 'flex-start' : 'flex-end' }]}
                     onPress={() => setShowLangModal(false)}
                   >
                     <X color={C.primary} />
@@ -274,6 +275,14 @@ const Login = () => {
                       shadowOffset: { width: 0, height: 2 },
                       elevation: 2,
                     },
+                    isRtl && {
+                      borderLeftWidth: 0,
+                      borderRightWidth: 1,
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                      borderTopRightRadius: 12,
+                      borderBottomRightRadius: 12,
+                    },
                   ]}
                 >
                   <Mail size={18} color={C.muted} />
@@ -289,6 +298,14 @@ const Login = () => {
                       shadowRadius: 8,
                       shadowOffset: { width: 0, height: 2 },
                       elevation: 2,
+                    },
+                    isRtl && {
+                      borderTopLeftRadius: 12,
+                      borderBottomLeftRadius: 12,
+                      borderTopRightRadius: 0,
+                      borderBottomRightRadius: 0,
+                      paddingRight: 14,
+                      paddingLeft: 44,
                     },
                   ]}
                 >
@@ -333,7 +350,7 @@ const Login = () => {
               </View>
 
               {errors.email && (
-                <Text style={[s.errorText, { color: C.error }]}>
+                <Text style={[s.errorText, { color: C.error, marginLeft: isRtl ? 0 : 4, marginRight: isRtl ? 4 : 0 }]}>
                   {errors.email}
                 </Text>
               )}
@@ -356,6 +373,14 @@ const Login = () => {
                       shadowOffset: { width: 0, height: 2 },
                       elevation: 2,
                     },
+                    isRtl && {
+                      borderLeftWidth: 0,
+                      borderRightWidth: 1,
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                      borderTopRightRadius: 12,
+                      borderBottomRightRadius: 12,
+                    },
                   ]}
                 >
                   <Lock size={18} color={C.muted} />
@@ -371,6 +396,14 @@ const Login = () => {
                       shadowRadius: 8,
                       shadowOffset: { width: 0, height: 2 },
                       elevation: 2,
+                    },
+                    isRtl && {
+                      borderTopLeftRadius: 12,
+                      borderBottomLeftRadius: 12,
+                      borderTopRightRadius: 0,
+                      borderBottomRightRadius: 0,
+                      paddingRight: 14,
+                      paddingLeft: 44,
                     },
                   ]}
                 >
@@ -428,7 +461,7 @@ const Login = () => {
               </View>
 
               {errors.password && (
-                <Text style={[s.errorText, { color: C.error }]}>
+                <Text style={[s.errorText, { color: C.error, marginLeft: isRtl ? 0 : 4, marginRight: isRtl ? 4 : 0 }]}>
                   {errors.password}
                 </Text>
               )}
@@ -436,7 +469,7 @@ const Login = () => {
 
             {/* Forgot password */}
             <TouchableOpacity
-              style={s.forgotWrap}
+              style={[s.forgotWrap, { alignSelf: isRtl ? 'flex-start' : 'flex-end' }]}
               onPress={() => navigation.navigate(route.forgotPassword)}
               activeOpacity={0.7}
             >
@@ -492,7 +525,7 @@ const Login = () => {
             </TouchableOpacity>
 
             {/* ── Divider ──────────────────────────────────────────────────────── */}
-            <View style={s.dividerRow}>
+            <View style={[s.dividerRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <View style={[s.dividerLine, { backgroundColor: C.border }]} />
               <Text
                 style={[s.dividerText, { color: C.muted, textAlign: 'center' }]}
@@ -517,13 +550,12 @@ const Login = () => {
                 <ActivityIndicator size="small" color={C.text} />
               ) : (
                 <>
-                  <View style={s.googleIconContainer}>
+                  <View style={[s.googleIconContainer, isRtl && { left: undefined, right: 30 }]}>
                     <GoogleIcon width={25} height={25} />
                   </View>
-                  <Text
-                    style={[
+                  <Text                      style={[
                       s.googleText,
-                      { color: C.text, textAlign: isRtl ? 'right' : 'center' },
+                      { color: C.text, textAlign: 'center' },
                     ]}
                   >
                     {translations.login.google}
@@ -541,16 +573,15 @@ const Login = () => {
               onPress={() => navigation.navigate(route.bible)}
               activeOpacity={0.82}
             >
-              <View style={s.lordsIconContainer}>
+              <View style={[s.lordsIconContainer, isRtl && { left: undefined, right: 30 }]}>
                 <Image source={book} style={s.lordsIcon} resizeMode="contain" />
               </View>
-              <Text
-                style={[
-                  s.lordsText,
-                  { color: C.text, textAlign: isRtl ? 'right' : 'center' },
-                ]}
-              >
-                {translations.login?.lordsbook || 'Continue with Lordsbook'}
+              <Text                  style={[
+                    s.lordsText,
+                    { color: C.text, textAlign: 'center' },
+                  ]}
+                >
+                  {translations.login?.lordsbook || 'Continue with Lordsbook'}
               </Text>
             </TouchableOpacity>
 
@@ -616,6 +647,7 @@ const s = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingTop: Platform.OS === 'android' ? 60 : 35,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     paddingHorizontal: 24,
     alignItems: 'center',
   },

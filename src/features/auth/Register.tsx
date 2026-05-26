@@ -30,6 +30,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { route } from '../../component/navigations/routes';
 import {
   ChevronLeft,
+  ChevronRight,
   Lock,
   Mail,
   PhoneCall,
@@ -37,6 +38,7 @@ import {
   Check,
   X,
   ArrowRight,
+  ArrowLeft,
   RefreshCw,
   MailOpen,
 } from 'lucide-react-native';
@@ -525,22 +527,26 @@ export default function Register() {
           >
             {currentStep === 'details' && (
               <>
-                <View style={s.headerSection}>
+                <View style={[s.headerSection, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <TouchableOpacity
                     style={[s.backButton, { backgroundColor: C.surface }]}
                     onPress={() => navigation.goBack()}
                     activeOpacity={0.7}
                   >
-                    <ChevronLeft size={22} color={C.text} />
+                    {isRtl ? (
+                      <ChevronRight size={22} color={C.text} />
+                    ) : (
+                      <ChevronLeft size={22} color={C.text} />
+                    )}
                   </TouchableOpacity>
 
-                   <View style={s.titleSection}>
+                   <View style={[s.titleSection, { marginLeft: isRtl ? 0 : SPACING.md, marginRight: isRtl ? SPACING.md : 0 }]}>
                   <Text style={[s.title, { color: C.text }]}>
                     {googleSignUp
                       ? translations.register?.title || 'Complete Registration'
                       : translations.register?.title || 'Create Account'}
                   </Text>
-                  <Text style={[s.subtitle, { color: C.muted }]}>
+                  <Text style={[s.subtitle, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                     {googleSignUp
                       ? translations.register?.googleComplete ||
                         'Set up your password to complete sign-up'
@@ -563,9 +569,9 @@ export default function Register() {
                       ]}
                     >
                       <View style={s.halfField}>
-                        <Text style={[s.fieldLabel, { color: C.muted }]}>
-                          {translations.register?.firstName || 'FIRST NAME'}
-                        </Text>
+                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+                        {translations.register?.firstName || 'FIRST NAME'}
+                      </Text>
                         <InputField
                           placeholder={
                             translations.register?.firstPlaceholder || 'First'
@@ -579,10 +585,11 @@ export default function Register() {
                           error={errors.firstName}
                           leftIcon={<User size={18} color={C.muted} />}
                           textAlign={isRtl ? 'right' : 'left'}
+                          isRtl={isRtl}
                         />
                       </View>
                       <View style={s.halfField}>
-                        <Text style={[s.fieldLabel, { color: C.muted }]}>
+                        <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                           {translations.register?.lastName || 'LAST NAME'}
                         </Text>
                         <InputField
@@ -598,12 +605,13 @@ export default function Register() {
                           error={errors.lastName}
                           leftIcon={<User size={18} color={C.muted} />}
                           textAlign={isRtl ? 'right' : 'left'}
+                          isRtl={isRtl}
                         />
                       </View>
                     </View>
 
                     <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted }]}>
+                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                         {translations.register?.email || 'EMAIL'}
                       </Text>
                       <InputField
@@ -622,11 +630,12 @@ export default function Register() {
                         autoCapitalize="none"
                         leftIcon={<Mail size={18} color={C.muted} />}
                         textAlign={isRtl ? 'right' : 'left'}
+                        isRtl={isRtl}
                       />
                     </View>
 
                     <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted }]}>
+                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                         {translations.register?.username || 'USERNAME'}
                       </Text>
                       <InputField
@@ -644,11 +653,12 @@ export default function Register() {
                         autoCapitalize="none"
                         leftIcon={<User size={18} color={C.muted} />}
                         textAlign={isRtl ? 'right' : 'left'}
+                        isRtl={isRtl}
                       />
                     </View>
 
                     <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted }]}>
+                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                         {translations.register?.phone || 'PHONE'}
                       </Text>
                       <InputField
@@ -666,11 +676,12 @@ export default function Register() {
                         keyboardType="phone-pad"
                         leftIcon={<PhoneCall size={18} color={C.muted} />}
                         textAlign={isRtl ? 'right' : 'left'}
+                        isRtl={isRtl}
                       />
                     </View>
 
                     <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted }]}>
+                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                         {translations.register?.gender || 'GENDER'}
                       </Text>
                       <TouchableOpacity
@@ -680,7 +691,7 @@ export default function Register() {
                           { borderColor: C.border, backgroundColor: C.surface },
                         ]}
                       >
-                        <Text style={[s.genderText, { color: C.text }]}>
+                        <Text style={[s.genderText, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}>
                           {genders.find(g => g.value === gender)?.label || gender}
                         </Text>
                       </TouchableOpacity>
@@ -705,12 +716,9 @@ export default function Register() {
                                 s.genderOption,
                                 { borderBottomColor: C.border },
                               ]}
-                            >
-                              <Text
-                                style={[s.genderOptionText, { color: C.text }]}
-                              >
-                                {g.label}
-                              </Text>
+                            >                        <Text style={[s.genderOptionText, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                              {g.label}
+                            </Text>
                             </TouchableOpacity>
                           ))}
                         </View>
@@ -718,7 +726,7 @@ export default function Register() {
                     </View>
 
                     <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted }]}>
+                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                         {translations.register?.dateOfBirth ||
                           'DATE OF BIRTH (Optional)'}
                       </Text>
@@ -735,7 +743,7 @@ export default function Register() {
                     </View>
 
                     <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted }]}>
+                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                         {translations.register?.password || 'PASSWORD'}
                       </Text>
                       <InputField
@@ -754,9 +762,10 @@ export default function Register() {
                         secure
                         leftIcon={<Lock size={18} color={C.muted} />}
                         textAlign={isRtl ? 'right' : 'left'}
+                        isRtl={isRtl}
                       />
                       {password.length > 0 && (
-                        <View style={s.strengthRow}>
+                        <View style={[s.strengthRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                           <View style={s.strengthBars}>
                             {[1, 2, 3, 4, 5].map(n => (
                               <View
@@ -777,7 +786,11 @@ export default function Register() {
                             <Text
                               style={[
                                 s.strengthLabel,
-                                { color: pwdStrength.color },
+                                {
+                                  color: pwdStrength.color,
+                                  marginLeft: isRtl ? 0 : SPACING.sm,
+                                  marginRight: isRtl ? SPACING.sm : 0,
+                                },
                               ]}
                             >
                               {pwdStrength.text}
@@ -788,7 +801,7 @@ export default function Register() {
                     </View>
 
                     <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted }]}>
+                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                         {translations.register?.confirmPassword ||
                           'CONFIRM PASSWORD'}
                       </Text>
@@ -807,9 +820,10 @@ export default function Register() {
                         secure
                         leftIcon={<Lock size={18} color={C.muted} />}
                         textAlign={isRtl ? 'right' : 'left'}
+                        isRtl={isRtl}
                       />
                       {confirmPassword.length > 0 && (
-                        <View style={s.matchRow}>
+                        <View style={[s.matchRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                           {password === confirmPassword ? (
                             <>
                               <Check size={14} color={C.success} />
@@ -848,14 +862,18 @@ export default function Register() {
                           <Text style={s.submitButtonText}>
                             {translations.register?.button || 'Create Account'}
                           </Text>
-                          <ArrowRight size={18} color="#FFFFFF" />
+                          {isRtl ? (
+                            <ArrowLeft size={18} color="#FFFFFF" />
+                          ) : (
+                            <ArrowRight size={18} color="#FFFFFF" />
+                          )}
                         </>
                       )}
                     </TouchableOpacity>
                   </View>
                 </View>
 
-                <View style={s.footer}>
+                <View style={[s.footer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <Text style={[s.footerText, { color: C.muted }]}>
                     {translations.footer?.alreadyHave ||
                       'Already have an account?'}{' '}
@@ -873,13 +891,17 @@ export default function Register() {
 
             {currentStep === 'verify' && (
               <>
-                <TouchableOpacity
-                  style={[s.backButtonTop, { backgroundColor: C.surface }]}
-                  onPress={() => goToStep('details')}
-                  activeOpacity={0.7}
-                >
-                  <ChevronLeft size={22} color={C.text} />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.backButtonTop, { backgroundColor: C.surface, alignSelf: isRtl ? 'flex-end' : 'flex-start' }]}
+                    onPress={() => goToStep('details')}
+                    activeOpacity={0.7}
+                  >
+                    {isRtl ? (
+                      <ChevronRight size={22} color={C.text} />
+                    ) : (
+                      <ChevronLeft size={22} color={C.text} />
+                    )}
+                  </TouchableOpacity>
 
                 <View style={s.verifyContainer}>
                   <View style={s.verifyHeader}>
@@ -891,10 +913,10 @@ export default function Register() {
                     >
                       <Mail size={28} color="#FFFFFF" />
                     </View>
-                    <Text style={[s.verifyTitle, { color: C.text }]}>
+                    <Text style={[s.verifyTitle, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}>
                       {translations.verify?.title || 'Verify Your Email'}
                     </Text>
-                    <Text style={[s.verifySubtitle, { color: C.muted }]}>
+                    <Text style={[s.verifySubtitle, { color: C.muted, textAlign: 'center' }]}>
                       {translations.verify?.subtitle ||
                         "We've sent a 6-digit code to"}
                       {'\n'}
@@ -910,15 +932,16 @@ export default function Register() {
                         key={i}
                         ref={ref => {
                           codeRefs.current[i] = ref;
-                        }}
-                        style={[
-                          s.codeBox,
-                          {
-                            backgroundColor: digit ? C.selectedItem : C.surface,
-                            borderColor: digit ? C.primary : C.border,
-                            color: C.text,
-                          },
-                        ]}
+                        }}                          style={[
+                            s.codeBox,
+                            {
+                              backgroundColor: digit ? C.selectedItem : C.surface,
+                              borderColor: digit ? C.primary : C.border,
+                              color: C.text,
+                              textAlign: 'center',
+                              writingDirection: isRtl ? 'rtl' : 'ltr',
+                            },
+                          ]}
                         value={digit}
                         onChangeText={t => handleCodeChange(t, i)}
                         onKeyPress={e => handleCodeKeyPress(e, i)}
@@ -937,7 +960,7 @@ export default function Register() {
                       </Text>
                     ) : (
                       <TouchableOpacity
-                        style={s.resendButton}
+                        style={[s.resendButton, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                         onPress={handleResendCode}
                         disabled={loading}
                       >
@@ -963,14 +986,17 @@ export default function Register() {
                     disabled={loading}
                   >
                     {loading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <Text style={s.submitButtonText}>
-                          {translations.verify?.button || 'Verify Email'}
-                        </Text>
-                        <ArrowRight size={18} color="#FFFFFF" />
-                      </>
+                      <ActivityIndicator size="small" color="#FFFFFF" />                      ) : (
+                        <>
+                          <Text style={s.submitButtonText}>
+                            {translations.verify?.button || 'Verify Email'}
+                          </Text>
+                          {isRtl ? (
+                            <ArrowLeft size={18} color="#FFFFFF" />
+                          ) : (
+                            <ArrowRight size={18} color="#FFFFFF" />
+                          )}
+                        </>
                     )}
                   </TouchableOpacity>
 

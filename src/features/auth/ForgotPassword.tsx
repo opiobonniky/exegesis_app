@@ -28,10 +28,12 @@ import { useNavigation } from '@react-navigation/native';
 import { AppContext } from '../../common/AppContext';
 import {
   ChevronLeft,
+  ChevronRight,
   Mail,
   ShieldCheck,
   KeyRound,
   ArrowRight,
+  ArrowLeft,
   RefreshCw,
   Check,
   X,
@@ -450,7 +452,7 @@ export default function ForgotPassword() {
         <TouchableOpacity
           style={[
             s.backBtn,
-            { backgroundColor: C.surface, borderColor: C.border },
+            { backgroundColor: C.surface, borderColor: C.border, alignSelf: isRtl ? 'flex-end' : 'flex-start' },
           ]}
           onPress={() =>
             currentStep === 'email'
@@ -459,7 +461,11 @@ export default function ForgotPassword() {
           }
           activeOpacity={0.75}
         >
-          <ChevronLeft size={20} color={C.text} strokeWidth={2.5} />
+          {isRtl ? (
+            <ChevronRight size={20} color={C.text} strokeWidth={2.5} />
+          ) : (
+            <ChevronLeft size={20} color={C.text} strokeWidth={2.5} />
+          )}
         </TouchableOpacity>
 
         {/* Step icon */}
@@ -571,10 +577,10 @@ export default function ForgotPassword() {
               {/* ══ STEP 1: Email ══════════════════════════════════════════ */}
               {currentStep === 'email' && (
                 <>
-                  <Text style={[s.cardEyebrow, { color: C.primary }]}>
+                  <Text style={[s.cardEyebrow, { color: C.primary, textAlign: isRtl ? 'right' : 'left' }]}>
                     {meta.eyebrow}
                   </Text>
-                  <Text style={[s.cardTitle, { color: C.text }]}>
+                  <Text style={[s.cardTitle, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}>
                     {translations.forgotPassword?.title || 'Enter Your Email'}
                   </Text>
                   <View
@@ -605,6 +611,7 @@ export default function ForgotPassword() {
                       autoCapitalize="none"
                       leftIcon={<Mail size={17} color={C.muted} />}
                       textAlign={isRtl ? 'right' : 'left'}
+                      isRtl={isRtl}
                     />
                   </View>
 
@@ -631,11 +638,19 @@ export default function ForgotPassword() {
                           <Text style={[s.ctaText, { color: C.white }]}>
                             {translations.forgotPassword?.submit || 'Send Code'}
                           </Text>
-                          <ArrowRight
-                            size={17}
-                            color={C.white}
-                            strokeWidth={2.8}
-                          />
+                          {isRtl ? (
+                            <ArrowLeft
+                              size={17}
+                              color={C.white}
+                              strokeWidth={2.8}
+                            />
+                          ) : (
+                            <ArrowRight
+                              size={17}
+                              color={C.white}
+                              strokeWidth={2.8}
+                            />
+                          )}
                         </>
                       )}
                     </LinearGradient>
@@ -678,15 +693,15 @@ export default function ForgotPassword() {
                     {verificationCode.map((digit, i) => (
                       <TextInput
                         key={i}
-                        ref={ref => (codeRefs.current[i] = ref)}
-                        style={[
-                          s.codeBox,
-                          {
-                            backgroundColor: digit ? C.selectedItem : C.surface,
-                            borderColor: digit ? C.primary : C.border,
-                            color: C.text,
-                          },
-                        ]}
+                        ref={ref => (codeRefs.current[i] = ref)}                          style={[
+                            s.codeBox,
+                            {
+                              backgroundColor: digit ? C.selectedItem : C.surface,
+                              borderColor: digit ? C.primary : C.border,
+                              color: C.text,
+                              writingDirection: isRtl ? 'rtl' : 'ltr',
+                            },
+                          ]}
                         value={digit}
                         onChangeText={t => handleCodeChange(t, i)}
                         onKeyPress={e => handleCodeKeyPress(e, i)}
@@ -713,7 +728,7 @@ export default function ForgotPassword() {
                       </Text>
                     ) : (
                       <TouchableOpacity
-                        style={s.resendBtn}
+                        style={[s.resendBtn, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                         onPress={handleSendCode}
                       >
                         <RefreshCw size={13} color={C.muted} />
@@ -750,11 +765,19 @@ export default function ForgotPassword() {
                           <Text style={[s.ctaText, { color: C.white }]}>
                             {translations.verify?.action || 'Verify Code'}
                           </Text>
-                          <ArrowRight
-                            size={17}
-                            color={C.white}
-                            strokeWidth={2.8}
-                          />
+                          {isRtl ? (
+                            <ArrowLeft
+                              size={17}
+                              color={C.white}
+                              strokeWidth={2.8}
+                            />
+                          ) : (
+                            <ArrowRight
+                              size={17}
+                              color={C.white}
+                              strokeWidth={2.8}
+                            />
+                          )}
                         </>
                       )}
                     </LinearGradient>
@@ -810,6 +833,7 @@ export default function ForgotPassword() {
                       secure
                       leftIcon={<KeyRound size={17} color={C.muted} />}
                       textAlign={isRtl ? 'right' : 'left'}
+                      isRtl={isRtl}
                     />
 
                     {/* Strength bars */}
@@ -835,7 +859,7 @@ export default function ForgotPassword() {
                           <Text
                             style={[
                               s.strengthLabel,
-                              { color: pwdStrength.color },
+                              { color: pwdStrength.color, textAlign: isRtl ? 'left' : 'right' },
                             ]}
                           >
                             {pwdStrength.text}
@@ -859,7 +883,7 @@ export default function ForgotPassword() {
                           const currentReq = pwdReqs[currentReqIndex];
                           if (!currentReq) return null;
                           return (
-                            <View style={s.reqRow}>
+                            <View style={[s.reqRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                               {currentReq.met ? (
                                 <Check size={14} color={C.success} />
                               ) : (
@@ -910,11 +934,12 @@ export default function ForgotPassword() {
                       error={error || undefined}
                       leftIcon={<ShieldCheck size={17} color={C.muted} />}
                       textAlign={isRtl ? 'right' : 'left'}
+                      isRtl={isRtl}
                     />
 
                     {/* Match indicator */}
                     {confirmPassword.length > 0 && (
-                      <View style={s.matchRow}>
+                      <View style={[s.matchRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                         {newPassword === confirmPassword ? (
                           <>
                             <Check size={14} color={C.success} />
@@ -942,7 +967,11 @@ export default function ForgotPassword() {
                       s.tipStrip,
                       {
                         backgroundColor: C.surface,
-                        borderLeftColor: C.primary,
+                        borderLeftColor: isRtl ? 'transparent' : C.primary,
+                        borderRightColor: isRtl ? C.primary : 'transparent',
+                        borderLeftWidth: isRtl ? 0 : 3,
+                        borderRightWidth: isRtl ? 3 : 0,
+                        flexDirection: isRtl ? 'row-reverse' : 'row',
                       },
                     ]}
                   >
@@ -977,11 +1006,19 @@ export default function ForgotPassword() {
                             {translations.forgotPassword?.resetAction ||
                               'Reset Password'}
                           </Text>
-                          <ArrowRight
-                            size={17}
-                            color={C.white}
-                            strokeWidth={2.8}
-                          />
+                          {isRtl ? (
+                            <ArrowLeft
+                              size={17}
+                              color={C.white}
+                              strokeWidth={2.8}
+                            />
+                          ) : (
+                            <ArrowRight
+                              size={17}
+                              color={C.white}
+                              strokeWidth={2.8}
+                            />
+                          )}
                         </>
                       )}
                     </LinearGradient>
@@ -992,7 +1029,7 @@ export default function ForgotPassword() {
           </Animated.View>
 
           {/* Footer help */}
-          <View style={s.footer}>
+          <View style={[s.footer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <Text style={[s.footerText, { color: C.muted }]}>
               {' '}
               {translations.forgotPassword?.helpPrefix || 'Need help?'}{' '}
