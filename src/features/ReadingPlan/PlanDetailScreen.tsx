@@ -33,9 +33,11 @@ import {
   Target,
   HelpCircle,
   ChevronLeft,
+  ChevronRight,
 } from 'lucide-react-native';
 import { sendPostRequest } from '../../services/api';
 import ActionHeader from '../../reusable/ActionHeader';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const CAL_CELL = Math.floor((SCREEN_W - SPACING.md * 2 - 32 - 6 * 4) / 7);
@@ -190,6 +192,8 @@ const MONTHS = [
 const fmt = (iso: string, opts: Intl.DateTimeFormatOptions) =>
   new Date(iso).toLocaleDateString('en-US', opts);
 
+const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 function quizStats(questions: QuizQuestion[]) {
   const correct = questions.filter(q => q.isCorrect).length;
   const total = questions.length;
@@ -266,7 +270,7 @@ function SkeletonDayCard({ P }: { P: Palette }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Reusable UI primitives  (unchanged from original)
+// Reusable UI primitives
 // ─────────────────────────────────────────────────────────────────────────────
 function Bar({
   pct,
@@ -453,16 +457,13 @@ export default function PlanDetailScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { isDark } = useContext(AppContext)!;
+  const { translations, language } = useLanguage();
+  const rp = translations?.readingPlan;
+  const isRtl = language === 'ar';
   const P = useMemo(() => makePalette(isDark), [isDark]);
 
   const { planId, initialTab } = route.params ?? {};
 
-  // ── FIX: split into two independent loading flags ─────────────────────────
-  // Before: one `loading` flag blocked the ENTIRE screen until both
-  //         plan-detail AND all-assignments finished (they were sequential).
-  // After:  `planLoading` unblocks the screen as soon as the fast header
-  //         data arrives; `assignmentsLoading` only controls skeleton rows
-  //         inside the already-visible list.
   const [planLoading, setPlanLoading] = useState(true);
   const [assignmentsLoading, setAssignmentsLoading] = useState(true);
 
@@ -472,10 +473,6 @@ export default function PlanDetailScreen() {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const drawerAnim = useRef(new Animated.Value(0)).current;
 
-  // ── FIX: fire both requests in parallel on mount ──────────────────────────
-  // Before: load() called `await loadAssignments()` inside itself, so
-  //         setLoading(false) only ran after BOTH network calls finished.
-  // After:  each function is independent; no awaiting the other.
   useEffect(() => {
     fetchPlanDetail();
     fetchAssignments();
@@ -492,7 +489,7 @@ export default function PlanDetailScreen() {
     } catch (e) {
       console.error(e);
     } finally {
-      setPlanLoading(false); // unblocks the screen immediately
+      setPlanLoading(false);
     }
   }
 
@@ -518,11 +515,10 @@ export default function PlanDetailScreen() {
     } catch (e) {
       console.error(e);
     } finally {
-      setAssignmentsLoading(false); // swaps skeleton rows for real content
+      setAssignmentsLoading(false);
     }
   }
 
-  // ── Drawer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const open = selectedDay !== null;
     if (open) {
@@ -541,7 +537,6 @@ export default function PlanDetailScreen() {
     }
   }, [selectedDay]);
 
-  // ── Derived ─────────────────────────────────────────────────────────────────
   const completedDays = useMemo<number[]>(() => {
     try {
       return JSON.parse(planDetail?.completed_days_json ?? '[]');
@@ -582,9 +577,7 @@ export default function PlanDetailScreen() {
     [selectedDay, assignments],
   );
 
-  // ── Guards ──────────────────────────────────────────────────────────────────
-  // FIX: only block on planLoading (the fast /plan-detail call).
-  // assignments have their own skeleton — they don't gate the whole screen.
+  // ── Guards ──
   if (planLoading)
     return (
       <View style={[S.centered, { backgroundColor: P.bg }]}>
@@ -595,11 +588,11 @@ export default function PlanDetailScreen() {
   if (!planDetail)
     return (
       <View style={[S.centered, { backgroundColor: P.bg }]}>
-        <Text style={{ color: P.text }}>Plan not found</Text>
+        <Text style={{ color: P.text }}>{rp?.planDetailPlanNotFound || 'Plan not found'}</Text>
       </View>
     );
 
-  // ── Computed ─────────────────────────────────────────────────────────────────
+  // ── Computed ──
   const pct = Math.round(planDetail.completion_percentage);
   const total = planDetail.total_days;
   const remaining = Math.max(total - completedDays.length, 0);
@@ -618,12 +611,10 @@ export default function PlanDetailScreen() {
     outputRange: [SCREEN_H * 0.65, 0],
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────
   // TAB: Days
-  // FIX: renders immediately with skeleton rows while assignmentsLoading is true
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────
   const renderDayItem = ({ item: day }: { item: number }) => {
-    // Show a shimmer card until assignments have arrived
     if (assignmentsLoading) return <SkeletonDayCard P={P} />;
 
     const a = assignments.find(x => x.day === day);
@@ -640,7 +631,9 @@ export default function PlanDetailScreen() {
         activeOpacity={0.75}
         style={[
           S.dayCard,
-          { backgroundColor: P.card, borderColor: P.border },
+          { backgroundColor: P.card, borderColor: P.border,
+            flexDirection: isRtl ? 'row-reverse' : 'row',
+          },
           isDone && { borderColor: P.green + '44', backgroundColor: P.cardB },
           isToday && { borderColor: P.blue + '77' },
           isSel && { borderColor: P.goldL + '88' },
@@ -677,21 +670,21 @@ export default function PlanDetailScreen() {
         <View style={{ flex: 1, minWidth: 0 }}>
           <View
             style={{
-              flexDirection: 'row',
+              flexDirection: isRtl ? 'row-reverse' : 'row',
               alignItems: 'center',
               gap: 6,
               marginBottom: 3,
             }}
           >
             <Text
-              style={[S.dayTitle, { color: isFutr ? P.textMuted : P.text }]}
+              style={[S.dayTitle, { color: isFutr ? P.textMuted : P.text, textAlign: isRtl ? 'right' : 'left' }]}
               numberOfLines={1}
             >
-              {a?.title ?? `Day ${day}`}
+              {a?.title ?? `${rp?.planDetailDayLabel?.replace('{day}', String(day)) || `Day ${day}`}`}
             </Text>
             {isToday && (
               <Pill
-                label="TODAY"
+                label={rp?.planDetailToday || 'TODAY'}
                 color={P.blueL}
                 bg={P.blueGlow}
                 border={P.blue + '44'}
@@ -699,7 +692,7 @@ export default function PlanDetailScreen() {
               />
             )}
           </View>
-          <Text style={{ fontSize: 11, color: P.textMuted }} numberOfLines={1}>
+          <Text style={{ fontSize: 11, color: P.textMuted, textAlign: isRtl ? 'right' : 'left' }} numberOfLines={1}>
             {(a?.chapters ?? [])
               .map(ch => `${ch.book} ${ch.chapter}`)
               .join(' · ')}
@@ -707,7 +700,7 @@ export default function PlanDetailScreen() {
         </View>
 
         {isDone && qTotal > 0 && (
-          <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+          <View style={{ alignItems: 'flex-end', marginLeft: isRtl ? 0 : 8, marginRight: isRtl ? 8 : 0 }}>
             <Text
               style={{
                 fontSize: 13,
@@ -720,24 +713,22 @@ export default function PlanDetailScreen() {
             <Text
               style={{ fontSize: 9, color: P.textMuted, letterSpacing: 0.5 }}
             >
-              QUIZ
+              {rp?.planDetailQuizLabel || 'QUIZ'}
             </Text>
           </View>
         )}
         {!isDone && !isFutr && (
-          <ChevronLeft
-            size={16}
-            color={P.textMuted}
-            style={{ transform: [{ rotate: '180deg' }], marginLeft: 8 }}
-          />
+          isRtl
+            ? <ChevronLeft size={16} color={P.textMuted} style={{ marginRight: 8 }} />
+            : <ChevronLeft size={16} color={P.textMuted} style={{ transform: [{ rotate: '180deg' }], marginLeft: 8 }} />
         )}
       </TouchableOpacity>
     );
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // TAB: Calendar  (unchanged from original)
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────
+  // TAB: Calendar
+  // ─────────────────────────────────────────────────────────────────────
   const renderCalendar = () => {
     if (!calData) return null;
     const { cells, year, month } = calData;
@@ -753,14 +744,14 @@ export default function PlanDetailScreen() {
           <LinearGradient
             colors={P.gradH}
             style={{
-              flexDirection: 'row',
+              flexDirection: isRtl ? 'row-reverse' : 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: SPACING.lg,
               paddingBottom: SPACING.xl,
             }}
           >
-            <View>
+            <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
               <Text
                 style={{
                   fontSize: 26,
@@ -796,7 +787,7 @@ export default function PlanDetailScreen() {
 
           <View
             style={{
-              flexDirection: 'row',
+              flexDirection: isRtl ? 'row-reverse' : 'row',
               gap: 6,
               paddingHorizontal: SPACING.lg,
               paddingVertical: SPACING.md,
@@ -805,14 +796,14 @@ export default function PlanDetailScreen() {
           >
             {[
               {
-                label: 'Completed',
+                label: rp?.planDetailCompleted || 'Completed',
                 color: P.greenL,
                 bg: P.greenGlow,
                 border: P.green + '44',
               },
-              { label: 'Today', color: '#fff', bg: P.blue, border: P.blueL },
+              { label: rp?.planDetailToday || 'Today', color: '#fff', bg: P.blue, border: P.blueL },
               {
-                label: 'Upcoming',
+                label: rp?.planDetailUpcoming || 'Upcoming',
                 color: P.goldL,
                 bg: P.gold + '18',
                 border: P.gold + '44',
@@ -824,12 +815,12 @@ export default function PlanDetailScreen() {
 
           <View
             style={{
-              flexDirection: 'row',
+              flexDirection: isRtl ? 'row-reverse' : 'row',
               paddingHorizontal: SPACING.lg,
               paddingBottom: 4,
             }}
           >
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
+            {DAY_HEADERS.map((d, i) => (
               <Text
                 key={i}
                 style={{
@@ -853,7 +844,7 @@ export default function PlanDetailScreen() {
             }}
           >
             {weeks.map((week, wi) => (
-              <View key={wi} style={{ flexDirection: 'row', gap: 4 }}>
+              <View key={wi} style={{ flexDirection: isRtl ? 'row-reverse' : 'row', gap: 4 }}>
                 {week.map((cell, di) => {
                   if (!cell)
                     return (
@@ -978,18 +969,18 @@ export default function PlanDetailScreen() {
 
         <Card
           P={P}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
+          style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center', gap: 14 }}
         >
           <View style={{ flex: 1 }}>
             <View
               style={{
-                flexDirection: 'row',
+                flexDirection: isRtl ? 'row-reverse' : 'row',
                 justifyContent: 'space-between',
                 marginBottom: 6,
               }}
             >
               <Text style={{ fontSize: 11, color: P.textSub }}>
-                Started{' '}
+                {(rp?.planDetailStarted || 'Started') + ' '}
                 {fmt(planDetail.start_date!, {
                   month: 'short',
                   day: 'numeric',
@@ -1016,7 +1007,7 @@ export default function PlanDetailScreen() {
                   textAlign: 'center',
                 }}
               >
-                ~{planDetail.estimated_days_to_complete}d{'\n'}left
+                {(rp?.planDetailEstLeft || '~{count}d\nleft').replace('{count}', String(planDetail.estimated_days_to_complete))}
               </Text>
             </View>
           )}
@@ -1025,34 +1016,41 @@ export default function PlanDetailScreen() {
         <Card P={P} style={{ padding: 0, overflow: 'hidden' }}>
           <View
             style={{
-              flexDirection: 'row',
+              flexDirection: isRtl ? 'row-reverse' : 'row',
               alignItems: 'center',
               padding: SPACING.lg,
             }}
           >
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
               <Text
                 style={{
                   fontSize: 16,
                   fontWeight: '800',
                   color: P.text,
                   letterSpacing: -0.2,
+                  textAlign: isRtl ? 'right' : 'left',
                 }}
               >
-                Reading Schedule
+                {rp?.planDetailReadingSchedule || 'Reading Schedule'}
               </Text>
-              <Text style={{ fontSize: 11, color: P.textMuted, marginTop: 2 }}>
-                {completedDays.length} of {total} sessions complete
+              <Text style={{ fontSize: 11, color: P.textMuted, marginTop: 2, textAlign: isRtl ? 'right' : 'left' }}>
+                {(rp?.planDetailSessionsComplete || '{done} of {total} sessions complete')
+                  .replace('{done}', String(completedDays.length))
+                  .replace('{total}', String(total))}
               </Text>
             </View>
             <View
               style={[
                 S.streakBadge,
-                { backgroundColor: P.gold + '18', borderColor: P.gold + '40' },
+                {
+                  flexDirection: isRtl ? 'row-reverse' : 'row',
+                  backgroundColor: P.gold + '18',
+                  borderColor: P.gold + '40',
+                },
               ]}
             >
               <Text style={{ fontSize: 16 }}>🔥</Text>
-              <View>
+              <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
                 <Text
                   style={{
                     fontSize: 14,
@@ -1066,7 +1064,7 @@ export default function PlanDetailScreen() {
                 <Text
                   style={{ fontSize: 9, color: P.gold, letterSpacing: 0.5 }}
                 >
-                  STREAK
+                  {(rp?.planDetailStreak || 'STREAK').toUpperCase()}
                 </Text>
               </View>
             </View>
@@ -1085,7 +1083,7 @@ export default function PlanDetailScreen() {
                 <View
                   key={i}
                   style={{
-                    flexDirection: 'row',
+                    flexDirection: isRtl ? 'row-reverse' : 'row',
                     gap: 12,
                     alignItems: 'flex-start',
                   }}
@@ -1131,7 +1129,7 @@ export default function PlanDetailScreen() {
                   }
                   style={[
                     {
-                      flexDirection: 'row',
+                      flexDirection: isRtl ? 'row-reverse' : 'row',
                       paddingLeft: SPACING.lg,
                       paddingRight: SPACING.lg,
                       paddingTop: 12,
@@ -1144,7 +1142,8 @@ export default function PlanDetailScreen() {
                     style={{
                       width: 28,
                       alignItems: 'center',
-                      marginRight: 12,
+                      marginRight: isRtl ? 0 : 12,
+                      marginLeft: isRtl ? 12 : 0,
                       flexShrink: 0,
                     }}
                   >
@@ -1206,7 +1205,7 @@ export default function PlanDetailScreen() {
                   <View style={[{ flex: 1 }, !isLast && { paddingBottom: 14 }]}>
                     <View
                       style={{
-                        flexDirection: 'row',
+                        flexDirection: isRtl ? 'row-reverse' : 'row',
                         alignItems: 'center',
                         gap: 8,
                         marginBottom: 4,
@@ -1231,7 +1230,7 @@ export default function PlanDetailScreen() {
                       </Text>
                       {isActive && !isDone && (
                         <Pill
-                          label="TODAY"
+                          label={rp?.planDetailToday || 'TODAY'}
                           color={P.blueL}
                           bg={P.blueGlow}
                           border={P.blue + '55'}
@@ -1246,12 +1245,13 @@ export default function PlanDetailScreen() {
                         lineHeight: 19,
                         color: isFutr ? P.textMuted : P.text,
                         opacity: isFutr ? 0.6 : 1,
+                        textAlign: isRtl ? 'right' : 'left',
                       }}
                     >
                       {a.title}
                     </Text>
                     <Text
-                      style={{ fontSize: 11, color: P.textMuted, marginTop: 2 }}
+                      style={{ fontSize: 11, color: P.textMuted, marginTop: 2, textAlign: isRtl ? 'right' : 'left' }}
                       numberOfLines={1}
                     >
                       {(a.chapters ?? [])
@@ -1278,7 +1278,7 @@ export default function PlanDetailScreen() {
                               color: qPct === 100 ? P.greenL : P.goldL,
                             }}
                           >
-                            {correct}/{qTotal} correct · {qPct}%
+                            {correct}/{qTotal} {rp?.planDetailCorrect || 'correct'} · {qPct}%
                           </Text>
                         </View>
                       </View>
@@ -1294,9 +1294,9 @@ export default function PlanDetailScreen() {
     );
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // TAB: Stats  (unchanged from original)
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────
+  // TAB: Stats
+  // ─────────────────────────────────────────────────────────────────────
   const renderStats = () => {
     const completedAssignments = assignments.filter(a =>
       completedSet.has(a.day),
@@ -1304,7 +1304,7 @@ export default function PlanDetailScreen() {
 
     const activityData = [
       {
-        label: 'Started',
+        label: rp?.planDetailStarted || 'Started',
         value: fmt(planDetail.start_date!, {
           month: 'long',
           day: 'numeric',
@@ -1312,11 +1312,11 @@ export default function PlanDetailScreen() {
         }),
       },
       {
-        label: 'Days Elapsed',
-        value: `${planDetail.days_since_started ?? 0} days`,
+        label: rp?.planDetailDaysElapsed || 'Days Elapsed',
+        value: `${planDetail.days_since_started ?? 0} ${rp?.planDetailDaysLabel || 'days'}`,
       },
       {
-        label: 'Last Session',
+        label: rp?.planDetailLastSession || 'Last Session',
         value: planDetail.last_completed_date
           ? fmt(planDetail.last_completed_date, {
               month: 'short',
@@ -1326,19 +1326,19 @@ export default function PlanDetailScreen() {
           : '—',
       },
       {
-        label: 'Days Inactive',
-        value: `${planDetail.days_since_last_activity ?? 0} days`,
+        label: rp?.planDetailDaysInactive || 'Days Inactive',
+        value: `${planDetail.days_since_last_activity ?? 0} ${rp?.planDetailDaysLabel || 'days'}`,
       },
       {
-        label: 'Avg Pace',
-        value: `${planDetail.avg_days_per_completion ?? '—'} days/session`,
+        label: rp?.planDetailAvgPace || 'Avg Pace',
+        value: `${planDetail.avg_days_per_completion ?? '—'} ${rp?.planDetailDaysLabel || 'days'}/session`,
       },
       {
-        label: 'Est. to Finish',
+        label: rp?.planDetailEstToFinish || 'Est. to Finish',
         value:
           (planDetail.estimated_days_to_complete ?? 0) > 0
-            ? `${planDetail.estimated_days_to_complete} days`
-            : 'Almost done! 🎉',
+            ? (rp?.planDetailEstLeft || '~{count}d left').replace('{count}', String(planDetail.estimated_days_to_complete))
+            : (rp?.planDetailAlmostDone || 'Almost done! 🎉'),
       },
     ];
 
@@ -1350,7 +1350,7 @@ export default function PlanDetailScreen() {
         <Card P={P}>
           <View
             style={{
-              flexDirection: 'row',
+              flexDirection: isRtl ? 'row-reverse' : 'row',
               alignItems: 'center',
               gap: 20,
               marginBottom: SPACING.lg,
@@ -1367,23 +1367,25 @@ export default function PlanDetailScreen() {
               >
                 {pct}%
               </Text>
-              <Text style={{ fontSize: 9, color: P.textMuted }}>done</Text>
+              <Text style={{ fontSize: 9, color: P.textMuted, textAlign: 'center' }}>
+                {rp?.planDetailDone || 'done'}
+              </Text>
             </Arc>
             <View style={{ flex: 1 }}>
               {[
                 {
-                  label: 'Completed',
-                  value: `${completedDays.length} / ${total} days`,
+                  label: rp?.planDetailCompleted || 'Completed',
+                  value: `${completedDays.length} / ${total} ${rp?.planDetailDaysLabel || 'days'}`,
                   color: P.text,
                 },
                 {
-                  label: 'Remaining',
-                  value: `${remaining} days`,
+                  label: rp?.planDetailRemaining || 'Remaining',
+                  value: `${remaining} ${rp?.planDetailDaysLabel || 'days'}`,
                   color: remaining === 0 ? P.greenL : P.gold,
                 },
                 {
-                  label: 'Streak',
-                  value: `🔥 ${planDetail.streak} day${planDetail.streak !== 1 ? 's' : ''}`,
+                  label: rp?.planDetailStreak || 'Streak',
+                  value: `🔥 ${planDetail.streak} ${rp?.planDetailDaysLabel || 'day'}${planDetail.streak !== 1 ? 's' : ''}`,
                   color: '#D8B4FE',
                 },
               ].map((row, i, arr) => (
@@ -1423,10 +1425,10 @@ export default function PlanDetailScreen() {
             const accColor = acc >= 80 ? P.greenL : acc >= 50 ? P.gold : P.red;
             return (
               <Card P={P}>
-                <SectionHead label="Quiz Performance" P={P} />
+                <SectionHead label={rp?.planDetailQuizPerformance || 'Quiz Performance'} P={P} />
                 <View
                   style={{
-                    flexDirection: 'row',
+                    flexDirection: isRtl ? 'row-reverse' : 'row',
                     alignItems: 'center',
                     gap: 18,
                     marginBottom: SPACING.lg,
@@ -1451,21 +1453,21 @@ export default function PlanDetailScreen() {
                   </Arc>
                   <View style={{ flex: 1 }}>
                     <InfoRow
-                      label="Correct"
+                      label={rp?.planDetailCorrect || 'Correct'}
                       value={`${planDetail.user_correct_answers} / ${planDetail.user_answered_questions}`}
                       color={P.greenL}
                       subColor={P.textSub}
                       borderColor={P.border}
                     />
                     <InfoRow
-                      label="Answered"
+                      label={(rp?.planDetailQuizResults || 'Quiz Results').split(' ')[0] || 'Answered'}
                       value={String(planDetail.user_answered_questions)}
                       color={P.text}
                       subColor={P.textSub}
                       borderColor={P.border}
                     />
                     <InfoRow
-                      label="Total Qs"
+                      label={rp?.planDetailTotalQuestions || 'Total Qs'}
                       value={String(planDetail.total_quiz_questions)}
                       color={P.text}
                       subColor={P.textSub}
@@ -1483,9 +1485,10 @@ export default function PlanDetailScreen() {
                         marginBottom: SPACING.sm,
                         letterSpacing: 0.5,
                         textTransform: 'uppercase',
+                        textAlign: isRtl ? 'right' : 'left',
                       }}
                     >
-                      By Day
+                      {rp?.planDetailByDay || 'By Day'}
                     </Text>
                     {completedAssignments.map(a => {
                       const {
@@ -1500,16 +1503,16 @@ export default function PlanDetailScreen() {
                         <View key={a.day} style={{ marginBottom: 10 }}>
                           <View
                             style={{
-                              flexDirection: 'row',
+                              flexDirection: isRtl ? 'row-reverse' : 'row',
                               justifyContent: 'space-between',
                               marginBottom: 5,
                             }}
                           >
                             <Text
-                              style={{ fontSize: 11, color: P.textSub }}
+                              style={{ fontSize: 11, color: P.textSub, textAlign: isRtl ? 'right' : 'left' }}
                               numberOfLines={1}
                             >
-                              Day {a.day} — {a.title}
+                              {(rp?.planDetailDayLabel || 'Day {day}').replace('{day}', String(a.day))} — {a.title}
                             </Text>
                             <Text
                               style={{
@@ -1532,7 +1535,7 @@ export default function PlanDetailScreen() {
           })()}
 
         <Card P={P}>
-          <SectionHead label="Milestones" P={P} />
+          <SectionHead label={rp?.planDetailMilestones || 'Milestones'} P={P} />
           {milestones.map((m, i) => (
             <View
               key={m.pct}
@@ -1545,7 +1548,7 @@ export default function PlanDetailScreen() {
               ]}
             >
               <View
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center', gap: 10 }}
               >
                 <View
                   style={[
@@ -1559,31 +1562,32 @@ export default function PlanDetailScreen() {
                     <Target size={18} color={P.textMuted} />
                   )}
                 </View>
-                <View>
+                <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
                   <Text
                     style={{
                       fontSize: 13,
                       fontWeight: '600',
                       color: m.achieved ? P.text : P.textMuted,
+                      textAlign: isRtl ? 'right' : 'left',
                     }}
                   >
-                    {m.pct}% — Day {m.day}
+                    {m.pct}% — {(rp?.planDetailDayLabel || 'Day {day}').replace('{day}', String(m.day))}
                   </Text>
-                  <Text style={{ fontSize: 11, color: P.textMuted }}>
-                    of {total} days
+                  <Text style={{ fontSize: 11, color: P.textMuted, textAlign: isRtl ? 'right' : 'left' }}>
+                    {rp?.planDetailOfLabel || 'of'} {total} {rp?.planDetailDaysLabel || 'days'}
                   </Text>
                 </View>
               </View>
               {m.achieved ? (
                 <Pill
-                  label="✓ Done"
+                  label={rp?.planDetailDone || '✓ Done'}
                   color={P.greenL}
                   bg={P.greenGlow}
                   border={P.green + '44'}
                 />
               ) : (
                 <Text style={{ fontSize: 11, color: P.textMuted }}>
-                  {Math.max(m.day - completedDays.length, 0)} to go
+                  {(rp?.planDetailToGo || '{count} to go').replace('{count}', String(Math.max(m.day - completedDays.length, 0)))}
                 </Text>
               )}
             </View>
@@ -1591,7 +1595,7 @@ export default function PlanDetailScreen() {
         </Card>
 
         <Card P={P}>
-          <SectionHead label="Activity" P={P} />
+          <SectionHead label={rp?.planDetailActivity || 'Activity'} P={P} />
           {activityData.map((row, i) => (
             <InfoRow
               key={i}
@@ -1607,9 +1611,9 @@ export default function PlanDetailScreen() {
     );
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Drawer  (unchanged from original)
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────
+  // Drawer
+  // ─────────────────────────────────────────────────────────────────────
   const renderDrawer = () => {
     if (!selectedDay || !selectedAssignment) return null;
     const isDone = completedSet.has(selectedDay);
@@ -1650,8 +1654,8 @@ export default function PlanDetailScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 40 }}
           >
-            <View style={[S.drawerHeader, { borderBottomColor: P.border }]}>
-              <View style={{ flex: 1 }}>
+            <View style={[S.drawerHeader, { borderBottomColor: P.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <View style={{ flex: 1, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
                 <Text
                   style={{
                     fontSize: 11,
@@ -1659,9 +1663,10 @@ export default function PlanDetailScreen() {
                     letterSpacing: 1,
                     textTransform: 'uppercase',
                     marginBottom: 3,
+                    textAlign: isRtl ? 'right' : 'left',
                   }}
                 >
-                  Day {selectedDay}
+                  {(rp?.planDetailDayLabel || 'Day {day}').replace('{day}', String(selectedDay))}
                 </Text>
                 <Text
                   style={{
@@ -1669,13 +1674,14 @@ export default function PlanDetailScreen() {
                     fontWeight: '800',
                     color: P.text,
                     lineHeight: 24,
+                    textAlign: isRtl ? 'right' : 'left',
                   }}
                 >
                   {selectedAssignment.title}
                 </Text>
               </View>
               <Pill
-                label={isDone ? '✓ Done' : 'In Progress'}
+                label={isDone ? (rp?.planDetailDone || '✓ Done') : (rp?.planDetailInProgress || 'In Progress')}
                 color={isDone ? P.greenL : P.blueL}
                 bg={isDone ? P.greenGlow : P.blueGlow}
                 border={(isDone ? P.green : P.blue) + '44'}
@@ -1684,16 +1690,17 @@ export default function PlanDetailScreen() {
             </View>
 
             <View style={S.drawerSection}>
-              <Text style={[S.drawerSecTitle, { color: P.textMuted }]}>
-                Chapters
+              <Text style={[S.drawerSecTitle, { color: P.textMuted, textAlign: isRtl ? 'right' : 'left' }]}>
+                {rp?.planDetailChapters || 'Chapters'}
               </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              <View style={{ flexDirection: isRtl ? 'row-reverse' : 'row', flexWrap: 'wrap', gap: 8 }}>
                 {chapters.map((ch, i) => (
                   <View
                     key={i}
                     style={[
                       S.chapterPill,
                       {
+                        flexDirection: isRtl ? 'row-reverse' : 'row',
                         backgroundColor: P.gold + '14',
                         borderColor: P.gold + '33',
                       },
@@ -1716,8 +1723,8 @@ export default function PlanDetailScreen() {
 
             {quizQuestions.length > 0 && (
               <View style={S.drawerSection}>
-                <Text style={[S.drawerSecTitle, { color: P.textMuted }]}>
-                  Quiz Results
+                <Text style={[S.drawerSecTitle, { color: P.textMuted, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {rp?.planDetailQuizResults || 'Quiz Results'}
                 </Text>
                 {quizQuestions.map(q => {
                   const answered = q.isCorrect !== null;
@@ -1740,7 +1747,7 @@ export default function PlanDetailScreen() {
                     >
                       <View
                         style={{
-                          flexDirection: 'row',
+                          flexDirection: isRtl ? 'row-reverse' : 'row',
                           gap: 8,
                           marginBottom: 5,
                         }}
@@ -1760,6 +1767,7 @@ export default function PlanDetailScreen() {
                             fontWeight: '600',
                             color: P.text,
                             flex: 1,
+                            textAlign: isRtl ? 'right' : 'left',
                           }}
                         >
                           {q.question}
@@ -1769,19 +1777,21 @@ export default function PlanDetailScreen() {
                         style={{
                           fontSize: 11,
                           fontWeight: '600',
-                          paddingLeft: 23,
+                          paddingLeft: isRtl ? 0 : 23,
+                          paddingRight: isRtl ? 23 : 0,
                           color: !answered
                             ? P.textMuted
                             : q.isCorrect
                               ? P.greenL
                               : P.red,
+                          textAlign: isRtl ? 'right' : 'left',
                         }}
                       >
                         {!answered
-                          ? 'Not answered yet'
+                          ? (rp?.planDetailNotAnswered || 'Not answered yet')
                           : q.isCorrect
-                            ? 'Correct'
-                            : `Incorrect — "${q.options[q.correctAnswer]}"`}
+                            ? (rp?.planDetailCorrect || 'Correct')
+                            : `${rp?.planDetailIncorrect || 'Incorrect'} — "${q.options[q.correctAnswer]}"`}
                       </Text>
                     </View>
                   );
@@ -1791,8 +1801,8 @@ export default function PlanDetailScreen() {
 
             {reflectionQuestions.length > 0 && (
               <View style={S.drawerSection}>
-                <Text style={[S.drawerSecTitle, { color: P.textMuted }]}>
-                  Reflection
+                <Text style={[S.drawerSecTitle, { color: P.textMuted, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {rp?.planDetailReflection || 'Reflection'}
                 </Text>
                 {reflectionQuestions.map((q, i) => (
                   <View
@@ -1808,6 +1818,7 @@ export default function PlanDetailScreen() {
                         color: P.textSub,
                         fontStyle: 'italic',
                         lineHeight: 18,
+                        textAlign: isRtl ? 'right' : 'left',
                       }}
                     >
                       {q}
@@ -1819,7 +1830,7 @@ export default function PlanDetailScreen() {
 
             {!isDone && (
               <TouchableOpacity
-                style={[S.readBtn, { backgroundColor: P.blue }]}
+                style={[S.readBtn, { backgroundColor: P.blue, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                 onPress={() => {
                   setSelectedDay(null);
                   navigation.navigate('DailyReading', {
@@ -1834,7 +1845,7 @@ export default function PlanDetailScreen() {
                 <Text
                   style={{ fontSize: 14, fontWeight: '700', color: 'white' }}
                 >
-                  Start Reading
+                  {rp?.planDetailStartReading || 'Start Reading'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -1844,13 +1855,13 @@ export default function PlanDetailScreen() {
     );
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Root render  (unchanged from original)
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────
+  // Root render
+  // ─────────────────────────────────────────────────────────────────────
   const TABS: { key: TabKey; label: string; Icon: any }[] = [
-    { key: 'list', label: 'Days', Icon: List },
-    { key: 'calendar', label: 'Calendar', Icon: CalendarDays },
-    { key: 'stats', label: 'Stats', Icon: BarChart2 },
+    { key: 'list', label: rp?.planDetailDays || 'Days', Icon: List },
+    { key: 'calendar', label: rp?.planDetailCalendar || 'Calendar', Icon: CalendarDays },
+    { key: 'stats', label: rp?.planDetailStats || 'Stats', Icon: BarChart2 },
   ];
 
   return (
@@ -1863,15 +1874,14 @@ export default function PlanDetailScreen() {
         onPress={() => navigation.goBack()}
       />
 
-      {/* ── Stats strip ──────────────────────────────────────────────────── */}
+      {/* ── Stats strip ── */}
       <View
         style={[
           S.statsStrip,
           { backgroundColor: P.surface, borderBottomColor: P.border },
         ]}
       >
-        {/* Progress bar */}
-        <View style={S.statsProgressRow}>
+        <View style={[S.statsProgressRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <View style={[S.statsTrack, { backgroundColor: P.border }]}>
             <Animated.View
               style={[
@@ -1886,16 +1896,15 @@ export default function PlanDetailScreen() {
           <Text style={[S.statsPct, { color: P.gold }]}>{pct}%</Text>
         </View>
 
-        {/* Chips row */}
-        <View style={S.chipsRow}>
+        <View style={[S.chipsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           {[
-            { num: `${completedDays.length}/${total}`, label: 'Days Done' },
-            { num: `🔥 ${planDetail.streak}`, label: 'Streak' },
+            { num: `${completedDays.length}/${total}`, label: rp?.planDetailDaysDone || 'Days Done' },
+            { num: `🔥 ${planDetail.streak}`, label: rp?.planDetailStreak || 'Streak' },
             {
               num: `${Math.round(planDetail.quiz_accuracy_percentage)}%`,
-              label: 'Quiz',
+              label: rp?.planDetailQuiz || 'Quiz',
             },
-            { num: planDetail.difficulty, label: 'Level' },
+            { num: planDetail.difficulty, label: rp?.planDetailLevel || 'Level' },
           ].map((chip, i, arr) => (
             <React.Fragment key={i}>
               <View style={S.chip}>
@@ -1989,13 +1998,12 @@ export default function PlanDetailScreen() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Stylesheet  (unchanged from original)
+// Stylesheet
 // ─────────────────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // ── Stats strip (below ActionHeader) ──────────────────────────────────────
   statsStrip: {
     borderBottomWidth: 1,
     paddingHorizontal: SPACING.lg,

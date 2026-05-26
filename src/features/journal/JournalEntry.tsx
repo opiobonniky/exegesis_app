@@ -22,6 +22,7 @@ import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { route } from '../../component/navigations/routes';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   createJournalEntry,
   updateJournalEntry,
@@ -35,15 +36,16 @@ import {
   BookOpen,
   X,
   ChevronLeft,
+  ChevronRight,
 } from 'lucide-react-native';
 
 const CATEGORIES = [
-  { value: 'general', label: 'General' },
-  { value: 'study', label: 'Study' },
-  { value: 'prayer', label: 'Prayer' },
-  { value: 'gratitude', label: 'Gratitude' },
-  { value: 'reflection', label: 'Reflection' },
-  { value: 'application', label: 'Application' },
+  { value: 'general' },
+  { value: 'study' },
+  { value: 'prayer' },
+  { value: 'gratitude' },
+  { value: 'reflection' },
+  { value: 'application' },
 ];
 
 const MOODS = [
@@ -57,12 +59,27 @@ const MOODS = [
   { value: 'blessed', label: '✨ Blessed' },
 ];
 
+const getCategoryLabel = (value: string, jc: any): string => {
+  const labels: Record<string, string> = {
+    general: jc?.categoryGeneral || 'General',
+    study: jc?.categoryStudy || 'Study',
+    prayer: jc?.categoryPrayer || 'Prayer',
+    gratitude: jc?.categoryGratitude || 'Gratitude',
+    reflection: jc?.categoryReflection || 'Reflection',
+    application: jc?.categoryApplication || 'Application',
+  };
+  return labels[value] || value;
+};
+
 const JournalEntryScreen = () => {
   const navigation = useNavigation<any>();
   const routeParams = useRoute() as any;
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const jc = translations?.journal;
 
   const entryId = routeParams?.params?.entryId;
   const isEditMode = !!entryId;
@@ -120,7 +137,7 @@ const JournalEntryScreen = () => {
         if (entry.verseNumber) setVerseNumber(String(entry.verseNumber));
       }
     } catch (error) {
-      showToast('error', 'Failed to load entry');
+      showToast('error', jc?.failedToLoadEntry || 'Failed to load entry');
     } finally {
       setLoading(false);
     }
@@ -128,7 +145,7 @@ const JournalEntryScreen = () => {
 
   const handleSave = async () => {
     if (!content.trim()) {
-      showToast('error', 'Please write some content');
+      showToast('error', jc?.contentEmptyError || 'Please write some content');
       return;
     }
 
@@ -158,13 +175,13 @@ const JournalEntryScreen = () => {
       }
 
       if (res.returnCode === 200) {
-        showToast('success', isEditMode ? 'Entry updated' : 'Entry saved');
+        showToast('success', isEditMode ? (jc?.entryUpdated || 'Entry updated') : (jc?.entrySaved || 'Entry saved'));
         navigation.goBack();
       } else {
-        showToast('error', res.returnMessage || 'Failed to save');
+        showToast('error', res.returnMessage || (jc?.failedToSave || 'Failed to save'));
       }
     } catch (error) {
-      showToast('error', 'Failed to save entry');
+      showToast('error', jc?.failedToSave || 'Failed to save entry');
     } finally {
       setSaving(false);
     }
@@ -194,6 +211,7 @@ const JournalEntryScreen = () => {
         placeholder={placeholder}
         placeholderTextColor={COLORS.muted}
         multiline={multiline}
+        textAlign={isRtl ? 'right' : 'left'}
       />
     </View>
   );
@@ -206,15 +224,15 @@ const JournalEntryScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: COLORS.surface }]}>
+      <View style={[styles.header, { backgroundColor: COLORS.surface, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <ChevronLeft size={24} color={COLORS.text} />
+          {isRtl ? <ChevronRight size={24} color={COLORS.text} /> : <ChevronLeft size={24} color={COLORS.text} />}
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: COLORS.text }]}>
-          {isEditMode ? 'Edit Entry' : 'New Entry'}
+          {isEditMode ? (jc?.editEntry || 'Edit Entry') : (jc?.newEntry || 'New Entry')}
         </Text>
         <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: COLORS.primary }]}
+          style={[styles.saveButton, { backgroundColor: COLORS.primary, marginRight: isRtl ? 0 : undefined }]}
           onPress={handleSave}
           disabled={saving}
         >
@@ -224,22 +242,22 @@ const JournalEntryScreen = () => {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Title */}
-        {renderInput('Title (optional)', title, setTitle, false, 'Give your entry a title...')}
+        {renderInput(jc?.titleOptional || 'Title (optional)', title, setTitle, false, jc?.titlePlaceholder || 'Give your entry a title...')}
 
         {/* Content */}
         {renderInput(
-          'What\'s on your mind? *',
+          jc?.contentPlaceholder || "What's on your mind? *",
           content,
           setContent,
           true,
-          'Write your thoughts, reflections, or prayers...'
+          jc?.contentRequired || 'Write your thoughts, reflections, or prayers...'
         )}
 
         {/* Category */}
         <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>Category</Text>
+          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{jc?.categoryLabel || 'Category'}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipContainer}>
+            <View style={[styles.chipContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               {CATEGORIES.map(cat => (
                 <TouchableOpacity
                   key={cat.value}
@@ -258,7 +276,7 @@ const JournalEntryScreen = () => {
                       { color: category === cat.value ? '#FFFFFF' : COLORS.text },
                     ]}
                   >
-                    {cat.label}
+                    {getCategoryLabel(cat.value, jc)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -268,9 +286,9 @@ const JournalEntryScreen = () => {
 
         {/* Mood */}
         <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>How are you feeling?</Text>
+          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{jc?.moodLabel || 'How are you feeling?'}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipContainer}>
+            <View style={[styles.chipContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               {MOODS.map(m => (
                 <TouchableOpacity
                   key={m.value}
@@ -300,9 +318,9 @@ const JournalEntryScreen = () => {
         {/* Scripture Reference */}
         <View style={styles.inputGroup}>
           <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
-            Scripture Reference (optional)
+            {jc?.scriptureRefLabel || 'Scripture Reference (optional)'}
           </Text>
-          <View style={styles.scriptureRow}>
+          <View style={[styles.scriptureRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <TextInput
               style={[
                 styles.scriptureInput,
@@ -314,7 +332,7 @@ const JournalEntryScreen = () => {
               ]}
               value={bookName}
               onChangeText={setBookName}
-              placeholder="Book"
+              placeholder={jc?.bookPlaceholder || 'Book'}
               placeholderTextColor={COLORS.muted}
             />
             <TextInput
@@ -328,7 +346,7 @@ const JournalEntryScreen = () => {
               ]}
               value={chapter}
               onChangeText={setChapter}
-              placeholder="Ch"
+              placeholder={jc?.chapterPlaceholder || 'Ch'}
               placeholderTextColor={COLORS.muted}
               keyboardType="number-pad"
             />
@@ -343,7 +361,7 @@ const JournalEntryScreen = () => {
               ]}
               value={verseNumber}
               onChangeText={setVerseNumber}
-              placeholder="Vs"
+              placeholder={jc?.versePlaceholder || 'Vs'}
               placeholderTextColor={COLORS.muted}
               keyboardType="number-pad"
             />
@@ -351,10 +369,10 @@ const JournalEntryScreen = () => {
         </View>
 
         {/* Prompt-based sections */}
-        {renderInput('Gratitude', gratitude, setGratitude, true, 'What are you grateful for today?')}
-        {renderInput('Learnings', learnings, setLearnings, true, 'What did you learn?')}
-        {renderInput('Application', application, setApplication, true, 'How will you apply this?')}
-        {renderInput('Prayer Requests', prayers, setPrayers, true, 'What do you want to pray for?')}
+        {renderInput(jc?.gratitudeLabel || 'Gratitude', gratitude, setGratitude, true, jc?.gratitudePlaceholder || 'What are you grateful for today?')}
+        {renderInput(jc?.learningsLabel || 'Learnings', learnings, setLearnings, true, jc?.learningsPlaceholder || 'What did you learn?')}
+        {renderInput(jc?.applicationLabel || 'Application', application, setApplication, true, jc?.applicationPlaceholder || 'How will you apply this?')}
+        {renderInput(jc?.prayerRequestsLabel || 'Prayer Requests', prayers, setPrayers, true, jc?.prayerRequestsPlaceholder || 'What do you want to pray for?')}
 
         <View style={{ height: SPACING.xxl }} />
       </ScrollView>

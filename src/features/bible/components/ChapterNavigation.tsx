@@ -16,6 +16,7 @@ import {
   Square,
   Volume2,
 } from 'lucide-react-native';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import { getColors } from '../../../constants/theme';
 import { ChapterNavigationProps } from '../types';
 import { createBibleStyles } from '../bibleStyle';
@@ -102,6 +103,8 @@ const barStyles = StyleSheet.create({
 interface ExtendedChapterNavigationProps extends ChapterNavigationProps {
   isAudioPlaying?: boolean;
   onAudioChapter?: () => void;
+  isRtl?: boolean;
+  translations?: any;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,9 +120,13 @@ export default function ChapterNavigation({
   isDark,
   isAudioPlaying = false,
   onAudioChapter,
+  isRtl,
+  translations: translationsProp,
 }: ExtendedChapterNavigationProps) {
   const COLORS = getColors(isDark);
-  const styles = useMemo(() => createBibleStyles(isDark), [isDark]);
+  const styles = useMemo(() => createBibleStyles(isDark, isRtl), [isDark, isRtl]);
+  const { translations: langTranslations } = useLanguage();
+  const t = translationsProp || langTranslations;
 
   // ── Pulse glow — opacity only → useNativeDriver: true, zero conflict ───────
   const glowOpacity = useRef(new Animated.Value(0)).current;
@@ -179,14 +186,21 @@ export default function ChapterNavigation({
         onPress={onPrev}
         disabled={currentChapter === 1}
       >
-        <ArrowBigLeft
-          size={24}
-          color={currentChapter === 1 ? COLORS.muted : COLORS.text}
-        />
+        {isRtl ? (
+          <ArrowBigRight
+            size={24}
+            color={currentChapter === 1 ? COLORS.muted : COLORS.text}
+          />
+        ) : (
+          <ArrowBigLeft
+            size={24}
+            color={currentChapter === 1 ? COLORS.muted : COLORS.text}
+          />
+        )}
       </Pressable>
 
       <TouchableOpacity style={styles.chapterButton} onPress={onSelectChapter}>
-        <Text style={styles.chapterButtonText}>Ch. {currentChapter}</Text>
+        <Text style={styles.chapterButtonText}>{t?.bible?.chapter || 'Ch.'} {currentChapter}</Text>
         <Text style={styles.chapterButtonIcon}>▼</Text>
       </TouchableOpacity>
 
@@ -218,14 +232,14 @@ export default function ChapterNavigation({
           {isAudioPlaying ? (
             <>
               <LiveBars color={COLORS.accent} />
-              <Text style={localStyles.pillTextActive}>Stop</Text>
+              <Text style={localStyles.pillTextActive}>{t?.bible?.stop || 'Stop'}</Text>
               <Square size={9} color="#fff" fill="#fff" strokeWidth={0} />
             </>
           ) : (
             <>
               <Volume2 size={14} color={COLORS.text} strokeWidth={2.5} />
               <Text style={[localStyles.pillText, { color: COLORS.text }]}>
-                Read
+                {t?.bible?.read || 'Read'}
               </Text>
             </>
           )}
@@ -240,10 +254,17 @@ export default function ChapterNavigation({
         onPress={onNext}
         disabled={currentChapter >= maxChapters}
       >
-        <ArrowBigRight
-          size={24}
-          color={currentChapter >= maxChapters ? COLORS.muted : COLORS.text}
-        />
+        {isRtl ? (
+          <ArrowBigLeft
+            size={24}
+            color={currentChapter >= maxChapters ? COLORS.muted : COLORS.text}
+          />
+        ) : (
+          <ArrowBigRight
+            size={24}
+            color={currentChapter >= maxChapters ? COLORS.muted : COLORS.text}
+          />
+        )}
       </TouchableOpacity>
     </View>
   );

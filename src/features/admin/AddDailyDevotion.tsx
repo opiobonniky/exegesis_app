@@ -16,14 +16,17 @@ import {
   Modal,
   FlatList,
   Platform,
+  StatusBar,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { addDailyDevotion, DailyDevotion } from '../../services/adminApi';
 import { getColors } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import {
   ChevronLeft,
+  ChevronRight,
   Lightbulb,
   Save,
   Calendar,
@@ -35,6 +38,7 @@ import {
 import { showToast } from '../../helpers/Toash.helper';
 import { BIBLE_VERSIONS } from '../../assets/bibleVersion/json/bibleVersions';
 import { getVerseText, setActiveVersion } from '../../utilits/bibleUtils';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 const BIBLE_VERSION_OPTIONS = BIBLE_VERSIONS.map(v => ({
   value: v.id,
@@ -53,6 +57,15 @@ const BIBLE_BOOKS = [
   '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James', '1 Peter', '2 Peter',
   '1 John', '2 John', '3 John', 'Jude', 'Revelation',
 ];
+
+const getDateLocale = (language: string): string => {
+  switch (language) {
+    case 'ar': return 'ar-SA';
+    case 'fr': return 'fr-FR';
+    case 'es': return 'es-ES';
+    default: return 'en-US';
+  }
+};
 
 const getTheme = (isDark: boolean) => {
   const colors = getColors(isDark);
@@ -74,8 +87,11 @@ const AddDailyDevotion: React.FC = () => {
   const route = useRoute<any>();
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const ac = translations?.admin;
   const theme = getTheme(isDark);
-  const styles = getStyles(theme);
+  const styles = getStyles(theme, isRtl);
 
   const editingDevotion = route.params?.devotion as DailyDevotion | undefined;
   const isEditing = !!editingDevotion;
@@ -126,7 +142,7 @@ const AddDailyDevotion: React.FC = () => {
     : BIBLE_BOOKS;
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString(undefined, {
+    return date.toLocaleDateString(getDateLocale(language), {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -143,7 +159,7 @@ const AddDailyDevotion: React.FC = () => {
 
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
-      showToast('error', 'Please fill in title and content');
+      showToast('error', ac?.addDevotionFillRequired || 'Please fill in title and content');
       return;
     }
 
@@ -162,28 +178,33 @@ const AddDailyDevotion: React.FC = () => {
 
       if (isEditing && editingDevotion?.id) {
         await addDailyDevotion(payload, editingDevotion.id);
-        showToast('success', 'Daily devotion updated!');
+        showToast('success', ac?.addDevotionUpdated || 'Daily devotion updated!');
       } else {
         await addDailyDevotion(payload);
-        showToast('success', 'Daily devotion added!');
+        showToast('success', ac?.addDevotionAdded || 'Daily devotion added!');
       }
       navigation.goBack();
     } catch (error) {
-      showToast('error', isEditing ? 'Failed to update devotion' : 'Failed to add devotion');
+      showToast('error', isEditing
+        ? (ac?.addDevotionFailedUpdate || 'Failed to update devotion')
+        : (ac?.addDevotionFailedAdd || 'Failed to add devotion'));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.surface} />
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ChevronLeft size={24} color={theme.primary} />
+          {isRtl ? <ChevronRight size={24} color={theme.primary} /> : <ChevronLeft size={24} color={theme.primary} />}
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>
-          {isEditing ? 'Edit Devotion' : 'Add Devotion'}
+        <Text style={[styles.headerTitle, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+          {isEditing
+            ? (ac?.addDevotionEditTitle || 'Edit Devotion')
+            : (ac?.addDevotionTitle || 'Add Devotion')}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -191,28 +212,28 @@ const AddDailyDevotion: React.FC = () => {
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         {/* Title */}
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.text }]}>
-            Title <Text style={{ color: theme.primary }}>*</Text>
+          <Text style={[styles.label, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+            {ac?.addDevotionTitleLabel || 'Title'} <Text style={{ color: theme.primary }}>*</Text>
           </Text>
           <TextInput
-            style={[styles.input, { backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border }]}
+            style={[styles.input, { backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border, textAlign: isRtl ? 'right' : 'left' }]}
             value={title}
             onChangeText={setTitle}
-            placeholder="Enter devotion title..."
+            placeholder={ac?.addDevotionTitlePlaceholder || 'Enter devotion title...'}
             placeholderTextColor={theme.muted}
           />
         </View>
 
         {/* Content */}
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.text }]}>
-            Content <Text style={{ color: theme.primary }}>*</Text>
+          <Text style={[styles.label, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+            {ac?.addDevotionContentLabel || 'Content'} <Text style={{ color: theme.primary }}>*</Text>
           </Text>
           <TextInput
-            style={[styles.textArea, { backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border }]}
+            style={[styles.textArea, { backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border, textAlign: isRtl ? 'right' : 'left' }]}
             value={content}
             onChangeText={setContent}
-            placeholder="Write your devotional message..."
+            placeholder={ac?.addDevotionContentPlaceholder || 'Write your devotional message...'}
             placeholderTextColor={theme.muted}
             multiline
             textAlignVertical="top"
@@ -220,8 +241,8 @@ const AddDailyDevotion: React.FC = () => {
         </View>
 
         {/* Optional Bible Reference */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Optional Bible Reference
+        <Text style={[styles.sectionTitle, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+          {ac?.addDevotionOptionalBibleRef || 'Optional Bible Reference'}
         </Text>
 
         <TouchableOpacity
@@ -230,8 +251,8 @@ const AddDailyDevotion: React.FC = () => {
         >
           <View style={styles.selectorContent}>
             <BookOpen size={20} color={bookName ? theme.primary : theme.muted} />
-            <Text style={[styles.selectorText, { color: bookName ? theme.text : theme.muted }]}>
-              {bookName || 'Select book (optional)'}
+            <Text style={[styles.selectorText, { color: bookName ? theme.text : theme.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+              {bookName || (ac?.addDevotionSelectBook || 'Select book (optional)')}
             </Text>
           </View>
           <ChevronDown size={20} color={theme.muted} />
@@ -240,23 +261,23 @@ const AddDailyDevotion: React.FC = () => {
         {bookName ? (
           <View style={styles.rowInputs}>
             <View style={styles.halfInput}>
-              <Text style={[styles.label, { color: theme.text }]}>Chapter</Text>
+              <Text style={[styles.label, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.addDevotionChapterLabel || 'Chapter'}</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border }]}
+                style={[styles.input, { backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border, textAlign: isRtl ? 'right' : 'left' }]}
                 value={chapter}
                 onChangeText={setChapter}
-                placeholder="Chapter"
+                placeholder={ac?.addDevotionChapterLabel || 'Chapter'}
                 placeholderTextColor={theme.muted}
                 keyboardType="number-pad"
               />
             </View>
             <View style={styles.halfInput}>
-              <Text style={[styles.label, { color: theme.text }]}>Verse</Text>
+              <Text style={[styles.label, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.addDevotionVerseLabel || 'Verse'}</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border }]}
+                style={[styles.input, { backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border, textAlign: isRtl ? 'right' : 'left' }]}
                 value={verseNumber}
                 onChangeText={setVerseNumber}
-                placeholder="Verse"
+                placeholder={ac?.addDevotionVerseLabel || 'Verse'}
                 placeholderTextColor={theme.muted}
                 keyboardType="number-pad"
               />
@@ -271,8 +292,8 @@ const AddDailyDevotion: React.FC = () => {
           >
             <View style={styles.selectorContent}>
               <BookOpen size={20} color={theme.primary} />
-              <Text style={[styles.selectorText, { color: theme.text }]}>
-                {BIBLE_VERSION_OPTIONS.find(v => v.value === bibleVersion)?.label || 'Select version'}
+              <Text style={[styles.selectorText, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                {BIBLE_VERSION_OPTIONS.find(v => v.value === bibleVersion)?.label || (ac?.addDevotionSelectVersion || 'Select version')}
               </Text>
             </View>
             <ChevronDown size={20} color={theme.muted} />
@@ -281,8 +302,10 @@ const AddDailyDevotion: React.FC = () => {
 
         {verseText ? (
           <View style={[styles.versePreview, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
-            <Text style={[styles.versePreviewLabel, { color: theme.muted }]}>Verse Preview:</Text>
-            <Text style={[styles.versePreviewText, { color: theme.textSecondary }]}>"{verseText}"</Text>
+            <Text style={[styles.versePreviewLabel, { color: theme.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+              {ac?.addDevotionVersePreview || 'Verse Preview:'}
+            </Text>
+            <Text style={[styles.versePreviewText, { color: theme.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>"{verseText}"</Text>
           </View>
         ) : null}
 
@@ -293,7 +316,7 @@ const AddDailyDevotion: React.FC = () => {
         >
           <View style={styles.selectorContent}>
             <Calendar size={20} color={theme.primary} />
-            <Text style={[styles.selectorText, { color: theme.text }]}>
+            <Text style={[styles.selectorText, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
               {formatDate(displayDate)}
             </Text>
           </View>
@@ -327,7 +350,9 @@ const AddDailyDevotion: React.FC = () => {
             <>
               <Save size={20} color="#fff" />
               <Text style={styles.saveBtnText}>
-                {isEditing ? 'Update Devotion' : 'Add Devotion'}
+                {isEditing
+                  ? (ac?.addDevotionUpdate || 'Update Devotion')
+                  : (ac?.addDevotionSave || 'Add Devotion')}
               </Text>
             </>
           )}
@@ -339,7 +364,9 @@ const AddDailyDevotion: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
             <View style={[styles.modalTitleBar, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Select Book</Text>
+              <Text style={[styles.modalTitle, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                {ac?.addDevotionModalSelectBook || 'Select Book'}
+              </Text>
               <TouchableOpacity onPress={() => setBookPickerVisible(false)}>
                 <X size={24} color={theme.text} />
               </TouchableOpacity>
@@ -348,10 +375,10 @@ const AddDailyDevotion: React.FC = () => {
             <View style={[styles.searchBar, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
               <Search size={20} color={theme.muted} />
               <TextInput
-                style={[styles.searchInput, { color: theme.text }]}
+                style={[styles.searchInput, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}
                 value={bookSearch}
                 onChangeText={setBookSearch}
-                placeholder="Search books..."
+                placeholder={ac?.addDevotionSearchBooks || 'Search books...'}
                 placeholderTextColor={theme.muted}
               />
             </View>
@@ -370,7 +397,7 @@ const AddDailyDevotion: React.FC = () => {
                     setBookSearch('');
                   }}
                 >
-                  <Text style={[styles.pickerItemText, { color: theme.text }]}>{item}</Text>
+                  <Text style={[styles.pickerItemText, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>{item}</Text>
                 </TouchableOpacity>
               )}
             />
@@ -383,7 +410,9 @@ const AddDailyDevotion: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
             <View style={[styles.modalTitleBar, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Select Bible Version</Text>
+              <Text style={[styles.modalTitle, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                {ac?.addDevotionModalSelectVersion || 'Select Bible Version'}
+              </Text>
               <TouchableOpacity onPress={() => setVersionPickerVisible(false)}>
                 <X size={24} color={theme.text} />
               </TouchableOpacity>
@@ -400,24 +429,24 @@ const AddDailyDevotion: React.FC = () => {
                     setVersionPickerVisible(false);
                   }}
                 >
-                  <Text style={[styles.pickerItemText, { color: theme.text }]}>{item.label}</Text>
+                  <Text style={[styles.pickerItemText, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>{item.label}</Text>
                 </TouchableOpacity>
               )}
             />
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
-const getStyles = (theme: ReturnType<typeof getTheme>) =>
+const getStyles = (theme: ReturnType<typeof getTheme>, isRtl: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
     },
     header: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 16,
@@ -465,7 +494,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginTop: 8,
     },
     selectorBtn: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: 16,
@@ -474,7 +503,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 16,
     },
     selectorContent: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 12,
     },
@@ -482,7 +511,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontSize: 16,
     },
     rowInputs: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       gap: 12,
       marginBottom: 16,
     },
@@ -490,7 +519,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flex: 1,
     },
     saveBtn: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: 16,
@@ -519,7 +548,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       overflow: 'hidden',
     },
     modalTitleBar: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: 20,
@@ -530,7 +559,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontWeight: '700',
     },
     searchBar: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       margin: 16,
       paddingHorizontal: 14,

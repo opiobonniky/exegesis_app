@@ -4,7 +4,7 @@
  * Activity logs for admins
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -14,13 +14,24 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { ActivityRecord, getAllActivity } from '../../services/adminApi';
 import BottomTab from '../../component/navigations/BottomTab';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { AppContext } from '../../common/AppContext';
 
 const AdminActivityPage: React.FC = () => {
   const navigation = useNavigation<any>();
+  const app = useContext(AppContext);
+  const isDark = app?.isDark ?? false;
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const ac = translations?.admin;
+
   const [activities, setActivities] = useState<ActivityRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,16 +100,16 @@ const AdminActivityPage: React.FC = () => {
   const timeAgo = (ts: string) => {
     if (!ts) return '—';
     const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
-    if (m < 1) return 'just now';
-    if (m < 60) return `${m}m ago`;
+    if (m < 1) return ac?.activityJustNow || 'just now';
+    if (m < 60) return (ac?.activityMinutesAgo || '{count}m ago').replace('{count}', String(m));
     const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
+    if (h < 24) return (ac?.activityHoursAgo || '{count}h ago').replace('{count}', String(h));
+    return (ac?.activityDaysAgo || '{count}d ago').replace('{count}', String(Math.floor(h / 24)));
   };
 
   const renderActivity = ({ item }: { item: ActivityRecord }) => (
     <View style={styles.activityCard}>
-      <View style={styles.activityHeader}>
+      <View style={[styles.activityHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <View
           style={[
             styles.deviceIcon,
@@ -109,14 +120,14 @@ const AdminActivityPage: React.FC = () => {
             {deviceIcon(item.deviceType)}
           </Text>
         </View>
-        <View style={styles.activityInfo}>
-          <Text style={styles.activityUsername}>
-            {item.username || 'Unknown'}
+        <View style={[styles.activityInfo, { marginLeft: isRtl ? 0 : 12, marginRight: isRtl ? 12 : 0 }]}>
+          <Text style={[styles.activityUsername, { textAlign: isRtl ? 'right' : 'left' }]}>
+            {item.username || (ac?.activityUnknown || 'Unknown')}
           </Text>
-          <Text style={styles.activityDetails}>
-            {item.browserName || 'Unknown'} · {item.os || 'Unknown'}
+          <Text style={[styles.activityDetails, { textAlign: isRtl ? 'right' : 'left' }]}>
+            {item.browserName || (ac?.activityUnknown || 'Unknown')} · {item.os || (ac?.activityUnknown || 'Unknown')}
           </Text>
-          <Text style={styles.activityIP}>{item.ip || '—'}</Text>
+          <Text style={[styles.activityIP, { textAlign: isRtl ? 'right' : 'left' }]}>{item.ip || '—'}</Text>
         </View>
         <View
           style={[
@@ -130,24 +141,24 @@ const AdminActivityPage: React.FC = () => {
               item.success ? styles.statusTextSuccess : styles.statusTextFailed,
             ]}
           >
-            {item.success ? 'Success' : 'Failed'}
+            {item.success ? (ac?.activitySuccessFilter || 'Success') : (ac?.activityFailedFilter || 'Failed')}
           </Text>
         </View>
       </View>
 
-      <View style={styles.activityFooter}>
-        <Text style={styles.activityTime}>
+      <View style={[styles.activityFooter, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+        <Text style={[styles.activityTime, { textAlign: isRtl ? 'right' : 'left' }]}>
           {item.loggedInAt ? new Date(item.loggedInAt).toLocaleString() : '—'}
         </Text>
         {item.loggedOutAt && (
-          <Text style={styles.activityLogout}>
-            Logged out {timeAgo(item.loggedOutAt)}
+          <Text style={[styles.activityLogout, { textAlign: isRtl ? 'right' : 'left' }]}>
+            {(ac?.activityLoggedOut || 'Logged out {time}').replace('{time}', timeAgo(item.loggedOutAt))}
           </Text>
         )}
         {!item.loggedOutAt && item.success && (
-          <View style={styles.onlineBadge}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>Online</Text>
+          <View style={[styles.onlineBadge, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={[styles.onlineDot, { marginRight: isRtl ? 0 : 4, marginLeft: isRtl ? 4 : 0 }]} />
+            <Text style={styles.onlineText}>{ac?.activityOnlineStatus || 'Online'}</Text>
           </View>
         )}
       </View>
@@ -156,41 +167,48 @@ const AdminActivityPage: React.FC = () => {
 
   const renderEmpty = () => (
     <View style={styles.empty}>
-      <Text style={styles.emptyText}>No activity recorded yet</Text>
+      <Text style={[styles.emptyText, { textAlign: isRtl ? 'right' : 'left' }]}>
+        {ac?.activityNoActivity || 'No activity recorded yet'}
+      </Text>
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="#fff" />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
+          {isRtl ? <ChevronRight size={20} color="#2563eb" /> : <ChevronLeft size={20} color="#2563eb" />}
         </TouchableOpacity>
-        <Text style={styles.title}>Activity Logs</Text>
-        <Text style={styles.subtitle}>{totalCount} sessions</Text>
+        <Text style={[styles.title, { textAlign: isRtl ? 'right' : 'left' }]}>
+          {ac?.activityLogsTitle || 'Activity Logs'}
+        </Text>
+        <Text style={[styles.subtitle, { textAlign: isRtl ? 'right' : 'left' }]}>
+          {(ac?.activityLogsSessions || '{count} sessions').replace('{count}', String(totalCount))}
+        </Text>
       </View>
 
       {/* Summary Stats */}
       {summary && (
-        <View style={styles.summaryRow}>
+        <View style={[styles.summaryRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <View style={[styles.summaryCard, styles.summarySuccess]}>
             <Text style={styles.summaryValue}>{summary.successCount}</Text>
-            <Text style={styles.summaryLabel}>Successful</Text>
+            <Text style={styles.summaryLabel}>{ac?.activitySuccessful || 'Successful'}</Text>
           </View>
           <View style={[styles.summaryCard, styles.summaryFailed]}>
             <Text style={styles.summaryValue}>{summary.failedCount}</Text>
-            <Text style={styles.summaryLabel}>Failed</Text>
+            <Text style={styles.summaryLabel}>{ac?.activityFailed || 'Failed'}</Text>
           </View>
           <View style={[styles.summaryCard, styles.summaryOnline]}>
             <Text style={styles.summaryValue}>{summary.onlineCount}</Text>
-            <Text style={styles.summaryLabel}>Online</Text>
+            <Text style={styles.summaryLabel}>{ac?.activityOnlineLabel || 'Online'}</Text>
           </View>
         </View>
       )}
 
       {/* Filters */}
-      <View style={styles.filters}>
+      <View style={[styles.filters, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity
           style={[styles.filterButton, filter === 'all' && styles.filterActive]}
           onPress={() => handleFilterChange('all')}
@@ -201,7 +219,7 @@ const AdminActivityPage: React.FC = () => {
               filter === 'all' && styles.filterTextActive,
             ]}
           >
-            All
+            {ac?.activityAllFilter || 'All'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -217,7 +235,7 @@ const AdminActivityPage: React.FC = () => {
               filter === 'success' && styles.filterTextActive,
             ]}
           >
-            Success
+            {ac?.activitySuccessFilter || 'Success'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -233,7 +251,7 @@ const AdminActivityPage: React.FC = () => {
               filter === 'failed' && styles.filterTextActive,
             ]}
           >
-            Failed
+            {ac?.activityFailedFilter || 'Failed'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -259,7 +277,7 @@ const AdminActivityPage: React.FC = () => {
           <BottomTab activeTab={activeTab} setActiveTab={setActiveTab} />
         </>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -273,15 +291,11 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     backgroundColor: '#fff',
   },
-  backButton: {
-    fontSize: 14,
-    color: '#2563eb',
-    marginBottom: 8,
-  },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: '#1c1917',
+    marginTop: 8,
   },
   subtitle: {
     fontSize: 13,
@@ -379,7 +393,6 @@ const styles = StyleSheet.create({
   },
   activityInfo: {
     flex: 1,
-    marginLeft: 12,
   },
   activityUsername: {
     fontSize: 14,
@@ -442,7 +455,6 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#059669',
-    marginRight: 4,
   },
   onlineText: {
     fontSize: 11,

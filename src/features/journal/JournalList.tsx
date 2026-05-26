@@ -33,6 +33,7 @@ import { useNavigation } from '@react-navigation/native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import { getColors } from '../../constants/theme';
 import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
@@ -64,14 +65,27 @@ import { showToast } from '../../helpers/Toash.helper';
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { value: 'all', label: 'All' },
-  { value: 'general', label: 'General' },
-  { value: 'study', label: 'Study' },
-  { value: 'prayer', label: 'Prayer' },
-  { value: 'gratitude', label: 'Gratitude' },
-  { value: 'reflection', label: 'Reflection' },
-  { value: 'application', label: 'Application' },
+  { value: 'all' },
+  { value: 'general' },
+  { value: 'study' },
+  { value: 'prayer' },
+  { value: 'gratitude' },
+  { value: 'reflection' },
+  { value: 'application' },
 ];
+
+const getCategoryLabel = (value: string, jc: any): string => {
+  const labels: Record<string, string> = {
+    all: jc?.categoryAll || 'All',
+    general: jc?.categoryGeneral || 'General',
+    study: jc?.categoryStudy || 'Study',
+    prayer: jc?.categoryPrayer || 'Prayer',
+    gratitude: jc?.categoryGratitude || 'Gratitude',
+    reflection: jc?.categoryReflection || 'Reflection',
+    application: jc?.categoryApplication || 'Application',
+  };
+  return labels[value] || value;
+};
 
 const MOOD_EMOJIS: Record<string, string> = {
   happy: '😊',
@@ -93,18 +107,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   general: '#6B7280',
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  study: 'Bible Study',
-  prayer: 'Prayer',
-  gratitude: 'Gratitude',
-  reflection: 'Reflection',
-  application: 'Application',
-  general: 'General',
-};
-
 // ── Relative time helper ─────────────────────────────────────────────────────
 
-const getRelativeTime = (dateStr: string): string => {
+const getRelativeTime = (dateStr: string, jc: any, language: string): string => {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -112,22 +117,24 @@ const getRelativeTime = (dateStr: string): string => {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return jc?.justNow || 'Just now';
+  if (diffMins < 60) return (jc?.minutesAgo || '{count}m ago').replace('{count}', String(diffMins));
+  if (diffHours < 24) return (jc?.hoursAgo || '{count}h ago').replace('{count}', String(diffHours));
+  if (diffDays === 1) return jc?.yesterdayLabel || 'Yesterday';
+  if (diffDays < 7) return (jc?.daysAgo || '{count}d ago').replace('{count}', String(diffDays));
 
-  return date.toLocaleDateString('en-US', {
+  const locale = language === 'ar' ? 'ar-SA' : language === 'es' ? 'es-ES' : language === 'fr' ? 'fr-FR' : 'en-US';
+  return date.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
   });
 };
 
-const getFormattedDate = (dateStr: string): string => {
+const getFormattedDate = (dateStr: string, language: string): string => {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', {
+  const locale = language === 'ar' ? 'ar-SA' : language === 'es' ? 'es-ES' : language === 'fr' ? 'fr-FR' : 'en-US';
+  return date.toLocaleDateString(locale, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -142,30 +149,32 @@ const EmptyState = ({
   currentCategory,
   onCreateNew,
   colors,
+  jc,
 }: {
   hasSearch: boolean;
   currentCategory: string;
   onCreateNew: () => void;
   colors: ReturnType<typeof getColors>;
+  jc: any;
 }) => {
   const hasCategoryFilter = currentCategory !== 'all';
-  let title = 'No journal entries yet';
+  let title = jc?.noEntries || 'No journal entries yet';
   let subtitle =
-    'Start writing your first journal entry to track your spiritual journey.';
-  let icon = <BookOpen size={48} color={colors.textMuted} />;
+    jc?.noEntriesSubtitle || 'Start writing your first journal entry to track your spiritual journey.';
+  let icon = <BookOpen size={48} color={colors.muted} />;
 
   if (hasSearch && hasCategoryFilter) {
-    title = 'No matching entries';
-    subtitle = 'Try adjusting your search or clearing the category filter.';
-    icon = <Search size={48} color={colors.textMuted} />;
+    title = jc?.noEntries || 'No matching entries';
+    subtitle = jc?.noEntriesSubtitle || 'Try adjusting your search or clearing the category filter.';
+    icon = <Search size={48} color={colors.muted} />;
   } else if (hasSearch) {
-    title = 'No results found';
-    subtitle = 'Try a different search term.';
-    icon = <Search size={48} color={colors.textMuted} />;
+    title = jc?.noEntries || 'No results found';
+    subtitle = jc?.noEntriesSubtitle || 'Try a different search term.';
+    icon = <Search size={48} color={colors.muted} />;
   } else if (hasCategoryFilter) {
-    title = `No ${CATEGORY_LABELS[currentCategory] || currentCategory} entries`;
-    subtitle = 'Try selecting a different category.';
-    icon = <PenLine size={48} color={colors.textMuted} />;
+    title = `No ${getCategoryLabel(currentCategory, jc) || currentCategory} entries`;
+    subtitle = jc?.noEntriesSubtitle || 'Try selecting a different category.';
+    icon = <PenLine size={48} color={colors.muted} />;
   }
 
   return (
@@ -186,7 +195,7 @@ const EmptyState = ({
           activeOpacity={0.8}
         >
           <Plus size={18} color="#FFFFFF" />
-          <Text style={styles.emptyButtonText}>Create First Entry</Text>
+          <Text style={styles.emptyButtonText}>{jc?.createFirstEntry || 'Create First Entry'}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -199,10 +208,12 @@ const DeleteAction = ({
   progress,
   dragX,
   colors,
+  jc,
 }: {
   progress: Animated.AnimatedInterpolation<number>;
   dragX: Animated.AnimatedInterpolation<number>;
   colors: ReturnType<typeof getColors>;
+  jc: any;
 }) => {
   const scale = dragX.interpolate({
     inputRange: [-80, 0],
@@ -221,7 +232,7 @@ const DeleteAction = ({
       ]}
     >
       <Trash2 size={22} color="#FFFFFF" />
-      <Text style={styles.deleteActionText}>Delete</Text>
+      <Text style={styles.deleteActionText}>{jc?.deleteAction || 'Delete'}</Text>
     </Animated.View>
   );
 };
@@ -281,6 +292,9 @@ const JournalList = () => {
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const jc = translations?.journal;
 
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [stats, setStats] = useState<JournalStats | null>(null);
@@ -326,13 +340,13 @@ const JournalList = () => {
         }
       } catch (error) {
         console.error('Error fetching journal entries:', error);
-        showToast('error', 'Failed to load journal entries');
+        showToast('error', jc?.failedToLoadEntry || 'Failed to load journal entries');
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [searchDebounced, category],
+    [searchDebounced, category, jc],
   );
 
   const fetchStats = useCallback(async () => {
@@ -350,7 +364,7 @@ const JournalList = () => {
     setPage(0);
     fetchEntries(0);
     fetchStats();
-  }, [category, searchDebounced]);
+  }, [category, searchDebounced, fetchEntries, fetchStats]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const handleRefresh = useCallback(() => {
@@ -380,22 +394,22 @@ const JournalList = () => {
         );
       }
     } catch (error) {
-      showToast('error', 'Failed to update favorite');
+      showToast('error', jc?.failedToUpdateFavorite || 'Failed to update favorite');
     }
-  }, []);
+  }, [jc]);
 
   // ── Delete with confirmation ──────────────────────────────────────────────
   const confirmDelete = useCallback((entry: JournalEntry) => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Delete Entry'],
+          options: [(translations?.bible?.cancel || 'Cancel'), (jc?.deleteAction || 'Delete')],
           destructiveButtonIndex: 1,
           cancelButtonIndex: 0,
-          title: 'Delete Journal Entry',
+          title: jc?.deleteConfirmTitle || 'Delete Journal Entry',
           message: entry.title
-            ? `Are you sure you want to delete "${entry.title}"?`
-            : 'Are you sure you want to delete this entry?',
+            ? (jc?.deleteConfirmMessageWithTitle || 'Are you sure you want to delete "{title}"?').replace('{title}', entry.title)
+            : (jc?.deleteConfirmMessage || 'Are you sure you want to delete this entry?'),
         },
         buttonIndex => {
           if (buttonIndex === 1) handleDelete(entry.id);
@@ -403,21 +417,21 @@ const JournalList = () => {
       );
     } else {
       Alert.alert(
-        'Delete Journal Entry',
+        jc?.deleteConfirmTitle || 'Delete Journal Entry',
         entry.title
-          ? `Are you sure you want to delete "${entry.title}"?\n\nThis action cannot be undone.`
-          : 'Are you sure you want to delete this entry?\n\nThis action cannot be undone.',
+          ? (jc?.deleteConfirmMessageWithTitle || 'Are you sure you want to delete "{title}"?').replace('{title}', entry.title) + '\n\n' + (jc?.deleteAction || 'This action cannot be undone.')
+          : (jc?.deleteConfirmMessage || 'Are you sure you want to delete this entry?') + '\n\n' + (jc?.deleteAction || 'This action cannot be undone.'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: translations?.bible?.cancel || 'Cancel', style: 'cancel' },
           {
-            text: 'Delete',
+            text: jc?.deleteAction || 'Delete',
             style: 'destructive',
             onPress: () => handleDelete(entry.id),
           },
         ],
       );
     }
-  }, []);
+  }, [jc, translations]);
 
   const handleDelete = useCallback(async (id: number) => {
     setDeletingId(id);
@@ -425,14 +439,14 @@ const JournalList = () => {
       const res = await deleteJournalEntry(id);
       if (res.returnCode === 200) {
         setEntries(prev => prev.filter(entry => entry.id !== id));
-        showToast('success', 'Entry deleted');
+        showToast('success', jc?.entryDeleted || 'Entry deleted');
       }
     } catch (error) {
-      showToast('error', 'Failed to delete entry');
+      showToast('error', jc?.failedToDeleteEntry || 'Failed to delete entry');
     } finally {
       setDeletingId(null);
     }
-  }, []);
+  }, [jc]);
 
   const handleEntryPress = useCallback(
     (entry: JournalEntry) => {
@@ -456,7 +470,7 @@ const JournalList = () => {
     return (
       <Swipeable
         renderRightActions={(progress, dragX) => (
-          <DeleteAction progress={progress} dragX={dragX} colors={COLORS} />
+          <DeleteAction progress={progress} dragX={dragX} colors={COLORS} jc={jc} />
         )}
         onSwipeableOpen={() => confirmDelete(item)}
         overshootRight={false}
@@ -474,8 +488,8 @@ const JournalList = () => {
           activeOpacity={0.7}
         >
           {/* Top row: category + mood + favorite */}
-          <View style={styles.entryHeader}>
-            <View style={styles.entryMeta}>
+          <View style={[styles.entryHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={[styles.entryMeta, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               {!!item.category && (
                 <View
                   style={[
@@ -489,7 +503,7 @@ const JournalList = () => {
                       { color: getCategoryColor(item.category) },
                     ]}
                   >
-                    {CATEGORY_LABELS[item.category] || item.category}
+                    {getCategoryLabel(item.category, jc)}
                   </Text>
                 </View>
               )}
@@ -501,7 +515,7 @@ const JournalList = () => {
                   size={14}
                   color="#F59E0B"
                   fill="#F59E0B"
-                  style={styles.favoriteIndicator}
+                  style={[styles.favoriteIndicator, { [isRtl ? 'marginLeft' : 'marginRight']: 2 }]}
                 />
               )}
               <TouchableOpacity
@@ -520,7 +534,7 @@ const JournalList = () => {
           {/* Title */}
           {!!item.title && (
             <Text
-              style={[styles.entryTitle, { color: COLORS.text }]}
+              style={[styles.entryTitle, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
               numberOfLines={1}
             >
               {String(item.title)}
@@ -529,7 +543,7 @@ const JournalList = () => {
 
           {/* Content preview */}
           <Text
-            style={[styles.entryContent, { color: COLORS.textSecondary }]}
+            style={[styles.entryContent, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}
             numberOfLines={3}
           >
             {String(item.content ?? '')}
@@ -549,9 +563,9 @@ const JournalList = () => {
 
           {/* Footer: date + scripture reference */}
           {!!item.bookName && (
-            <View style={styles.scriptureRow}>
+            <View style={[styles.scriptureRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <BookOpen size={12} color={COLORS.muted} />
-              <Text style={[styles.scriptureText, { color: COLORS.muted }]}>
+              <Text style={[styles.scriptureText, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                 {`${String(item.bookName ?? '')} ${String(item.chapter ?? '')}:${String(item.verseNumber ?? '')}`}
               </Text>
             </View>
@@ -559,19 +573,19 @@ const JournalList = () => {
 
           {/* Footer: date and chevron */}
           <View style={styles.entryFooter}>
-            <View style={styles.dateRow}>
+            <View style={[styles.dateRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Clock size={12} color={COLORS.muted} />
-              <Text style={[styles.dateText, { color: COLORS.muted }]}>
-                {getRelativeTime(item.createdOn)}
+              <Text style={[styles.dateText, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+                {getRelativeTime(item.createdOn, jc, language)}
               </Text>
               <Text style={[styles.dateSeparator, { color: COLORS.muted }]}>
                 ·
               </Text>
-              <Text style={[styles.dateFull, { color: COLORS.muted }]}>
-                {getFormattedDate(item.createdOn)}
+              <Text style={[styles.dateFull, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+                {getFormattedDate(item.createdOn, language)}
               </Text>
             </View>
-            <ChevronRight size={16} color={COLORS.muted} />
+            {isRtl ? <ChevronLeft size={16} color={COLORS.muted} /> : <ChevronRight size={16} color={COLORS.muted} />}
           </View>
         </TouchableOpacity>
       </Swipeable>
@@ -593,7 +607,7 @@ const JournalList = () => {
             {stats.totalEntries}
           </Text>
           <Text style={[styles.statLabel, { color: COLORS.textSecondary }]}>
-            Total
+            {jc?.totalEntries || 'Total'}
           </Text>
         </View>
         <View
@@ -604,7 +618,7 @@ const JournalList = () => {
             {stats.favoriteCount}
           </Text>
           <Text style={[styles.statLabel, { color: COLORS.textSecondary }]}>
-            Favorites
+            {jc?.favoritesCount || 'Favorites'}
           </Text>
         </View>
         <View
@@ -615,7 +629,7 @@ const JournalList = () => {
             {stats.entriesThisWeek}
           </Text>
           <Text style={[styles.statLabel, { color: COLORS.textSecondary }]}>
-            This Week
+            {jc?.entriesThisWeek || 'This Week'}
           </Text>
         </View>
       </View>
@@ -646,19 +660,19 @@ const JournalList = () => {
             style={styles.backButton}
             activeOpacity={0.7}
           >
-            <ChevronLeft size={24} color={COLORS.text} />
+            {isRtl ? <ChevronRight size={24} color={COLORS.text} /> : <ChevronLeft size={24} color={COLORS.text} />}
           </TouchableOpacity>
           <View style={styles.headerTitleGroup}>
-            <Text style={[styles.headerTitle, { color: COLORS.text }]}>
-              My Journal
+            <Text style={[styles.headerTitle, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
+              {jc?.myJournal || 'My Journal'}
             </Text>
             {stats && (
               <Text
-                style={[styles.headerSubtitle, { color: COLORS.textSecondary }]}
+                style={[styles.headerSubtitle, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}
               >
                 {stats.totalEntries}{' '}
-                {stats.totalEntries === 1 ? 'entry' : 'entries'} ·{' '}
-                {stats.entriesThisWeek} this week
+                {stats.totalEntries === 1 ? (jc?.entryLabel || 'entry') : (jc?.entriesLabel || 'entries')} ·{' '}
+                {stats.entriesThisWeek} {jc?.thisWeekLabel || 'this week'}
               </Text>
             )}
           </View>
@@ -675,13 +689,13 @@ const JournalList = () => {
           <View
             style={[
               styles.searchBar,
-              { backgroundColor: COLORS.surface, borderColor: COLORS.border },
+              { backgroundColor: COLORS.surface, borderColor: COLORS.border, flexDirection: isRtl ? 'row-reverse' : 'row' },
             ]}
           >
             <Search size={16} color={COLORS.muted} />
             <TextInput
-              style={[styles.searchInput, { color: COLORS.text }]}
-              placeholder="Search entries..."
+              style={[styles.searchInput, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
+              placeholder={jc?.searchEntriesPlaceholder || 'Search entries...'}
               placeholderTextColor={COLORS.muted}
               value={search}
               onChangeText={handleSearchChange}
@@ -744,7 +758,7 @@ const JournalList = () => {
                     },
                   ]}
                 >
-                  {item.label}
+                  {getCategoryLabel(item.value, jc)}
                 </Text>
               </TouchableOpacity>
             )}
@@ -786,6 +800,7 @@ const JournalList = () => {
                 currentCategory={category}
                 onCreateNew={handleCreateNew}
                 colors={COLORS}
+                jc={jc}
               />
             )
           }

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 import { SearchModalProps } from '../types';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import {
   getColors,
   FONT_SIZES,
@@ -35,6 +36,8 @@ export default function SearchModal({
   versionAbbreviation,
   isDark,
 }: SearchModalProps) {
+  const { translations } = useLanguage();
+  const bc = translations?.bible;
   const COLORS = getColors(isDark);
   const styles = useMemo(() => createBibleStyles(isDark), [isDark]);
 
@@ -112,7 +115,7 @@ export default function SearchModal({
           <View style={styles.modalContainerSearch}>
             {/* ── Header ── */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Search Bible</Text>
+              <Text style={styles.modalTitle}>{bc?.searchBibleTitle || 'Search Bible'}</Text>
               <TouchableOpacity
                 onPress={handleClose}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -128,8 +131,8 @@ export default function SearchModal({
                 paddingBottom: SPACING.xs,
               }}
             >
-              <Text style={{ fontSize: FONT_SIZES.xs, color: COLORS.muted }}>
-                Searching in:{' '}
+              <Text style={{ fontSize: FONT_SIZES.xs, color: COLORS.muted, marginRight: 4 }}>
+                {bc?.searchingIn || 'Searching in:'}{' '}
                 <Text style={{ fontWeight: '700', color: COLORS.primary }}>
                   {versionAbbreviation} – {versionName}
                 </Text>
@@ -154,7 +157,7 @@ export default function SearchModal({
                 )}
                 <TextInput
                   style={styles.searchInputStyle}
-                  placeholder="Search verses (e.g., 'love', 'faith')..."
+                  placeholder={bc?.searchHint || "Search verses (e.g., 'love', 'faith')..."}
                   placeholderTextColor={COLORS.muted}
                   value={searchQuery}
                   onChangeText={onSearchChange}
@@ -176,7 +179,7 @@ export default function SearchModal({
 
               {showMinLength && (
                 <Text style={styles.searchHintText}>
-                  💡 Type at least 3 characters to search
+                  💡 {bc?.typeMinChars || 'Type at least 3 characters to search'}
                 </Text>
               )}
 
@@ -185,7 +188,7 @@ export default function SearchModal({
                   <Text
                     style={[localStyles.loadingText, { color: COLORS.muted }]}
                   >
-                    Searching for "{searchQuery}"…
+                    {bc?.searchingFor || 'Searching for'} "{searchQuery}"…
                   </Text>
                 </View>
               )}
@@ -193,7 +196,7 @@ export default function SearchModal({
               {showResults && (
                 <View style={styles.resultsHeader}>
                   <Text style={styles.resultsCount}>
-                    ✓ Found {searchResults.length} verse
+                    ✓ {bc?.foundResults || 'Found'} {searchResults.length} {bc?.verses || 'verse'}
                     {searchResults.length !== 1 ? 's' : ''}
                   </Text>
                 </View>
@@ -282,14 +285,14 @@ export default function SearchModal({
                       <Search size={48} color={COLORS.muted} />
                     </View>
                     <Text style={styles.emptySearchHeading}>
-                      Search the Bible
+                      {bc?.searchBible || 'Search the Bible'}
                     </Text>
                     <Text style={styles.emptySearchSubtext}>
-                      Enter keywords to find verses across all books
+                      {bc?.enterKeywords || 'Enter keywords to find verses across all books'}
                     </Text>
                     <View style={styles.searchSuggestionsBox}>
                       <Text style={styles.suggestionsHeading}>
-                        Try searching for:
+                        {bc?.trySearchingFor || 'Try searching for:'}
                       </Text>
                       <View style={styles.suggestionsChips}>
                         {searchSuggestions.map(word => (
@@ -312,17 +315,17 @@ export default function SearchModal({
                   <View style={styles.emptySearchView}>
                     <Text style={styles.emptyBigIcon}>🔍</Text>
                     <Text style={styles.emptySearchHeading}>
-                      No results found
+                      {bc?.noResultsFound || 'No results found'}
                     </Text>
                     <Text style={styles.emptySearchSubtext}>
-                      Try different keywords or check your spelling
+                      {bc?.tryDifferentKeywords || 'Try different keywords or check your spelling'}
                     </Text>
                     <TouchableOpacity
                       style={styles.clearAndRetryButton}
                       onPress={() => onSearchChange('')}
                     >
                       <Text style={styles.clearAndRetryText}>
-                        Clear & Try Again
+                        {bc?.clearAndTryAgain || 'Clear & Try Again'}
                       </Text>
                     </TouchableOpacity>
                   </View>

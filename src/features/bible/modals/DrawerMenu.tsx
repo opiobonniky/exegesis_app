@@ -32,6 +32,7 @@ import {
   Moon,
   Sun,
   ChevronRight,
+  ChevronLeft,
   Lock,
   BookText,
 } from 'lucide-react-native';
@@ -43,6 +44,7 @@ import {
 import { route } from '../../../component/navigations/routes';
 import { AppContext } from '../../../common/AppContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 
 type NavRouteKey = keyof typeof route;
 type IconType = React.ComponentType<{
@@ -51,23 +53,7 @@ type IconType = React.ComponentType<{
   strokeWidth?: number;
 }>;
 
-const GRID_ITEMS: Array<{
-  label: string;
-  icon: IconType;
-  routeKey: NavRouteKey;
-  color: string;
-}> = [
-  {
-    label: 'Highlights',
-    icon: Edit3,
-    routeKey: 'Highlights',
-    color: '#F59E0B',
-  },
-  { label: 'Notes', icon: FileText, routeKey: 'notes', color: '#3B82F6' },
-  { label: 'History', icon: Clock, routeKey: 'readHistory', color: '#8B5CF6' },
-  { label: 'Favorites', icon: Star, routeKey: 'favorites', color: '#EC4899' },
-  { label: 'Journal', icon: BookText, routeKey: 'journal', color: '#10B981' },
-];
+
 
 export default function DrawerMenu({
   visible,
@@ -84,6 +70,10 @@ export default function DrawerMenu({
   isDark,
 }: DrawerMenuProps) {
   const app = useContext(AppContext);
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const bc = translations?.bible;
+
   const COLORS = getColors(isDark);
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
@@ -170,9 +160,9 @@ export default function DrawerMenu({
     () =>
       progressAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [-drawerWidth, 0],
+        outputRange: isRtl ? [drawerWidth, 0] : [-drawerWidth, 0],
       }),
-    [drawerWidth, progressAnim],
+    [drawerWidth, isRtl, progressAnim],
   );
   const backdropOpacity = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -186,13 +176,13 @@ export default function DrawerMenu({
 
   const userInfo = app?.userInfo ?? null;
   const displayName = useMemo(() => {
-    if (!userInfo) return 'Guest';
+    if (!userInfo) return bc?.guestName || 'Guest';
     const full =
       `${userInfo.firstName ?? ''} ${userInfo.lastName ?? ''}`.trim();
     return full || userInfo.username || userInfo.email || 'Account';
   }, [userInfo]);
   const displaySub = useMemo(() => {
-    if (!userInfo) return 'Sign in to sync highlights, notes & favourites';
+    if (!userInfo) return bc?.guestSubtitle || 'Sign in to sync highlights, notes & favourites';
     return userInfo.email || userInfo.username || 'Signed in';
   }, [userInfo]);
   const initials = useMemo(() => {
@@ -236,8 +226,10 @@ export default function DrawerMenu({
           {
             width: drawerWidth,
             backgroundColor: bg,
-            borderRightColor: border,
             transform: [{ translateX }],
+            ...(isRtl
+              ? { right: 0, borderLeftWidth: 1, borderLeftColor: border, borderRightWidth: 0 }
+              : { left: 0, borderRightWidth: 1, borderRightColor: border }),
           },
         ]}
       >
@@ -248,10 +240,11 @@ export default function DrawerMenu({
             {
               paddingTop: insets.top + 14,
               borderBottomColor: border,
+              flexDirection: isRtl ? 'row-reverse' : 'row',
             },
           ]}
         >
-          <View style={s.topLeft}>
+          <View style={[s.topLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <View
               style={[
                 s.appIconWrap,
@@ -260,8 +253,8 @@ export default function DrawerMenu({
             >
               <BookOpen size={16} color={COLORS.primary} strokeWidth={2.2} />
             </View>
-            <Text style={[s.appName, { color: COLORS.text }]}>
-              Bible Reader
+            <Text style={[s.appName, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
+              {bc?.bibleReader || 'Bible Reader'}
             </Text>
           </View>
           <Pressable
@@ -284,7 +277,7 @@ export default function DrawerMenu({
           keyboardShouldPersistTaps="handled"
         >
           {/* ── Account ─────────────────────────────────────────────────── */}
-          <Text style={[s.sectionTitle, { color: COLORS.muted }]}>Account</Text>
+          <Text style={[s.sectionTitle, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>{bc?.sectionAccount || 'Account'}</Text>
           <Pressable
             onPress={() => go(route.profile)}
             style={({ pressed }) => [
@@ -293,6 +286,7 @@ export default function DrawerMenu({
                 backgroundColor: surface,
                 borderColor: border,
                 opacity: pressed ? 0.88 : 1,
+                flexDirection: isRtl ? 'row-reverse' : 'row',
               },
             ]}
             accessibilityRole="button"
@@ -313,19 +307,19 @@ export default function DrawerMenu({
             </View>
             <View style={s.accountText}>
               <Text
-                style={[s.accountName, { color: COLORS.text }]}
+                style={[s.accountName, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
                 numberOfLines={1}
               >
                 {displayName}
               </Text>
               <Text
-                style={[s.accountSub, { color: COLORS.muted }]}
+                style={[s.accountSub, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}
                 numberOfLines={1}
               >
                 {displaySub}
               </Text>
             </View>
-            <View style={s.accountRight}>
+            <View style={[s.accountRight, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               {isGuest ? (
                 <View
                   style={[
@@ -337,21 +331,25 @@ export default function DrawerMenu({
                   ]}
                 >
                   <Text style={[s.pillText, { color: COLORS.primary }]}>
-                    Sign in
+                    {bc?.signInBtn || 'Sign in'}
                   </Text>
                 </View>
               ) : null}
-              <ChevronRight size={18} color={COLORS.muted} strokeWidth={2.5} />
+              {isRtl ? (
+                <ChevronLeft size={18} color={COLORS.muted} strokeWidth={2.5} />
+              ) : (
+                <ChevronRight size={18} color={COLORS.muted} strokeWidth={2.5} />
+              )}
             </View>
           </Pressable>
 
           {/* ── Reading ─────────────────────────────────────────────────── */}
-          <Text style={[s.sectionTitle, { color: COLORS.muted }]}>Reading</Text>
+          <Text style={[s.sectionTitle, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>{bc?.sectionReading || 'Reading'}</Text>
 
           {/* Version */}
           <Pressable
             onPress={goReadingSettings}
-            style={[s.versionRow, { backgroundColor: COLORS.primary }]}
+            style={[s.versionRow, { backgroundColor: COLORS.primary, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
             accessibilityRole="button"
             accessibilityLabel="Bible version"
             accessibilityHint="Opens version picker"
@@ -360,25 +358,33 @@ export default function DrawerMenu({
               <Text style={s.versionAbbr}>{activeVersion.abbreviation}</Text>
             </View>
             <View style={s.versionTextWrap}>
-              <Text style={s.versionName} numberOfLines={1}>
+              <Text style={[s.versionName, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={1}>
                 {activeVersion.name}
               </Text>
-              <Text style={s.versionDesc} numberOfLines={1}>
+              <Text style={[s.versionDesc, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={1}>
                 {activeVersion.description}
               </Text>
             </View>
-            <View style={s.changeChip}>
+            <View style={[s.changeChip, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Text style={s.changeText}>
-                {showVersionPicker ? 'Hide' : 'Change'}
+                {showVersionPicker ? (bc?.hideVersion || 'Hide') : (bc?.change || 'Change')}
               </Text>
               <View
                 style={[s.chevWrap, showVersionPicker ? s.chevDown : undefined]}
               >
-                <ChevronRight
-                  size={12}
-                  color="rgba(255,255,255,0.85)"
-                  strokeWidth={3}
-                />
+                {isRtl ? (
+                  <ChevronLeft
+                    size={12}
+                    color="rgba(255,255,255,0.85)"
+                    strokeWidth={3}
+                  />
+                ) : (
+                  <ChevronRight
+                    size={12}
+                    color="rgba(255,255,255,0.85)"
+                    strokeWidth={3}
+                  />
+                )}
               </View>
             </View>
           </Pressable>
@@ -387,7 +393,7 @@ export default function DrawerMenu({
           <View
             style={[
               s.fontRow,
-              { backgroundColor: surface, borderColor: border },
+              { backgroundColor: surface, borderColor: border, flexDirection: isRtl ? 'row-reverse' : 'row' },
             ]}
           >
             <Pressable
@@ -436,22 +442,33 @@ export default function DrawerMenu({
                 backgroundColor: surface,
                 borderColor: border,
                 opacity: pressed ? 0.85 : 1,
+                flexDirection: isRtl ? 'row-reverse' : 'row',
               },
             ]}
             accessibilityRole="button"
             accessibilityLabel="Open reading settings"
           >
             <Settings2 size={16} color={COLORS.muted} strokeWidth={2} />
-            <Text style={[s.inlineActionText, { color: COLORS.text }]}>
-              Reading settings
+            <Text style={[s.inlineActionText, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left', [isRtl ? 'marginRight' : 'marginLeft']: 10 }]}>
+              {bc?.readingSettingsLabel || 'Reading settings'}
             </Text>
-            <ChevronRight size={16} color={COLORS.muted} strokeWidth={2.5} />
+            {isRtl ? (
+              <ChevronLeft size={16} color={COLORS.muted} strokeWidth={2.5} />
+            ) : (
+              <ChevronRight size={16} color={COLORS.muted} strokeWidth={2.5} />
+            )}
           </Pressable>
 
           {/* ── 2×2 library grid ─────────────────────────────────────────── */}
-          <Text style={[s.sectionTitle, { color: COLORS.muted }]}>Library</Text>
-          <View style={s.grid}>
-            {GRID_ITEMS.map(({ label, icon: Icon, routeKey, color }) => (
+          <Text style={[s.sectionTitle, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>{bc?.sectionLibrary || 'Library'}</Text>
+          <View style={[s.grid, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            {[
+              { label: bc?.highlights || 'Highlights', icon: Edit3, routeKey: 'Highlights' as NavRouteKey, color: '#F59E0B' },
+              { label: bc?.notes || 'Notes', icon: FileText, routeKey: 'notes' as NavRouteKey, color: '#3B82F6' },
+              { label: bc?.readingHistory || 'History', icon: Clock, routeKey: 'readHistory' as NavRouteKey, color: '#8B5CF6' },
+              { label: bc?.favorites || 'Favorites', icon: Star, routeKey: 'favorites' as NavRouteKey, color: '#EC4899' },
+              { label: bc?.journal || 'Journal', icon: BookText, routeKey: 'journal' as NavRouteKey, color: '#10B981' },
+            ].map(({ label, icon: Icon, routeKey, color }) => (
               <Pressable
                 key={routeKey}
                 onPress={() => go(route[routeKey])}
@@ -461,6 +478,7 @@ export default function DrawerMenu({
                     backgroundColor: surface,
                     borderColor: border,
                     opacity: pressed ? 0.85 : 1,
+                    flexDirection: isRtl ? 'row-reverse' : 'row',
                   },
                 ]}
                 accessibilityRole="button"
@@ -470,15 +488,15 @@ export default function DrawerMenu({
                 <View style={[s.gridIcon, { backgroundColor: `${color}18` }]}>
                   <Icon size={18} color={color} strokeWidth={2} />
                 </View>
-                <View style={s.gridText}>
-                  <Text style={[s.gridLabel, { color: COLORS.text }]}>
+                <View style={[s.gridText, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                  <Text style={[s.gridLabel, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
                     {label}
                   </Text>
                   {isGuest ? (
-                    <View style={s.lockRow}>
+                    <View style={[s.lockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                       <Lock size={12} color={COLORS.muted} strokeWidth={2} />
                       <Text style={[s.lockText, { color: COLORS.muted }]}>
-                        Sign in
+                        {bc?.signInBtn || 'Sign in'}
                       </Text>
                     </View>
                   ) : null}
@@ -488,29 +506,33 @@ export default function DrawerMenu({
           </View>
 
           {/* ── Appearance ──────────────────────────────────────────────── */}
-          <Text style={[s.sectionTitle, { color: COLORS.muted }]}>
-            Appearance
+          <Text style={[s.sectionTitle, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+            {bc?.sectionAppearance || 'Appearance'}
           </Text>
           <View
             style={[
               s.themeRow,
-              { backgroundColor: surface, borderColor: border },
+              {
+                backgroundColor: surface,
+                borderColor: border,
+                flexDirection: isRtl ? 'row-reverse' : 'row',
+              },
             ]}
             accessibilityRole="adjustable"
             accessibilityLabel="Theme"
           >
-            <View style={s.themeLeft}>
+            <View style={[s.themeLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               {isDark ? (
                 <Moon size={16} color={COLORS.accent} strokeWidth={2} />
               ) : (
                 <Sun size={16} color={COLORS.accent} strokeWidth={2} />
               )}
               <View style={s.themeText}>
-                <Text style={[s.themeTitle, { color: COLORS.text }]}>
-                  Dark mode
+                <Text style={[s.themeTitle, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {bc?.darkModeLabel || 'Dark mode'}
                 </Text>
-                <Text style={[s.themeSub, { color: COLORS.muted }]}>
-                  Switch appearance
+                <Text style={[s.themeSub, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {bc?.switchAppearance || 'Switch appearance'}
                 </Text>
               </View>
             </View>
@@ -536,10 +558,8 @@ const s = StyleSheet.create({
   },
   panel: {
     position: 'absolute',
-    left: 0,
     top: 0,
     bottom: 0,
-    borderRightWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 6, height: 0 },
     shadowOpacity: 0.18,

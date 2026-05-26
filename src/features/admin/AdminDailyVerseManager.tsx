@@ -10,6 +10,7 @@ import {
   RefreshControl,
   TextInput,
   Modal,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
@@ -17,10 +18,13 @@ import {
   deleteDailyVerse,
   DailyVerse,
 } from '../../services/adminApi';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getColors } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   ChevronLeft,
+  ChevronRight,
   Plus,
   CheckCircle2,
   Trash2,
@@ -55,14 +59,16 @@ const BIBLE_BOOKS = [
   '1 John', '2 John', '3 John', 'Jude', 'Revelation',
 ];
 
-const TESTAMENTS = [
-  { value: 'Old', label: 'Old Testament' },
-  { value: 'New', label: 'New Testament' },
-];
-
 export interface ExtendedDailyVerse extends DailyVerse {
   creatorName?: string;
 }
+
+const localeMap: Record<string, string> = {
+  en: 'en-US',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  ar: 'ar-SA',
+};
 
 const getTheme = (isDark: boolean) => {
   const colors = getColors(isDark);
@@ -84,6 +90,10 @@ const AdminDailyVerseManager: React.FC = () => {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const ac = translations?.admin;
+  const bible = translations?.bible;
   const theme = getTheme(isDark);
   const styles = getStyles(theme);
 
@@ -174,10 +184,11 @@ const AdminDailyVerseManager: React.FC = () => {
     setBookSearch('');
   }, []);
 
+  const oldTestamentCount = 39;
   const books = testament
-    ? TESTAMENTS.find(t => t.value === testament)?.value === 'Old'
-      ? BIBLE_BOOKS.slice(0, 39)
-      : BIBLE_BOOKS.slice(39)
+    ? testament === 'Old'
+      ? BIBLE_BOOKS.slice(0, oldTestamentCount)
+      : BIBLE_BOOKS.slice(oldTestamentCount)
     : BIBLE_BOOKS;
 
   const filteredBooks = bookSearch
@@ -214,36 +225,43 @@ const AdminDailyVerseManager: React.FC = () => {
   };
 
   const handleDelete = (verse: DailyVerse) => {
-    Alert.alert('Delete Verse', 'Are you sure you want to delete this daily verse?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteDailyVerse(verse.id);
-            setVerses(prev => prev.filter(v => v.id !== verse.id));
-            showToast('success', 'Verse deleted successfully');
-          } catch (error) {
-            Alert.alert('Error', 'Failed to delete verse');
-          }
+    Alert.alert(
+      ac?.dvManagerDeleteTitle || 'Delete Verse',
+      ac?.dvManagerDeleteMessage || 'Are you sure you want to delete this daily verse?',
+      [
+        { text: bible?.cancel || 'Cancel', style: 'cancel' as const },
+        {
+          text: ac?.dvManagerDelete || 'Delete',
+          style: 'destructive' as const,
+          onPress: async () => {
+            try {
+              await deleteDailyVerse(verse.id);
+              setVerses(prev => prev.filter(v => v.id !== verse.id));
+              showToast('success', ac?.dvManagerVerseDeleted || 'Verse deleted successfully');
+            } catch (error) {
+              showToast('error', ac?.dvManagerFailedDelete || 'Failed to delete verse');
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
+
+  const locale = localeMap[language] || 'en-US';
 
   const renderVerse = ({ item }: { item: ExtendedDailyVerse }) => {
     const formattedDate = item.displayDate && typeof item.displayDate === 'string'
-      ? new Date(item.displayDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      ? new Date(item.displayDate).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })
       : '—';
 
     return (
       <View style={[styles.verseCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
         <View style={[styles.verseAccentBar, { backgroundColor: theme.primary }]} />
         <View style={styles.verseCardInner}>
-          <View style={styles.verseHeader}>
-            <View style={styles.verseRef}>
+          <View style={[styles.verseHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={[styles.verseRef, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Book size={14} color={theme.primary} />
-              <Text style={[styles.verseRefText, { color: theme.text }]}>
+              <Text style={[styles.verseRefText, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
                 {item.bookName} {item.chapter}:{item.verseNumber}
               </Text>
               {item.bibleVersion && (
@@ -252,7 +270,7 @@ const AdminDailyVerseManager: React.FC = () => {
                 </View>
               )}
             </View>
-            <View style={styles.verseActions}>
+            <View style={[styles.verseActions, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <TouchableOpacity style={[styles.actionButton, { backgroundColor: `${theme.primary}10` }]} onPress={() => handleEditPress(item)}>
                 <Pencil size={12} color={theme.primary} />
               </TouchableOpacity>
@@ -263,8 +281,8 @@ const AdminDailyVerseManager: React.FC = () => {
           </View>
 
           <View style={styles.verseContentContainer}>
-            <Text style={styles.openQuote}>"</Text>
-            <Text style={[styles.verseText, { color: theme.textSecondary }]}>
+            <Text style={[styles.openQuote, { textAlign: isRtl ? 'right' : 'left' }]}>"</Text>
+            <Text style={[styles.verseText, { color: theme.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
               {getVerseText(item.bookName, item.chapter, item.verseNumber, item.bibleVersion ? getVersionById(item.bibleVersion).load() : undefined) || '—'}
               "
             </Text>
@@ -272,19 +290,19 @@ const AdminDailyVerseManager: React.FC = () => {
 
           <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
+          <View style={[styles.infoRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             {item.isPublished ? (
-              <View style={[styles.statusBadge, { backgroundColor: `${theme.success}15` }]}>
+              <View style={[styles.statusBadge, { backgroundColor: `${theme.success}15`, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <CheckCircle2 size={10} color={theme.success} />
-                <Text style={[styles.statusText, { color: theme.success }]}>Published</Text>
+                <Text style={[styles.statusText, { color: theme.success }]}>{ac?.dvManagerPublished || 'Published'}</Text>
               </View>
             ) : (
-              <View style={[styles.statusBadge, { backgroundColor: `${theme.error}15` }]}>
+              <View style={[styles.statusBadge, { backgroundColor: `${theme.error}15`, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <XCircle size={10} color={theme.error} />
-                <Text style={[styles.statusText, { color: theme.error }]}>Draft</Text>
+                <Text style={[styles.statusText, { color: theme.error }]}>{ac?.dvManagerDraft || 'Draft'}</Text>
               </View>
             )}
-            <View style={styles.dateRow}>
+            <View style={[styles.dateRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Calendar size={10} color={theme.muted} />
               <Text style={[styles.metaText, { color: theme.muted }]}>{formattedDate}</Text>
             </View>
@@ -292,11 +310,11 @@ const AdminDailyVerseManager: React.FC = () => {
 
           {item.explanation && (
             <View style={[styles.sectionContainer, { backgroundColor: isDark ? '#ffffff08' : '#f0f9ff' }]}>
-              <View style={styles.sectionHeader}>
+              <View style={[styles.sectionHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <Lightbulb size={12} color={theme.primary} />
-                <Text style={[styles.sectionLabel, { color: theme.primary }]}>EXPLANATION</Text>
+                <Text style={[styles.sectionLabel, { color: theme.primary }]}>{ac?.dvManagerExplanation || 'EXPLANATION'}</Text>
               </View>
-              <Text style={[styles.sectionText, { color: theme.textSecondary }]} numberOfLines={2}>
+              <Text style={[styles.sectionText, { color: theme.textSecondary, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={2}>
                 {item.explanation.length > 80 ? item.explanation.substring(0, 80) + '...' : item.explanation}
               </Text>
             </View>
@@ -309,9 +327,9 @@ const AdminDailyVerseManager: React.FC = () => {
   const renderEmpty = () => (
     <View style={styles.empty}>
       <Sun size={48} color={theme.muted} />
-      <Text style={[styles.emptyText, { color: theme.muted }]}>No daily verses found</Text>
+      <Text style={[styles.emptyText, { color: theme.muted }]}>{ac?.dvManagerNoVerses || 'No daily verses found'}</Text>
       <TouchableOpacity style={[styles.emptyButton, { backgroundColor: theme.primary }]} onPress={handleAddPress}>
-        <Text style={styles.emptyButtonText}>Add First Verse</Text>
+        <Text style={styles.emptyButtonText}>{ac?.dvManagerAddFirst || 'Add First Verse'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -319,28 +337,32 @@ const AdminDailyVerseManager: React.FC = () => {
   const activeFilterCount = [bookName, chapter, verseNumber, startDate, endDate].filter(Boolean).length;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+    <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <ChevronLeft size={20} color={theme.primary} />
+          {isRtl ? <ChevronRight size={20} color={theme.primary} /> : <ChevronLeft size={20} color={theme.primary} />}
         </TouchableOpacity>
-        <View style={styles.headerTitle}>
+        <View style={[styles.headerTitle, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <Sun size={20} color={theme.primary} />
-          <Text style={[styles.title, { color: theme.text }]}>Daily Verses</Text>
+          <Text style={[styles.title, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.dvManagerTitle || 'Daily Verses'}</Text>
         </View>
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: theme.primary }]} onPress={handleAddPress}>
+        <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: theme.primary, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
+          onPress={handleAddPress}
+        >
           <Plus size={16} color="#fff" />
-          <Text style={styles.addButtonText}>Add</Text>
+          <Text style={styles.addButtonText}>{ac?.dvManagerAdd || 'Add'}</Text>
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
-        style={[styles.filterToggle, { backgroundColor: theme.surface, borderColor: theme.border }]}
+        style={[styles.filterToggle, { backgroundColor: theme.surface, borderColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
         onPress={() => setShowFilters(prev => !prev)}
       >
         <Filter size={14} color={theme.primary} />
         <Text style={[styles.filterToggleText, { color: theme.textSecondary }]}>
-          {showFilters ? 'Hide Filters' : 'Search & Filter'}
+          {showFilters ? (ac?.dvManagerHideFilters || 'Hide Filters') : (ac?.dvManagerSearchFilter || 'Search & Filter')}
         </Text>
         {activeFilterCount > 0 && (
           <View style={[styles.filterBadge, { backgroundColor: theme.primary }]}>
@@ -351,74 +373,74 @@ const AdminDailyVerseManager: React.FC = () => {
 
       {showFilters && (
         <View style={[styles.filterBar, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <View style={styles.filterRow}>
+          <View style={[styles.filterRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <View style={styles.filterBlock}>
-              <View style={styles.filterLabelRow}>
-                <Text style={[styles.filterLabel, { color: theme.muted }]}>Book</Text>
+              <View style={[styles.filterLabelRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.filterLabel, { color: theme.muted }]}>{ac?.dvManagerBookLabel || 'Book'}</Text>
                 {activeFilterCount > 0 && (
-                  <TouchableOpacity onPress={resetFilters} style={styles.resetLink}>
+                  <TouchableOpacity onPress={resetFilters} style={[styles.resetLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                     <RotateCcw size={12} color={theme.primary} />
-                    <Text style={[styles.resetLinkText, { color: theme.primary }]}>Reset</Text>
+                    <Text style={[styles.resetLinkText, { color: theme.primary }]}>{ac?.dvManagerReset || 'Reset'}</Text>
                   </TouchableOpacity>
                 )}
               </View>
               <TouchableOpacity
-                style={[styles.selectorButton, { borderColor: theme.border }]}
+                style={[styles.selectorButton, { borderColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                 onPress={() => { setBookSearch(''); setBookPickerVisible(true); }}
               >
                 <Book size={14} color={theme.muted} />
-                <Text style={[styles.selectorText, { color: bookName ? theme.text : theme.muted }]} numberOfLines={1}>
-                  {bookName || 'All Books'}
+                <Text style={[styles.selectorText, { color: bookName ? theme.text : theme.muted, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={1}>
+                  {bookName || (ac?.dvManagerAllBooks || 'All Books')}
                 </Text>
                 <ChevronDown size={12} color={theme.muted} />
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.filterRow}>
+          <View style={[styles.filterRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <View style={[styles.filterBlock, { flex: 1 }]}>
-              <Text style={[styles.filterLabel, { color: theme.muted }]}>Chapter</Text>
+              <Text style={[styles.filterLabel, { color: theme.muted, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.dvManagerChapterLabel || 'Chapter'}</Text>
               <TouchableOpacity
-                style={[styles.selectorButton, { borderColor: theme.border, opacity: bookName ? 1 : 0.4 }]}
+                style={[styles.selectorButton, { borderColor: theme.border, opacity: bookName ? 1 : 0.4, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                 onPress={() => bookName && setChapterPickerVisible(true)}
                 disabled={!bookName}
               >
-                <Text style={[styles.selectorText, { color: chapter ? theme.text : theme.muted }]}>
-                  {chapter || 'Any'}
+                <Text style={[styles.selectorText, { color: chapter ? theme.text : theme.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {chapter || (ac?.dvManagerAny || 'Any')}
                 </Text>
                 <ChevronDown size={12} color={theme.muted} />
               </TouchableOpacity>
             </View>
             <View style={[styles.filterBlock, { flex: 1 }]}>
-              <Text style={[styles.filterLabel, { color: theme.muted }]}>Verse</Text>
+              <Text style={[styles.filterLabel, { color: theme.muted, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.dvManagerVerseLabel || 'Verse'}</Text>
               <TouchableOpacity
-                style={[styles.selectorButton, { borderColor: theme.border, opacity: bookName && chapter ? 1 : 0.4 }]}
+                style={[styles.selectorButton, { borderColor: theme.border, opacity: bookName && chapter ? 1 : 0.4, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                 onPress={() => bookName && chapter && setVersePickerVisible(true)}
                 disabled={!bookName || !chapter}
               >
-                <Text style={[styles.selectorText, { color: verseNumber ? theme.text : theme.muted }]}>
-                  {verseNumber || 'Any'}
+                <Text style={[styles.selectorText, { color: verseNumber ? theme.text : theme.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {verseNumber || (ac?.dvManagerAny || 'Any')}
                 </Text>
                 <ChevronDown size={12} color={theme.muted} />
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.filterRow}>
+          <View style={[styles.filterRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <View style={[styles.filterBlock, { flex: 1 }]}>
-              <Text style={[styles.filterLabel, { color: theme.muted }]}>From</Text>
+              <Text style={[styles.filterLabel, { color: theme.muted, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.dvManagerFromLabel || 'From'}</Text>
               <DatePickerInput
                 value={startDate}
-                placeholder="Start date"
+                placeholder={ac?.dvManagerStartDate || 'Start date'}
                 onChangeDate={setStartDate}
                 maximumDate={new Date(2100, 0, 1)}
               />
             </View>
             <View style={[styles.filterBlock, { flex: 1 }]}>
-              <Text style={[styles.filterLabel, { color: theme.muted }]}>To</Text>
+              <Text style={[styles.filterLabel, { color: theme.muted, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.dvManagerToLabel || 'To'}</Text>
               <DatePickerInput
                 value={endDate}
-                placeholder="End date"
+                placeholder={ac?.dvManagerEndDate || 'End date'}
                 onChangeDate={setEndDate}
                 maximumDate={new Date(2100, 0, 1)}
               />
@@ -451,32 +473,37 @@ const AdminDailyVerseManager: React.FC = () => {
       <Modal visible={bookPickerVisible} transparent animationType="slide" onRequestClose={() => { setBookPickerVisible(false); setBookSearch(''); }}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
-            <View style={[styles.modalTitleBar, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Select Book</Text>
+            <View style={[styles.modalTitleBar, { borderBottomColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>{ac?.dvManagerSelectBook || 'Select Book'}</Text>
               <TouchableOpacity onPress={() => { setBookPickerVisible(false); setBookSearch(''); }}>
                 <X size={24} color={theme.muted} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.testamentRow}>
-              {TESTAMENTS.map(t => (
-                <TouchableOpacity
-                  key={t.value}
-                  style={[styles.testamentTab, testament === t.value && { backgroundColor: theme.primary + '20', borderColor: theme.primary }, { borderColor: theme.border }]}
-                  onPress={() => setTestament(prev => prev === t.value ? '' : t.value)}
-                >
-                  <Text style={[styles.testamentTabText, { color: testament === t.value ? theme.primary : theme.textSecondary }]}>
-                    {t.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={[styles.testamentRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <TouchableOpacity
+                style={[styles.testamentTab, testament === 'Old' && { backgroundColor: theme.primary + '20', borderColor: theme.primary }, { borderColor: theme.border }]}
+                onPress={() => setTestament(prev => prev === 'Old' ? '' : 'Old')}
+              >
+                <Text style={[styles.testamentTabText, { color: testament === 'Old' ? theme.primary : theme.textSecondary }]}>
+                  {bible?.oldTestament || 'Old Testament'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.testamentTab, testament === 'New' && { backgroundColor: theme.primary + '20', borderColor: theme.primary }, { borderColor: theme.border }]}
+                onPress={() => setTestament(prev => prev === 'New' ? '' : 'New')}
+              >
+                <Text style={[styles.testamentTabText, { color: testament === 'New' ? theme.primary : theme.textSecondary }]}>
+                  {bible?.newTestament || 'New Testament'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={[styles.searchBar, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+            <View style={[styles.searchBar, { backgroundColor: theme.cardBackground, borderColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Search size={18} color={theme.muted} />
               <TextInput
-                style={[styles.searchInput, { color: theme.text }]}
-                placeholder="Search book..."
+                style={[styles.searchInput, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}
+                placeholder={ac?.dvManagerSearchBooks || 'Search book...'}
                 placeholderTextColor={theme.muted}
                 value={bookSearch}
                 onChangeText={setBookSearch}
@@ -495,10 +522,10 @@ const AdminDailyVerseManager: React.FC = () => {
               style={styles.pickerList}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[styles.pickerItem, bookName === item && { backgroundColor: theme.primary + '15' }]}
+                  style={[styles.pickerItem, bookName === item && { backgroundColor: theme.primary + '15' }, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                   onPress={() => selectBook(item)}
                 >
-                  <Text style={[styles.pickerItemText, { color: bookName === item ? theme.primary : theme.text }]}>
+                  <Text style={[styles.pickerItemText, { color: bookName === item ? theme.primary : theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
                     {item}
                   </Text>
                   {bookName === item && <CheckCircle2 size={16} color={theme.primary} />}
@@ -513,8 +540,10 @@ const AdminDailyVerseManager: React.FC = () => {
       <Modal visible={chapterPickerVisible} transparent animationType="slide" onRequestClose={() => setChapterPickerVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
-            <View style={[styles.modalTitleBar, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Select Chapter — {bookName}</Text>
+            <View style={[styles.modalTitleBar, { borderBottomColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                {(ac?.dvManagerSelectChapter || 'Select Chapter — {bookName}').replace('{bookName}', bookName)}
+              </Text>
               <TouchableOpacity onPress={() => setChapterPickerVisible(false)}>
                 <X size={24} color={theme.muted} />
               </TouchableOpacity>
@@ -526,7 +555,7 @@ const AdminDailyVerseManager: React.FC = () => {
                   style={[styles.gridItem, chapter === String(ch) && { backgroundColor: theme.primary + '20', borderColor: theme.primary }, { borderColor: theme.border }]}
                   onPress={() => selectChapter(ch)}
                 >
-                  <Text style={[styles.gridItemText, { color: chapter === String(ch) ? theme.primary : theme.text }]}>
+                  <Text style={[styles.gridItemText, { color: chapter === String(ch) ? theme.primary : theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
                     {ch}
                   </Text>
                 </TouchableOpacity>
@@ -540,8 +569,10 @@ const AdminDailyVerseManager: React.FC = () => {
       <Modal visible={versePickerVisible} transparent animationType="slide" onRequestClose={() => setVersePickerVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
-            <View style={[styles.modalTitleBar, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Select Verse — {bookName} {chapter}</Text>
+            <View style={[styles.modalTitleBar, { borderBottomColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                {(ac?.dvManagerSelectVerse || 'Select Verse — {bookName} {chapter}').replace('{bookName}', bookName).replace('{chapter}', chapter)}
+              </Text>
               <TouchableOpacity onPress={() => setVersePickerVisible(false)}>
                 <X size={24} color={theme.muted} />
               </TouchableOpacity>
@@ -553,7 +584,7 @@ const AdminDailyVerseManager: React.FC = () => {
                   style={[styles.gridItem, verseNumber === String(vs) && { backgroundColor: theme.primary + '20', borderColor: theme.primary }, { borderColor: theme.border }]}
                   onPress={() => selectVerse(vs)}
                 >
-                  <Text style={[styles.gridItemText, { color: verseNumber === String(vs) ? theme.primary : theme.text }]}>
+                  <Text style={[styles.gridItemText, { color: verseNumber === String(vs) ? theme.primary : theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
                     {vs}
                   </Text>
                 </TouchableOpacity>
@@ -562,7 +593,7 @@ const AdminDailyVerseManager: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 

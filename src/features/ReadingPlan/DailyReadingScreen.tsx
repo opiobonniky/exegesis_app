@@ -44,6 +44,7 @@ import {
   isAtRiskReminderEnabled,
   getAtRiskReminderTime,
 } from './planNotificationService';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -76,36 +77,36 @@ interface DailyAssignment {
 // ─────────────────────────────────────────────
 // Performance helper
 // ─────────────────────────────────────────────
-const getQuizPerformance = (correct: number, total: number) => {
+const getQuizPerformance = (correct: number, total: number, rp?: any) => {
   if (total === 0)
-    return { label: 'Complete!', emoji: '📖', color: '#6366F1', passed: false };
+    return { label: rp?.dailyReadingScoreComplete || 'Complete!', emoji: '\uD83D\uDCD6', color: '#6366F1', passed: false };
   const pct = (correct / total) * 100;
   if (correct === 0)
     return {
-      label: 'Keep Going!',
-      emoji: '💪',
+      label: rp?.dailyReadingScoreKeepGoing || 'Keep Going!',
+      emoji: '\uD83D\uDCAA',
       color: '#F59E0B',
       passed: false,
     };
   if (pct < 50)
     return {
-      label: 'Good Effort!',
-      emoji: '🌱',
+      label: rp?.dailyReadingScoreGoodEffort || 'Good Effort!',
+      emoji: '\uD83C\uDF31',
       color: '#F97316',
       passed: false,
     };
   if (pct < 70)
     return {
-      label: 'Almost There!',
-      emoji: '🔥',
+      label: rp?.dailyReadingScoreAlmostThere || 'Almost There!',
+      emoji: '\uD83D\uDD25',
       color: '#EAB308',
       passed: false,
     };
   if (pct < 100)
-    return { label: 'Well Done!', emoji: '⭐', color: '#10B981', passed: true };
+    return { label: rp?.dailyReadingScoreWellDone || 'Well Done!', emoji: '\u2B50', color: '#10B981', passed: true };
   return {
-    label: 'Perfect Score!',
-    emoji: '🏆',
+    label: rp?.dailyReadingScorePerfect || 'Perfect Score!',
+    emoji: '\uD83C\uDFC6',
     color: '#6366F1',
     passed: true,
   };
@@ -238,27 +239,30 @@ const SectionHeading = ({
   icon,
   title,
   color,
+  isRtl,
 }: {
   icon: React.ReactNode;
   title: string;
   color: string;
+  isRtl?: boolean;
 }) => (
-  <View style={shStyles.row}>
-    <View style={[shStyles.accent, { backgroundColor: color }]} />
-    <View style={shStyles.iconWrap}>{icon}</View>
-    <Text style={shStyles.text}>{title}</Text>
+  <View style={[shStyles.row, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+    <View style={[shStyles.accent, { backgroundColor: color, marginRight: isRtl ? 0 : 10, marginLeft: isRtl ? 10 : 0 }]} />
+    <View style={[shStyles.iconWrap, { marginRight: isRtl ? 0 : 7, marginLeft: isRtl ? 7 : 0 }]}>{icon}</View>
+    <Text style={[shStyles.text, { textAlign: isRtl ? 'right' : 'left' }]}>{title}</Text>
   </View>
 );
 const shStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  accent: { width: 3, height: 20, borderRadius: 2, marginRight: 10 },
-  iconWrap: { marginRight: 7 },
+  accent: { width: 3, height: 20, borderRadius: 2 },
+  iconWrap: {},
   text: {
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: '#6B7280',
+    flex: 1,
   },
 });
 
@@ -269,6 +273,9 @@ export default function DailyReadingScreen() {
   const routes = useRoute<any>();
   const navigation = useNavigation<any>();
   const { isDark } = useContext(AppContext)!;
+  const { translations, language } = useLanguage();
+  const rp = translations?.readingPlan;
+  const isRtl = language === 'ar';
   const C = getColors(isDark);
   const { planId, day, totalDays: initialTotalDays } = routes.params;
 
@@ -277,7 +284,7 @@ export default function DailyReadingScreen() {
   const [assignment, setAssignment] = useState<DailyAssignment | null>(null);
   const [notYetAdded, setNotYetAdded] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [planTitle, setPlanTitle] = useState('Reading Plan');
+  const [planTitle, setPlanTitle] = useState(rp?.bpTitle || 'Reading Plan');
   const [totalDays, setTotalDays] = useState(initialTotalDays || 0);
 
   // ── shimmer ───────────────────────────────────
@@ -386,7 +393,7 @@ export default function DailyReadingScreen() {
           : r.returnData?.plans || [];
         const meta = plansList.find((p: any) => p.planId === planId);
         if (meta) {
-          setPlanTitle(meta.title || 'Reading Plan');
+          setPlanTitle(meta.title || rp?.bpTitle || 'Reading Plan');
           setTotalDays(meta.totalDays || 0);
 
           const planEnabled = await isPlanNotificationsEnabled();
@@ -488,7 +495,8 @@ export default function DailyReadingScreen() {
       if (r.returnCode === 200) {
         setIsCompleted(true);
         loadData();
-        showToast('success', `🎉 Day Complete! Day ${day} marked as done!`);
+        const msg = (rp?.dailyReadingDayCompleteText || '\uD83C\uDF89 Day Complete! Day {day} marked as done!').replace('{day}', String(day));
+        showToast('success', msg);
         if (day < totalDays) {
           setShowNextDayPrompt(true);
         }
@@ -501,7 +509,7 @@ export default function DailyReadingScreen() {
   // ── day nav ───────────────────────────────────
   const navigateDay = (dir: 'prev' | 'next') => {
     if (dir === 'next' && !isCompleted) {
-      showToast('error', "Complete today's reading first.");
+      showToast('error', rp?.dailyReadingNotAddedYet || "Complete today's reading first.");
       return;
     }
     const nd = dir === 'prev' ? day - 1 : day + 1;
@@ -534,7 +542,7 @@ export default function DailyReadingScreen() {
     ) {
       params.reflectionQuestions = assignment!.reflectionQuestions;
       params.planTitle = planTitle;
-      params.dayTitle = assignment!.title || `Day ${day}`;
+      params.dayTitle = assignment!.title || `${rp?.dailyReadingDayLabel || 'Day'} ${day}`;
       params.planId = planId;
       params.day = day;
     }
@@ -788,7 +796,7 @@ export default function DailyReadingScreen() {
   const canMarkComplete = !isCompleted && (!hasQuiz || quizDone);
   const accuracyPct =
     quizTotal > 0 ? Math.round((correctCount / quizTotal) * 100) : 0;
-  const perf = getQuizPerformance(correctCount, quizTotal);
+  const perf = getQuizPerformance(correctCount, quizTotal, rp);
   const canGoPrev = day > 1;
   const canGoNext = totalDays > 0 && day < totalDays;
 
@@ -830,7 +838,7 @@ export default function DailyReadingScreen() {
     <View
       style={[
         s.dayStrip,
-        { backgroundColor: C.cardBackground, borderBottomColor: C.border },
+        { backgroundColor: C.cardBackground, borderBottomColor: C.border, flexDirection: isRtl ? 'row-reverse' : 'row' },
       ]}
     >
       <View
@@ -840,8 +848,8 @@ export default function DailyReadingScreen() {
         ]}
       >
         <Text style={[s.dayPillText, { color: C.primary }]}>
-          Day {day}
-          {totalDays > 0 ? ` / ${totalDays}` : ''}
+          {(rp?.dailyReadingDayLabel || 'Day') + ' ' + day}
+          {totalDays > 0 ? ' / ' + totalDays : ''}
         </Text>
       </View>
 
@@ -864,6 +872,7 @@ export default function DailyReadingScreen() {
       <TouchableOpacity
         style={[
           s.completeBtn,
+          { flexDirection: isRtl ? 'row-reverse' : 'row' },
           isCompleted
             ? { backgroundColor: C.success + '25', borderColor: C.success + '50' }
             : { backgroundColor: C.border, borderColor: C.border },
@@ -882,7 +891,7 @@ export default function DailyReadingScreen() {
             { color: isCompleted ? C.success : C.muted },
           ]}
         >
-          {isCompleted ? 'Done' : 'Mark Done'}
+          {isCompleted ? (rp?.dailyReadingDoneLabel || 'Done') : (rp?.dailyReadingMarkDone || 'Mark Done')}
         </Text>
       </TouchableOpacity>
     </View>
@@ -953,9 +962,11 @@ export default function DailyReadingScreen() {
         <View style={[s.emptyIconCircle, { backgroundColor: C.primary + '18' }]}>
           <BookOpen size={36} color={C.primary} />
         </View>
-        <Text style={[s.emptyTitle, { color: C.text }]}>Coming Soon</Text>
+        <Text style={[s.emptyTitle, { color: C.text }]}>
+          {rp?.dailyReadingComingSoon || 'Coming Soon'}
+        </Text>
         <Text style={[s.emptySubtitle, { color: C.textSecondary }]}>
-          Day {day}'s reading assignment hasn't been added yet.{'\n'}Check back soon!
+          {(rp?.dailyReadingNotAddedYet || "Day {day}'s reading assignment hasn't been added yet.\nCheck back soon!").replace('{day}', String(day))}
         </Text>
       </View>
       {renderDayNav()}
@@ -963,30 +974,34 @@ export default function DailyReadingScreen() {
   );
 
   const renderDayNav = () => (
-    <View style={s.navRow}>
+    <View style={[s.navRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
       <TouchableOpacity
         style={[
           s.navBtn,
-          { backgroundColor: C.cardBackground },
+          { backgroundColor: C.cardBackground, flexDirection: isRtl ? 'row-reverse' : 'row' },
           !canGoPrev && s.navBtnDisabled,
         ]}
         onPress={() => navigateDay('prev')}
         disabled={!canGoPrev}
       >
-        <ChevronLeft size={18} color={C.text} />
-        <Text style={[s.navBtnText, { color: C.text }]}>Previous</Text>
+        {isRtl ? <ChevronRight size={18} color={C.text} /> : <ChevronLeft size={18} color={C.text} />}
+        <Text style={[s.navBtnText, { color: C.text }]}>
+          {rp?.dailyReadingPrevious || 'Previous'}
+        </Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[
           s.navBtn,
-          { backgroundColor: C.cardBackground },
+          { backgroundColor: C.cardBackground, flexDirection: isRtl ? 'row-reverse' : 'row' },
           !canGoNext && s.navBtnDisabled,
         ]}
         onPress={() => navigateDay('next')}
         disabled={!canGoNext}
       >
-        <Text style={[s.navBtnText, { color: C.text }]}>Next</Text>
-        <ChevronRight size={18} color={C.text} />
+        <Text style={[s.navBtnText, { color: C.text }]}>
+          {rp?.dailyReadingNext || 'Next'}
+        </Text>
+        {isRtl ? <ChevronLeft size={18} color={C.text} /> : <ChevronRight size={18} color={C.text} />}
       </TouchableOpacity>
     </View>
   );
@@ -999,18 +1014,18 @@ export default function DailyReadingScreen() {
           colors={isDark ? ['#1A202C', '#111827'] : ['#F8FAFF', '#F1F5F9']}
           style={s.modernHeader}
         >
-          <View style={s.headerTopRow}>
+          <View style={[s.headerTopRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
               style={s.headerBackBtn}
             >
-              <ChevronLeft size={24} color={C.text} />
+              {isRtl ? <ChevronRight size={24} color={C.text} /> : <ChevronLeft size={24} color={C.text} />}
             </TouchableOpacity>
             <Text
-              style={[s.headerPlanTitle, { color: C.text }]}
+              style={[s.headerPlanTitle, { color: C.text, textAlign: isRtl ? 'right' : 'center' }]}
               numberOfLines={1}
             >
-              {loading ? 'Loading...' : planTitle}
+              {loading ? (rp?.dailyReadingLoading || 'Loading...') : planTitle}
             </Text>
             <View style={{ width: 40 }} />
           </View>
@@ -1023,7 +1038,7 @@ export default function DailyReadingScreen() {
         ) : (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <Text style={{ color: C.text, fontSize: 15 }}>
-              Assignment not found
+              {rp?.dailyReadingNotAddedYet || 'Assignment not found'}
             </Text>
           </View>
         )}
@@ -1040,15 +1055,15 @@ export default function DailyReadingScreen() {
         colors={isDark ? ['#1A202C', '#111827'] : ['#F8FAFF', '#F1F5F9']}
         style={s.modernHeader}
       >
-        <View style={s.headerTopRow}>
+        <View style={[s.headerTopRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={s.headerBackBtn}
           >
-            <ChevronLeft size={24} color={C.text} />
+            {isRtl ? <ChevronRight size={24} color={C.text} /> : <ChevronLeft size={24} color={C.text} />}
           </TouchableOpacity>
           <Text
-            style={[s.headerPlanTitle, { color: C.text }]}
+            style={[s.headerPlanTitle, { color: C.text, textAlign: isRtl ? 'right' : 'center' }]}
             numberOfLines={1}
           >
             {planTitle}
@@ -1056,13 +1071,13 @@ export default function DailyReadingScreen() {
           <View style={{ width: 40 }} />
         </View>
 
-        <View style={s.headerDayRow}>
-          <View style={s.headerDayCol}>
+        <View style={[s.headerDayRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <View style={[s.headerDayCol, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
             <Text style={[s.headerDayLabel, { color: C.muted }]}>
-              CURRENT PROGRESS
+              {(rp?.dailyReadingCurrentProgress || 'CURRENT PROGRESS').toUpperCase()}
             </Text>
             <Text style={[s.headerDayValue, { color: C.text }]}>
-              Day {day} of {totalDays}
+              {(rp?.dailyReadingDayLabel || 'Day') + ' ' + day + ' ' + (rp?.bpOfLabel || 'of') + ' ' + totalDays}
             </Text>
           </View>
           <View
@@ -1082,7 +1097,9 @@ export default function DailyReadingScreen() {
                 { color: isCompleted ? C.success : C.primary },
               ]}
             >
-              {isCompleted ? 'COMPLETED' : 'IN PROGRESS'}
+              {isCompleted
+                ? (rp?.dailyReadingCompleted || 'COMPLETED')
+                : (rp?.dailyReadingInProgress || 'IN PROGRESS')}
             </Text>
           </View>
         </View>
@@ -1115,23 +1132,23 @@ export default function DailyReadingScreen() {
         contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
       >
         {/* ── Assignment intro ── */}
-        <View style={s.assignmentIntro}>
-          <Text style={[s.assignmentTitle, { color: C.text }]}>
-            {assignment.title || `Reading for Day ${day}`}
+        <View style={[s.assignmentIntro, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+          <Text style={[s.assignmentTitle, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}>
+            {assignment.title || `${rp?.dailyReadingDayLabel || 'Reading for Day'} ${day}`}
           </Text>
           {assignment.chapters && (
-            <View style={s.assignmentMetaRow}>
+            <View style={[s.assignmentMetaRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <View style={[s.assignmentBadge, { backgroundColor: C.primary + '10' }]}>
                 <BookOpen size={12} color={C.primary} />
                 <Text style={[s.assignmentBadgeText, { color: C.primary }]}>
-                  {assignment.chapters.length} Chapters
+                  {assignment.chapters.length} {(rp?.dailyReadingChaptersCount || 'Chapters')}
                 </Text>
               </View>
               {hasQuiz && (
                 <View style={[s.assignmentBadge, { backgroundColor: '#8b5cf615' }]}>
                   <HelpCircle size={12} color="#8b5cf6" />
                   <Text style={[s.assignmentBadgeText, { color: '#8b5cf6' }]}>
-                    {quizTotal} Quiz
+                    {quizTotal} {(rp?.dailyReadingQuizCount || 'Quiz')}
                   </Text>
                 </View>
               )}
@@ -1143,8 +1160,9 @@ export default function DailyReadingScreen() {
         <View style={[s.card, { backgroundColor: C.cardBackground }]}>
           <SectionHeading
             icon={<BookOpen size={16} color={C.primary} />}
-            title="Scripture Passages"
+            title={rp?.dailyReadingScripturePassages || 'Scripture Passages'}
             color={C.primary}
+            isRtl={isRtl}
           />
           <View style={s.chaptersList}>
             {assignment.chapters.map((ch, idx) => (
@@ -1153,6 +1171,7 @@ export default function DailyReadingScreen() {
                 style={[
                   s.modernChapterCard,
                   {
+                    flexDirection: isRtl ? 'row-reverse' : 'row',
                     borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
                     backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                   },
@@ -1160,20 +1179,20 @@ export default function DailyReadingScreen() {
                 onPress={() => handleOpenBible(ch.book, ch.chapter)}
                 activeOpacity={0.7}
               >
-                <View style={[s.chapterIconCircle, { backgroundColor: C.primary }]}>
+                <View style={[s.chapterIconCircle, { backgroundColor: C.primary, marginRight: isRtl ? 0 : 15, marginLeft: isRtl ? 15 : 0 }]}>
                   <PlayCircle size={20} color="#fff" />
                 </View>
                 <View style={s.chapterInfoBody}>
-                  <Text style={[s.chapterBookName, { color: C.text }]}>
+                  <Text style={[s.chapterBookName, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}>
                     {ch.book}
                   </Text>
-                  <Text style={[s.chapterNumberLabel, { color: C.muted }]}>
-                    Chapter {ch.chapter}
+                  <Text style={[s.chapterNumberLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+                    {(rp?.dailyReadingChapterLabel || 'Chapter') + ' ' + ch.chapter}
                   </Text>
                 </View>
                 <View style={[s.readCta, { backgroundColor: C.primary + '15' }]}>
                   <Text style={[s.readCtaText, { color: C.primary }]}>
-                    READ
+                    {rp?.dailyReadingRead || 'READ'}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -1188,11 +1207,12 @@ export default function DailyReadingScreen() {
             <View style={[s.card, { backgroundColor: C.cardBackground }]}>
               <SectionHeading
                 icon={<MessageSquare size={16} color="#f59e0b" />}
-                title="Personal Reflection"
+                title={rp?.dailyReadingPersonalReflection || 'Personal Reflection'}
                 color="#f59e0b"
+                isRtl={isRtl}
               />
-              <Text style={[s.reflectionSubtitle, { color: C.muted }]}>
-                Take a moment to meditate on these questions as you read today's scripture.
+              <Text style={[s.reflectionSubtitle, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+                {rp?.dailyReadingReflectionSubtitle || "Take a moment to meditate on these questions as you read today's scripture."}
               </Text>
               {assignment.reflectionQuestions.map((q, idx) => {
                 const isPondered = ponderedReflections.has(idx);
@@ -1209,17 +1229,22 @@ export default function DailyReadingScreen() {
                     style={[
                       s.modernReflectionRow,
                       {
+                        flexDirection: isRtl ? 'row-reverse' : 'row',
                         backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                         borderColor: isPondered ? '#f59e0b40' : 'transparent',
                         borderWidth: 1,
                       },
                     ]}
                   >
-                    <View style={s.reflectionContentRow}>
+                    <View style={[s.reflectionContentRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                       <View
                         style={[
                           s.reflectionIconBox,
-                          { backgroundColor: isPondered ? '#f59e0b' : '#f59e0b20' },
+                          {
+                            backgroundColor: isPondered ? '#f59e0b' : '#f59e0b20',
+                            marginRight: isRtl ? 0 : 12,
+                            marginLeft: isRtl ? 12 : 0,
+                          },
                         ]}
                       >
                         {isPondered ? (
@@ -1235,6 +1260,7 @@ export default function DailyReadingScreen() {
                             color: C.text,
                             opacity: isPondered ? 0.6 : 1,
                             textDecorationLine: isPondered ? 'line-through' : 'none',
+                            textAlign: isRtl ? 'right' : 'left',
                           },
                         ]}
                       >
@@ -1244,7 +1270,7 @@ export default function DailyReadingScreen() {
                     {!isPondered && (
                       <View style={s.ponderAction}>
                         <Text style={[s.ponderActionText, { color: '#f59e0b' }]}>
-                          PONDER
+                          {rp?.dailyReadingPonder || 'PONDER'}
                         </Text>
                       </View>
                     )}
@@ -1269,14 +1295,15 @@ export default function DailyReadingScreen() {
                   style={[
                     s.reviewBanner,
                     {
+                      flexDirection: isRtl ? 'row-reverse' : 'row',
                       backgroundColor: isDark ? '#1E3A5F' : '#EFF6FF',
                       borderColor: isDark ? '#3B82F6' : '#BFDBFE',
                     },
                   ]}
                 >
                   <RotateCcw size={14} color="#3B82F6" />
-                  <Text style={s.reviewBannerText}>
-                    Review mode — tap a dot to jump, or tap an option to retry
+                  <Text style={[s.reviewBannerText, { textAlign: isRtl ? 'right' : 'left' }]}>
+                    {rp?.dailyReadingReviewMode || 'Review mode \u2014 tap a dot to jump, or tap an option to retry'}
                   </Text>
                 </View>
               )}
@@ -1287,14 +1314,15 @@ export default function DailyReadingScreen() {
                   style={[
                     s.autoAdvanceBanner,
                     {
+                      flexDirection: isRtl ? 'row-reverse' : 'row',
                       backgroundColor: isDark ? '#064E3B' : '#ECFDF5',
                       borderColor: isDark ? '#10B98140' : '#A7F3D0',
                     },
                   ]}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.autoAdvanceText, { color: isDark ? '#6EE7B7' : '#065F46' }]}>
-                      ✓ Correct! Next question in a moment…
+                    <Text style={[s.autoAdvanceText, { color: isDark ? '#6EE7B7' : '#065F46', textAlign: isRtl ? 'right' : 'left' }]}>
+                      {(rp?.dailyReadingAutoAdvance || '\u2713 Correct! Next question in a moment\u2026')}
                     </Text>
                     <View
                       style={[s.autoAdvanceTrack, { backgroundColor: isDark ? '#065F46' : '#D1FAE5' }]}
@@ -1315,7 +1343,7 @@ export default function DailyReadingScreen() {
                   </View>
                   <TouchableOpacity onPress={cancelAutoNavigate} style={s.autoAdvanceCancel}>
                     <Text style={[s.autoAdvanceCancelText, { color: isDark ? '#6EE7B7' : '#065F46' }]}>
-                      Cancel
+                      {rp?.dailyReadingCancel || 'Cancel'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1323,14 +1351,17 @@ export default function DailyReadingScreen() {
 
               <SectionHeading
                 icon={<Star size={14} color="#6366F1" />}
-                title="Knowledge Check"
+                title={rp?.dailyReadingKnowledgeCheck || 'Knowledge Check'}
                 color="#6366F1"
+                isRtl={isRtl}
               />
 
               {/* ── Progress row ── */}
-              <View style={s.quizMeta}>
-                <Text style={[s.quizMetaText, { color: C.textSecondary }]}>
-                  Question {currentQ + 1} of {quizTotal}
+              <View style={[s.quizMeta, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[s.quizMetaText, { color: C.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {(rp?.dailyReadingQuestionOf || 'Question {current} of {total}')
+                    .replace('{current}', String(currentQ + 1))
+                    .replace('{total}', String(quizTotal))}
                 </Text>
               </View>
 
@@ -1353,7 +1384,7 @@ export default function DailyReadingScreen() {
               </View>
 
               {/* Question text */}
-              <Text style={[s.questionText, { color: C.text }]}>
+              <Text style={[s.questionText, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}>
                 {activeQ.question}
               </Text>
 
@@ -1405,13 +1436,17 @@ export default function DailyReadingScreen() {
                         <TouchableOpacity
                           style={[
                             s.answerRow,
-                            { borderColor: borderCol, backgroundColor: bgCol },
+                            {
+                              flexDirection: isRtl ? 'row-reverse' : 'row',
+                              borderColor: borderCol,
+                              backgroundColor: bgCol,
+                            },
                             isReviewing && isSel && s.answerRowReview,
                           ]}
                           onPress={() => handleSelect(idx)}
                           activeOpacity={0.75}
                         >
-                          <View style={[s.answerBadge, { backgroundColor: badgeBg }]}>
+                          <View style={[s.answerBadge, { backgroundColor: badgeBg, marginRight: isRtl ? 0 : 12, marginLeft: isRtl ? 12 : 0 }]}>
                             {showResult && isCorrect ? (
                               <CheckCircle size={16} color="white" />
                             ) : showResult && isWrong ? (
@@ -1429,7 +1464,7 @@ export default function DailyReadingScreen() {
                               </Text>
                             )}
                           </View>
-                          <Text style={[s.answerText, { color: textCol }]}>
+                          <Text style={[s.answerText, { color: textCol, textAlign: isRtl ? 'right' : 'left' }]}>
                             {opt}
                           </Text>
                         </TouchableOpacity>
@@ -1466,11 +1501,11 @@ export default function DailyReadingScreen() {
                     ]}
                   >
                     {selected === (revealedCorrectAnswer ?? activeQ.correctAnswer)
-                      ? '✓ Correct'
-                      : '✗ Incorrect'}
+                      ? (rp?.dailyReadingCorrectLabel || '\u2713 Correct')
+                      : (rp?.dailyReadingIncorrectLabel || '\u2717 Incorrect')}
                   </Text>
                   <Text
-                    style={[s.explanationText, { color: isDark ? '#D1FAE5' : '#374151' }]}
+                    style={[s.explanationText, { color: isDark ? '#D1FAE5' : '#374151', textAlign: isRtl ? 'right' : 'left' }]}
                   >
                     {activeQ.explanation}
                   </Text>
@@ -1484,9 +1519,9 @@ export default function DailyReadingScreen() {
                   {(() => {
                     const skipTarget = currentQ < quizTotal - 1 ? currentQ + 1 : null;
                     return (
-                      <View style={s.reviewBtnRow}>
+                      <View style={[s.reviewBtnRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                         <TouchableOpacity
-                          style={[s.skipBtn, { borderColor: isDark ? '#374151' : '#E5E7EB' }]}
+                          style={[s.skipBtn, { flexDirection: isRtl ? 'row-reverse' : 'row', borderColor: isDark ? '#374151' : '#E5E7EB' }]}
                           onPress={() => {
                             if (skipTarget !== null) {
                               jumpToQuestion(skipTarget);
@@ -1510,7 +1545,7 @@ export default function DailyReadingScreen() {
                         >
                           <SkipForward size={15} color={C.textSecondary} />
                           <Text style={[s.skipBtnText, { color: C.textSecondary }]}>
-                            Skip
+                            {rp?.dailyReadingSkip || 'Skip'}
                           </Text>
                         </TouchableOpacity>
 
@@ -1524,7 +1559,9 @@ export default function DailyReadingScreen() {
                           activeOpacity={0.8}
                         >
                           <Text style={s.actionBtnText}>
-                            {currentQ < quizTotal - 1 ? 'Next Question' : 'See Results'}
+                            {currentQ < quizTotal - 1
+                              ? (rp?.dailyReadingNextQuestion || 'Next Question')
+                              : (rp?.dailyReadingSeeResults || 'See Results')}
                           </Text>
                           <ChevronRight size={18} color="white" />
                         </TouchableOpacity>
@@ -1536,9 +1573,9 @@ export default function DailyReadingScreen() {
                 // FRESH / RESUBMIT
                 <View>
                   {assignment.quizQuestions![currentQ].userAnswer !== null && (
-                    <View style={[s.reviewBtnRow, { marginTop: 14 }]}>
+                    <View style={[s.reviewBtnRow, { flexDirection: isRtl ? 'row-reverse' : 'row', marginTop: 14 }]}>
                       <TouchableOpacity
-                        style={[s.skipBtn, { borderColor: isDark ? '#374151' : '#E5E7EB' }]}
+                        style={[s.skipBtn, { flexDirection: isRtl ? 'row-reverse' : 'row', borderColor: isDark ? '#374151' : '#E5E7EB' }]}
                         onPress={() => {
                           if (currentQ < quizTotal - 1) {
                             jumpToQuestion(currentQ + 1);
@@ -1561,7 +1598,9 @@ export default function DailyReadingScreen() {
                         activeOpacity={0.7}
                       >
                         <SkipForward size={15} color={C.textSecondary} />
-                        <Text style={[s.skipBtnText, { color: C.textSecondary }]}>Skip</Text>
+                        <Text style={[s.skipBtnText, { color: C.textSecondary }]}>
+                          {rp?.dailyReadingSkip || 'Skip'}
+                        </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -1584,9 +1623,9 @@ export default function DailyReadingScreen() {
                           <ActivityIndicator size="small" color="white" />
                         ) : (
                           <Text style={s.actionBtnText}>
-                            Update Answer
+                            {(rp?.dailyReadingUpdateAnswer || 'Update Answer')}
                             {assignment.quizQuestions![currentQ].numberAttempt
-                              ? ` (Try ${assignment.quizQuestions![currentQ].numberAttempt! + 1})`
+                              ? ` (${rp?.dailyReadingTryLabel || 'Try'} ${assignment.quizQuestions![currentQ].numberAttempt! + 1})`
                               : ''}
                           </Text>
                         )}
@@ -1612,7 +1651,9 @@ export default function DailyReadingScreen() {
                       {isSubmitting ? (
                         <ActivityIndicator size="small" color="white" />
                       ) : (
-                        <Text style={s.actionBtnText}>Submit Answer</Text>
+                        <Text style={s.actionBtnText}>
+                          {rp?.dailyReadingSubmitAnswer || 'Submit Answer'}
+                        </Text>
                       )}
                     </TouchableOpacity>
                   )}
@@ -1625,7 +1666,9 @@ export default function DailyReadingScreen() {
                   activeOpacity={0.8}
                 >
                   <Text style={s.actionBtnText}>
-                    {currentQ < quizTotal - 1 ? 'Next Question' : 'See Results'}
+                    {currentQ < quizTotal - 1
+                      ? (rp?.dailyReadingNextQuestion || 'Next Question')
+                      : (rp?.dailyReadingSeeResults || 'See Results')}
                   </Text>
                   <ChevronRight size={18} color="white" />
                 </TouchableOpacity>
@@ -1644,8 +1687,9 @@ export default function DailyReadingScreen() {
 
             <SectionHeading
               icon={<Star size={14} color={perf.color} />}
-              title="Your Results"
+              title={rp?.dailyReadingYourResults || 'Your Results'}
               color={perf.color}
+              isRtl={isRtl}
             />
 
             {/* Score ring */}
@@ -1671,43 +1715,43 @@ export default function DailyReadingScreen() {
 
               {/* Perfect score celebration */}
               {accuracyPct === 100 && (
-                <View style={s.perfectScoreRow}>
+                <View style={[s.perfectScoreRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <Sparkles size={16} color="#6366F1" />
                   <Text style={[s.perfectScoreText, { color: '#6366F1' }]}>
-                    Perfect Score! Amazing!
+                    {rp?.dailyReadingScorePerfect || 'Perfect Score! Amazing!'}
                   </Text>
                   <Sparkles size={16} color="#6366F1" />
                 </View>
               )}
 
-              <Text style={[s.scoreLabel, { color: C.text }]}>
+              <Text style={[s.scoreLabel, { color: C.text, textAlign: 'center' }]}>
                 {perf.label}
               </Text>
-              <Text style={[s.scoreSubtitle, { color: C.textSecondary }]}>
+              <Text style={[s.scoreSubtitle, { color: C.textSecondary, textAlign: isRtl ? 'right' : 'center' }]}>
                 {correctCount === 0
-                  ? "Don't worry — re-read the passages and try again."
+                  ? (rp?.dailyReadingScoreDescriptionZero || "Don't worry \u2014 re-read the passages and try again.")
                   : accuracyPct < 50
-                    ? 'A solid start! Review the chapters to deepen your understanding.'
+                    ? (rp?.dailyReadingScoreDescriptionLow || 'A solid start! Review the chapters to deepen your understanding.')
                     : accuracyPct < 70
-                      ? "You're close! A quick re-read will push you over the line."
+                      ? (rp?.dailyReadingScoreDescriptionMedium || "You're close! A quick re-read will push you over the line.")
                       : accuracyPct < 100
-                        ? 'Great understanding of the reading. Keep the momentum going!'
-                        : 'Flawless! Outstanding grasp of this passage.'}
+                        ? (rp?.dailyReadingScoreDescriptionHigh || 'Great understanding of the reading. Keep the momentum going!')
+                        : (rp?.dailyReadingScoreDescriptionPerfect || 'Flawless! Outstanding grasp of this passage.')}
               </Text>
             </View>
 
             {/* Score badges */}
-            <View style={s.scoreBadgesRow}>
+            <View style={[s.scoreBadgesRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <View style={[s.scoreBadge, { backgroundColor: isDark ? '#064E3B30' : '#D1FAE5', borderColor: isDark ? '#10B98140' : '#A7F3D0' }]}>
                 <CheckCircle size={14} color="#10B981" />
                 <Text style={[s.scoreBadgeText, { color: '#10B981' }]}>
-                  {correctCount} Correct
+                  {correctCount} {rp?.dailyReadingCorrect || 'Correct'}
                 </Text>
               </View>
               <View style={[s.scoreBadge, { backgroundColor: isDark ? '#450A0A30' : '#FEE2E2', borderColor: isDark ? '#EF444440' : '#FECACA' }]}>
                 <XCircle size={14} color="#EF4444" />
                 <Text style={[s.scoreBadgeText, { color: '#EF4444' }]}>
-                  {quizTotal - correctCount} Wrong
+                  {quizTotal - correctCount} {rp?.dailyReadingWrong || 'Wrong'}
                 </Text>
               </View>
             </View>
@@ -1724,7 +1768,7 @@ export default function DailyReadingScreen() {
             >
               <View style={[s.summaryHeader, { borderBottomColor: isDark ? '#2D3748' : '#EEF0F3' }]}>
                 <Text style={[s.summaryHeaderText, { color: C.muted }]}>
-                  Question Summary
+                  {rp?.dailyReadingQuestionSummary || 'Question Summary'}
                 </Text>
               </View>
               <View style={s.summaryScroll}>
@@ -1733,6 +1777,7 @@ export default function DailyReadingScreen() {
                     key={idx}
                     style={[
                       s.summaryRow,
+                      { flexDirection: isRtl ? 'row-reverse' : 'row' },
                       idx < assignment.quizQuestions!.length - 1 && {
                         borderBottomWidth: 1,
                         borderBottomColor: isDark ? '#2D3748' : '#EEF0F3',
@@ -1757,15 +1802,15 @@ export default function DailyReadingScreen() {
                       ]}
                     />
                     <Text
-                      style={[s.summaryText, { color: C.textSecondary }]}
+                      style={[s.summaryText, { color: C.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}
                       numberOfLines={2}
                     >
                       Q{idx + 1}: {q.question}
                     </Text>
-                    <View style={s.summaryRight}>
+                    <View style={[s.summaryRight, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                       {q.numberAttempt && q.numberAttempt > 1 && (
                         <Text style={[s.summaryAttempts, { color: '#F59E0B' }]}>
-                          {q.numberAttempt} tries
+                          {q.numberAttempt} {rp?.dailyReadingTryLabel || 'tries'}
                         </Text>
                       )}
                       <ChevronRight size={13} color={C.muted} />
@@ -1784,10 +1829,10 @@ export default function DailyReadingScreen() {
               }}
               activeOpacity={0.7}
             >
-              <View style={s.outlineBtnInner}>
+              <View style={[s.outlineBtnInner, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <RotateCcw size={16} color={C.primary} />
                 <Text style={[s.outlineBtnText, { color: C.primary }]}>
-                  Review & Retry Answers
+                  {rp?.dailyReadingReviewRetry || 'Review & Retry Answers'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -1802,7 +1847,9 @@ export default function DailyReadingScreen() {
                 activeOpacity={0.8}
               >
                 <CheckCircle size={20} color="white" />
-                <Text style={s.actionBtnText}>Mark Day {day} Complete</Text>
+                <Text style={s.actionBtnText}>
+                  {(rp?.dailyReadingMarkDayComplete || 'Mark Day {day} Complete').replace('{day}', String(day))}
+                </Text>
               </TouchableOpacity>
             )}
 
@@ -1810,7 +1857,7 @@ export default function DailyReadingScreen() {
               <View style={s.completedBadge}>
                 <CheckCircle size={16} color="#10B981" />
                 <Text style={s.completedBadgeText}>
-                  Day {day} completed ✓
+                  {(rp?.dailyReadingDayCompleteText || 'Day {day} completed \u2713').replace('{day}', String(day))}
                 </Text>
               </View>
             )}
@@ -1828,13 +1875,17 @@ export default function DailyReadingScreen() {
             activeOpacity={0.8}
           >
             <CheckCircle size={20} color="white" />
-            <Text style={s.actionBtnText}>Mark Day {day} Complete</Text>
+            <Text style={s.actionBtnText}>
+              {(rp?.dailyReadingMarkDayComplete || 'Mark Day {day} Complete').replace('{day}', String(day))}
+            </Text>
           </TouchableOpacity>
         )}
         {isCompleted && !hasQuiz && (
           <View style={s.completedBadge}>
             <CheckCircle size={16} color="#10B981" />
-            <Text style={s.completedBadgeText}>Day {day} completed ✓</Text>
+            <Text style={s.completedBadgeText}>
+              {(rp?.dailyReadingDayCompleteText || 'Day {day} completed \u2713').replace('{day}', String(day))}
+            </Text>
           </View>
         )}
 
@@ -1852,11 +1903,11 @@ export default function DailyReadingScreen() {
       {/* Next day prompt */}
       <ActionModal
         visible={showNextDayPrompt}
-        title={`Day ${day} Complete! 🎉`}
-        message="Would you like to proceed to the next day or finish for now?"
+        title={(rp?.dailyReadingCompleteDayTitle || 'Day {day} Complete! \uD83C\uDF89').replace('{day}', String(day))}
+        message={rp?.dailyReadingCompleteDayMessage || 'Would you like to proceed to the next day or finish for now?'}
         severity="success"
-        confirmLabel="Next Day"
-        cancelLabel="Finish"
+        confirmLabel={rp?.dailyReadingConfirmNext || 'Next Day'}
+        cancelLabel={rp?.dailyReadingConfirmFinish || 'Finish'}
         onConfirm={() => {
           setShowNextDayPrompt(false);
           navigation.replace(route.dailyReading, {
@@ -2100,7 +2151,6 @@ const s = StyleSheet.create({
   scoreLabel: { fontSize: 22, fontWeight: '800', marginBottom: 6 },
   scoreSubtitle: {
     fontSize: 14,
-    textAlign: 'center',
     lineHeight: 21,
     paddingHorizontal: 10,
   },

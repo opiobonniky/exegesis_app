@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
 import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   getAllJournalTemplates,
   createJournalTemplate,
@@ -31,21 +32,37 @@ import {
   X,
   Star,
   LayoutTemplate,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react-native';
 
 const CATEGORIES = [
-  { value: 'general', label: 'General' },
-  { value: 'study', label: 'Study' },
-  { value: 'prayer', label: 'Prayer' },
-  { value: 'gratitude', label: 'Gratitude' },
-  { value: 'reflection', label: 'Reflection' },
+  { value: 'general' },
+  { value: 'study' },
+  { value: 'prayer' },
+  { value: 'gratitude' },
+  { value: 'reflection' },
 ];
+
+const getCategoryLabel = (value: string, jc: any): string => {
+  const labels: Record<string, string> = {
+    general: jc?.categoryGeneral || 'General',
+    study: jc?.categoryStudy || 'Study',
+    prayer: jc?.categoryPrayer || 'Prayer',
+    gratitude: jc?.categoryGratitude || 'Gratitude',
+    reflection: jc?.categoryReflection || 'Reflection',
+  };
+  return labels[value] || value;
+};
 
 const AdminJournalTemplates = () => {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const jc = translations?.journal;
 
   const [templates, setTemplates] = useState<JournalTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,11 +90,11 @@ const AdminJournalTemplates = () => {
         setTemplates(data);
       }
     } catch (error) {
-      showToast('error', 'Failed to load templates');
+      showToast('error', jc?.templateDeleted || 'Failed to load templates');
     } finally {
       setLoading(false);
     }
-  }, [category]);
+  }, [category, jc]);
 
   useEffect(() => {
     fetchTemplates();
@@ -99,7 +116,7 @@ const AdminJournalTemplates = () => {
 
   const handleSave = async () => {
     if (!templateName.trim() || !templatePrompts.some(p => p.trim())) {
-      showToast('error', 'Name and at least one prompt are required');
+      showToast('error', jc?.nameAndPromptRequired || 'Name and at least one prompt are required');
       return;
     }
 
@@ -117,14 +134,14 @@ const AdminJournalTemplates = () => {
       const res = await createJournalTemplate(data);
 
       if (res.returnCode === 200) {
-        showToast('success', 'Template created');
+        showToast('success', jc?.templateCreated || 'Template created');
         setShowModal(false);
         fetchTemplates();
       } else {
-        showToast('error', res.returnMessage || 'Failed to create');
+        showToast('error', res.returnMessage || (jc?.nameAndPromptRequired || 'Failed to create'));
       }
     } catch (error) {
-      showToast('error', 'Failed to create template');
+      showToast('error', jc?.nameAndPromptRequired || 'Failed to create template');
     } finally {
       setSaving(false);
     }
@@ -134,11 +151,11 @@ const AdminJournalTemplates = () => {
     try {
       const res = await deleteJournalTemplate(id);
       if (res.returnCode === 200) {
-        showToast('success', 'Template deleted');
+        showToast('success', jc?.templateDeleted || 'Template deleted');
         fetchTemplates();
       }
     } catch (error) {
-      showToast('error', 'Failed to delete template');
+      showToast('error', jc?.nameAndPromptRequired || 'Failed to delete template');
     }
   };
 
@@ -173,16 +190,16 @@ const AdminJournalTemplates = () => {
 
   const renderTemplate = ({ item }: { item: JournalTemplate }) => (
     <View style={[styles.templateCard, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border }]}>
-      <View style={styles.templateHeader}>
+      <View style={[styles.templateHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) + '20' }]}>
           <Text style={[styles.categoryText, { color: getCategoryColor(item.category) }]}>
-            {item.category}
+            {getCategoryLabel(item.category, jc)}
           </Text>
         </View>
         {item.isDefault && (
-          <View style={[styles.defaultBadge, { backgroundColor: '#FEF3C7' }]}>
+          <View style={[styles.defaultBadge, { backgroundColor: '#FEF3C7', flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <Star size={10} color="#D97706" />
-            <Text style={[styles.defaultText, { color: '#D97706' }]}>Default</Text>
+            <Text style={[styles.defaultText, { color: '#D97706' }]}>{jc?.defaultBadge || 'Default'}</Text>
           </View>
         )}
         <TouchableOpacity onPress={() => handleDelete(item.id)}>
@@ -190,17 +207,17 @@ const AdminJournalTemplates = () => {
         </TouchableOpacity>
       </View>
 
-      <Text style={[styles.templateName, { color: COLORS.text }]}>{item.name}</Text>
+      <Text style={[styles.templateName, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>{item.name}</Text>
 
       {item.description && (
-        <Text style={[styles.templateDescription, { color: COLORS.textSecondary }]} numberOfLines={2}>
+        <Text style={[styles.templateDescription, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={2}>
           {item.description}
         </Text>
       )}
 
       <View style={styles.promptsPreview}>
-        <Text style={[styles.promptsLabel, { color: COLORS.textMuted }]}>
-          {item.prompts.length} Prompts:
+        <Text style={[styles.promptsLabel, { color: COLORS.muted }]}>
+          {(jc?.promptsCount || '{count} Prompts:').replace('{count}', String(item.prompts.length))}
         </Text>
         {item.prompts.slice(0, 3).map((prompt, idx) => (
           <Text key={idx} style={[styles.promptItem, { color: COLORS.textSecondary }]} numberOfLines={1}>
@@ -208,8 +225,8 @@ const AdminJournalTemplates = () => {
           </Text>
         ))}
         {item.prompts.length > 3 && (
-          <Text style={[styles.moreText, { color: COLORS.textMuted }]}>
-            +{item.prompts.length - 3} more...
+          <Text style={[styles.moreText, { color: COLORS.muted }]}>
+            {(jc?.morePrompts || '+{count} more...').replace('{count}', String(item.prompts.length - 3))}
           </Text>
         )}
       </View>
@@ -219,11 +236,12 @@ const AdminJournalTemplates = () => {
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: COLORS.surface }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={[styles.backText, { color: COLORS.primary }]}>Back</Text>
+      <View style={[styles.header, { backgroundColor: COLORS.surface, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }}>
+          {isRtl ? <ChevronRight size={20} color={COLORS.primary} /> : <ChevronLeft size={20} color={COLORS.primary} />}
+          <Text style={[styles.backText, { color: COLORS.primary }]}>{jc?.backLabel || 'Back'}</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: COLORS.text }]}>Journal Templates</Text>
+        <Text style={[styles.headerTitle, { color: COLORS.text }]}>{jc?.journalTemplates || 'Journal Templates'}</Text>
         <TouchableOpacity
           style={[styles.addButton, { backgroundColor: COLORS.primary }]}
           onPress={openModal}
@@ -234,12 +252,12 @@ const AdminJournalTemplates = () => {
 
       {/* Search */}
       <View style={styles.searchContainer}>
-        <View style={[styles.searchBar, { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}>
-          <Search size={18} color={COLORS.textMuted} />
+        <View style={[styles.searchBar, { backgroundColor: COLORS.surface, borderColor: COLORS.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <Search size={18} color={COLORS.muted} />
           <TextInput
-            style={[styles.searchInput, { color: COLORS.text }]}
-            placeholder="Search templates..."
-            placeholderTextColor={COLORS.textMuted}
+            style={[styles.searchInput, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
+            placeholder={jc?.searchTemplatesPlaceholder || 'Search templates...'}
+            placeholderTextColor={COLORS.muted}
             value={search}
             onChangeText={setSearch}
           />
@@ -251,7 +269,7 @@ const AdminJournalTemplates = () => {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={[{ value: 'all', label: 'All' }, ...CATEGORIES]}
+          data={[{ value: 'all' }, ...CATEGORIES]}
           keyExtractor={item => item.value}
           renderItem={({ item }) => (
             <TouchableOpacity
@@ -270,7 +288,7 @@ const AdminJournalTemplates = () => {
                   { color: category === item.value ? '#FFFFFF' : COLORS.text },
                 ]}
               >
-                {item.label}
+                {item.value === 'all' ? (jc?.categoryAll || 'All') : getCategoryLabel(item.value, jc)}
               </Text>
             </TouchableOpacity>
           )}
@@ -293,10 +311,10 @@ const AdminJournalTemplates = () => {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <LayoutTemplate size={48} color={COLORS.textMuted} />
-              <Text style={[styles.emptyText, { color: COLORS.textMuted }]}>No templates found</Text>
-              <Text style={[styles.emptySubtext, { color: COLORS.textMuted }]}>
-                Create templates to help users journal consistently
+              <LayoutTemplate size={48} color={COLORS.muted} />
+              <Text style={[styles.emptyText, { color: COLORS.muted }]}>{jc?.noTemplatesFound || 'No templates found'}</Text>
+              <Text style={[styles.emptySubtext, { color: COLORS.muted }]}>
+                {jc?.noTemplatesSubtitle || 'Create templates to help users journal consistently'}
               </Text>
             </View>
           )
@@ -307,8 +325,8 @@ const AdminJournalTemplates = () => {
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: COLORS.background }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: COLORS.text }]}>Add Template</Text>
+            <View style={[styles.modalHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <Text style={[styles.modalTitle, { color: COLORS.text }]}>{jc?.addTemplate || 'Add Template'}</Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
                 <X size={24} color={COLORS.text} />
               </TouchableOpacity>
@@ -319,22 +337,22 @@ const AdminJournalTemplates = () => {
                 style={[styles.input, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
                 value={templateName}
                 onChangeText={setTemplateName}
-                placeholder="Template Name"
-                placeholderTextColor={COLORS.textMuted}
+                placeholder={jc?.templateNamePlaceholder || 'Template Name'}
+                placeholderTextColor={COLORS.muted}
               />
 
               <TextInput
                 style={[styles.input, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
                 value={templateDescription}
                 onChangeText={setTemplateDescription}
-                placeholder="Description (optional)"
-                placeholderTextColor={COLORS.textMuted}
+                placeholder={jc?.templateDescriptionPlaceholder || 'Description (optional)'}
+                placeholderTextColor={COLORS.muted}
                 multiline
               />
 
               <View style={styles.row}>
                 <View style={styles.halfInput}>
-                  <Text style={[styles.label, { color: COLORS.textSecondary }]}>Category</Text>
+                  <Text style={[styles.label, { color: COLORS.textSecondary }]}>{jc?.templateCategoryLabel || 'Category'}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryPicker}>
                     {CATEGORIES.map(cat => (
                       <TouchableOpacity
@@ -349,7 +367,7 @@ const AdminJournalTemplates = () => {
                         onPress={() => setTemplateCategory(cat.value)}
                       >
                         <Text style={{ color: templateCategory === cat.value ? '#FFFFFF' : COLORS.text, fontSize: FONT_SIZES.sm }}>
-                          {cat.label}
+                          {getCategoryLabel(cat.value, jc)}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -357,20 +375,20 @@ const AdminJournalTemplates = () => {
                 </View>
               </View>
 
-              <View style={styles.switchRow}>
-                <Text style={[styles.switchLabel, { color: COLORS.text }]}>Set as default template</Text>
+              <View style={[styles.switchRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.switchLabel, { color: COLORS.text }]}>{jc?.defaultTemplateLabel || 'Set as default template'}</Text>
                 <Switch value={isDefault} onValueChange={setIsDefault} />
               </View>
 
-              <Text style={[styles.label, { color: COLORS.textSecondary }]}>Prompts</Text>
+              <Text style={[styles.label, { color: COLORS.textSecondary }]}>{jc?.promptsLabel || 'Prompts:'}</Text>
               {templatePrompts.map((prompt, idx) => (
-                <View key={idx} style={styles.promptRow}>
+                <View key={idx} style={[styles.promptRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <TextInput
                     style={[styles.promptInput, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
                     value={prompt}
                     onChangeText={v => updatePrompt(idx, v)}
-                    placeholder={`Prompt ${idx + 1}`}
-                    placeholderTextColor={COLORS.textMuted}
+                    placeholder={`${jc?.promptsLabel || 'Prompt'} ${idx + 1}`}
+                    placeholderTextColor={COLORS.muted}
                     multiline
                   />
                   {templatePrompts.length > 1 && (
@@ -382,7 +400,7 @@ const AdminJournalTemplates = () => {
               ))}
               <TouchableOpacity style={[styles.addPromptButton, { borderColor: COLORS.border }]} onPress={addPromptField}>
                 <Plus size={18} color={COLORS.primary} />
-                <Text style={[styles.addPromptText, { color: COLORS.primary }]}>Add Prompt</Text>
+                <Text style={[styles.addPromptText, { color: COLORS.primary }]}>{jc?.addPrompt || 'Add Prompt'}</Text>
               </TouchableOpacity>
             </ScrollView>
 
@@ -391,7 +409,7 @@ const AdminJournalTemplates = () => {
               onPress={handleSave}
               disabled={saving}
             >
-              <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Create Template'}</Text>
+              <Text style={styles.saveButtonText}>{saving ? (jc?.savingLabel || 'Saving...') : (jc?.createTemplate || 'Create Template')}</Text>
             </TouchableOpacity>
           </View>
         </View>

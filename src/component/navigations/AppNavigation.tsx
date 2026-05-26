@@ -26,8 +26,7 @@ const FORCED_ANIMATIONS: Record<string, AnimationType> = {
   notificationSettings: 'slide_from_bottom',
   AddDailyVerse: 'slide_from_bottom',
   EditDailyVerse: 'slide_from_bottom',
-  AddDailyDevotion: 'slide_from_bottom',
-  EditDailyDevotion: 'slide_from_bottom',
+
   CreateReadingPlan: 'slide_from_bottom',
   EditReadingPlan: 'slide_from_bottom',
   journalEntry: 'slide_from_bottom',

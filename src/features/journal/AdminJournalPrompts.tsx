@@ -20,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
 import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   getAllJournalPrompts,
   createJournalPrompt,
@@ -37,17 +38,32 @@ import {
   X,
   BookOpen,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react-native';
 
 const CATEGORIES = [
-  { value: 'general', label: 'General' },
-  { value: 'study', label: 'Study' },
-  { value: 'prayer', label: 'Prayer' },
-  { value: 'gratitude', label: 'Gratitude' },
-  { value: 'reflection', label: 'Reflection' },
-  { value: 'application', label: 'Application' },
-  { value: 'explanation', label: 'Verse Explanation' },
+  { value: 'general' },
+  { value: 'study' },
+  { value: 'prayer' },
+  { value: 'gratitude' },
+  { value: 'reflection' },
+  { value: 'application' },
+  { value: 'explanation' },
 ];
+
+const getCategoryLabel = (value: string, jc: any): string => {
+  const labels: Record<string, string> = {
+    general: jc?.categoryGeneral || 'General',
+    study: jc?.categoryStudy || 'Study',
+    prayer: jc?.categoryPrayer || 'Prayer',
+    gratitude: jc?.categoryGratitude || 'Gratitude',
+    reflection: jc?.categoryReflection || 'Reflection',
+    application: jc?.categoryApplication || 'Application',
+    explanation: jc?.categoryExplanation || 'Verse Explanation',
+  };
+  return labels[value] || value;
+};
 
 const BOOKS = [
   'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy',
@@ -72,6 +88,9 @@ const AdminJournalPrompts = () => {
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const jc = translations?.journal;
 
   const [prompts, setPrompts] = useState<JournalPrompt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,11 +124,11 @@ const AdminJournalPrompts = () => {
         setPrompts(res.returnData);
       }
     } catch (error) {
-      showToast('error', 'Failed to load prompts');
+      showToast('error', jc?.failedToLoadEntry || 'Failed to load prompts');
     } finally {
       setLoading(false);
     }
-  }, [category]);
+  }, [category, jc]);
 
   useEffect(() => {
     fetchPrompts();
@@ -147,7 +166,7 @@ const AdminJournalPrompts = () => {
 
   const handleSave = async () => {
     if (!promptText.trim()) {
-      showToast('error', 'Please enter a prompt');
+      showToast('error', jc?.promptRequired || 'Please enter a prompt');
       return;
     }
 
@@ -174,14 +193,14 @@ const AdminJournalPrompts = () => {
       }
 
       if (res.returnCode === 200) {
-        showToast('success', editingPrompt ? 'Prompt updated' : 'Prompt created');
+        showToast('success', editingPrompt ? (jc?.promptUpdated || 'Prompt updated') : (jc?.promptCreated || 'Prompt created'));
         setShowModal(false);
         fetchPrompts();
       } else {
-        showToast('error', res.returnMessage || 'Failed to save');
+        showToast('error', res.returnMessage || (jc?.failedToSave || 'Failed to save'));
       }
     } catch (error) {
-      showToast('error', 'Failed to save prompt');
+      showToast('error', jc?.failedToSave || 'Failed to save prompt');
     } finally {
       setSaving(false);
     }
@@ -191,11 +210,11 @@ const AdminJournalPrompts = () => {
     try {
       const res = await deleteJournalPrompt(id);
       if (res.returnCode === 200) {
-        showToast('success', 'Prompt deleted');
+        showToast('success', jc?.promptDeleted || 'Prompt deleted');
         fetchPrompts();
       }
     } catch (error) {
-      showToast('error', 'Failed to delete prompt');
+      showToast('error', jc?.failedToDeleteEntry || 'Failed to delete prompt');
     }
   };
 
@@ -214,13 +233,13 @@ const AdminJournalPrompts = () => {
 
   const renderPrompt = ({ item }: { item: JournalPrompt }) => (
     <View style={[styles.promptCard, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border }]}>
-      <View style={styles.promptHeader}>
+      <View style={[styles.promptHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) + '20' }]}>
           <Text style={[styles.categoryText, { color: getCategoryColor(item.category) }]}>
-            {item.category}
+            {getCategoryLabel(item.category, jc)}
           </Text>
         </View>
-        <View style={styles.promptActions}>
+        <View style={[styles.promptActions, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity onPress={() => openModal(item)}>
             <Edit2 size={18} color={COLORS.primary} />
           </TouchableOpacity>
@@ -230,18 +249,18 @@ const AdminJournalPrompts = () => {
         </View>
       </View>
 
-      <Text style={[styles.promptText, { color: COLORS.text }]}>{item.prompt}</Text>
+      <Text style={[styles.promptText, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>{item.prompt}</Text>
 
       {item.description && (
-        <Text style={[styles.promptDescription, { color: COLORS.textSecondary }]} numberOfLines={2}>
+        <Text style={[styles.promptDescription, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={2}>
           {item.description}
         </Text>
       )}
 
       {item.bookName && (
-        <View style={styles.scriptureRef}>
-          <BookOpen size={12} color={COLORS.textMuted} />
-          <Text style={[styles.scriptureText, { color: COLORS.textMuted }]}>
+        <View style={[styles.scriptureRef, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <BookOpen size={12} color={COLORS.muted} />
+          <Text style={[styles.scriptureText, { color: COLORS.muted }]}>
             {item.bookName} {item.chapter}:{item.verseNumber || 'all'}
           </Text>
         </View>
@@ -252,11 +271,12 @@ const AdminJournalPrompts = () => {
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: COLORS.surface }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={[styles.backText, { color: COLORS.primary }]}>Back</Text>
+      <View style={[styles.header, { backgroundColor: COLORS.surface, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }}>
+          {isRtl ? <ChevronRight size={20} color={COLORS.primary} /> : <ChevronLeft size={20} color={COLORS.primary} />}
+          <Text style={[styles.backText, { color: COLORS.primary }]}>{jc?.backLabel || 'Back'}</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: COLORS.text }]}>Journal Prompts</Text>
+        <Text style={[styles.headerTitle, { color: COLORS.text }]}>{jc?.journalPrompts || 'Journal Prompts'}</Text>
         <TouchableOpacity
           style={[styles.addButton, { backgroundColor: COLORS.primary }]}
           onPress={() => openModal()}
@@ -267,12 +287,12 @@ const AdminJournalPrompts = () => {
 
       {/* Search */}
       <View style={styles.searchContainer}>
-        <View style={[styles.searchBar, { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}>
-          <Search size={18} color={COLORS.textMuted} />
+        <View style={[styles.searchBar, { backgroundColor: COLORS.surface, borderColor: COLORS.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <Search size={18} color={COLORS.muted} />
           <TextInput
-            style={[styles.searchInput, { color: COLORS.text }]}
-            placeholder="Search prompts..."
-            placeholderTextColor={COLORS.textMuted}
+            style={[styles.searchInput, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
+            placeholder={jc?.searchPromptsPlaceholder || 'Search prompts...'}
+            placeholderTextColor={COLORS.muted}
             value={search}
             onChangeText={setSearch}
           />
@@ -284,7 +304,7 @@ const AdminJournalPrompts = () => {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={[{ value: 'all', label: 'All' }, ...CATEGORIES]}
+          data={[{ value: 'all' }, ...CATEGORIES]}
           keyExtractor={item => item.value}
           renderItem={({ item }) => (
             <TouchableOpacity
@@ -303,7 +323,7 @@ const AdminJournalPrompts = () => {
                   { color: category === item.value ? '#FFFFFF' : COLORS.text },
                 ]}
               >
-                {item.label}
+                {item.value === 'all' ? (jc?.categoryAll || 'All') : getCategoryLabel(item.value, jc)}
               </Text>
             </TouchableOpacity>
           )}
@@ -326,7 +346,7 @@ const AdminJournalPrompts = () => {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: COLORS.textMuted }]}>No prompts found</Text>
+              <Text style={[styles.emptyText, { color: COLORS.muted }]}>{jc?.noPromptsFound || 'No prompts found'}</Text>
             </View>
           )
         }
@@ -336,9 +356,9 @@ const AdminJournalPrompts = () => {
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: COLORS.background }]}>
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Text style={[styles.modalTitle, { color: COLORS.text }]}>
-                {editingPrompt ? 'Edit Prompt' : 'New Prompt'}
+                {editingPrompt ? (jc?.editPrompt || 'Edit Prompt') : (jc?.newPrompt || 'New Prompt')}
               </Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
                 <X size={24} color={COLORS.text} />
@@ -349,8 +369,8 @@ const AdminJournalPrompts = () => {
               style={[styles.input, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
               value={promptText}
               onChangeText={setPromptText}
-              placeholder="Enter prompt..."
-              placeholderTextColor={COLORS.textMuted}
+              placeholder={jc?.enterPromptPlaceholder || 'Enter prompt...'}
+              placeholderTextColor={COLORS.muted}
               multiline
             />
 
@@ -358,13 +378,13 @@ const AdminJournalPrompts = () => {
               style={[styles.input, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
               value={promptDescription}
               onChangeText={setPromptDescription}
-              placeholder="Description (optional)"
-              placeholderTextColor={COLORS.textMuted}
+              placeholder={jc?.promptDescriptionPlaceholder || 'Description (optional)'}
+              placeholderTextColor={COLORS.muted}
             />
 
-            <View style={styles.row}>
+            <View style={[styles.row, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <View style={styles.halfInput}>
-                <Text style={[styles.label, { color: COLORS.textSecondary }]}>Order</Text>
+                <Text style={[styles.label, { color: COLORS.textSecondary }]}>{jc?.orderLabel || 'Order'}</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
                   value={promptOrder}
@@ -373,19 +393,19 @@ const AdminJournalPrompts = () => {
                 />
               </View>
               <View style={styles.halfInput}>
-                <Text style={[styles.label, { color: COLORS.textSecondary }]}>Active</Text>
+                <Text style={[styles.label, { color: COLORS.textSecondary }]}>{jc?.activeLabel || 'Active'}</Text>
                 <Switch value={promptIsActive} onValueChange={setPromptIsActive} />
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.bookSelector, { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}
+              style={[styles.bookSelector, { backgroundColor: COLORS.surface, borderColor: COLORS.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
               onPress={() => setShowBookPicker(!showBookPicker)}
             >
-              <Text style={[styles.bookSelectorText, { color: promptBook ? COLORS.text : COLORS.textMuted }]}>
-                {promptBook || 'Select Book (optional)'}
+              <Text style={[styles.bookSelectorText, { color: promptBook ? COLORS.text : COLORS.muted }]}>
+                {promptBook || (jc?.selectBookPlaceholder || 'Select Book (optional)')}
               </Text>
-              <ChevronDown size={18} color={COLORS.textMuted} />
+              <ChevronDown size={18} color={COLORS.muted} />
             </TouchableOpacity>
 
             {showBookPicker && (
@@ -395,7 +415,7 @@ const AdminJournalPrompts = () => {
                   keyExtractor={item => item}
                   renderItem={({ item }) => (
                     <TouchableOpacity
-                      style={styles.bookItem}
+                      style={[styles.bookItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                       onPress={() => {
                         setPromptBook(item);
                         setShowBookPicker(false);
@@ -409,21 +429,21 @@ const AdminJournalPrompts = () => {
               </View>
             )}
 
-            <View style={styles.row}>
+            <View style={[styles.row, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <TextInput
                 style={[styles.input, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
                 value={promptChapter}
                 onChangeText={setPromptChapter}
-                placeholder="Chapter"
-                placeholderTextColor={COLORS.textMuted}
+                placeholder={jc?.chapterFieldLabel || 'Chapter'}
+                placeholderTextColor={COLORS.muted}
                 keyboardType="number-pad"
               />
               <TextInput
                 style={[styles.input, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
                 value={promptVerse}
                 onChangeText={setPromptVerse}
-                placeholder="Verse (optional)"
-                placeholderTextColor={COLORS.textMuted}
+                placeholder={jc?.verseOptionalLabel || 'Verse (optional)'}
+                placeholderTextColor={COLORS.muted}
                 keyboardType="number-pad"
               />
             </View>
@@ -433,7 +453,7 @@ const AdminJournalPrompts = () => {
               onPress={handleSave}
               disabled={saving}
             >
-              <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Prompt'}</Text>
+              <Text style={styles.saveButtonText}>{saving ? (jc?.savingLabel || 'Saving...') : (jc?.savePrompt || 'Save Prompt')}</Text>
             </TouchableOpacity>
           </View>
         </View>

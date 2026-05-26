@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { X, BookOpen } from 'lucide-react-native';
 import { ChapterSelectorModalProps } from '../types';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import { getColors, FONT_SIZES } from '../../../constants/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -32,6 +33,8 @@ export default function ChapterSelectorModal({
   onSelectChapter,
   isDark,
 }: ChapterSelectorModalProps) {
+  const { translations } = useLanguage();
+  const bc = translations?.bible;
   const COLORS = getColors(isDark);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -127,10 +130,10 @@ export default function ChapterSelectorModal({
             </View>
             <View>
               <Text style={[s.title, { color: COLORS.text }]}>
-                Select Chapter
+                {bc?.selectChapter || 'Select Chapter'}
               </Text>
               <Text style={[s.subtitle, { color: COLORS.muted }]}>
-                {maxChapters} chapter{maxChapters !== 1 ? 's' : ''} available
+                {maxChapters} {bc?.chaptersAvailable || 'chapters available'}
               </Text>
             </View>
           </View>

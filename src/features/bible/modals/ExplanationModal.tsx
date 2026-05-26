@@ -19,6 +19,7 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { ExplanationModalProps } from '../types';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import {
   getColors,
   FONT_SIZES,
@@ -40,6 +41,8 @@ export default function ExplanationModal({
   onReadMore,
   isDark,
 }: ExplanationModalProps) {
+  const { translations } = useLanguage();
+  const bc = translations?.bible;
   const COLORS = getColors(isDark);
 
   // ── Animations ─────────────────────────────────────────────────────────────
@@ -141,7 +144,7 @@ export default function ExplanationModal({
             </View>
             <View>
               <Text style={[s.headerTitle, { color: COLORS.text }]}>
-                Verse Explanation
+                {bc?.verseExplanation || 'Verse Explanation'}
               </Text>
               <Text style={[s.headerRef, { color: COLORS.primary }]}>
                 {verseRef}
@@ -184,7 +187,7 @@ export default function ExplanationModal({
                   ]}
                 />
                 <Text style={[s.versesLabel, { color: COLORS.muted }]}>
-                  SELECTED VERSES
+                  {bc?.selectedVersesLabel || 'SELECTED VERSES'}
                 </Text>
               </View>
 
@@ -244,12 +247,12 @@ export default function ExplanationModal({
                   <Text
                     style={[s.explanationCardTitle, { color: COLORS.text }]}
                   >
-                    Meaning & Context
+                    {bc?.meaningAndContext || 'Meaning & Context'}
                   </Text>
                   <Text
                     style={[s.explanationCardSubtitle, { color: COLORS.muted }]}
                   >
-                    AI-powered insight
+                    {bc?.aiPoweredInsight || 'AI-powered insight'}
                   </Text>
                 </View>
               </View>
@@ -273,7 +276,7 @@ export default function ExplanationModal({
                 activeOpacity={0.85}
               >
                 <Text style={[s.readMoreText, { color: COLORS.white }]}>
-                  Full Deep Dive
+                  {bc?.fullDeepDive || 'Full Deep Dive'}
                 </Text>
                 <ChevronRight
                   size={16}

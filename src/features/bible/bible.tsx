@@ -43,6 +43,7 @@ import {
   Lightbulb,
   BookOpen,
 } from 'lucide-react-native';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import LinearGradient from 'react-native-linear-gradient';
 
 import {
@@ -293,6 +294,9 @@ export default function Bible() {
     clearDailyVerseRef,
   } = useBible();
 
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+
   // ── Initialize from route params (bookName, chapter) when navigating from
   //  ReadingPlan daily screen, search results or other screens ──────────
   //  Uses empty deps because route params are snapshots — React Navigation
@@ -328,7 +332,8 @@ export default function Bible() {
   );
 
   const COLORS = getColors(isDark);
-  const styles = useMemo(() => createBibleStyles(isDark), [isDark]);
+  const styles = useMemo(() => createBibleStyles(isDark, isRtl), [isDark, isRtl]);
+  const rpStyles = useMemo(() => isFromReadingPlan ? useRpStyles(isRtl) : null, [isRtl, isFromReadingPlan]);
 
   // ── Guest gate state ──────────────────────────────────────────────────────
   const [gateVisible, setGateVisible] = useState(false);
@@ -373,6 +378,7 @@ export default function Bible() {
         chapter={currentChapter}
         version={activeVersion}
         isDark={isDark}
+        isRtl={isRtl}
         onMenuPress={() => {
           clearSelection();
           setShowDrawer(true);
@@ -415,7 +421,7 @@ export default function Bible() {
             <Text
               style={[styles.chapterPromptsTitle, { color: COLORS.primary }]}
             >
-              Chapter Reflections
+              {translations?.bible?.chapterReflections || 'Chapter Reflections'}
             </Text>
             <TouchableOpacity
               onPress={() => {
@@ -429,7 +435,7 @@ export default function Bible() {
                 { backgroundColor: COLORS.primary },
               ]}
             >
-              <Text style={styles.addJournalBtnText}>+ Add</Text>
+              <Text style={styles.addJournalBtnText}>+ {translations?.bible?.add || 'Add'}</Text>
             </TouchableOpacity>
           </View>
           <ScrollView
@@ -468,6 +474,7 @@ export default function Bible() {
       {/* ── Selection Action Bar ─────────────────────────────────────────── */}
       {selectedVerses.length > 0 && !explanationOpen && (
         <SelectionActionBar
+          isRtl={isRtl}
           selectedCount={selectedVerses.length}
           selectedVerses={selectedVerses}
           totalVerses={Object.keys(verses).length}
@@ -694,7 +701,7 @@ export default function Bible() {
       )}
 
       {/* ── Reflection Questions Panel (from Reading Plan) ──────────────── */}
-      {isFromReadingPlan && (
+      {isFromReadingPlan && rpStyles && (
         <View style={rpStyles.wrapper}>
           {/* Toggle bar */}
           <TouchableOpacity
@@ -711,10 +718,10 @@ export default function Bible() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={rpStyles.toggleTitle}>
-                  {planTitle || 'Reading Plan'} — Reflections
+                  {planTitle || translations?.bible?.readingPlan || 'Reading Plan'} — {translations?.bible?.reflections || 'Reflections'}
                 </Text>
                 <Text style={rpStyles.toggleSubtitle}>
-                  {dayTitle || `Day ${routeParams.day || ''}`}
+                  {dayTitle || `${translations?.bible?.day || 'Day'} ${routeParams.day || ''}`}
                 </Text>
               </View>
             </View>
@@ -763,7 +770,7 @@ export default function Bible() {
                       ]}
                     >
                       <Text style={[rpStyles.journalLinkText, { color: COLORS.primary }]}>
-                        Journal
+                        {translations?.bible?.journal || 'Journal'}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1065,115 +1072,118 @@ const vrStyles = StyleSheet.create({
   },
 });
 
-const rpStyles = StyleSheet.create({
-  wrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'transparent',
-    zIndex: 100,
-    elevation: 10,
-  },
-  toggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderTopLeftRadius: BORDER_RADIUS.lg,
-    borderTopRightRadius: BORDER_RADIUS.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  toggleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    flex: 1,
-  },
-  toggleArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: SPACING.sm,
-  },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  toggleTitle: {
-    fontSize: FONT_SIZES.md,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  toggleSubtitle: {
-    fontSize: FONT_SIZES.xs,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  listContent: {
-    maxHeight: 320,
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.sm,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
-    gap: SPACING.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  numBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: '#F59E0B',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  numText: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  journalLink: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BORDER_RADIUS.round,
-  },
-  journalLinkText: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '700',
-  },
-  questionText: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
-    lineHeight: 22,
-  },
-});
+function useRpStyles(isRtl: boolean) {
+  return StyleSheet.create({
+    wrapper: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: 'transparent',
+      zIndex: 100,
+      elevation: 10,
+    },
+    toggleButton: {
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: '#F59E0B',
+      paddingHorizontal: SPACING.lg,
+      paddingVertical: SPACING.md,
+      borderTopLeftRadius: BORDER_RADIUS.lg,
+      borderTopRightRadius: BORDER_RADIUS.lg,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -3 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    toggleLeft: {
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: SPACING.sm,
+      flex: 1,
+    },
+    toggleArrow: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: isRtl ? 0 : SPACING.sm,
+      marginRight: isRtl ? SPACING.sm : 0,
+    },
+    iconCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: BORDER_RADIUS.round,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    toggleTitle: {
+      fontSize: FONT_SIZES.md,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    toggleSubtitle: {
+      fontSize: FONT_SIZES.xs,
+      color: 'rgba(255,255,255,0.7)',
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    listContent: {
+      maxHeight: 320,
+      backgroundColor: '#F59E0B',
+      paddingHorizontal: SPACING.lg,
+      paddingTop: SPACING.sm,
+      paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+      gap: SPACING.sm,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 6,
+    },
+    card: {
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.md,
+      padding: SPACING.md,
+      marginBottom: SPACING.sm,
+    },
+    cardTopRow: {
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: SPACING.sm,
+    },
+    numBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: BORDER_RADIUS.round,
+      backgroundColor: '#F59E0B',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    numText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '800',
+      color: '#FFFFFF',
+    },
+    journalLink: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: BORDER_RADIUS.round,
+    },
+    journalLinkText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+    },
+    questionText: {
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '500',
+      lineHeight: 22,
+    },
+  });
+}

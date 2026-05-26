@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { route } from '../../component/navigations/routes';
@@ -24,10 +25,13 @@ import {
   ReadingPlan,
 } from '../../services/adminApi';
 import BottomTab from '../../component/navigations/BottomTab';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getColors } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   ChevronLeft,
+  ChevronRight,
   Plus,
   BookOpen,
   Calendar,
@@ -71,8 +75,11 @@ const AdminReadingPlans: React.FC = () => {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const ac = translations?.admin;
   const theme = getReadingPlansTheme(isDark);
-  const styles = getStyles(theme);
+  const styles = getStyles(theme, isRtl);
 
   const [plans, setPlans] = useState<ReadingPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,21 +113,23 @@ const AdminReadingPlans: React.FC = () => {
   }, [fetchPlans, page]);
 
   const handleDelete = (plan: ReadingPlan) => {
+    const cancelText = ac?.readingPlanCancelBtn || 'Cancel';
+    const deleteText = ac?.readingPlanDeleteBtn || 'Delete';
     Alert.alert(
-      'Delete Plan',
-      `Are you sure you want to delete "${plan.title}"? This action cannot be undone.`,
+      ac?.readingPlanDeleteTitle || 'Delete Plan',
+      (ac?.readingPlanDeleteMessage || 'Are you sure you want to delete "{title}"? This action cannot be undone.').replace('{title}', plan.title || ''),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: cancelText, style: 'cancel' },
         {
-          text: 'Delete',
+          text: deleteText,
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteReadingPlan(plan.planId);
               setPlans(prev => prev.filter(p => p.planId !== plan.planId));
-              showToast('success', 'Plan deleted successfully');
+              showToast('success', ac?.readingPlanDeletedToast || 'Plan deleted successfully');
             } catch (error) {
-              showToast('error', 'Failed to delete plan');
+              showToast('error', ac?.readingPlanFailedDelete || 'Failed to delete plan');
             }
           },
         },
@@ -147,13 +156,15 @@ const AdminReadingPlans: React.FC = () => {
 
   const renderPlan = ({ item }: { item: ReadingPlan }) => (
     <View style={styles.planCard}>
-      <View style={styles.planHeader}>
+      <View style={[styles.planHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <View style={styles.planInfo}>
-          <Text style={styles.planTitle}>{item.title}</Text>
-          <View style={styles.planMeta}>
-            <View style={styles.daysContainer}>
+          <Text style={[styles.planTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{item.title}</Text>
+          <View style={[styles.planMeta, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={[styles.daysContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Calendar size={12} color={theme.muted} />
-              <Text style={styles.planDays}>{item.totalDays} days</Text>
+              <Text style={styles.planDays}>
+                {(ac?.readingPlanDays || '{count} days').replace('{count}', String(item.totalDays || 0))}
+              </Text>
             </View>
             <View
               style={[
@@ -171,9 +182,9 @@ const AdminReadingPlans: React.FC = () => {
               </Text>
             </View>
             {item.questionsEnabled && (
-              <View style={styles.quizBadge}>
+              <View style={[styles.quizBadge, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <HelpCircle size={10} color="#7c3aed" />
-                <Text style={styles.quizText}>Quiz</Text>
+                <Text style={styles.quizText}>{ac?.readingPlanQuiz || 'Quiz'}</Text>
               </View>
             )}
           </View>
@@ -190,45 +201,46 @@ const AdminReadingPlans: React.FC = () => {
               item.isActive
                 ? styles.statusTextActive
                 : styles.statusTextInactive,
+              { textAlign: isRtl ? 'right' : 'left' },
             ]}
           >
-            {item.isActive ? '●' : '○'} {item.isActive ? 'Active' : 'Inactive'}
+            {item.isActive ? '●' : '○'} {item.isActive ? (ac?.readingPlanActiveStatus || 'Active') : (ac?.readingPlanInactiveStatus || 'Inactive')}
           </Text>
         </View>
       </View>
 
       {item.description && (
-        <Text style={styles.planDescription} numberOfLines={2}>
+        <Text style={[styles.planDescription, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={2}>
           {item.description}
         </Text>
       )}
 
-      <View style={styles.planFooter}>
-        <View style={styles.categoryContainer}>
+      <View style={[styles.planFooter, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+        <View style={[styles.categoryContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <BookOpen size={12} color={theme.muted} />
-          <Text style={styles.planCategory}>{item.category}</Text>
+          <Text style={[styles.planCategory, { textAlign: isRtl ? 'right' : 'left' }]}>{item.category}</Text>
         </View>
-        <View style={styles.actionButtons}>
+        <View style={[styles.actionButtons, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity
             style={styles.statsButton}
             onPress={() => handleViewDetails(item)}
           >
             <PieChart size={16} color={theme.success} />
-            <Text style={styles.statsButtonText}>Stats</Text>
+            <Text style={styles.statsButtonText}>{ac?.readingPlanStatsLabel || 'Stats'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.editButton}
             onPress={() => handleEdit(item)}
           >
             <Edit2 size={16} color={theme.primary} />
-            <Text style={styles.editButtonText}>Edit</Text>
+            <Text style={styles.editButtonText}>{ac?.readingPlanEditLabel || 'Edit'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => handleDelete(item)}
           >
             <Trash2 size={16} color={theme.error} />
-            <Text style={styles.deleteButtonText}>Delete</Text>
+            <Text style={styles.deleteButtonText}>{ac?.readingPlanDeleteLabel || 'Delete'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -238,16 +250,17 @@ const AdminReadingPlans: React.FC = () => {
   const renderEmpty = () => (
     <View style={styles.empty}>
       <BookOpen size={48} color={theme.muted} />
-      <Text style={styles.emptyText}>No reading plans yet</Text>
+      <Text style={styles.emptyText}>{ac?.readingPlanNoPlans || 'No reading plans yet'}</Text>
       <TouchableOpacity style={styles.emptyButton} onPress={handleCreate}>
         <Plus size={18} color="#fff" />
-        <Text style={styles.emptyButtonText}>Create First Plan</Text>
+        <Text style={styles.emptyButtonText}>{ac?.readingPlanCreateFirst || 'Create First Plan'}</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.surface} />
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
@@ -255,15 +268,17 @@ const AdminReadingPlans: React.FC = () => {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <ChevronLeft size={20} color={theme.primary} />
+            {isRtl ? <ChevronRight size={20} color={theme.primary} /> : <ChevronLeft size={20} color={theme.primary} />}
           </TouchableOpacity>
-          <Text style={styles.title}>Reading Plans</Text>
+          <Text style={styles.title}>{ac?.readingPlanTitle || 'Reading Plans'}</Text>
           <TouchableOpacity style={styles.addButton} onPress={handleCreate}>
             <Plus size={18} color="#fff" />
           </TouchableOpacity>
         </View>
         <Text style={styles.subtitle}>
-          {totalCount} plan{totalCount !== 1 ? 's' : ''}
+          {totalCount === 1
+            ? (ac?.readingPlanSubtitle || '{count} plan').replace('{count}', String(totalCount))
+            : (ac?.readingPlanSubtitlePlural || '{count} plans').replace('{count}', String(totalCount))}
         </Text>
       </View>
 
@@ -272,21 +287,21 @@ const AdminReadingPlans: React.FC = () => {
         <View style={styles.statCard}>
           <BarChart3 size={20} color={theme.primary} />
           <Text style={styles.statValue}>{totalCount}</Text>
-          <Text style={styles.statLabel}>Total Plans</Text>
+          <Text style={styles.statLabel}>{ac?.readingPlanTotalPlans || 'Total Plans'}</Text>
         </View>
         <View style={styles.statCard}>
           <BookOpen size={20} color={theme.success} />
           <Text style={styles.statValue}>
             {plans.filter(p => p.isActive).length}
           </Text>
-          <Text style={styles.statLabel}>Active</Text>
+          <Text style={styles.statLabel}>{ac?.readingPlanActive || 'Active'}</Text>
         </View>
         <View style={styles.statCard}>
           <HelpCircle size={20} color="#7c3aed" />
           <Text style={styles.statValue}>
             {plans.filter(p => p.questionsEnabled).length}
           </Text>
-          <Text style={styles.statLabel}>With Quiz</Text>
+          <Text style={styles.statLabel}>{ac?.readingPlanWithQuiz || 'With Quiz'}</Text>
         </View>
       </View>
 
@@ -311,11 +326,11 @@ const AdminReadingPlans: React.FC = () => {
           <BottomTab activeTab={activeTab} setActiveTab={setActiveTab} />
         </>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
-const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
+const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>, isRtl: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -327,7 +342,7 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
       backgroundColor: theme.surface,
     },
     headerTop: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       marginBottom: 8,
@@ -395,7 +410,7 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
       marginBottom: 12,
     },
     planHeader: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
     },
     planInfo: {
@@ -407,13 +422,13 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
       color: theme.text,
     },
     planMeta: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
       marginTop: 6,
     },
     daysContainer: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
     },
@@ -435,7 +450,7 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
       paddingHorizontal: 8,
       paddingVertical: 2,
       borderRadius: 8,
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
     },
@@ -473,7 +488,7 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
       lineHeight: 18,
     },
     planFooter: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginTop: 12,
@@ -482,7 +497,7 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
       borderTopColor: theme.border,
     },
     categoryContainer: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
     },
@@ -491,11 +506,11 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
       color: theme.muted,
     },
     actionButtons: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       gap: 8,
     },
     editButton: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
       paddingHorizontal: 12,
@@ -507,7 +522,7 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
       fontWeight: '500',
     },
     statsButton: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
       paddingHorizontal: 12,
@@ -519,7 +534,7 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
       fontWeight: '500',
     },
     deleteButton: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
       paddingHorizontal: 12,
@@ -545,7 +560,7 @@ const getStyles = (theme: ReturnType<typeof getReadingPlansTheme>) =>
       paddingHorizontal: 20,
       paddingVertical: 12,
       borderRadius: 12,
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
     },

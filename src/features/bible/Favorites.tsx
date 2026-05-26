@@ -12,7 +12,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   Animated,
   Pressable,
   RefreshControl,
@@ -42,6 +41,7 @@ import { AppContext } from '../../common/AppContext';
 import { sendPostRequest } from '../../services/api';
 import { route } from '../../component/navigations/routes';
 import { showToast } from '../../helpers/Toash.helper';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import useBible from '../../features/bible/hooks/useBible';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -159,6 +159,8 @@ function FavoriteCard({
   onDelete,
   verseText,
   verseLoading,
+  isRtl = false,
+  bc,
 }: {
   item: FavoriteItem;
   index: number;
@@ -168,6 +170,8 @@ function FavoriteCard({
   onDelete: () => void;
   verseText: string;
   verseLoading: boolean;
+  isRtl?: boolean;
+  bc?: any;
 }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(32)).current;
@@ -217,23 +221,28 @@ function FavoriteCard({
           <View
             style={[
               cardStyles.card,
+              isRtl && { flexDirection: 'row-reverse' },
               {
                 backgroundColor: COLORS.cardBackground,
                 borderColor: COLORS.border,
               },
             ]}
           >
-            {/* Left accent strip */}
+            {/* Accent strip */}
             <View
-              style={[cardStyles.strip, { backgroundColor: accent.strip }]}
+              style={[
+                isRtl ? cardStyles.stripRtl : cardStyles.strip,
+                { backgroundColor: accent.strip },
+              ]}
             />
 
             <View style={cardStyles.content}>
               {/* Header row: book pill + delete */}
-              <View style={cardStyles.headerRow}>
+              <View style={[cardStyles.headerRow, isRtl && { flexDirection: 'row-reverse' }]}>
                 <View
                   style={[
                     cardStyles.refPill,
+                    isRtl && { flexDirection: 'row-reverse' },
                     {
                       backgroundColor: accent.light,
                       borderColor: accent.strip + '40',
@@ -264,12 +273,11 @@ function FavoriteCard({
               {/* Big decorative quote + verse */}
               <Text style={[cardStyles.openQuote, { color: accent.strip }]}>
                 "
-              </Text>
-              <Text
-                style={[cardStyles.verseText, { color: COLORS.text }]}
+              </Text>             
+               <Text style={[cardStyles.verseText, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
                 numberOfLines={4}
               >
-                {verseLoading ? 'Loading...' : verseText}
+                {verseLoading ? (bc?.loadingMessage || 'Loading...') : verseText}
               </Text>
 
               {/* Divider */}
@@ -278,10 +286,11 @@ function FavoriteCard({
               />
 
               {/* Footer actions */}
-              <View style={cardStyles.footerRow}>
+              <View style={[cardStyles.footerRow, isRtl && { flexDirection: 'row-reverse' }]}>
                 <TouchableOpacity
                   style={[
                     cardStyles.actionBtn,
+                    isRtl && { flexDirection: 'row-reverse' },
                     {
                       backgroundColor: accent.light,
                       borderColor: accent.strip + '40',
@@ -294,7 +303,7 @@ function FavoriteCard({
                   <Text
                     style={[cardStyles.actionBtnText, { color: accent.strip }]}
                   >
-                    Read
+                    {bc?.read || 'Read'}
                   </Text>
                   <ChevronRight
                     size={11}
@@ -306,6 +315,7 @@ function FavoriteCard({
                 <TouchableOpacity
                   style={[
                     cardStyles.actionBtn,
+                    isRtl && { flexDirection: 'row-reverse' },
                     {
                       backgroundColor: COLORS.surface,
                       borderColor: COLORS.border,
@@ -318,7 +328,7 @@ function FavoriteCard({
                   <Text
                     style={[cardStyles.actionBtnText, { color: COLORS.muted }]}
                   >
-                    Explain
+                    {bc?.explain || 'Explain'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -345,6 +355,10 @@ const cardStyles = StyleSheet.create({
     overflow: 'hidden',
   },
   strip: {
+    width: 4,
+    alignSelf: 'stretch',
+  },
+  stripRtl: {
     width: 4,
     alignSelf: 'stretch',
   },
@@ -422,7 +436,7 @@ const cardStyles = StyleSheet.create({
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-function EmptyState({ COLORS }: { COLORS: AppColors }) {
+function EmptyState({ COLORS, isRtl, bc }: { COLORS: AppColors; isRtl?: boolean; bc?: any }) {
   const pulseAnim = useRef(new Animated.Value(0.9)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -460,14 +474,13 @@ function EmptyState({ COLORS }: { COLORS: AppColors }) {
       </Animated.View>
 
       <Text style={[emptyStyles.title, { color: COLORS.text }]}>
-        No Favourites Yet
+        {bc?.noFavorites || 'No favorites yet'}
       </Text>
       <Text style={[emptyStyles.body, { color: COLORS.muted }]}>
-        While reading, bookmark verses that move you.{'\n'}They'll live here,
-        ready whenever you return.
+        {'While reading, bookmark verses that move you.\nThey\'ll live here, ready whenever you return.'}
       </Text>
 
-      <View style={emptyStyles.dotRow}>
+      <View style={[emptyStyles.dotRow, isRtl && { flexDirection: 'row-reverse' }]}>
         {[0.25, 0.5, 1, 0.5, 0.25].map((op, i) => (
           <View
             key={i}
@@ -526,7 +539,7 @@ const emptyStyles = StyleSheet.create({
 
 // ── Stats badge ───────────────────────────────────────────────────────────────
 
-function StatsBadge({ count, COLORS }: { count: number; COLORS: AppColors }) {
+function StatsBadge({ count, COLORS, bc }: { count: number; COLORS: AppColors; bc?: any }) {
   return (
     <View
       style={[
@@ -539,7 +552,7 @@ function StatsBadge({ count, COLORS }: { count: number; COLORS: AppColors }) {
     >
       <Sparkles size={11} color={COLORS.accent} strokeWidth={2.5} />
       <Text style={[badgeStyles.text, { color: COLORS.accent }]}>
-        {count} saved verse{count !== 1 ? 's' : ''}
+        {(bc?.savedVerses || '{count} saved verse').replace('{count}', String(count))}
       </Text>
     </View>
   );
@@ -574,6 +587,9 @@ export default function Favorites() {
     useNavigation<
       StackNavigationProp<RootStackParamList, typeof route.bible>
     >();
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const bc = translations?.bible;
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -706,11 +722,11 @@ export default function Favorites() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView
+    <View
       style={[screenStyles.safe, { backgroundColor: COLORS.background }]}
     >
       <ActionHeader
-        title="Favourites"
+        title={bc?.favorites || 'Favorites'}
         rightComponent={
           <Stars size={20} color={COLORS.accent} strokeWidth={2} />
         }
@@ -741,15 +757,17 @@ export default function Favorites() {
           }
           ListHeaderComponent={
             favorites.length > 0 ? (
-              <StatsBadge count={favorites.length} COLORS={COLORS} />
+              <StatsBadge count={favorites.length} COLORS={COLORS} bc={bc} />
             ) : null
           }
-          ListEmptyComponent={<EmptyState COLORS={COLORS} />}
+          ListEmptyComponent={<EmptyState COLORS={COLORS} isRtl={isRtl} bc={bc} />}
           renderItem={({ item, index }) => (
             <FavoriteCard
               item={item}
               index={index}
               COLORS={COLORS}
+              isRtl={isRtl}
+              bc={bc}
               onReadPress={() =>
                 navigation.navigate(route.bible, {
                   bookName: item.bookName,
@@ -775,14 +793,14 @@ export default function Favorites() {
       <ActionModal
         visible={!!showRemoveModal}
         severity="warning"
-        title="Remove Favourite"
-        message={`Remove ${showRemoveModal?.bookName} ${showRemoveModal?.chapter}:${showRemoveModal?.verseNumber} from your favourites?`}
-        confirmLabel={deleting ? 'Removing…' : 'Remove'}
-        cancelLabel="Keep"
+        title={bc?.removeFavorite || 'Remove Favorite'}
+        message={showRemoveModal ? `Remove ${showRemoveModal.bookName} ${showRemoveModal.chapter}:${showRemoveModal.verseNumber}?` : ''}
+        confirmLabel={deleting ? (bc?.removing || 'Removing…') : (bc?.removeFavorite || 'Remove')}
+        cancelLabel={bc?.keep || 'Keep'}
         onCancel={() => setShowRemoveModal(null)}
         onConfirm={handleDeleteConfirm}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

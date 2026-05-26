@@ -12,6 +12,7 @@ import { Heart, X, Lightbulb, BookText, Share2, Copy, Sun } from 'lucide-react-n
 import ExpandableText from '../../bible/ExpandableText';
 import { bibleTTS } from '../../../utilits/bibleTTS';
 import { route } from '../../../component/navigations/routes';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,9 @@ export default function VerseCard({
   currentChapter,
 }: VerseCardProps) {
   const accent = colors.accent;
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const bc = translations?.bible;
 
   // ── Subscribe to bibleTTS directly — only THIS card re-renders per word ────
   //
@@ -403,7 +407,7 @@ export default function VerseCard({
             {renderVerseText()}
 
             {/* Action row: Explain + Copy + Share */}
-            <View style={localStyles.actionRow}>
+            <View style={[localStyles.actionRow, isRtl && localStyles.actionRowRtl]}>
               {onExplain && (
                 <TouchableOpacity
                   onPress={onExplain}
@@ -414,7 +418,7 @@ export default function VerseCard({
                   <Text
                     style={[localStyles.actionRowText, { color: colors.primary }]}
                   >
-                    Explain
+                    {bc?.explain || 'Explain'}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -428,7 +432,7 @@ export default function VerseCard({
                   <Text
                     style={[localStyles.actionRowText, { color: colors.primary }]}
                   >
-                    Daily Verse
+                    {bc?.dailyVerse || 'Daily Verse'}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -442,7 +446,7 @@ export default function VerseCard({
                   <Text
                     style={[localStyles.actionRowText, { color: colors.primary }]}
                   >
-                    Copy
+                    {bc?.copy || 'Copy'}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -456,7 +460,7 @@ export default function VerseCard({
                   <Text
                     style={[localStyles.actionRowText, { color: colors.primary }]}
                   >
-                    Share
+                    {bc?.share || 'Share'}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -464,10 +468,10 @@ export default function VerseCard({
 
             {showDailyVerse && dailyVerseData && (
               <View style={localStyles.dvContainer}>
-                <View style={localStyles.dvHeader}>
-                  <View style={localStyles.dvHeaderLeft}>
+            <View style={[localStyles.dvHeader, isRtl && localStyles.dvHeaderRtl]}>
+              <View style={[localStyles.dvHeaderLeft, isRtl && localStyles.dvHeaderLeftRtl]}>
                     <Sun size={14} color="#D97706" strokeWidth={2.5} />
-                    <Text style={localStyles.dvHeaderTitle}>Devotional</Text>
+                    <Text style={localStyles.dvHeaderTitle}>{bc?.devotional || 'Devotional'}</Text>
                   </View>
                   <TouchableOpacity onPress={onCloseDailyVerse} style={localStyles.dvCloseBtn}>
                     <X size={13} color="#92400E" />
@@ -476,7 +480,7 @@ export default function VerseCard({
 
                 {dailyVerseData.reflection ? (
                   <>
-                    <Text style={localStyles.dvSectionLabel}>Reflection</Text>
+                    <Text style={localStyles.dvSectionLabel}>{bc?.reflection || 'Reflection'}</Text>
                     <ExpandableText
                       text={dailyVerseData.reflection}
                       initialLines={5}
@@ -495,13 +499,13 @@ export default function VerseCard({
 
                 {dailyVerseData.explanation ? (
                   <>
-                    <Text style={localStyles.dvSectionLabel}>Explanation</Text>
+                    <Text style={localStyles.dvSectionLabel}>{bc?.explanation || 'Explanation'}</Text>
                     <ExpandableText
                       text={dailyVerseData.explanation}
                       initialLines={4}
                       stepLines={10}
-                      expandLabel="Read more"
-                      closeLabel="Close"
+                      expandLabel={bc?.readMore || 'Read more'}
+                      closeLabel={bc?.close || 'Close'}
                       containerStyle={localStyles.dvExpandableContainer}
                       textStyle={localStyles.dvBodyText}
                     />
@@ -514,13 +518,13 @@ export default function VerseCard({
 
                 {dailyVerseData.learnMore ? (
                   <>
-                    <Text style={localStyles.dvSectionLabel}>Learn More</Text>
+                    <Text style={localStyles.dvSectionLabel}>{bc?.learnMore || 'Learn More'}</Text>
                     <ExpandableText
                       text={dailyVerseData.learnMore}
                       initialLines={4}
                       stepLines={10}
-                      expandLabel="Read more"
-                      closeLabel="Close"
+                      expandLabel={bc?.readMore || 'Read more'}
+                      closeLabel={bc?.close || 'Close'}
                       containerStyle={localStyles.dvExpandableContainer}
                       textStyle={localStyles.dvBodyText}
                     />
@@ -539,16 +543,15 @@ export default function VerseCard({
                     : undefined,
                 ]}
               >
-                {explanationText && (
-                  <View style={localStyles.expHeaderRow}>
-                    <View style={localStyles.expHeaderLeft}>
+                {explanationText && (                    <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
+                      <View style={[localStyles.expHeaderLeft, isRtl && localStyles.expHeaderLeftRtl]}>
                       <Lightbulb
                         size={14}
                         color={colors.primary}
                         strokeWidth={2.5}
                       />
                       <Text style={[localStyles.expHeaderTitle, { color: colors.primary }]}>
-                        Explanation
+                        {bc?.explanation || 'Explanation'}
                       </Text>
                     </View>
                     {onCloseExplanation && (
@@ -567,8 +570,8 @@ export default function VerseCard({
                     text={explanationText}
                     initialLines={6}
                     stepLines={15}
-                    expandLabel="Read more"
-                    closeLabel="Close"
+                    expandLabel={bc?.readMore || 'Read more'}
+                    closeLabel={bc?.close || 'Close'}
                     onClose={onCloseExplanation}
                     containerStyle={localStyles.exExpandableContainer}
                     textStyle={localStyles.exBodyText}
@@ -590,7 +593,7 @@ export default function VerseCard({
                           { color: colors.primary },
                         ]}
                       >
-                        Journal Prompts
+                        {bc?.journalPrompts || 'Journal Prompts'}
                       </Text>
                       {currentBook && currentChapter && (
                         <TouchableOpacity
@@ -670,7 +673,7 @@ export default function VerseCard({
             ]}
           >
             <X size={10} color="#fff" strokeWidth={2.8} />
-            <Text style={localStyles.removeHighlightLabel}>Remove</Text>
+            <Text style={localStyles.removeHighlightLabel}>{bc?.removeHighlight || 'Remove'}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -709,10 +712,16 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  expHeaderRowRtl: {
+    flexDirection: 'row-reverse',
+  },
   expHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  expHeaderLeftRtl: {
+    flexDirection: 'row-reverse',
   },
   expHeaderTitle: {
     fontSize: 14,
@@ -740,6 +749,9 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginTop: 6,
+  },
+  actionRowRtl: {
+    flexDirection: 'row-reverse',
   },
   actionRowBtn: {
     flexDirection: 'row',
@@ -831,10 +843,16 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
+  dvHeaderRtl: {
+    flexDirection: 'row-reverse',
+  },
   dvHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  dvHeaderLeftRtl: {
+    flexDirection: 'row-reverse',
   },
   dvHeaderTitle: {
     fontSize: 14,

@@ -10,6 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import { HighlightPickerModalProps } from '../types';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import {
   getColors,
   FONT_SIZES,
@@ -22,20 +23,22 @@ import VerseRangeSlider from './VerseRangeSlider';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Color groups with section labels ───────────────────────────────────────
-const COLOR_GROUPS = [
-  {
-    label: 'Warm',
-    ids: [1, 3, 4, 13, 14, 15], // Red, Yellow, Orange, Pink, Rose, Amber
-  },
-  {
-    label: 'Cool',
-    ids: [2, 7, 8, 9, 10], // Blue, Cyan, Teal, Sky, Indigo
-  },
-  {
-    label: 'Nature',
-    ids: [5, 6, 11, 12], // Green, Purple, Lime, Mint
-  },
-];
+function getColorGroups(bc: any) {
+  return [
+    {
+      label: bc?.warm || 'Warm',
+      ids: [1, 3, 4, 13, 14, 15], // Red, Yellow, Orange, Pink, Rose, Amber
+    },
+    {
+      label: bc?.cool || 'Cool',
+      ids: [2, 7, 8, 9, 10], // Blue, Cyan, Teal, Sky, Indigo
+    },
+    {
+      label: bc?.nature || 'Nature',
+      ids: [5, 6, 11, 12], // Green, Purple, Lime, Mint
+    },
+  ];
+}
 
 // ─── Animated swatch ────────────────────────────────────────────────────────
 function SwatchButton({
@@ -119,8 +122,11 @@ export default function HighlightPickerModal({
   totalVerses?: number;
   onRangeChange?: (start: number, end: number) => void;
 }) {
+  const { translations } = useLanguage();
+  const bc = translations?.bible;
   const COLORS = getColors(isDark);
   const styles = useMemo(() => buildStyles(isDark, COLORS), [isDark]);
+  const COLOR_GROUPS = useMemo(() => getColorGroups(bc), [bc]);
 
   // Local range state — seeded from selectedVerses when modal opens
   const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
@@ -177,9 +183,9 @@ export default function HighlightPickerModal({
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Highlight</Text>
+            <Text style={styles.title}>{bc?.highlightTitle || 'Highlight'}</Text>
             <Text style={styles.subtitle}>
-              Choose a color to mark this verse
+              {bc?.chooseColor || 'Choose a color to mark this verse'}
             </Text>
           </View>
           <TouchableOpacity
@@ -246,7 +252,7 @@ export default function HighlightPickerModal({
           <View style={styles.removeIconRing}>
             <Text style={styles.removeIconText}>⊘</Text>
           </View>
-          <Text style={styles.removeText}>Remove highlight</Text>
+          <Text style={styles.removeText}>{bc?.removeHighlightLabel || 'Remove highlight'}</Text>
           <Text style={styles.removeChevron}>›</Text>
         </TouchableOpacity>
       </View>

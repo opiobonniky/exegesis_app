@@ -30,6 +30,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  ChevronLeft,
   LogOut,
   LayoutDashboard,
   Bell,
@@ -51,6 +52,8 @@ import {
   getAdminDashboardStats,
 } from '../../services/adminApi';
 import BottomTab from '../../component/navigations/BottomTab';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { AdminTranslations } from '../../component/language-translation/type';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.78;
@@ -84,52 +87,6 @@ const getDashboardTheme = (isDark: boolean) => {
   };
 };
 
-const drawerItems = [
-  {
-    id: 'adminDashboard',
-    label: 'Dashboard',
-    icon: LayoutDashboard,
-    routeKey: 'adminDashboard',
-  },
-  { id: 'adminUsers', label: 'Users', icon: Users, routeKey: 'adminUsers' },
-  {
-    id: 'adminVerse',
-    label: 'Daily Verse',
-    icon: BookOpen,
-    routeKey: 'adminDailyVerse',
-  },
-  {
-    id: 'adminDevotion',
-    label: 'Daily Devotion',
-    icon: Lightbulb,
-    routeKey: 'adminDailyDevotion',
-  },
-  {
-    id: 'adminPlans',
-    label: 'Reading Plans',
-    icon: CalendarClock,
-    routeKey: 'adminReadingPlans',
-  },
-  {
-    id: 'adminJournalPrompts',
-    label: 'Journal Prompts',
-    icon: BookText,
-    routeKey: 'adminJournalPrompts',
-  },
-  {
-    id: 'adminJournalTemplates',
-    label: 'Journal Templates',
-    icon: LayoutTemplate,
-    routeKey: 'adminJournalTemplates',
-  },
-  {
-    id: 'adminActivity',
-    label: 'Activity',
-    icon: Activity,
-    routeKey: 'adminActivity',
-  },
-];
-
 const KpiCard: React.FC<{
   label: string;
   value: string | number;
@@ -137,10 +94,11 @@ const KpiCard: React.FC<{
   color: string;
   bgColor: string;
   icon: React.ReactNode;
-}> = ({ label, value, trend, color, bgColor, icon }) => {
+  isRtl?: boolean;
+}> = ({ label, value, trend, color, bgColor, icon, isRtl }) => {
   return (
     <View style={[kpiStyles.card, { backgroundColor: bgColor }]}>
-      <View style={kpiStyles.kpiHeader}>
+      <View style={[kpiStyles.kpiHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <View style={[kpiStyles.iconWrap, { backgroundColor: color }]}>
           {icon}
         </View>
@@ -160,8 +118,8 @@ const KpiCard: React.FC<{
           </View>
         )}
       </View>
-      <Text style={[kpiStyles.kpiValue, { color }]}>{value}</Text>
-      <Text style={kpiStyles.kpiLabel}>{label}</Text>
+      <Text style={[kpiStyles.kpiValue, { color, textAlign: isRtl ? 'right' : 'left' }]}>{value}</Text>
+      <Text style={[kpiStyles.kpiLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{label}</Text>
     </View>
   );
 };
@@ -176,7 +134,6 @@ const kpiStyles = StyleSheet.create({
     minHeight: 140,
   },
   kpiHeader: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
@@ -218,12 +175,13 @@ const StatBar: React.FC<{
   value: number;
   total: number;
   color: string;
-}> = ({ label, value, total, color }) => {
+  isRtl?: boolean;
+}> = ({ label, value, total, color, isRtl }) => {
   const percentage = total > 0 ? (value / total) * 100 : 0;
   return (
     <View style={barStyles.container}>
-      <View style={barStyles.header}>
-        <Text style={barStyles.label}>{label}</Text>
+      <View style={[barStyles.header, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+        <Text style={[barStyles.label, { textAlign: isRtl ? 'right' : 'left' }]}>{label}</Text>
         <Text style={[barStyles.value, { color }]}>
           {value.toLocaleString()}
           <Text style={barStyles.total}>/{total.toLocaleString()}</Text>
@@ -246,7 +204,6 @@ const barStyles = StyleSheet.create({
     marginBottom: 16,
   },
   header: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 6,
   },
@@ -277,7 +234,8 @@ const barStyles = StyleSheet.create({
 const CircleChart: React.FC<{
   data: { label: string; value: number; color: string }[];
   size?: number;
-}> = ({ data, size = 120 }) => {
+  totalLabel?: string;
+}> = ({ data, size = 120, totalLabel }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   let cumulative = 0;
 
@@ -322,7 +280,7 @@ const CircleChart: React.FC<{
           ]}
         >
           <Text style={chartStyles.circleTotal}>{total}</Text>
-          <Text style={chartStyles.circleLabel}>Total</Text>
+          <Text style={chartStyles.circleLabel}>{totalLabel || 'Total'}</Text>
         </View>
       </View>
     </View>
@@ -367,30 +325,32 @@ const QuickAction: React.FC<{
   subtitle?: string;
   color: string;
   onPress: () => void;
-}> = ({ icon, label, subtitle, color, onPress }) => (
+  isRtl?: boolean;
+}> = ({ icon, label, subtitle, color, onPress, isRtl }) => (
   <TouchableOpacity
-    style={[actionStyles.card, { borderLeftColor: color }]}
+    style={[
+      actionStyles.card,
+      { flexDirection: isRtl ? 'row-reverse' : 'row', borderLeftColor: isRtl ? undefined : color, borderRightColor: isRtl ? color : undefined, borderLeftWidth: isRtl ? 0 : 4, borderRightWidth: isRtl ? 4 : 0 },
+    ]}
     onPress={onPress}
     activeOpacity={0.75}
   >
-    <View style={[actionStyles.iconWrap, { backgroundColor: `${color}15` }]}>
+    <View style={[actionStyles.iconWrap, { backgroundColor: `${color}15`, marginRight: isRtl ? 0 : 14, marginLeft: isRtl ? 14 : 0 }]}>
       {icon}
     </View>
     <View style={actionStyles.content}>
-      <Text style={actionStyles.label}>{label}</Text>
-      {subtitle && <Text style={actionStyles.subtitle}>{subtitle}</Text>}
+      <Text style={[actionStyles.label, { textAlign: isRtl ? 'right' : 'left' }]}>{label}</Text>
+      {subtitle && <Text style={[actionStyles.subtitle, { textAlign: isRtl ? 'right' : 'left' }]}>{subtitle}</Text>}
     </View>
-    <ChevronRight size={18} color="#9ca3af" />
+    {isRtl ? <ChevronLeft size={18} color="#9ca3af" /> : <ChevronRight size={18} color="#9ca3af" />}
   </TouchableOpacity>
 );
 
 const actionStyles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderRadius: 16,
-    borderLeftWidth: 4,
     marginBottom: 10,
     backgroundColor: '#fff',
   },
@@ -400,7 +360,6 @@ const actionStyles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
   },
   content: {
     flex: 1,
@@ -426,6 +385,8 @@ const Drawer: React.FC<{
   userInfo: any;
   translateX: Animated.Value;
   overlayOpacity: Animated.Value;
+  isRtl: boolean;
+  ac?: AdminTranslations;
 }> = ({
   isOpen,
   onClose,
@@ -436,6 +397,8 @@ const Drawer: React.FC<{
   userInfo,
   translateX,
   overlayOpacity,
+  isRtl,
+  ac,
 }) => {
   if (!isOpen) return null;
 
@@ -443,6 +406,52 @@ const Drawer: React.FC<{
     ? `${(userInfo.firstName || '')[0] || ''}${(userInfo.lastName || '')[0] || ''}`.toUpperCase() ||
       'A'
     : 'A';
+
+  const drawerItems = [
+    {
+      id: 'adminDashboard',
+      label: ac?.dashboard || 'Dashboard',
+      icon: LayoutDashboard,
+      routeKey: 'adminDashboard',
+    },
+    { id: 'adminUsers', label: ac?.users || 'Users', icon: Users, routeKey: 'adminUsers' },
+    {
+      id: 'adminVerse',
+      label: ac?.dailyVerseLabel || 'Daily Verse',
+      icon: BookOpen,
+      routeKey: 'adminDailyVerse',
+    },
+    {
+      id: 'adminDevotion',
+      label: ac?.dailyDevotionLabel || 'Daily Devotion',
+      icon: Lightbulb,
+      routeKey: 'adminDailyDevotion',
+    },
+    {
+      id: 'adminPlans',
+      label: ac?.readingPlansLabel || 'Reading Plans',
+      icon: CalendarClock,
+      routeKey: 'adminReadingPlans',
+    },
+    {
+      id: 'adminJournalPrompts',
+      label: ac?.journalPromptsLabel || 'Journal Prompts',
+      icon: BookText,
+      routeKey: 'adminJournalPrompts',
+    },
+    {
+      id: 'adminJournalTemplates',
+      label: ac?.journalTemplatesLabel || 'Journal Templates',
+      icon: LayoutTemplate,
+      routeKey: 'adminJournalTemplates',
+    },
+    {
+      id: 'adminActivity',
+      label: ac?.activity || 'Activity',
+      icon: Activity,
+      routeKey: 'adminActivity',
+    },
+  ];
 
   return (
     <View style={drawerStyles.overlay} pointerEvents="box-none">
@@ -458,10 +467,11 @@ const Drawer: React.FC<{
             backgroundColor: theme.drawerBg,
             width: DRAWER_WIDTH,
             transform: [{ translateX }],
+            ...(isRtl ? { right: 0 } : { left: 0 }),
           },
         ]}
       >
-        <View style={drawerStyles.drawerHeader}>
+        <View style={[drawerStyles.drawerHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <View
             style={[
               drawerStyles.avatar,
@@ -470,17 +480,17 @@ const Drawer: React.FC<{
           >
             <Text style={drawerStyles.avatarText}>{initials}</Text>
           </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
+          <View style={{ flex: 1, ...(isRtl ? { marginRight: 12 } : { marginLeft: 12 }) }}>
             <Text
-              style={[drawerStyles.drawerName, { color: theme.drawerText }]}
+              style={[drawerStyles.drawerName, { color: theme.drawerText, textAlign: isRtl ? 'right' : 'left' }]}
             >
               {userInfo?.firstName
                 ? `${userInfo.firstName} ${userInfo.lastName || ''}`
                 : userInfo?.username || 'Admin'}
             </Text>
-            <View style={drawerStyles.roleBadge}>
+            <View style={[drawerStyles.roleBadge, { alignSelf: isRtl ? 'flex-end' : 'flex-start' }]}>
               <ShieldIcon size={10} color="#fff" strokeWidth={2.5} />
-              <Text style={drawerStyles.roleBadgeText}>Super Admin</Text>
+              <Text style={drawerStyles.roleBadgeText}>{ac?.superAdminBadge || 'Super Admin'}</Text>
             </View>
           </View>
           <TouchableOpacity onPress={onClose} style={drawerStyles.closeBtn}>
@@ -491,8 +501,8 @@ const Drawer: React.FC<{
           style={[drawerStyles.divider, { backgroundColor: theme.border }]}
         />
         <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-          <Text style={[drawerStyles.navSection, { color: theme.drawerMuted }]}>
-            NAVIGATION
+          <Text style={[drawerStyles.navSection, { color: theme.drawerMuted, textAlign: isRtl ? 'right' : 'left' }]}>
+            {ac?.navigationSection || 'NAVIGATION'}
           </Text>
           {drawerItems.map(item => {
             const Icon = item.icon;
@@ -502,10 +512,14 @@ const Drawer: React.FC<{
                 key={item.id}
                 style={[
                   drawerStyles.navItem,
-                  isActive && {
-                    backgroundColor: theme.drawerActiveBg,
-                    borderLeftColor: theme.drawerActive,
+                  {
+                    flexDirection: isRtl ? 'row-reverse' : 'row',
+                    borderLeftWidth: isRtl ? 0 : 3,
+                    borderRightWidth: isRtl ? 3 : 0,
+                    borderLeftColor: isActive && !isRtl ? theme.drawerActive : 'transparent',
+                    borderRightColor: isActive && isRtl ? theme.drawerActive : 'transparent',
                   },
+                  isActive && { backgroundColor: theme.drawerActiveBg },
                 ]}
                 onPress={() => onNavigate(item.routeKey, item.id)}
                 activeOpacity={0.7}
@@ -521,6 +535,7 @@ const Drawer: React.FC<{
                     {
                       color: isActive ? theme.drawerText : theme.drawerMuted,
                       fontWeight: isActive ? '700' : '500',
+                      textAlign: isRtl ? 'right' : 'left',
                     },
                   ]}
                 >
@@ -543,31 +558,34 @@ const Drawer: React.FC<{
               { backgroundColor: theme.border, marginVertical: 16 },
             ]}
           />
-          <Text style={[drawerStyles.navSection, { color: theme.drawerMuted }]}>
-            ACCOUNT
+          <Text style={[drawerStyles.navSection, { color: theme.drawerMuted, textAlign: isRtl ? 'right' : 'left' }]}>
+            {ac?.accountSection || 'ACCOUNT'}
           </Text>
-          <TouchableOpacity style={drawerStyles.navItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={[drawerStyles.navItem, { flexDirection: isRtl ? 'row-reverse' : 'row', borderLeftWidth: isRtl ? 0 : 3, borderRightWidth: isRtl ? 3 : 0, borderLeftColor: 'transparent', borderRightColor: 'transparent' }]}
+            activeOpacity={0.7}
+          >
             <Bell size={20} color={theme.drawerMuted} strokeWidth={1.8} />
-            <Text style={[drawerStyles.navLabel, { color: theme.drawerMuted }]}>
-              Notifications
+            <Text style={[drawerStyles.navLabel, { color: theme.drawerMuted, textAlign: isRtl ? 'right' : 'left' }]}>
+              {ac?.notifications || 'Notifications'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[drawerStyles.navItem, drawerStyles.logoutItem]}
+            style={[drawerStyles.navItem, drawerStyles.logoutItem, { flexDirection: isRtl ? 'row-reverse' : 'row', borderLeftWidth: isRtl ? 0 : 3, borderRightWidth: isRtl ? 3 : 0, borderLeftColor: 'transparent', borderRightColor: 'transparent' }]}
             onPress={onLogout}
             activeOpacity={0.7}
           >
             <LogOut size={20} color="#e05555" strokeWidth={1.8} />
-            <Text style={[drawerStyles.navLabel, { color: '#e05555' }]}>
-              Sign Out
+            <Text style={[drawerStyles.navLabel, { color: '#e05555', textAlign: isRtl ? 'right' : 'left' }]}>
+              {ac?.signOut || 'Sign Out'}
             </Text>
           </TouchableOpacity>
         </ScrollView>
         <View
           style={[drawerStyles.drawerFooter, { borderTopColor: theme.border }]}
         >
-          <Text style={[drawerStyles.footerText, { color: theme.drawerMuted }]}>
-            Admin Console v1.0
+          <Text style={[drawerStyles.footerText, { color: theme.drawerMuted, textAlign: isRtl ? 'right' : 'left' }]}>
+            {ac?.adminConsole || 'Admin Console v1.0'}
           </Text>
         </View>
       </Animated.View>
@@ -592,7 +610,6 @@ const drawerStyles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
   },
   drawerHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -613,7 +630,6 @@ const drawerStyles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 20,
-    alignSelf: 'flex-start',
     gap: 4,
   },
   roleBadgeText: {
@@ -639,15 +655,12 @@ const drawerStyles = StyleSheet.create({
     marginBottom: 8,
   },
   navItem: {
-    flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 13,
     paddingHorizontal: 20,
     marginHorizontal: 8,
     borderRadius: 12,
     marginBottom: 2,
-    borderLeftWidth: 3,
-    borderLeftColor: 'transparent',
     gap: 14,
   },
   navLabel: { fontSize: 14, flex: 1 },
@@ -668,6 +681,9 @@ const AdminDashboard: React.FC = () => {
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const theme = getDashboardTheme(isDark);
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const ac = translations?.admin;
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -675,7 +691,7 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('adminDashboard');
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const translateX = useRef(new Animated.Value(isRtl ? DRAWER_WIDTH : -DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const [drawerMounted, setDrawerMounted] = useState(false);
 
@@ -699,7 +715,7 @@ const AdminDashboard: React.FC = () => {
   const closeDrawer = useCallback(() => {
     Animated.parallel([
       Animated.spring(translateX, {
-        toValue: -DRAWER_WIDTH,
+        toValue: isRtl ? DRAWER_WIDTH : -DRAWER_WIDTH,
         useNativeDriver: true,
         damping: 22,
         stiffness: 200,
@@ -713,7 +729,7 @@ const AdminDashboard: React.FC = () => {
       setDrawerOpen(false);
       setDrawerMounted(false);
     });
-  }, []);
+  }, [isRtl]);
 
   const handleDrawerNavigate = useCallback(
     (routeKey: string, id: string) => {
@@ -747,13 +763,14 @@ const AdminDashboard: React.FC = () => {
 
   const today = useMemo(
     () =>
-      new Date().toLocaleDateString('en-US', {
+      new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
         weekday: 'long',
         month: 'long',
         day: 'numeric',
       }),
-    [],
+    [language],
   );
+
   const initials = userInfo
     ? `${(userInfo.firstName || '')[0] || ''}${(userInfo.lastName || '')[0] || ''}`.toUpperCase() ||
       'A'
@@ -761,18 +778,18 @@ const AdminDashboard: React.FC = () => {
 
   const roleData = useMemo(
     () => [
-      { label: 'Admins', value: stats?.adminCount || 0, color: '#8b5cf6' },
-      { label: 'Members', value: stats?.memberCount || 0, color: '#06b6d4' },
+      { label: ac?.admins || 'Admins', value: stats?.adminCount || 0, color: '#8b5cf6' },
+      { label: ac?.members || 'Members', value: stats?.memberCount || 0, color: '#06b6d4' },
     ],
-    [stats],
+    [stats, ac],
   );
 
   const userStatusData = useMemo(
     () => [
-      { label: 'Active', value: stats?.activeUsers || 0, color: '#22c55e' },
-      { label: 'Inactive', value: stats?.inactiveUsers || 0, color: '#f59e0b' },
+      { label: ac?.activeKpi || 'Active', value: stats?.activeUsers || 0, color: '#22c55e' },
+      { label: ac?.inactive || 'Inactive', value: stats?.inactiveUsers || 0, color: '#f59e0b' },
     ],
-    [stats],
+    [stats, ac],
   );
 
   return (
@@ -790,6 +807,7 @@ const AdminDashboard: React.FC = () => {
             borderBottomColor: theme.border,
             paddingTop:
               Platform.OS === 'ios' ? 54 : (StatusBar.currentHeight || 0) + 10,
+            flexDirection: isRtl ? 'row-reverse' : 'row',
           },
         ]}
       >
@@ -802,7 +820,7 @@ const AdminDashboard: React.FC = () => {
         </TouchableOpacity>
         <View style={rootStyles.topBarCenter}>
           <Text style={[rootStyles.topBarTitle, { color: theme.text }]}>
-            Analytics
+            {ac?.analytics || 'Analytics'}
           </Text>
         </View>
         <TouchableOpacity style={rootStyles.avatarBtn} activeOpacity={0.7}>
@@ -825,81 +843,88 @@ const AdminDashboard: React.FC = () => {
           />
         }
       >
-        <View style={[rootStyles.heroCard, { backgroundColor: theme.accent }]}>
+        <View style={[rootStyles.heroCard, { backgroundColor: theme.accent, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <View>
-            <Text style={rootStyles.heroGreeting}>
+            <Text style={[rootStyles.heroGreeting, { textAlign: isRtl ? 'right' : 'left' }]}>
               {userInfo?.firstName
-                ? `Hey, ${userInfo.firstName}`
-                : 'Welcome back'}
+                ? `${ac?.heyPrefix || 'Hey'}, ${userInfo.firstName}`
+                : ac?.welcomeBack || 'Welcome back'}
             </Text>
-            <Text style={rootStyles.heroSub}>{today}</Text>
+            <Text style={[rootStyles.heroSub, { textAlign: isRtl ? 'right' : 'left' }]}>{today}</Text>
           </View>
-          <View style={rootStyles.heroBadge}>
+          <View style={[rootStyles.heroBadge, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <ShieldIcon size={16} color="#fff" strokeWidth={2.5} />
-            <Text style={rootStyles.heroBadgeText}>Admin</Text>
+            <Text style={rootStyles.heroBadgeText}>{ac?.adminBadge || 'Admin'}</Text>
           </View>
         </View>
 
-        <View style={rootStyles.kpiGrid}>
+        <View style={[rootStyles.kpiGrid, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <KpiCard
-            label="Total Users"
+            label={ac?.totalUsers || 'Total Users'}
             value={stats?.totalUsers || 0}
             trend={12}
             color="#fff"
             bgColor="#6366f1"
             icon={<Users size={18} color="#6366f1" />}
+            isRtl={isRtl}
           />
           <KpiCard
-            label="Active"
+            label={ac?.activeKpi || 'Active'}
             value={stats?.activeUsers || 0}
             trend={5}
             color="#fff"
             bgColor="#22c55e"
             icon={<CheckCircle size={18} color="#22c55e" />}
+            isRtl={isRtl}
           />
           <KpiCard
-            label="Plans"
+            label={ac?.plansKpi || 'Plans'}
             value={stats?.totalPlans || 0}
             trend={-2}
             color="#fff"
             bgColor="#8b5cf6"
             icon={<BookOpen size={18} color="#8b5cf6" />}
+            isRtl={isRtl}
           />
           <KpiCard
-            label="Enrolled"
+            label={ac?.enrolledKpi || 'Enrolled'}
             value={stats?.totalEnrollments || 0}
             trend={8}
             color="#fff"
             bgColor="#06b6d4"
             icon={<Activity size={18} color="#06b6d4" />}
+            isRtl={isRtl}
           />
         </View>
 
         <View
           style={[rootStyles.sectionCard, { backgroundColor: theme.surface }]}
         >
-          <Text style={[rootStyles.sectionTitle, { color: theme.text }]}>
-            User Overview
+          <Text style={[rootStyles.sectionTitle, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+            {ac?.userOverview || 'User Overview'}
           </Text>
-          <View style={rootStyles.overviewRow}>
+          <View style={[rootStyles.overviewRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <View style={rootStyles.barsContainer}>
               <StatBar
-                label="Active Users"
+                label={ac?.activeUsers || 'Active Users'}
                 value={stats?.activeUsers || 0}
                 total={stats?.totalUsers || 1}
                 color="#22c55e"
+                isRtl={isRtl}
               />
               <StatBar
-                label="Verified"
+                label={ac?.verified || 'Verified'}
                 value={stats?.verifiedUsers || 0}
                 total={stats?.totalUsers || 1}
                 color="#06b6d4"
+                isRtl={isRtl}
               />
               <StatBar
-                label="Inactive"
+                label={ac?.inactive || 'Inactive'}
                 value={stats?.inactiveUsers || 0}
                 total={stats?.totalUsers || 1}
                 color="#f59e0b"
+                isRtl={isRtl}
               />
             </View>
           </View>
@@ -908,35 +933,36 @@ const AdminDashboard: React.FC = () => {
         <View
           style={[rootStyles.sectionCard, { backgroundColor: theme.surface }]}
         >
-          <Text style={[rootStyles.sectionTitle, { color: theme.text }]}>
-            Role Distribution
+          <Text style={[rootStyles.sectionTitle, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+            {ac?.roleDistribution || 'Role Distribution'}
           </Text>
-          <View style={rootStyles.distributionRow}>
-            <CircleChart data={roleData} size={110} />
-            <View style={rootStyles.legendContainer}>
+          <View style={[rootStyles.distributionRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <CircleChart data={roleData} size={110} totalLabel={ac?.totalLabel || 'Total'} />
+            <View style={[rootStyles.legendContainer, { marginLeft: isRtl ? 0 : 24, marginRight: isRtl ? 24 : 0 }]}>
               {roleData.map((item, index) => (
                 <View
                   key={index}
                   style={[
                     rootStyles.legendItem,
                     {
+                      flexDirection: isRtl ? 'row-reverse' : 'row',
                       backgroundColor: isDark
                         ? 'rgba(255,255,255,0.05)'
                         : 'rgba(0,0,0,0.02)',
                     },
                   ]}
                 >
-                  <View style={rootStyles.legendLabelGroup}>
+                  <View style={[rootStyles.legendLabelGroup, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                     <View
                       style={[
                         rootStyles.legendDot,
-                        { backgroundColor: item.color },
+                        { backgroundColor: item.color, marginRight: isRtl ? 0 : 10, marginLeft: isRtl ? 10 : 0 },
                       ]}
                     />
                     <Text
                       style={[
                         rootStyles.legendLabel,
-                        { color: isDark ? theme.textSecondary : '#4b5563' },
+                        { color: isDark ? theme.textSecondary : '#4b5563', textAlign: isRtl ? 'right' : 'left' },
                       ]}
                     >
                       {item.label}
@@ -945,7 +971,7 @@ const AdminDashboard: React.FC = () => {
                   <View
                     style={[
                       rootStyles.legendValueBadge,
-                      { backgroundColor: `${item.color}15` },
+                      { backgroundColor: `${item.color}15`, marginLeft: isRtl ? 0 : 8, marginRight: isRtl ? 8 : 0 },
                     ]}
                   >
                     <Text
@@ -963,14 +989,14 @@ const AdminDashboard: React.FC = () => {
         <View
           style={[rootStyles.sectionCard, { backgroundColor: theme.surface }]}
         >
-          <Text style={[rootStyles.sectionTitle, { color: theme.text }]}>
-            Platform Health
+          <Text style={[rootStyles.sectionTitle, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+            {ac?.platformHealth || 'Platform Health'}
           </Text>
           <View style={rootStyles.healthGrid}>
             <View style={rootStyles.healthItem}>
-              <View style={rootStyles.healthHeader}>
-                <Text style={[rootStyles.healthLabel, { color: theme.text }]}>
-                  Active Rate
+              <View style={[rootStyles.healthHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[rootStyles.healthLabel, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {ac?.activeRate || 'Active Rate'}
                 </Text>
                 <Text
                   style={[
@@ -999,9 +1025,9 @@ const AdminDashboard: React.FC = () => {
               </View>
             </View>
             <View style={rootStyles.healthItem}>
-              <View style={rootStyles.healthHeader}>
-                <Text style={[rootStyles.healthLabel, { color: theme.text }]}>
-                  Verified
+              <View style={[rootStyles.healthHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[rootStyles.healthLabel, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {ac?.verificationRate || 'Verified'}
                 </Text>
                 <Text
                   style={[
@@ -1030,9 +1056,9 @@ const AdminDashboard: React.FC = () => {
               </View>
             </View>
             <View style={rootStyles.healthItem}>
-              <View style={rootStyles.healthHeader}>
-                <Text style={[rootStyles.healthLabel, { color: theme.text }]}>
-                  Completion
+              <View style={[rootStyles.healthHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[rootStyles.healthLabel, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {ac?.completionRate || 'Completion'}
                 </Text>
                 <Text
                   style={[
@@ -1066,57 +1092,64 @@ const AdminDashboard: React.FC = () => {
         <View
           style={[rootStyles.sectionCard, { backgroundColor: theme.surface }]}
         >
-          <Text style={[rootStyles.sectionTitle, { color: theme.text }]}>
-            Quick Actions
+          <Text style={[rootStyles.sectionTitle, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+            {ac?.quickActions || 'Quick Actions'}
           </Text>
           <QuickAction
             icon={<Users size={20} color="#6366f1" />}
-            label="Manage Users"
-            subtitle="View & edit users"
+            label={ac?.manageUsers || 'Manage Users'}
+            subtitle={ac?.viewEditUsers || 'View & edit users'}
             color="#6366f1"
             onPress={() => navigation.navigate(route.adminUsers)}
+            isRtl={isRtl}
           />
           <QuickAction
             icon={<Activity size={20} color="#22c55e" />}
-            label="View Activity"
-            subtitle="Login sessions & events"
+            label={ac?.viewActivity || 'View Activity'}
+            subtitle={ac?.loginSessions || 'Login sessions & events'}
             color="#22c55e"
             onPress={() => navigation.navigate(route.adminActivity)}
+            isRtl={isRtl}
           />
           <QuickAction
             icon={<BookOpen size={20} color="#06b6d4" />}
-            label="Daily Verse"
-            subtitle="Manage daily verses"
+            label={ac?.dailyVerseLabel || 'Daily Verse'}
+            subtitle={ac?.manageDailyVerses || 'Manage daily verses'}
             color="#06b6d4"
             onPress={() => navigation.navigate(route.adminDailyVerse)}
+            isRtl={isRtl}
           />
           <QuickAction
             icon={<CalendarClock size={20} color="#8b5cf6" />}
-            label="Reading Plans"
-            subtitle="Manage plans"
+            label={ac?.readingPlansLabel || 'Reading Plans'}
+            subtitle={ac?.managePlans || 'Manage plans'}
             color="#8b5cf6"
             onPress={() => navigation.navigate(route.adminReadingPlans)}
+            isRtl={isRtl}
           />
           <QuickAction
             icon={<BookText size={20} color="#f59e0b" />}
-            label="Journal Prompts"
-            subtitle="Manage prompts"
+            label={ac?.journalPromptsLabel || 'Journal Prompts'}
+            subtitle={ac?.managePrompts || 'Manage prompts'}
             color="#f59e0b"
             onPress={() => navigation.navigate(route.adminJournalPrompts)}
+            isRtl={isRtl}
           />
            <QuickAction
              icon={<LayoutTemplate size={20} color="#ec4899" />}
-             label="Journal Templates"
-             subtitle="Manage templates"
+             label={ac?.journalTemplatesLabel || 'Journal Templates'}
+             subtitle={ac?.manageTemplates || 'Manage templates'}
              color="#ec4899"
              onPress={() => navigation.navigate(route.adminJournalTemplates)}
+             isRtl={isRtl}
            />
            <QuickAction
              icon={<Lightbulb size={20} color="#fbbf24" />}
-             label="Daily Devotion"
-             subtitle="Manage daily devotions"
+             label={ac?.dailyDevotionLabel || 'Daily Devotion'}
+             subtitle={ac?.manageDevotions || 'Manage devotions'}
              color="#fbbf24"
              onPress={() => navigation.navigate(route.adminDailyDevotion)}
+             isRtl={isRtl}
            />
          </View>
 
@@ -1139,6 +1172,8 @@ const AdminDashboard: React.FC = () => {
           userInfo={userInfo}
           translateX={translateX}
           overlayOpacity={overlayOpacity}
+          isRtl={isRtl}
+          ac={ac}
         />
       )}
     </View>
@@ -1148,7 +1183,6 @@ const AdminDashboard: React.FC = () => {
 const rootStyles = StyleSheet.create({
   root: { flex: 1 },
   topBar: {
-    flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 12,
@@ -1182,7 +1216,6 @@ const rootStyles = StyleSheet.create({
   heroCard: {
     borderRadius: 22,
     padding: 22,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 16,
@@ -1200,7 +1233,6 @@ const rootStyles = StyleSheet.create({
     marginTop: 4,
   },
   heroBadge: {
-    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.16)',
     paddingHorizontal: 14,
@@ -1215,7 +1247,6 @@ const rootStyles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   kpiGrid: {
-    flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginTop: 16,
@@ -1232,20 +1263,17 @@ const rootStyles = StyleSheet.create({
     elevation: 2,
   },
   sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 16 },
-  overviewRow: { flexDirection: 'row', alignItems: 'center' },
+  overviewRow: { alignItems: 'center' },
   barsContainer: { flex: 1 },
   distributionRow: {
-    flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
   },
   legendContainer: {
     flex: 1,
-    marginLeft: 24,
     gap: 12,
   },
   legendItem: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: 'rgba(0,0,0,0.02)',
@@ -1253,7 +1281,6 @@ const rootStyles = StyleSheet.create({
     borderRadius: 12,
   },
   legendLabelGroup: {
-    flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
@@ -1261,7 +1288,6 @@ const rootStyles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    marginRight: 10,
   },
   legendLabel: {
     fontSize: 13,
@@ -1272,7 +1298,6 @@ const rootStyles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
-    marginLeft: 8,
   },
   legendValue: {
     fontSize: 12,
@@ -1281,7 +1306,6 @@ const rootStyles = StyleSheet.create({
   healthGrid: { gap: 18 },
   healthItem: { marginBottom: 4 },
   healthHeader: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,

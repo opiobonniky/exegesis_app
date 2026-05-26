@@ -2,6 +2,7 @@
  * CreateReadingPlan.tsx
  * ─────────────────────────────────────────────────────────────────────────────
  * Create a new reading plan with step-by-step interface
+ * Supports translations and RTL layout.
  */
 
 import React, { useEffect, useState, useCallback, useContext } from 'react';
@@ -17,6 +18,7 @@ import {
   Switch,
   Modal,
   FlatList,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -29,6 +31,7 @@ import { AppContext } from '../../common/AppContext';
 import { getBibleBooks, Book } from '../../utilits/bibleUtils';
 import {
   ChevronLeft,
+  ChevronRight,
   BookOpen,
   Calendar,
   CheckCircle2,
@@ -43,6 +46,8 @@ import {
   Search,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 interface Chapter {
   book: string;
@@ -74,72 +79,20 @@ interface PlanMeta {
 }
 
 const BIBLE_BOOKS = [
-  'Genesis',
-  'Exodus',
-  'Leviticus',
-  'Numbers',
-  'Deuteronomy',
-  'Joshua',
-  'Judges',
-  'Ruth',
-  '1 Samuel',
-  '2 Samuel',
-  '1 Kings',
-  '2 Kings',
-  '1 Chronicles',
-  '2 Chronicles',
-  'Ezra',
-  'Nehemiah',
-  'Esther',
-  'Job',
-  'Psalm',
-  'Proverbs',
-  'Ecclesiastes',
-  'Song of Solomon',
-  'Isaiah',
-  'Jeremiah',
-  'Lamentations',
-  'Ezekiel',
-  'Daniel',
-  'Hosea',
-  'Joel',
-  'Amos',
-  'Obadiah',
-  'Jonah',
-  'Micah',
-  'Nahum',
-  'Habakkuk',
-  'Zephaniah',
-  'Haggai',
-  'Zechariah',
-  'Malachi',
-  'Matthew',
-  'Mark',
-  'Luke',
-  'John',
-  'Acts',
-  'Romans',
-  '1 Corinthians',
-  '2 Corinthians',
-  'Galatians',
-  'Ephesians',
-  'Philippians',
-  'Colossians',
-  '1 Thessalonians',
-  '2 Thessalonians',
-  '1 Timothy',
-  '2 Timothy',
-  'Titus',
-  'Philemon',
-  'Hebrews',
-  'James',
-  '1 Peter',
-  '2 Peter',
-  '1 John',
-  '2 John',
-  '3 John',
-  'Jude',
-  'Revelation',
+  'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy',
+  'Joshua', 'Judges', 'Ruth', '1 Samuel', '2 Samuel',
+  '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra',
+  'Nehemiah', 'Esther', 'Job', 'Psalm', 'Proverbs',
+  'Ecclesiastes', 'Song of Solomon', 'Isaiah', 'Jeremiah', 'Lamentations',
+  'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
+  'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk',
+  'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
+  'Matthew', 'Mark', 'Luke', 'John', 'Acts',
+  'Romans', '1 Corinthians', '2 Corinthians', 'Galatians', 'Ephesians',
+  'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians', '1 Timothy',
+  '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James',
+  '1 Peter', '2 Peter', '1 John', '2 John', '3 John',
+  'Jude', 'Revelation',
 ];
 
 const CATEGORIES = [
@@ -158,9 +111,9 @@ const DIFFICULTIES = [
 ];
 
 const STEPS = [
-  { id: 1, label: 'Plan Info', icon: BookOpen },
-  { id: 2, label: 'Daily Content', icon: Calendar },
-  { id: 3, label: 'Review & Save', icon: CheckCircle2 },
+  { id: 1, icon: BookOpen },
+  { id: 2, icon: Calendar },
+  { id: 3, icon: CheckCircle2 },
 ];
 
 const getTheme = (isDark: boolean) => {
@@ -204,8 +157,11 @@ const CreateReadingPlan: React.FC = () => {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
   const theme = getTheme(isDark);
-  const styles = getStyles(theme);
+  const ac = translations?.admin;
+  const styles = getStyles(theme, isRtl);
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -270,15 +226,15 @@ const CreateReadingPlan: React.FC = () => {
 
   const goToStep2 = () => {
     if (!meta.title.trim()) {
-      showToast('error', 'Title is required');
+      showToast('error', ac?.createPlanValidateTitle || 'Title is required');
       return;
     }
     if (meta.totalDays < 1) {
-      showToast('error', 'At least 1 day required');
+      showToast('error', ac?.createPlanValidateDays || 'At least 1 day required');
       return;
     }
     if (meta.totalDays > 365) {
-      showToast('error', 'Maximum 365 days');
+      showToast('error', ac?.createPlanValidateMaxDays || 'Maximum 365 days');
       return;
     }
     normaliseDays(meta.totalDays);
@@ -293,12 +249,12 @@ const CreateReadingPlan: React.FC = () => {
       return (hasTitle && !hasChapters) || (!hasTitle && hasChapters);
     });
     if (incomplete !== -1) {
-      showToast('error', `Day ${days[incomplete].dayNumber} is incomplete`);
+      showToast('error', (ac?.createPlanValidateIncomplete || 'Day {count} is incomplete').replace('{count}', String(days[incomplete].dayNumber)));
       setExpandedDay(days[incomplete].dayNumber);
       return;
     }
     if (days.filter(isDayComplete).length === 0) {
-      showToast('error', 'Complete at least 1 day');
+      showToast('error', ac?.createPlanValidateNoComplete || 'Complete at least 1 day');
       setExpandedDay(1);
       return;
     }
@@ -331,7 +287,7 @@ const CreateReadingPlan: React.FC = () => {
         if (aRes.returnCode !== 200) {
           showToast(
             'error',
-            `Day ${day.dayNumber} failed: ${aRes.returnMessage}`,
+            (ac?.createPlanDayFailed || 'Day {count} failed').replace('{count}', String(day.dayNumber)),
           );
           return;
         }
@@ -343,32 +299,39 @@ const CreateReadingPlan: React.FC = () => {
             questions: day.quizQuestions,
           });
           if (qRes.returnCode !== 200) {
-            showToast('error', `Quiz for Day ${day.dayNumber} failed`);
+            showToast('error', (ac?.createPlanQuizFailed || 'Quiz for Day {count} failed').replace('{count}', String(day.dayNumber)));
             return;
           }
         }
       }
 
-      showToast('success', 'Reading plan created!');
+      showToast('success', ac?.createPlanSuccess || 'Reading plan created!');
       navigation.goBack();
     } catch (e: any) {
-      showToast('error', e.message || 'Network error');
+      showToast('error', e.message || ac?.createPlanNetworkError || 'Network error');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const stepLabels = [
+    ac?.createPlanStepPlanInfo || 'Plan Info',
+    ac?.createPlanStepDailyContent || 'Daily Content',
+    ac?.createPlanStepReviewSave || 'Review & Save',
+  ];
+
   const renderStepIndicator = () => (
-    <View style={styles.stepContainer}>
+    <View style={[styles.stepContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
       {STEPS.map((s, i) => {
         const active = step === s.id;
         const done = step > s.id;
         const Icon = s.icon;
         return (
-          <View key={s.id} style={styles.stepItem}>
+          <View key={s.id} style={[styles.stepItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <TouchableOpacity
               style={[
                 styles.stepButton,
+                { flexDirection: isRtl ? 'row-reverse' : 'row' },
                 active && styles.stepActive,
                 done && styles.stepDone,
               ]}
@@ -384,9 +347,10 @@ const CreateReadingPlan: React.FC = () => {
                   styles.stepLabel,
                   active && styles.stepLabelActive,
                   done && styles.stepLabelDone,
+                  isRtl && { textAlign: 'right' },
                 ]}
               >
-                {s.label}
+                {stepLabels[i]}
               </Text>
             </TouchableOpacity>
             {i < STEPS.length - 1 && (
@@ -402,36 +366,36 @@ const CreateReadingPlan: React.FC = () => {
 
   const renderStep1 = () => (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
+      <View style={[styles.cardHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <BookOpen size={20} color={theme.primary} />
-        <Text style={styles.cardTitle}>Plan Details</Text>
+        <Text style={[styles.cardTitle, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 8 }]}>{ac?.createPlanCardDetails || 'Plan Details'}</Text>
       </View>
-      <Text style={styles.cardSubtitle}>
-        Basic metadata for the reading plan
+      <Text style={[styles.cardSubtitle, isRtl && { textAlign: 'right' }]}>
+        {ac?.createPlanCardDetailsSub || 'Basic metadata for the reading plan'}
       </Text>
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Title</Text>
+          <View style={[styles.labelRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormTitleLabel || 'Title'}</Text>
             <Text style={styles.required}>*</Text>
           </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, isRtl && { textAlign: 'right' }]}
             value={meta.title}
             onChangeText={text => updateMeta('title', text)}
-            placeholder="e.g. One Week Bible Highlights"
+            placeholder={ac?.createPlanTitlePlaceholder || "e.g. One Week Bible Highlights"}
             placeholderTextColor={theme.muted}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Description</Text>
+          <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormDescriptionLabel || 'Description'}</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, isRtl && { textAlign: 'right' }]}
             value={meta.description}
             onChangeText={text => updateMeta('description', text)}
-            placeholder="Brief description of this plan…"
+            placeholder={ac?.createPlanDescPlaceholder || "Brief description of this plan…"}
             placeholderTextColor={theme.muted}
             multiline
             numberOfLines={3}
@@ -439,12 +403,12 @@ const CreateReadingPlan: React.FC = () => {
         </View>
 
         <View style={styles.inputGroup}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Total Days</Text>
+          <View style={[styles.labelRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormTotalDaysLabel || 'Total Days'}</Text>
             <Text style={styles.required}>*</Text>
           </View>
           <TextInput
-            style={[styles.input, styles.inputSmall]}
+            style={[styles.input, styles.inputSmall, isRtl && { textAlign: 'right' }]}
             value={String(meta.totalDays)}
             onChangeText={text =>
               updateMeta('totalDays', Math.max(1, parseInt(text) || 1))
@@ -457,8 +421,8 @@ const CreateReadingPlan: React.FC = () => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Category</Text>
-          <View style={styles.optionsRow}>
+          <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormCategoryLabel || 'Category'}</Text>
+          <View style={[styles.optionsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             {CATEGORIES.map(cat => (
               <TouchableOpacity
                 key={cat.value}
@@ -487,8 +451,8 @@ const CreateReadingPlan: React.FC = () => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Difficulty</Text>
-          <View style={styles.optionsRow}>
+          <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormDifficultyLabel || 'Difficulty'}</Text>
+          <View style={[styles.optionsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             {DIFFICULTIES.map(diff => (
               <TouchableOpacity
                 key={diff.value}
@@ -516,13 +480,13 @@ const CreateReadingPlan: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.switchRow}>
-          <View style={styles.switchInfo}>
+        <View style={[styles.switchRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <View style={[styles.switchInfo, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <HelpCircle size={20} color={theme.primary} />
             <View>
-              <Text style={styles.switchLabel}>Quiz Questions</Text>
-              <Text style={styles.switchSubLabel}>
-                Enable daily quizzes for readers
+              <Text style={[styles.switchLabel, isRtl && { textAlign: 'right' }]}>{ac?.planFormQuizLabel || 'Quiz Questions'}</Text>
+              <Text style={[styles.switchSubLabel, isRtl && { textAlign: 'right' }]}>
+                {ac?.planFormQuizSubLabel || 'Enable daily quizzes for readers'}
               </Text>
             </View>
           </View>
@@ -591,10 +555,7 @@ const CreateReadingPlan: React.FC = () => {
       });
     const updateQuizOption = (qi: number, oi: number, val: string) => {
       const opts = [...day.quizQuestions[qi].options] as [
-        string,
-        string,
-        string,
-        string,
+        string, string, string, string,
       ];
       opts[oi] = val;
       updateQuiz(qi, { options: opts });
@@ -611,7 +572,7 @@ const CreateReadingPlan: React.FC = () => {
         ]}
       >
         <TouchableOpacity
-          style={styles.dayCardHeader}
+          style={[styles.dayCardHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
           onPress={() => setExpandedDay(isOpen ? undefined : day.dayNumber)}
         >
           <View
@@ -627,18 +588,19 @@ const CreateReadingPlan: React.FC = () => {
               <Text style={styles.dayNumberText}>{day.dayNumber}</Text>
             )}
           </View>
-          <View style={styles.dayInfo}>
+          <View style={[styles.dayInfo, { marginLeft: isRtl ? 0 : 12, marginRight: isRtl ? 12 : 0 }]}>
             <Text
               style={[
                 styles.dayTitle,
                 complete && styles.dayTitleComplete,
                 !complete && !partial && styles.dayTitleEmpty,
+                isRtl && { textAlign: 'right' },
               ]}
             >
-              {day.title || `Day ${day.dayNumber}`}
+              {day.title || (ac?.createPlanDayTitleEmpty || 'Day {count}').replace('{count}', String(day.dayNumber))}
             </Text>
             {complete && (
-              <Text style={styles.dayChapters}>
+              <Text style={[styles.dayChapters, isRtl && { textAlign: 'right' }]}>
                 {day.chapters
                   .filter(c => c.book)
                   .map(c => `${c.book} ${c.chapter}`)
@@ -646,9 +608,9 @@ const CreateReadingPlan: React.FC = () => {
               </Text>
             )}
           </View>
-          <View style={styles.dayStatus}>
-            {complete && <Text style={styles.statusReady}>Ready</Text>}
-            {partial && <Text style={styles.statusPartial}>Partial</Text>}
+          <View style={[styles.dayStatus, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            {complete && <Text style={styles.statusReady}>{ac?.createPlanReady || 'Ready'}</Text>}
+            {partial && <Text style={styles.statusPartial}>{ac?.createPlanPartial || 'Partial'}</Text>}
             {isOpen ? (
               <ChevronUp size={18} color={theme.muted} />
             ) : (
@@ -663,42 +625,43 @@ const CreateReadingPlan: React.FC = () => {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Day Title</Text>
+              <View style={[styles.labelRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormDayTitleLabel || 'Day Title'}</Text>
                 <Text style={styles.required}>*</Text>
               </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRtl && { textAlign: 'right' }]}
                 value={day.title}
                 onChangeText={text => handleUpdateDay(dayIdx, { title: text })}
-                placeholder="e.g. Creation — In the beginning"
+                placeholder={ac?.planFormDayTitlePlaceholder || "e.g. Creation — In the beginning"}
                 placeholderTextColor={theme.muted}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Chapters</Text>
+              <View style={[styles.labelRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormChaptersLabel || 'Chapters'}</Text>
                 <Text style={styles.required}>*</Text>
               </View>
               {day.chapters.map((ch, ci) => (
-                <View key={ci} style={styles.chapterRow}>
+                <View key={ci} style={[styles.chapterRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <TouchableOpacity
-                    style={[styles.bookPicker, { borderColor: theme.border }]}
+                    style={[styles.bookPicker, { borderColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                     onPress={() => openBookPicker(dayIdx, ci)}
                   >
                     <Text
                       style={[
                         styles.bookPickerText,
                         !ch.book && { color: theme.muted },
+                        isRtl && { textAlign: 'right' },
                       ]}
                     >
-                      {ch.book || 'Select book'}
+                      {ch.book || (ac?.planFormSelectBook || 'Select book')}
                     </Text>
                     <ChevronDown size={16} color={theme.muted} />
                   </TouchableOpacity>
                   <TextInput
-                    style={[styles.input, styles.chapterInput]}
+                    style={[styles.input, styles.chapterInput, isRtl && { textAlign: 'right' }]}
                     value={String(ch.chapter)}
                     onChangeText={text =>
                       updateChapter(ci, { chapter: parseInt(text) || 1 })
@@ -717,21 +680,21 @@ const CreateReadingPlan: React.FC = () => {
                   )}
                 </View>
               ))}
-              <TouchableOpacity style={styles.addLink} onPress={addChapter}>
+              <TouchableOpacity style={[styles.addLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={addChapter}>
                 <Plus size={14} color={theme.primary} />
-                <Text style={styles.addLinkText}>Add Chapter</Text>
+                <Text style={styles.addLinkText}>{ac?.planFormAddChapter || 'Add Chapter'}</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Reflection Questions</Text>
+              <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormReflectionLabel || 'Reflection Questions'}</Text>
               {day.reflectionQuestions.map((q, ri) => (
-                <View key={ri} style={styles.chapterRow}>
+                <View key={ri} style={[styles.chapterRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <TextInput
-                    style={[styles.input, styles.flex1]}
+                    style={[styles.input, styles.flex1, isRtl && { textAlign: 'right' }]}
                     value={q}
                     onChangeText={text => updateReflection(ri, text)}
-                    placeholder={`Reflection question ${ri + 1}`}
+                    placeholder={(ac?.planFormReflectionPlaceholder || 'Reflection question {count}').replace('{count}', String(ri + 1))}
                     placeholderTextColor={theme.muted}
                   />
                   {day.reflectionQuestions.length > 1 && (
@@ -744,18 +707,18 @@ const CreateReadingPlan: React.FC = () => {
                   )}
                 </View>
               ))}
-              <TouchableOpacity style={styles.addLink} onPress={addReflection}>
+              <TouchableOpacity style={[styles.addLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={addReflection}>
                 <Plus size={14} color={theme.primary} />
-                <Text style={styles.addLinkText}>Add Reflection</Text>
+                <Text style={styles.addLinkText}>{ac?.planFormAddReflection || 'Add Reflection'}</Text>
               </TouchableOpacity>
             </View>
 
             {meta.questionsEnabled && (
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Quiz Questions</Text>
+                <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormQuizQuestionsLabel || 'Quiz Questions'}</Text>
                 {day.quizQuestions.map((quiz, qi) => (
                   <View key={qi} style={styles.quizCard}>
-                    <View style={styles.quizHeader}>
+                    <View style={[styles.quizHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                       <Text style={styles.quizNumber}>Q{qi + 1}</Text>
                       <TouchableOpacity
                         style={styles.removeBtn}
@@ -765,25 +728,22 @@ const CreateReadingPlan: React.FC = () => {
                       </TouchableOpacity>
                     </View>
                     <TextInput
-                      style={[styles.input, styles.textArea]}
+                      style={[styles.input, styles.textArea, isRtl && { textAlign: 'right' }]}
                       value={quiz.question}
                       onChangeText={text => updateQuiz(qi, { question: text })}
-                      placeholder="Question text…"
+                      placeholder={ac?.planFormQuizPlaceholder || "Question text…"}
                       placeholderTextColor={theme.muted}
                       multiline
                     />
                     <View style={styles.optionsGrid}>
                       {quiz.options.map((option, oi) => (
-                        <View key={oi} style={styles.optionRow}>
+                        <View key={oi} style={[styles.optionRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                           <TouchableOpacity
                             style={[
                               styles.optionRadio,
-                              quiz.correctAnswer === oi &&
-                                styles.optionRadioActive,
+                              quiz.correctAnswer === oi && styles.optionRadioActive,
                             ]}
-                            onPress={() =>
-                              updateQuiz(qi, { correctAnswer: oi })
-                            }
+                            onPress={() => updateQuiz(qi, { correctAnswer: oi })}
                           >
                             {quiz.correctAnswer === oi ? (
                               <CheckCircle2 size={12} color="#fff" />
@@ -794,35 +754,31 @@ const CreateReadingPlan: React.FC = () => {
                             )}
                           </TouchableOpacity>
                           <TextInput
-                            style={[styles.input, styles.optionInput]}
+                            style={[styles.input, styles.optionInput, isRtl && { textAlign: 'right' }]}
                             value={option}
-                            onChangeText={text =>
-                              updateQuizOption(qi, oi, text)
-                            }
-                            placeholder={`Option ${oi + 1}`}
+                            onChangeText={text => updateQuizOption(qi, oi, text)}
+                            placeholder={(ac?.planFormOptionPlaceholder || 'Option {count}').replace('{count}', String(oi + 1))}
                             placeholderTextColor={theme.muted}
                           />
                         </View>
                       ))}
                     </View>
                     <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Explanation</Text>
+                      <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormExplanationLabel || 'Explanation'}</Text>
                       <TextInput
-                        style={[styles.input, styles.textAreaSmall]}
+                        style={[styles.input, styles.textAreaSmall, isRtl && { textAlign: 'right' }]}
                         value={quiz.explanation}
-                        onChangeText={text =>
-                          updateQuiz(qi, { explanation: text })
-                        }
-                        placeholder="Explain why this is correct..."
+                        onChangeText={text => updateQuiz(qi, { explanation: text })}
+                        placeholder={ac?.planFormExplanationPlaceholder || "Explain why this is correct..."}
                         placeholderTextColor={theme.muted}
                         multiline
                       />
                     </View>
                   </View>
                 ))}
-                <TouchableOpacity style={styles.addLink} onPress={addQuiz}>
+                <TouchableOpacity style={[styles.addLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={addQuiz}>
                   <Plus size={14} color={theme.primary} />
-                  <Text style={styles.addLinkText}>Add Question</Text>
+                  <Text style={styles.addLinkText}>{ac?.planFormAddQuestion || 'Add Question'}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -834,17 +790,17 @@ const CreateReadingPlan: React.FC = () => {
 
   const renderStep2 = () => (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
+      <View style={[styles.cardHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <Calendar size={20} color={theme.primary} />
-        <Text style={styles.cardTitle}>
-          Daily Content — {meta.totalDays} Days
+        <Text style={[styles.cardTitle, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 8 }]}>
+          {(ac?.createPlanCardDailyContent || 'Daily Content — {count} Days').replace('{count}', String(meta.totalDays))}
         </Text>
       </View>
-      <Text style={styles.cardSubtitle}>
-        Assign chapters and questions per day
+      <Text style={[styles.cardSubtitle, isRtl && { textAlign: 'right' }]}>
+        {ac?.createPlanCardDailyContentSub || 'Assign chapters and questions per day'}
       </Text>
-      <Text style={styles.readyCount}>
-        {days.filter(isDayComplete).length}/{meta.totalDays} ready
+      <Text style={[styles.readyCount, isRtl && { textAlign: 'right' }]}>
+        {(ac?.createPlanReadyCount || '{ready}/{total} ready').replace('{ready}', String(days.filter(isDayComplete).length)).replace('{total}', String(meta.totalDays))}
       </Text>
 
       <ScrollView style={styles.daysList} showsVerticalScrollIndicator={false}>
@@ -855,17 +811,17 @@ const CreateReadingPlan: React.FC = () => {
 
   const renderStep3 = () => (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
+      <View style={[styles.cardHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <CheckCircle2 size={20} color={theme.primary} />
-        <Text style={styles.cardTitle}>Review & Confirm</Text>
+        <Text style={[styles.cardTitle, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 8 }]}>{ac?.createPlanCardReview || 'Review & Confirm'}</Text>
       </View>
 
       <View style={styles.reviewCard}>
-        <Text style={styles.reviewTitle}>{meta.title}</Text>
+        <Text style={[styles.reviewTitle, isRtl && { textAlign: 'right' }]}>{meta.title}</Text>
         {meta.description.trim() !== '' && (
-          <Text style={styles.reviewDesc}>{meta.description}</Text>
+          <Text style={[styles.reviewDesc, isRtl && { textAlign: 'right' }]}>{meta.description}</Text>
         )}
-        <View style={styles.reviewBadges}>
+        <View style={[styles.reviewBadges, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <Text style={styles.reviewBadge}>{meta.totalDays} days</Text>
           <Text style={styles.reviewBadge}>
             {CATEGORIES.find(c => c.value === meta.category)?.label}
@@ -880,13 +836,13 @@ const CreateReadingPlan: React.FC = () => {
       </View>
 
       <View style={styles.assignmentsList}>
-        <Text style={styles.assignmentsTitle}>Day Assignments</Text>
+        <Text style={[styles.assignmentsTitle, isRtl && { textAlign: 'right' }]}>{ac?.createPlanDayAssignments || 'Day Assignments'}</Text>
         {days.map(day => {
           const ok = isDayComplete(day);
           return (
             <View
               key={day.dayNumber}
-              style={[styles.assignmentItem, ok && styles.assignmentOk]}
+              style={[styles.assignmentItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }, ok && styles.assignmentOk]}
             >
               <View
                 style={[
@@ -894,21 +850,19 @@ const CreateReadingPlan: React.FC = () => {
                   ok && styles.assignmentNumberOk,
                 ]}
               >
-                {day.dayNumber}
+                <Text style={styles.dayNumberText}>{day.dayNumber}</Text>
               </View>
-              <View style={styles.assignmentInfo}>
+              <View style={[styles.assignmentInfo, { marginLeft: isRtl ? 0 : 10, marginRight: isRtl ? 10 : 0 }]}>
                 {ok ? (
                   <>
-                    <Text style={styles.assignmentTitle}>{day.title}</Text>
-                    <Text style={styles.assignmentChapters}>
-                      {day.chapters
-                        .map(c => `${c.book} ${c.chapter}`)
-                        .join(', ')}
+                    <Text style={[styles.assignmentTitle, isRtl && { textAlign: 'right' }]}>{day.title}</Text>
+                    <Text style={[styles.assignmentChapters, isRtl && { textAlign: 'right' }]}>
+                      {day.chapters.map(c => `${c.book} ${c.chapter}`).join(', ')}
                     </Text>
                   </>
                 ) : (
-                  <Text style={styles.assignmentPending}>
-                    Not configured — can add via Edit after saving
+                  <Text style={[styles.assignmentPending, isRtl && { textAlign: 'right' }]}>
+                    {ac?.createPlanNotConfigured || 'Not configured — can add via Edit after saving'}
                   </Text>
                 )}
               </View>
@@ -920,20 +874,21 @@ const CreateReadingPlan: React.FC = () => {
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView edges={['top']} style={styles.container}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.surface} />
+      <View style={[styles.header, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <ChevronLeft size={20} color={theme.primary} />
+          {isRtl ? <ChevronRight size={20} color={theme.primary} /> : <ChevronLeft size={20} color={theme.primary} />}
         </TouchableOpacity>
-        <View style={styles.headerIcon}>
+        <View style={[styles.headerIcon, { marginLeft: isRtl ? 0 : 12, marginRight: isRtl ? 12 : 0 }]}>
           <BookOpen size={20} color={theme.primary} />
         </View>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>Create Reading Plan</Text>
-          <Text style={styles.headerSubtitle}>Admin — full plan builder</Text>
+          <Text style={[styles.headerTitle, isRtl && { textAlign: 'right' }]}>{ac?.createPlanTitle || 'Create Reading Plan'}</Text>
+          <Text style={[styles.headerSubtitle, isRtl && { textAlign: 'right' }]}>{ac?.createPlanSubtitle || 'Admin — full plan builder'}</Text>
         </View>
       </View>
 
@@ -947,31 +902,32 @@ const CreateReadingPlan: React.FC = () => {
         {step === 3 && renderStep3()}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         {step > 1 && (
           <TouchableOpacity
-            style={[styles.footerBtn, styles.footerBack]}
+            style={[styles.footerBtn, styles.footerBack, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
             onPress={() => setStep(step - 1)}
           >
-            <ArrowLeft size={18} color={theme.text} />
-            <Text style={styles.footerBackText}>Back</Text>
+            {isRtl ? <ArrowRight size={18} color={theme.text} /> : <ArrowLeft size={18} color={theme.text} />}
+            <Text style={styles.footerBackText}>{ac?.planFormBack || 'Back'}</Text>
           </TouchableOpacity>
         )}
         {step < 3 ? (
           <TouchableOpacity
-            style={[styles.footerBtn, styles.footerNext]}
+            style={[styles.footerBtn, styles.footerNext, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
             onPress={step === 1 ? goToStep2 : goToStep3}
           >
             <Text style={styles.footerNextText}>
-              {step === 1 ? 'Daily Content' : 'Review Plan'}
+              {step === 1 ? (ac?.createPlanNextBtn || 'Daily Content') : (ac?.createPlanReviewBtn || 'Review Plan')}
             </Text>
-            <ArrowRight size={18} color="#fff" />
+            {isRtl ? <ArrowLeft size={18} color="#fff" /> : <ArrowRight size={18} color="#fff" />}
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={[
               styles.footerBtn,
               styles.footerSave,
+              { flexDirection: isRtl ? 'row-reverse' : 'row' },
               submitting && styles.footerBtnDisabled,
             ]}
             onPress={handleSubmit}
@@ -982,7 +938,7 @@ const CreateReadingPlan: React.FC = () => {
             ) : (
               <>
                 <Save size={18} color="#fff" />
-                <Text style={styles.footerSaveText}>Create Reading Plan</Text>
+                <Text style={styles.footerSaveText}>{ac?.createPlanSaveBtn || 'Create Reading Plan'}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -992,29 +948,20 @@ const CreateReadingPlan: React.FC = () => {
       {/* Book Picker Modal */}
       <Modal visible={bookPickerVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View
-            style={[styles.modalContainer, { backgroundColor: theme.surface }]}
-          >
-            <View
-              style={[styles.modalHeader, { borderBottomColor: theme.border }]}
-            >
-              <Text style={[styles.modalTitle, { color: theme.text }]}>
-                Select Book
+          <View style={[styles.modalContainer, { backgroundColor: theme.surface }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }, isRtl && { textAlign: 'right' }]}>
+                {ac?.planFormModalSelectBook || 'Select Book'}
               </Text>
               <TouchableOpacity onPress={() => setBookPickerVisible(false)}>
                 <X size={20} color={theme.muted} />
               </TouchableOpacity>
             </View>
-            <View
-              style={[
-                styles.searchContainer,
-                { borderColor: theme.border, backgroundColor: theme.bg },
-              ]}
-            >
+            <View style={[styles.searchContainer, { borderColor: theme.border, backgroundColor: theme.bg, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Search size={18} color={theme.muted} />
               <TextInput
-                style={[styles.searchInput, { color: theme.text }]}
-                placeholder="Search books..."
+                style={[styles.searchInput, { color: theme.text }, isRtl && { textAlign: 'right' }]}
+                placeholder={ac?.planFormSearchBooks || 'Search books...'}
                 placeholderTextColor={theme.muted}
                 value={bookSearch}
                 onChangeText={setBookSearch}
@@ -1026,16 +973,14 @@ const CreateReadingPlan: React.FC = () => {
               keyExtractor={item => item.name}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[styles.bookItem, { borderBottomColor: theme.border }]}
+                  style={[styles.bookItem, { borderBottomColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                   onPress={() => selectBookFromPicker(item.name)}
                 >
-                  <Text style={[styles.bookItemText, { color: theme.text }]}>
+                  <Text style={[styles.bookItemText, { color: theme.text }, isRtl && { textAlign: 'right' }]}>
                     {item.name}
                   </Text>
-                  <Text
-                    style={[styles.bookItemChapters, { color: theme.muted }]}
-                  >
-                    {item.chapters} chapters
+                  <Text style={[styles.bookItemChapters, { color: theme.muted }, isRtl && { textAlign: 'right' }]}>
+                    {(ac?.planFormChaptersCount || '{count} chapters').replace('{count}', String(item.chapters))}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -1043,18 +988,18 @@ const CreateReadingPlan: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
-const getStyles = (theme: ReturnType<typeof getTheme>) =>
+const getStyles = (theme: ReturnType<typeof getTheme>, isRtl: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.bg,
     },
     header: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       padding: 16,
       backgroundColor: theme.surface,
@@ -1069,7 +1014,6 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       backgroundColor: theme.primary + '20',
       alignItems: 'center',
       justifyContent: 'center',
-      marginLeft: 12,
     },
     headerInfo: {
       flex: 1,
@@ -1090,18 +1034,18 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       backgroundColor: theme.primary,
     },
     stepContainer: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 16,
     },
     stepItem: {
       flex: 1,
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
     },
     stepButton: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       paddingHorizontal: 12,
       paddingVertical: 8,
@@ -1146,7 +1090,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       overflow: 'hidden',
     },
     cardHeader: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       padding: 16,
       backgroundColor: theme.cardBackground,
@@ -1183,7 +1127,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 6,
     },
     labelRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
     },
@@ -1208,7 +1152,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       textAlignVertical: 'top',
     },
     optionsRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       flexWrap: 'wrap',
       gap: 8,
     },
@@ -1223,7 +1167,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontWeight: '600',
     },
     switchRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: 16,
@@ -1232,7 +1176,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginTop: 8,
     },
     switchInfo: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       flex: 1,
     },
@@ -1270,7 +1214,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       backgroundColor: '#fef3c710',
     },
     dayCardHeader: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       padding: 12,
     },
@@ -1295,7 +1239,6 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     dayInfo: {
       flex: 1,
-      marginLeft: 12,
     },
     dayTitle: {
       fontSize: 14,
@@ -1315,7 +1258,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginTop: 2,
     },
     dayStatus: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
     },
@@ -1336,13 +1279,13 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       minHeight: 300,
     },
     chapterRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
       marginBottom: 8,
     },
     bookPicker: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       paddingHorizontal: 12,
       paddingVertical: 10,
@@ -1366,7 +1309,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       padding: 8,
     },
     addLink: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       paddingVertical: 8,
       gap: 4,
@@ -1383,7 +1326,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 12,
     },
     quizHeader: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 8,
@@ -1398,7 +1341,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginVertical: 12,
     },
     optionRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 12,
       marginBottom: 8,
@@ -1446,7 +1389,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginTop: 4,
     },
     reviewBadges: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       flexWrap: 'wrap',
       gap: 8,
       marginTop: 12,
@@ -1474,7 +1417,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 12,
     },
     assignmentItem: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'flex-start',
       padding: 12,
       borderRadius: 10,
@@ -1497,7 +1440,6 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     assignmentInfo: {
       flex: 1,
-      marginLeft: 10,
     },
     assignmentTitle: {
       fontSize: 13,
@@ -1515,13 +1457,13 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontStyle: 'italic',
     },
     footer: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       padding: 16,
       paddingBottom: 32,
       gap: 12,
     },
     footerBtn: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: 14,
@@ -1572,7 +1514,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       overflow: 'hidden',
     },
     modalHeader: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: 16,
@@ -1583,7 +1525,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontWeight: '700',
     },
     searchContainer: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       marginHorizontal: 16,
       marginVertical: 12,
@@ -1598,7 +1540,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontSize: 15,
     },
     bookItem: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingVertical: 14,

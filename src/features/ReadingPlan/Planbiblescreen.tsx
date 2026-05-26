@@ -30,6 +30,7 @@ import {
 } from '@react-navigation/native';
 import {
   ChevronLeft,
+  ChevronRight,
   ChevronDown,
   ChevronUp,
   Lightbulb,
@@ -38,6 +39,7 @@ import {
 } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   getColors,
   SPACING,
@@ -46,7 +48,7 @@ import {
 } from '../../constants/theme';
 import { route as appRoute } from '../../component/navigations/routes';
 
-import ActionModal from '../../reusable/ActionModal';
+import ActionModal, { ModalSeverity } from '../../reusable/ActionModal';
 import { useBible } from '../bible/hooks/useBible';
 import { createBibleStyles } from '../bible/bibleStyle';
 import { ChapterNavigation, VerseList } from '../bible/components';
@@ -134,6 +136,9 @@ interface PlanBibleParams {
 export default function PlanBibleScreen() {
   const params = useRoute<any>().params as PlanBibleParams;
   const navigation = useNavigation<any>();
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const bc = translations?.bible;
 
   const reflections: string[] = params?.reflectionQuestions ?? [];
   const hasReflections = reflections.length > 0;
@@ -237,6 +242,15 @@ export default function PlanBibleScreen() {
     [navigation],
   );
 
+  // Reflection subtitle text
+  const reflectionSubtitle = useMemo(() => {
+    if (reflections.length === 1) {
+      return bc?.planBibleSingleQuestionForReading || '1 question for this reading';
+    }
+    return (bc?.planBibleQuestionsForReading || '{count} questions for this reading')
+      .replace('{count}', String(reflections.length));
+  }, [reflections.length, bc]);
+
   return (
     <View
       style={[bibleStyles.container, { backgroundColor: COLORS.background }]}
@@ -249,6 +263,7 @@ export default function PlanBibleScreen() {
         subtitle={contextSubtitle}
         COLORS={COLORS}
         onBack={() => navigation.goBack()}
+        isRtl={isRtl}
       />
 
       {/* ── Chapter navigation ───────────────────────────────────────────── */}
@@ -311,6 +326,9 @@ export default function PlanBibleScreen() {
           onVerseRefPress={handleVerseRefPress}
           isDark={isDark}
           COLORS={COLORS}
+          isRtl={isRtl}
+          bc={bc}
+          subtitle={reflectionSubtitle}
         />
       )}
 
@@ -335,7 +353,7 @@ export default function PlanBibleScreen() {
         visible={modal.status}
         title={modal.title}
         message={modal.message}
-        severity={modal.severity}
+        severity={modal.severity as ModalSeverity}
         onConfirm={dismissModal}
       />
     </View>
@@ -353,6 +371,7 @@ interface CompactHeaderProps {
   subtitle?: string;
   COLORS: ReturnType<typeof getColors>;
   onBack: () => void;
+  isRtl: boolean;
 }
 
 function CompactHeader({
@@ -362,7 +381,10 @@ function CompactHeader({
   subtitle,
   COLORS,
   onBack,
+  isRtl,
 }: CompactHeaderProps) {
+  const s = useMemo(() => createHeaderStyles(isRtl), [isRtl]);
+
   return (
     <>
       <StatusBar
@@ -370,139 +392,145 @@ function CompactHeader({
         translucent
         barStyle="light-content"
       />
-      <View style={hStyles.shadowWrap}>
+      <View style={s.shadowWrap}>
         <LinearGradient
           colors={COLORS.headgradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={hStyles.gradient}
+          style={s.gradient}
         >
           <View style={{ height: STATUS_BAR_HEIGHT }} />
 
-          <View style={hStyles.row}>
+          <View style={s.row}>
             <TouchableOpacity
               onPress={onBack}
-              style={hStyles.backCircle}
+              style={s.backCircle}
               activeOpacity={0.75}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <ChevronLeft size={20} color="#FFFFFF" strokeWidth={2.5} />
+              {isRtl ? (
+                <ChevronRight size={20} color="#FFFFFF" strokeWidth={2.5} />
+              ) : (
+                <ChevronLeft size={20} color="#FFFFFF" strokeWidth={2.5} />
+              )}
             </TouchableOpacity>
 
-            <View style={hStyles.titleBlock}>
+            <View style={s.titleBlock}>
               <BookOpen
                 size={14}
                 color="rgba(255,255,255,0.7)"
                 strokeWidth={2}
               />
-              <Text style={hStyles.titleText} numberOfLines={1}>
+              <Text style={s.titleText} numberOfLines={1}>
                 {book} {chapter}
               </Text>
             </View>
 
-            <View style={hStyles.versionPill}>
-              <Text style={hStyles.versionText}>{versionAbbr}</Text>
+            <View style={s.versionPill}>
+              <Text style={s.versionText}>{versionAbbr}</Text>
             </View>
           </View>
 
           {!!subtitle && (
-            <View style={hStyles.subtitleRow}>
-              <Text style={hStyles.subtitleText} numberOfLines={1}>
+            <View style={s.subtitleRow}>
+              <Text style={s.subtitleText} numberOfLines={1}>
                 {subtitle}
               </Text>
             </View>
           )}
 
-          <View style={hStyles.shimmer} />
+          <View style={s.shimmer} />
         </LinearGradient>
       </View>
     </>
   );
 }
 
-const hStyles = StyleSheet.create({
-  shadowWrap: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    elevation: 10,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    backgroundColor: 'transparent',
-    marginBottom: 25,
-  },
-  gradient: {
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    overflow: 'hidden',
-    paddingBottom: SPACING.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.xs,
-    paddingBottom: SPACING.xs,
-    gap: SPACING.sm,
-  },
-  backCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titleBlock: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  titleText: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.2,
-    flexShrink: 1,
-  },
-  versionPill: {
-    borderRadius: BORDER_RADIUS.round,
-    borderWidth: 1,
-    borderColor: 'rgba(240,180,41,0.5)',
-    backgroundColor: 'rgba(240,180,41,0.12)',
-    paddingHorizontal: SPACING.sm + 2,
-    paddingVertical: 3,
-  },
-  versionText: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '700',
-    color: '#F0B429',
-    letterSpacing: 0.5,
-  },
-  subtitleRow: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xs + 1,
-  },
-  subtitleText: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 0.2,
-  },
-  shimmer: {
-    position: 'absolute',
-    bottom: 0,
-    left: '10%',
-    right: '10%',
-    height: 1,
-    backgroundColor: 'rgba(240,180,41,0.15)',
-    borderRadius: 1,
-  },
-});
+const createHeaderStyles = (isRtl: boolean) =>
+  StyleSheet.create({
+    shadowWrap: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.22,
+      shadowRadius: 10,
+      elevation: 10,
+      borderBottomLeftRadius: 18,
+      borderBottomRightRadius: 18,
+      backgroundColor: 'transparent',
+      marginBottom: 25,
+    },
+    gradient: {
+      borderBottomLeftRadius: 18,
+      borderBottomRightRadius: 18,
+      overflow: 'hidden',
+      paddingBottom: SPACING.sm,
+    },
+    row: {
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      paddingHorizontal: SPACING.md,
+      paddingTop: SPACING.xs,
+      paddingBottom: SPACING.xs,
+      gap: SPACING.sm,
+    },
+    backCircle: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: 'rgba(255,255,255,0.12)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    titleBlock: {
+      flex: 1,
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    titleText: {
+      fontSize: FONT_SIZES.lg,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      letterSpacing: -0.2,
+      flexShrink: 1,
+    },
+    versionPill: {
+      borderRadius: BORDER_RADIUS.round,
+      borderWidth: 1,
+      borderColor: 'rgba(240,180,41,0.5)',
+      backgroundColor: 'rgba(240,180,41,0.12)',
+      paddingHorizontal: SPACING.sm + 2,
+      paddingVertical: 3,
+    },
+    versionText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+      color: '#F0B429',
+      letterSpacing: 0.5,
+    },
+    subtitleRow: {
+      paddingHorizontal: SPACING.lg,
+      paddingBottom: SPACING.xs + 1,
+    },
+    subtitleText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '500',
+      color: 'rgba(255,255,255,0.5)',
+      letterSpacing: 0.2,
+      textAlign: isRtl ? 'right' : 'left',
+    },
+    shimmer: {
+      position: 'absolute',
+      bottom: 0,
+      left: '10%',
+      right: '10%',
+      height: 1,
+      backgroundColor: 'rgba(240,180,41,0.15)',
+      borderRadius: 1,
+    },
+  });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VerseRefText
@@ -516,21 +544,19 @@ interface VerseRefTextProps {
   onPress: (ref: VerseRef) => void;
   COLORS: ReturnType<typeof getColors>;
   isDark: boolean;
+  isRtl: boolean;
 }
 
-function VerseRefText({ text, onPress, COLORS, isDark }: VerseRefTextProps) {
+function VerseRefText({ text, onPress, COLORS, isDark, isRtl }: VerseRefTextProps) {
   const segments = useMemo(() => parseVerseRefs(text), [text]);
+  const s = useMemo(() => createVRStyles(isRtl), [isRtl]);
 
-  // Split into lines so we can interleave block chips with inline text.
-  // Strategy: render plain text as a wrapping <Text>, and each verse ref
-  // as a real <TouchableOpacity> chip sitting inline via a flex-wrap row.
-  // We group consecutive plain-text segments and chip segments into "runs".
   return (
-    <View style={vrStyles.container}>
+    <View style={s.container}>
       {segments.map((seg, idx) => {
         if (typeof seg === 'string') {
           return (
-            <Text key={idx} style={[vrStyles.base, { color: COLORS.text }]}>
+            <Text key={idx} style={[s.base, { color: COLORS.text }]}>
               {seg}
             </Text>
           );
@@ -543,7 +569,7 @@ function VerseRefText({ text, onPress, COLORS, isDark }: VerseRefTextProps) {
             onPress={() => onPress(seg)}
             activeOpacity={0.7}
             style={[
-              vrStyles.chip,
+              s.chip,
               {
                 backgroundColor: isDark
                   ? 'rgba(240,180,41,0.15)'
@@ -561,7 +587,7 @@ function VerseRefText({ text, onPress, COLORS, isDark }: VerseRefTextProps) {
             />
             <Text
               style={[
-                vrStyles.chipText,
+                s.chipText,
                 { color: isDark ? '#F0B429' : '#9B6A00' },
               ]}
             >
@@ -579,38 +605,39 @@ function VerseRefText({ text, onPress, COLORS, isDark }: VerseRefTextProps) {
   );
 }
 
-const vrStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 4,
-  },
-  base: {
-    fontSize: FONT_SIZES.md,
-    lineHeight: 24,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderRadius: BORDER_RADIUS.round,
-    paddingHorizontal: SPACING.sm + 1,
-    paddingVertical: 4,
-    // Subtle lift
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  chipText: {
-    fontSize: FONT_SIZES.xs + 1,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-});
+const createVRStyles = (isRtl: boolean) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 4,
+    },
+    base: {
+      fontSize: FONT_SIZES.md,
+      lineHeight: 24,
+    },
+    chip: {
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.round,
+      paddingHorizontal: SPACING.sm + 1,
+      paddingVertical: 4,
+      // Subtle lift
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    chipText: {
+      fontSize: FONT_SIZES.xs + 1,
+      fontWeight: '700',
+      letterSpacing: 0.3,
+    },
+  });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ReflectionPanel — fully controlled from parent
@@ -623,6 +650,9 @@ interface ReflectionPanelProps {
   onVerseRefPress: (ref: VerseRef) => void;
   isDark: boolean;
   COLORS: ReturnType<typeof getColors>;
+  isRtl: boolean;
+  bc: ReturnType<typeof useLanguage>['translations']['bible'];
+  subtitle: string;
 }
 
 function ReflectionPanel({
@@ -632,10 +662,13 @@ function ReflectionPanel({
   onVerseRefPress,
   isDark,
   COLORS,
+  isRtl,
+  bc,
+  subtitle,
 }: ReflectionPanelProps) {
   const s = useMemo(
-    () => createReflectionStyles(isDark, COLORS),
-    [isDark, COLORS],
+    () => createReflectionStyles(isDark, COLORS, isRtl),
+    [isDark, COLORS, isRtl],
   );
 
   return (
@@ -653,12 +686,11 @@ function ReflectionPanel({
             <Lightbulb size={16} color="#F59E0B" />
           </View>
           <View>
-            <Text style={[s.headerTitle, { color: COLORS.text }]}>
-              Pause & Reflect
+            <Text style={[s.headerTitle, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
+              {bc?.planBiblePauseReflect || 'Pause & Reflect'}
             </Text>
-            <Text style={[s.headerSub, { color: COLORS.muted }]}>
-              {questions.length} question{questions.length !== 1 ? 's' : ''} for
-              this reading
+            <Text style={[s.headerSub, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+              {subtitle}
             </Text>
           </View>
         </View>
@@ -704,6 +736,7 @@ function ReflectionPanel({
                 onPress={onVerseRefPress}
                 COLORS={COLORS}
                 isDark={isDark}
+                isRtl={isRtl}
               />
             </View>
           ))}
@@ -716,13 +749,14 @@ function ReflectionPanel({
 const createReflectionStyles = (
   isDark: boolean,
   COLORS: ReturnType<typeof getColors>,
+  isRtl: boolean,
 ) =>
   StyleSheet.create({
     wrapper: {
       backgroundColor: COLORS.cardBackground,
       borderTopWidth: 1,
       borderTopColor: COLORS.border,
-          maxHeight: 400,
+      maxHeight: 400,
       borderTopLeftRadius: BORDER_RADIUS.lg,
       borderTopRightRadius: BORDER_RADIUS.lg,
     },
@@ -735,14 +769,14 @@ const createReflectionStyles = (
       marginTop: -1,
     },
     headerRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: SPACING.lg,
       paddingVertical: SPACING.md,
     },
     headerLeft: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       flex: 1,
       gap: SPACING.sm,
@@ -756,7 +790,8 @@ const createReflectionStyles = (
       borderColor: isDark ? '#5C4A0A' : '#FDE7B0',
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: SPACING.xs,
+      marginRight: isRtl ? 0 : SPACING.xs,
+      marginLeft: isRtl ? SPACING.xs : 0,
     },
     headerTitle: {
       fontSize: FONT_SIZES.md,
@@ -784,7 +819,7 @@ const createReflectionStyles = (
       padding: SPACING.md,
     },
     cardTopRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: SPACING.sm,

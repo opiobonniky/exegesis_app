@@ -22,6 +22,7 @@ import ActionHeader from '../../reusable/ActionHeader';
 import { useNavigation } from '@react-navigation/native';
 import ActionModal from '../../reusable/ActionModal';
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 interface HighlightDto {
   id: number;
@@ -49,6 +50,9 @@ export default function Highlights() {
   });
 
   const { isDark }: any = useContext(AppContext) || {};
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const bc = translations?.bible;
 
   const navigation = useNavigation<any>();
   const COLORS = getColors(isDark);
@@ -122,12 +126,20 @@ export default function Highlights() {
 
   return (
     <View style={themeStyle.container}>
-      <ActionHeader title="My Highlights" onPress={() => navigation.goBack()} />
+      <ActionHeader
+        title={bc?.highlights || 'Highlights'}
+        onPress={() => navigation.goBack()}
+      />
       {loading ? (
         <View style={[themeStyle.center, { flex: 1, marginTop: SPACING.lg }]}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={[themeStyle.mutedText, { marginTop: SPACING.md }]}>
-            Loading highlights...
+          <Text
+            style={[
+              themeStyle.mutedText,
+              { marginTop: SPACING.md, textAlign: isRtl ? 'right' : 'left' },
+            ]}
+          >
+            {bc?.loadingMessage || 'Loading...'}
           </Text>
         </View>
       ) : (
@@ -135,11 +147,23 @@ export default function Highlights() {
           {Object.keys(grouped).length === 0 && (
             <View style={[themeStyle.center, themeStyle.mt6]}>
               <BookOpen size={48} color={COLORS.muted} />
-              <Text style={[themeStyle.headingText, themeStyle.mt3]}>
-                No highlights yet
+              <Text
+                style={[
+                  themeStyle.headingText,
+                  themeStyle.mt3,
+                  { textAlign: isRtl ? 'right' : 'left' },
+                ]}
+              >
+                {bc?.noHighlights || 'No highlights yet'}
               </Text>
-              <Text style={[themeStyle.mutedText, themeStyle.mt2]}>
-                Highlight verses while reading the Bible
+              <Text
+                style={[
+                  themeStyle.mutedText,
+                  themeStyle.mt2,
+                  { textAlign: isRtl ? 'right' : 'left' },
+                ]}
+              >
+                {'Highlight verses while reading the Bible'}
               </Text>
             </View>
           )}
@@ -152,8 +176,14 @@ export default function Highlights() {
 
               {Object.entries(chapters).map(([chapter, verses]) => (
                 <View key={chapter} style={themeStyle.mb4}>
-                  <Text style={[themeStyle.subheadingText, themeStyle.mb2]}>
-                    Chapter {chapter}
+                  <Text
+                    style={[
+                      themeStyle.subheadingText,
+                      themeStyle.mb2,
+                      { textAlign: isRtl ? 'right' : 'left' },
+                    ]}
+                  >
+                    {bc?.chapter || 'Chapter'} {chapter}
                   </Text>
 
                   {verses
@@ -172,16 +202,30 @@ export default function Highlights() {
                           style={[
                             themeStyle.card,
                             themeStyle.mb3,
-                            {
-                              borderLeftWidth: 6,
-                              borderLeftColor: color || COLORS.primary,
-                            },
+                            isRtl
+                              ? {
+                                  borderRightWidth: 6,
+                                  borderRightColor: color || COLORS.primary,
+                                }
+                              : {
+                                  borderLeftWidth: 6,
+                                  borderLeftColor: color || COLORS.primary,
+                                },
                           ]}
                         >
                           <View
-                            style={[themeStyle.rowSpaceBetween, themeStyle.mb2]}
+                            style={[
+                              themeStyle.rowSpaceBetween,
+                              themeStyle.mb2,
+                              isRtl && { flexDirection: 'row-reverse' },
+                            ]}
                           >
-                            <Text style={themeStyle.captionText}>
+                            <Text
+                              style={[
+                                themeStyle.captionText,
+                                { textAlign: isRtl ? 'right' : 'left' },
+                              ]}
+                            >
                               {book} {v.chapter}:{v.verseNumber}
                             </Text>
                             <TouchableOpacity
@@ -192,7 +236,13 @@ export default function Highlights() {
                           </View>
 
                           <Text
-                            style={[themeStyle.bodyText, { lineHeight: 24 }]}
+                            style={[
+                              themeStyle.bodyText,
+                              {
+                                lineHeight: 24,
+                                textAlign: isRtl ? 'right' : 'left',
+                              },
+                            ]}
                           >
                             {verseText}
                           </Text>
@@ -206,7 +256,14 @@ export default function Highlights() {
                                 backgroundColor: COLORS.surface,
                               }}
                             >
-                              <Text style={themeStyle.mutedText}>{v.note}</Text>
+                              <Text
+                                style={[
+                                  themeStyle.mutedText,
+                                  { textAlign: isRtl ? 'right' : 'left' },
+                                ]}
+                              >
+                                {v.note}
+                              </Text>
                             </View>
                           ) : null}
                         </View>

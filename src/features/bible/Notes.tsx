@@ -8,7 +8,6 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookOpen, Trash2, Edit3, X, Save } from 'lucide-react-native';
 
 import { sendPostRequest } from '../../services/api';
@@ -24,6 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import ActionModal from '../../reusable/ActionModal';
 import { AppContext } from '../../common/AppContext';
 import { showToast } from '../../helpers/Toash.helper';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 interface NoteDto {
   id: number;
@@ -57,6 +57,9 @@ export default function Notes() {
   });
 
   const { isDark }: any = useContext(AppContext) || {};
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const bc = translations?.bible;
 
   const navigation = useNavigation<any>();
   const COLORS = getColors(isDark);
@@ -169,25 +172,25 @@ export default function Notes() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[themeStyle.container, themeStyle.center]}>
+      <View style={[themeStyle.container, themeStyle.center]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[themeStyle.container, { marginTop: -SPACING.xl }]}>
-      <ActionHeader title="My Notes" onPress={() => navigation.goBack()} />
+    <View style={[themeStyle.container, { marginTop: -SPACING.xl }]}>
+      <ActionHeader title={bc?.myNotes || 'My Notes'} onPress={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={themeStyle.scrollContainer}>
         {Object.keys(grouped).length === 0 && (
           <View style={[themeStyle.center, themeStyle.mt6]}>
             <BookOpen size={48} color={COLORS.muted} />
-            <Text style={[themeStyle.headingText, themeStyle.mt3]}>
-              No notes yet
+            <Text style={[themeStyle.headingText, themeStyle.mt3, { textAlign: isRtl ? 'right' : 'center' }]}>
+              {bc?.noNotes || 'No notes yet'}
             </Text>
-            <Text style={[themeStyle.mutedText, themeStyle.mt2]}>
-              Add notes to verses while reading the Bible
+            <Text style={[themeStyle.mutedText, themeStyle.mt2, { textAlign: isRtl ? 'right' : 'center' }]}>
+              {bc?.noNotesSubtitle || 'Add notes to verses while reading the Bible'}
             </Text>
           </View>
         )}
@@ -198,8 +201,8 @@ export default function Notes() {
 
             {Object.entries(chapters).map(([chapter, verses]) => (
               <View key={chapter} style={themeStyle.mb4}>
-                <Text style={[themeStyle.subheadingText, themeStyle.mb2]}>
-                  Chapter {chapter}
+                <Text style={[themeStyle.subheadingText, themeStyle.mb2, { textAlign: isRtl ? 'right' : 'left' }]}>
+                  {bc?.chapter || 'Chapter'} {chapter}
                 </Text>
 
                 {verses
@@ -217,7 +220,10 @@ export default function Notes() {
                         style={[
                           themeStyle.card,
                           themeStyle.mb3,
-                          {
+                          isRtl ? {
+                            borderRightWidth: 4,
+                            borderRightColor: COLORS.primary,
+                          } : {
                             borderLeftWidth: 4,
                             borderLeftColor: COLORS.primary,
                           },
@@ -226,21 +232,21 @@ export default function Notes() {
                         <View
                           style={[themeStyle.rowSpaceBetween, themeStyle.mb2]}
                         >
-                          <View>
-                            <Text style={themeStyle.captionText}>
+                          <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                            <Text style={[themeStyle.captionText, { textAlign: isRtl ? 'right' : 'left' }]}>
                               {book} {note.chapter}:{note.verseNumber}
                             </Text>
                             <Text
                               style={[
                                 themeStyle.captionText,
-                                { fontSize: 11, marginTop: 2 },
+                                { fontSize: 11, marginTop: 2, textAlign: isRtl ? 'right' : 'left' },
                               ]}
                             >
                               {formatDate(note.updatedOn || note.createdOn)}
                             </Text>
                           </View>
 
-                          <View style={{ flexDirection: 'row', gap: 12 }}>
+                          <View style={{ flexDirection: isRtl ? 'row-reverse' : 'row', gap: 12 }}>
                             <TouchableOpacity
                               onPress={() => openEditModal(note)}
                             >
@@ -257,7 +263,7 @@ export default function Notes() {
                         <Text
                           style={[
                             themeStyle.bodyTextSecondary,
-                            { lineHeight: 22, marginBottom: SPACING.sm },
+                            { lineHeight: 22, marginBottom: SPACING.sm, textAlign: isRtl ? 'right' : 'left' },
                           ]}
                         >
                           {verseText}
@@ -274,7 +280,7 @@ export default function Notes() {
                           <Text
                             style={[
                               themeStyle.bodyText,
-                              { fontStyle: 'italic', lineHeight: 20 },
+                              { fontStyle: 'italic', lineHeight: 20, textAlign: isRtl ? 'right' : 'left' },
                             ]}
                           >
                             📝 {note.note}
@@ -315,9 +321,9 @@ export default function Notes() {
             }}
           >
             <View
-              style={[themeStyle.rowSpaceBetween, { marginBottom: SPACING.lg }]}
+              style={[themeStyle.rowSpaceBetween, { marginBottom: SPACING.lg, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
             >
-              <Text style={themeStyle.headingText}>Edit Note</Text>
+              <Text style={[themeStyle.headingText, { textAlign: isRtl ? 'right' : 'left' }]}>{bc?.editNote || 'Edit Note'}</Text>
               <TouchableOpacity onPress={closeEditModal}>
                 <X size={24} color={COLORS.text} />
               </TouchableOpacity>
@@ -325,7 +331,7 @@ export default function Notes() {
 
             {editingNote && (
               <Text
-                style={[themeStyle.captionText, { marginBottom: SPACING.md }]}
+                style={[themeStyle.captionText, { marginBottom: SPACING.md, textAlign: isRtl ? 'right' : 'left' }]}
               >
                 {editingNote.bookName} {editingNote.chapter}:
                 {editingNote.verseNumber}
@@ -344,8 +350,9 @@ export default function Notes() {
                 minHeight: 150,
                 textAlignVertical: 'top',
                 marginBottom: SPACING.lg,
+                textAlign: isRtl ? 'right' : 'left',
               }}
-              placeholder="Write your note..."
+              placeholder={bc?.writeNotePlaceholder || 'Write your note...'}
               placeholderTextColor={COLORS.muted}
               value={editText}
               onChangeText={setEditText}
@@ -354,7 +361,7 @@ export default function Notes() {
               autoFocus
             />
 
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flexDirection: isRtl ? 'row-reverse' : 'row', gap: 12 }}>
               <TouchableOpacity
                 style={[
                   themeStyle.button,
@@ -369,7 +376,7 @@ export default function Notes() {
                 disabled={saving}
               >
                 <Text style={[themeStyle.buttonText, { color: COLORS.text }]}>
-                  Cancel
+                  {bc?.cancel || 'Cancel'}
                 </Text>
               </TouchableOpacity>
 
@@ -392,10 +399,10 @@ export default function Notes() {
                     <Text
                       style={[
                         themeStyle.buttonText,
-                        { marginLeft: SPACING.sm },
+                        { [isRtl ? 'marginRight' : 'marginLeft']: SPACING.sm },
                       ]}
                     >
-                      Save
+                      {bc?.save || 'Save'}
                     </Text>
                   </>
                 )}
@@ -412,6 +419,6 @@ export default function Notes() {
         severity={modal.severity}
         onConfirm={() => setModal({ ...modal, status: false })}
       />
-    </SafeAreaView>
+    </View>
   );
 }

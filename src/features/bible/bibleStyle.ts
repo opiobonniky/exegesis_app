@@ -1,4 +1,4 @@
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, Platform, I18nManager } from 'react-native';
 import {
   BORDER_RADIUS,
   FONT_SIZES,
@@ -7,8 +7,9 @@ import {
 } from '../../constants/theme';
 
 // Create a function that returns styles based on theme
-export const createBibleStyles = (isDark: boolean) => {
+export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
   const COLORS = getColors(isDark);
+  const rtl = isRtl ?? I18nManager.isRTL;
 
   return StyleSheet.create({
     container: {
@@ -34,7 +35,7 @@ export const createBibleStyles = (isDark: boolean) => {
       width: '100%',
     },
     headerTop: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
@@ -56,7 +57,7 @@ export const createBibleStyles = (isDark: boolean) => {
       color: COLORS.white,
     },
     navCard: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       backgroundColor: COLORS.cardBackground, // add slight transparency to blend with header
@@ -84,7 +85,7 @@ export const createBibleStyles = (isDark: boolean) => {
       color: COLORS.muted,
     },
     chapterButton: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       backgroundColor: COLORS.surface,
       paddingHorizontal: SPACING.lg,
@@ -95,7 +96,8 @@ export const createBibleStyles = (isDark: boolean) => {
       fontSize: FONT_SIZES.md,
       fontWeight: '600',
       color: COLORS.text,
-      marginRight: SPACING.xs,
+      marginRight: rtl ? 0 : SPACING.xs,
+      marginLeft: rtl ? SPACING.xs : 0,
     },
     chapterButtonIcon: {
       fontSize: FONT_SIZES.sm,
@@ -122,7 +124,7 @@ export const createBibleStyles = (isDark: boolean) => {
       gap: SPACING.sm,
     },
     actionsHeader: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
@@ -234,7 +236,7 @@ export const createBibleStyles = (isDark: boolean) => {
       backgroundColor: COLORS.primary,
     },
     verseContent: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       alignItems: 'flex-start',
       paddingVertical: SPACING.sm,
       paddingHorizontal: SPACING.sm,
@@ -295,7 +297,8 @@ export const createBibleStyles = (isDark: boolean) => {
 
     verseTextContainer: {
       flex: 1,
-      paddingRight: SPACING.sm,
+      paddingRight: rtl ? 0 : SPACING.sm,
+      paddingLeft: rtl ? SPACING.sm : 0,
     },
     verseText: {
       color: COLORS.text,
@@ -364,7 +367,7 @@ export const createBibleStyles = (isDark: boolean) => {
     },
     drawerOverlay: {
       flex: 1,
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
     },
     drawerContainer: {
       width: 300,
@@ -404,7 +407,7 @@ export const createBibleStyles = (isDark: boolean) => {
       textTransform: 'uppercase',
     },
     fontSizeControl: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
@@ -433,7 +436,7 @@ export const createBibleStyles = (isDark: boolean) => {
       color: COLORS.white,
     },
     settingsItem: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       backgroundColor: COLORS.surface,
       padding: SPACING.md,
@@ -442,7 +445,8 @@ export const createBibleStyles = (isDark: boolean) => {
     },
     settingsItemIcon: {
       fontSize: FONT_SIZES.xl,
-      marginRight: SPACING.md,
+      marginRight: rtl ? 0 : SPACING.md,
+      marginLeft: rtl ? SPACING.md : 0,
     },
     settingsItemText: {
       flex: 1,
@@ -481,7 +485,7 @@ export const createBibleStyles = (isDark: boolean) => {
       borderTopRightRadius: BORDER_RADIUS.xxl,
     },
     modalHeader: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: SPACING.xl,
@@ -511,7 +515,7 @@ export const createBibleStyles = (isDark: boolean) => {
       marginBottom: SPACING.md,
     },
     booksGrid: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       flexWrap: 'wrap',
       gap: SPACING.sm,
     },
@@ -542,7 +546,7 @@ export const createBibleStyles = (isDark: boolean) => {
       marginTop: 2,
     },
     chapterGrid: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       flexWrap: 'wrap',
       padding: SPACING.lg,
       gap: SPACING.md,
@@ -594,7 +598,7 @@ export const createBibleStyles = (isDark: boolean) => {
       gap: SPACING.md,
     },
     colorOption: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       backgroundColor: COLORS.surface,
       padding: SPACING.md,
@@ -604,7 +608,8 @@ export const createBibleStyles = (isDark: boolean) => {
       width: 40,
       height: 40,
       borderRadius: 20,
-      marginRight: SPACING.md,
+      marginRight: rtl ? 0 : SPACING.md,
+      marginLeft: rtl ? SPACING.md : 0,
     },
     colorName: {
       fontSize: FONT_SIZES.md,
@@ -617,14 +622,15 @@ export const createBibleStyles = (isDark: boolean) => {
       borderBottomColor: COLORS.border,
     },
     searchInputWrapper: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       backgroundColor: COLORS.surface,
       borderRadius: BORDER_RADIUS.md,
       paddingHorizontal: SPACING.md,
     },
     searchIconStyle: {
-      marginRight: SPACING.sm,
+      marginRight: rtl ? 0 : SPACING.sm,
+      marginLeft: rtl ? SPACING.sm : 0,
     },
     searchInputStyle: {
       flex: 1,
@@ -671,7 +677,7 @@ export const createBibleStyles = (isDark: boolean) => {
       marginBottom: SPACING.sm,
     },
     resultHeader: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: SPACING.xs,
@@ -737,7 +743,7 @@ export const createBibleStyles = (isDark: boolean) => {
       marginBottom: SPACING.md,
     },
     suggestionsChips: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       flexWrap: 'wrap',
       gap: SPACING.sm,
     },
@@ -783,7 +789,7 @@ export const createBibleStyles = (isDark: boolean) => {
       borderRadius: BORDER_RADIUS.xl,
     },
     actionsHeaderRow: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: SPACING.lg,
@@ -853,7 +859,7 @@ export const createBibleStyles = (isDark: boolean) => {
       paddingBottom: SPACING.xl,
     },
     explanationHeader: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
       paddingHorizontal: SPACING.xl,
@@ -909,7 +915,7 @@ export const createBibleStyles = (isDark: boolean) => {
       marginBottom: SPACING.lg,
     },
     explanationIconHeader: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       marginBottom: SPACING.md,
     },
@@ -920,7 +926,8 @@ export const createBibleStyles = (isDark: boolean) => {
       backgroundColor: COLORS.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: SPACING.sm,
+      marginRight: rtl ? 0 : SPACING.sm,
+      marginLeft: rtl ? SPACING.sm : 0,
     },
     explanationIconText: {
       fontSize: 20,
@@ -980,12 +987,13 @@ export const createBibleStyles = (isDark: boolean) => {
       backgroundColor: COLORS.border,
     },
     verseRow: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       alignItems: 'flex-start',
     },
     favoriteStarRight: {
       marginTop: 14,
-      paddingLeft: SPACING.sm,
+      paddingLeft: rtl ? 0 : SPACING.sm,
+      paddingRight: rtl ? SPACING.sm : 0,
     },
     // Add these styles to your bibleStyle.ts file
 
@@ -1010,7 +1018,7 @@ export const createBibleStyles = (isDark: boolean) => {
     },
 
     noteModalHeader: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: SPACING.lg,
@@ -1099,7 +1107,7 @@ export const createBibleStyles = (isDark: boolean) => {
 
     // Action Buttons
     noteModalActions: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       gap: SPACING.md,
     },
 
@@ -1127,7 +1135,7 @@ export const createBibleStyles = (isDark: boolean) => {
       borderRadius: BORDER_RADIUS.md,
       justifyContent: 'center',
       alignItems: 'center',
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       gap: SPACING.sm,
       shadowColor: COLORS.shadowColor,
       shadowOffset: { width: 0, height: 4 },
@@ -1179,7 +1187,7 @@ export const createBibleStyles = (isDark: boolean) => {
       borderBottomColor: COLORS.border,
     },
     chapterPromptsHeader: {
-      flexDirection: 'row',
+      flexDirection: rtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: SPACING.sm,

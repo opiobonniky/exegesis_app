@@ -38,6 +38,7 @@ import { showToast } from '../../helpers/Toash.helper';
 import { displayCustomTestNotification } from '../../utilits/firebaseService';
 import ActionModal from '../../reusable/ActionModal';
 import ActionHeader from '../../reusable/ActionHeader';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,9 @@ type Tab = 'progress' | 'browse';
 export default function BibleReadingPlan() {
   const navigation = useNavigation<any>();
   const { isDark } = useContext(AppContext)!;
+  const { translations, language } = useLanguage();
+  const rp = translations?.readingPlan;
+  const isRtl = language === 'ar';
   const C = getColors(isDark);
 
   const [loading, setLoading] = useState(true);
@@ -276,17 +280,17 @@ export default function BibleReadingPlan() {
               <BookOpen size={26} color={C.primary} />
             </View>
             <Text style={[s.emptyTitle, { color: C.text }]}>
-              No active plan yet
+              {rp?.bpNoActivePlan || 'No active plan yet'}
             </Text>
             <Text style={[s.emptySub, { color: C.muted }]}>
-              Head over to Browse Plans and start your first reading plan.
+              {rp?.bpNoActivePlanSub || 'Head over to Browse Plans and start your first reading plan.'}
             </Text>
             <TouchableOpacity
               style={[s.emptyBtn, { backgroundColor: C.primary }]}
               onPress={() => setActiveTab('browse')}
               activeOpacity={0.85}
             >
-              <Text style={s.emptyBtnText}>Browse Plans</Text>
+              <Text style={s.emptyBtnText}>{rp?.bpBrowsePlans || 'Browse Plans'}</Text>
               <ChevronRight size={15} color="white" />
             </TouchableOpacity>
           </View>
@@ -334,6 +338,8 @@ export default function BibleReadingPlan() {
               isCompleted={false}
               C={C}
               isDark={isDark}
+              isRtl={isRtl}
+              rp={rp}
               onRead={() =>
                 navigation.navigate(route.dailyReading, {
                   planId: plan.planId,
@@ -358,7 +364,7 @@ export default function BibleReadingPlan() {
             <View style={s.sectionHeader}>
               <Trophy size={14} color="#10B981" />
               <Text style={[s.sectionHeaderText, { color: C.muted }]}>
-                Completed Plans
+                {rp?.bpCompletedPlans || 'Completed Plans'}
               </Text>
             </View>
 
@@ -381,6 +387,8 @@ export default function BibleReadingPlan() {
                   isCompleted={true}
                   C={C}
                   isDark={isDark}
+                  isRtl={isRtl}
+                  rp={rp}
                   onRead={() =>
                     navigation.navigate(route.dailyReading, {
                       planId: plan.planId,
@@ -414,7 +422,7 @@ export default function BibleReadingPlan() {
       contentContainerStyle={s.scroll}
     >
       <Text style={[s.browseHint, { color: C.muted }]}>
-        Choose a plan that fits your spiritual journey
+        {rp?.bpBrowseHint || 'Choose a plan that fits your spiritual journey'}
       </Text>
 
       {plans.map(plan => {
@@ -438,6 +446,8 @@ export default function BibleReadingPlan() {
             pct={pct}
             C={C}
             isDark={isDark}
+            isRtl={isRtl}
+            rp={rp}
             onPress={() => {
               if (hasStarted) {
                 navigation.navigate(route.planDetail, { planId: plan.planId });
@@ -457,8 +467,8 @@ export default function BibleReadingPlan() {
   return (
     <View style={[s.root, { backgroundColor: C.background }]}>
       <ActionHeader
-        title="Reading Plans"
-        subtitle="Build a daily Bible habit"
+        title={rp?.bpTitle || 'Reading Plans'}
+        subtitle={rp?.bpSubtitle || 'Build a daily Bible habit'}
         onPress={()=>navigation.goBack()}
       />
 
@@ -470,7 +480,7 @@ export default function BibleReadingPlan() {
         ]}
       >
         <TabButton
-          label="My Progress"
+          label={rp?.bpTabProgress || 'My Progress'}
           icon={
             <TrendingUp
               size={14}
@@ -481,9 +491,10 @@ export default function BibleReadingPlan() {
           badge={activePlans.length || undefined}
           onPress={() => setActiveTab('progress')}
           C={C}
+          isRtl={isRtl}
         />
         <TabButton
-          label="Browse Plans"
+          label={rp?.bpTabBrowse || 'Browse Plans'}
           icon={
             <LayoutList
               size={14}
@@ -493,13 +504,16 @@ export default function BibleReadingPlan() {
           active={activeTab === 'browse'}
           onPress={() => setActiveTab('browse')}
           C={C}
+          isRtl={isRtl}
         />
       </View>
 
       {loading ? (
         <View style={s.loader}>
           <ActivityIndicator size="large" color={C.primary} />
-          <Text style={[s.loaderText, { color: C.muted }]}>Loading…</Text>
+          <Text style={[s.loaderText, { color: C.muted }]}>
+            {rp?.bpLoading || 'Loading\u2026'}
+          </Text>
         </View>
       ) : (
         <View style={s.content}>
@@ -509,14 +523,14 @@ export default function BibleReadingPlan() {
 
       <ActionModal
         visible={startPlanModalVisible}
-        title="Start Reading Plan"
+        title={rp?.bpStartPlanTitle || 'Start Reading Plan'}
         message={
           pendingPlan
-            ? `Do you want to start "${pendingPlan.title}"? This will set your daily reading schedule and track your progress.`
-            : 'Are you sure you want to start this reading plan?'
+            ? (rp?.bpStartPlanMessage || 'Do you want to start "{title}"? This will set your daily reading schedule and track your progress.').replace('{title}', pendingPlan.title)
+            : (rp?.bpStartPlanMessage || 'Are you sure you want to start this reading plan?')
         }
         severity="info"
-        confirmLabel="Start Plan"
+        confirmLabel={rp?.bpStartPlanConfirm || 'Start Plan'}
         onCancel={() => {
           setStartPlanModalVisible(false);
           setPendingPlan(null);
@@ -532,15 +546,15 @@ export default function BibleReadingPlan() {
 
       <ActionModal
         visible={removePlanModalVisible}
-        title="Remove Plan"
+        title={rp?.bpRemovePlanTitle || 'Remove Plan'}
         message={
           planToRemove
-            ? `Are you sure you want to remove "${planToRemove.title}"? Your progress will be lost.`
+            ? (rp?.bpRemovePlanMessage || 'Are you sure you want to remove "{title}"? Your progress will be lost.').replace('{title}', planToRemove.title)
             : 'Are you sure you want to remove this plan?'
         }
         severity="warning"
-        confirmLabel="Remove"
-        cancelLabel="Keep It"
+        confirmLabel={rp?.bpRemoveConfirm || 'Remove'}
+        cancelLabel={rp?.bpKeepIt || 'Keep It'}
         onCancel={() => {
           setRemovePlanModalVisible(false);
           setPlanToRemove(null);
@@ -570,6 +584,7 @@ function TabButton({
   badge,
   onPress,
   C,
+  isRtl,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -577,11 +592,13 @@ function TabButton({
   badge?: number;
   onPress: () => void;
   C: ReturnType<typeof getColors>;
+  isRtl?: boolean;
 }) {
   return (
     <TouchableOpacity
       style={[
         s.tabBtn,
+        { flexDirection: isRtl ? 'row-reverse' : 'row' },
         active && [s.tabBtnActive, { borderBottomColor: C.primary }],
       ]}
       onPress={onPress}
@@ -612,6 +629,8 @@ function ActivePlanCard({
   isCompleted,
   C,
   isDark,
+  isRtl,
+  rp,
   onRead,
   onSummary,
   onRemove,
@@ -625,6 +644,8 @@ function ActivePlanCard({
   isCompleted: boolean;
   C: ReturnType<typeof getColors>;
   isDark: boolean;
+  isRtl?: boolean;
+  rp: any;
   onRead: () => void;
   onSummary: () => void;
   onRemove: () => void;
@@ -640,11 +661,11 @@ function ActivePlanCard({
     >
       <View style={[s.activeStripe, { backgroundColor: accentColor }]} />
 
-      <View style={s.activeTop}>
-        <View style={s.activeTitleWrap}>
-          <View style={s.activeTitleRow}>
+      <View style={[s.activeTop, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+        <View style={[s.activeTitleWrap, isRtl ? { marginLeft: SPACING.md, marginRight: 0 } : { marginRight: SPACING.md }]}>
+          <View style={[s.activeTitleRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <Text
-              style={[s.activePlanTitle, { color: C.text }]}
+              style={[s.activePlanTitle, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}
               numberOfLines={2}
             >
               {plan.title}
@@ -652,12 +673,12 @@ function ActivePlanCard({
             {isCompleted && (
               <View style={s.completedPill}>
                 <Trophy size={10} color="#10B981" />
-                <Text style={s.completedPillText}>Done</Text>
+                <Text style={s.completedPillText}>{rp?.bpDone || 'Done'}</Text>
               </View>
             )}
           </View>
-          <Text style={[s.activePlanSub, { color: C.muted }]}>
-            {done} of {plan.totalDays} days done
+          <Text style={[s.activePlanSub, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+            {done} {rp?.bpOfLabel || 'of'} {plan.totalDays} {rp?.bpDaysLabel || 'days'} {rp?.bpDaysDone || 'done'}
           </Text>
           <TouchableOpacity
             style={[
@@ -696,40 +717,43 @@ function ActivePlanCard({
       <Text
         style={[s.activeBarLabel, { color: C.muted, marginBottom: SPACING.lg }]}
       >
-        {pct}% complete
+        {pct}% {rp?.bpComplete || 'complete'}
       </Text>
 
       <View
         style={[
           s.statsRow,
-          { backgroundColor: isDark ? C.border + 'AA' : C.border + '60' },
+          { flexDirection: isRtl ? 'row-reverse' : 'row', backgroundColor: isDark ? C.border + 'AA' : C.border + '60' },
         ]}
       >
         <StatChip
           icon={<Flame size={13} color={C.warning} />}
           value={`${streak}d`}
-          label="Streak"
+          label={rp?.bpStreak || 'Streak'}
           C={C}
+          isRtl={isRtl}
         />
         <View style={[s.statsDivider, { backgroundColor: C.border }]} />
         <StatChip
           icon={<CheckCircle size={13} color={C.success} />}
           value={String(done)}
-          label="Done"
+          label={rp?.bpDaysDone || 'Done'}
           C={C}
+          isRtl={isRtl}
         />
         <View style={[s.statsDivider, { backgroundColor: C.border }]} />
         <StatChip
           icon={<BookOpen size={13} color={C.muted} />}
-          value={lastDay ? `Day ${lastDay}` : '—'}
-          label="Last read"
+          value={lastDay ? `${rp?.bpDaysLabel || 'Day'} ${lastDay}` : '\u2014'}
+          label={rp?.bpLastRead || 'Last read'}
           C={C}
+          isRtl={isRtl}
         />
       </View>
 
       {isCompleted ? (
         // Completed: View Summary + Revisit side by side
-        <View style={s.ctaRow}>
+        <View style={[s.ctaRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity
             style={[s.ctaOutline, s.ctaHalf, { borderColor: accentColor }]}
             onPress={onSummary}
@@ -737,7 +761,7 @@ function ActivePlanCard({
           >
             <Eye size={15} color={accentColor} />
             <Text style={[s.ctaOutlineText, { color: accentColor }]}>
-              Summary
+              {rp?.bpSummary || 'Summary'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -755,7 +779,7 @@ function ActivePlanCard({
           >
             <Play size={14} color={accentColor} fill={accentColor} />
             <Text style={[s.ctaSolidText, { color: accentColor }]}>
-              Revisit
+              {rp?.bpRevisit || 'Revisit'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -774,7 +798,9 @@ function ActivePlanCard({
         >
           <Play size={14} color={C.text} fill={C.text} />
           <Text style={[s.ctaSolidText, { color: C.text }]}>
-            {done === 0 ? 'Begin Day 1' : `Continue · Day ${nextDay}`}
+            {done === 0
+              ? `${rp?.bpBeginDay || 'Begin Day'} 1`
+              : `${rp?.bpContinue || 'Continue'} \u00B7 ${rp?.bpDaysLabel || 'Day'} ${nextDay}`}
           </Text>
         </TouchableOpacity>
       )}
@@ -789,14 +815,16 @@ function StatChip({
   value,
   label,
   C,
+  isRtl,
 }: {
   icon: React.ReactNode;
   value: string;
   label: string;
   C: ReturnType<typeof getColors>;
+  isRtl?: boolean;
 }) {
   return (
-    <View style={s.statChip}>
+    <View style={[s.statChip, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
       {icon}
       <Text style={[s.statChipValue, { color: C.text }]}>{value}</Text>
       <Text style={[s.statChipLabel, { color: C.muted }]}>{label}</Text>
@@ -815,6 +843,8 @@ function BrowsePlanCard({
   pct,
   C,
   isDark,
+  isRtl,
+  rp,
   onPress,
 }: {
   plan: ReadingPlan;
@@ -825,10 +855,18 @@ function BrowsePlanCard({
   pct: number;
   C: ReturnType<typeof getColors>;
   isDark: boolean;
+  isRtl?: boolean;
+  rp: any;
   onPress: () => void;
 }) {
   const diffColor =
     DIFFICULTY_COLOR[plan.difficulty]?.[isDark ? 'dark' : 'light'] ?? C.muted;
+
+  const difficultyLabel: Record<string, string> = {
+    easy: rp?.bpDifficultyEasy || 'Beginner',
+    medium: rp?.bpDifficultyMedium || 'Intermediate',
+    hard: rp?.bpDifficultyHard || 'Advanced',
+  };
 
   return (
     <TouchableOpacity
@@ -851,7 +889,7 @@ function BrowsePlanCard({
         />
       )}
 
-      <View style={s.browseRow}>
+      <View style={[s.browseRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <View
           style={[
             s.browseIconBox,
@@ -865,38 +903,40 @@ function BrowsePlanCard({
         </View>
 
         <View style={s.browseText}>
-          <View style={s.browseTitleRow}>
-            <Text style={[s.browseTitle, { color: C.text }]} numberOfLines={1}>
+          <View style={[s.browseTitleRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Text style={[s.browseTitle, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={1}>
               {plan.title}
             </Text>
             {isCompleted && (
               <View style={[s.activePill, { backgroundColor: '#10B981' }]}>
-                <Text style={s.activePillText}>✓ Done</Text>
+                <Text style={s.activePillText}>{rp?.bpDone || '\u2713 Done'}</Text>
               </View>
             )}
             {isActive && !isCompleted && (
               <View style={[s.activePill, { backgroundColor: C.primary }]}>
-                <Text style={s.activePillText}>Active</Text>
+                <Text style={s.activePillText}>{rp?.bpActive || 'Active'}</Text>
               </View>
             )}
           </View>
 
-          <Text style={[s.browseDesc, { color: C.muted }]} numberOfLines={2}>
+          <Text style={[s.browseDesc, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={2}>
             {plan.description}
           </Text>
 
-          <View style={s.browseMeta}>
+          <View style={[s.browseMeta, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <Text style={[s.metaItem, { color: C.muted }]}>
-              {plan.totalDays} days
+              {plan.totalDays} {rp?.bpDaysLabel || 'days'}
             </Text>
             <Text style={[s.metaDot, { color: C.muted }]}>·</Text>
             <Text style={[s.metaItem, { color: diffColor }]}>
-              {DIFFICULTY_LABEL[plan.difficulty] ?? plan.difficulty}
+              {difficultyLabel[plan.difficulty] ?? plan.difficulty}
             </Text>
             {plan.questionsEnabled && (
               <>
                 <Text style={[s.metaDot, { color: C.muted }]}>·</Text>
-                <Text style={[s.metaItem, { color: C.muted }]}>Q&A</Text>
+                <Text style={[s.metaItem, { color: C.muted }]}>
+                  {rp?.bpQALabel || 'Q&A'}
+                </Text>
               </>
             )}
           </View>
@@ -916,7 +956,7 @@ function BrowsePlanCard({
                   ]}
                 />
               </View>
-              <Text style={[s.browseProgressLabel, { color: C.muted }]}>
+              <Text style={[s.browseProgressLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                 {done}/{plan.totalDays} · {pct}%
               </Text>
             </View>
@@ -1051,7 +1091,7 @@ const s = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: SPACING.lg,
   },
-  activeTitleWrap: { flex: 1, marginRight: SPACING.md },
+  activeTitleWrap: { flex: 1 },
   activeTitleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',

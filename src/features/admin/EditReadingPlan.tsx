@@ -2,6 +2,7 @@
  * EditReadingPlan.tsx
  * ─────────────────────────────────────────────────────────────────────────────
  * Edit an existing reading plan
+ * Supports translations and RTL layout.
  */
 
 import React, { useEffect, useState, useCallback, useContext } from 'react';
@@ -15,6 +16,7 @@ import {
   ScrollView,
   Alert,
   Switch,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
@@ -31,6 +33,7 @@ import { getColors } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import {
   ChevronLeft,
+  ChevronRight,
   BookOpen,
   Calendar,
   CheckCircle2,
@@ -45,6 +48,8 @@ import {
   AlertTriangle,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 interface Chapter {
   book: string;
@@ -138,8 +143,11 @@ const EditReadingPlan: React.FC = () => {
   const { planId } = route.params || {};
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
   const theme = getTheme(isDark);
-  const styles = getStyles(theme);
+  const ac = translations?.admin;
+  const styles = getStyles(theme, isRtl);
 
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState<PlanMeta | null>(null);
@@ -157,7 +165,7 @@ const EditReadingPlan: React.FC = () => {
       const planMeta = allRes.plans?.find((p: ReadingPlan) => p.planId === planId);
       
       if (!planMeta) {
-        showToast('error', 'Plan not found');
+        showToast('error', ac?.editPlanNotFound || 'Plan not found');
         navigation.goBack();
         return;
       }
@@ -222,11 +230,11 @@ const EditReadingPlan: React.FC = () => {
         }),
       );
     } catch (e: any) {
-      showToast('error', e.message || 'Load error');
+      showToast('error', e.message || (ac?.editPlanLoadError || 'Load error'));
     } finally {
       setLoading(false);
     }
-  }, [planId, navigation]);
+  }, [planId, navigation, ac]);
 
   useEffect(() => {
     loadPlan();
@@ -238,7 +246,7 @@ const EditReadingPlan: React.FC = () => {
   const saveMeta = async () => {
     if (!meta) return;
     if (!meta.title.trim()) {
-      showToast('error', 'Title is required');
+      showToast('error', ac?.editPlanValidateTitle || 'Title is required');
       return;
     }
     setSavingMeta(true);
@@ -251,9 +259,9 @@ const EditReadingPlan: React.FC = () => {
         questionsEnabled: meta.questionsEnabled,
         isActive: meta.isActive,
       });
-      showToast('success', 'Plan info saved');
+      showToast('success', ac?.editPlanSavedInfo || 'Plan info saved');
     } catch (e: any) {
-      showToast('error', e.message || 'Save failed');
+      showToast('error', e.message || (ac?.editPlanSaveFailed || 'Save failed'));
     } finally {
       setSavingMeta(false);
     }
@@ -268,11 +276,11 @@ const EditReadingPlan: React.FC = () => {
     if (!meta || !planId) return;
     const day = days[dayIdx];
     if (!day.title.trim()) {
-      showToast('error', `Day ${day.dayNumber}: title required`);
+      showToast('error', (ac?.editPlanValidateDayTitle || 'Day {count}: title required').replace('{count}', String(day.dayNumber)));
       return;
     }
     if (day.chapters.some((c) => !c.book.trim())) {
-      showToast('error', `Day ${day.dayNumber}: all chapters need a book`);
+      showToast('error', (ac?.editPlanValidateDayChapters || 'Day {count}: all chapters need a book').replace('{count}', String(day.dayNumber)));
       return;
     }
 
@@ -301,11 +309,11 @@ const EditReadingPlan: React.FC = () => {
         });
       }
       
-      showToast('success', `Day ${day.dayNumber} saved`);
+      showToast('success', (ac?.editPlanDaySaved || 'Day {count} saved').replace('{count}', String(day.dayNumber)));
       loadPlan();
       setExpandedDay(-1);
     } catch (e: any) {
-      showToast('error', e.message || 'Save failed');
+      showToast('error', e.message || (ac?.editPlanSaveFailed || 'Save failed'));
     } finally {
       setSavingDay(null);
     }
@@ -329,7 +337,7 @@ const EditReadingPlan: React.FC = () => {
     if (!deleteTarget) return;
     try {
       await deleteQuizQuestion(deleteTarget.questionId!);
-      showToast('success', 'Question deleted');
+      showToast('success', ac?.editPlanQuestionDeleted || 'Question deleted');
       setDays((prev) =>
         prev.map((d, i) =>
           i === deleteTarget.dayIdx
@@ -344,9 +352,22 @@ const EditReadingPlan: React.FC = () => {
       );
       setDeleteTarget(null);
     } catch (e: any) {
-      showToast('error', e.message || 'Delete failed');
+      showToast('error', e.message || (ac?.editPlanQuestionDeleteFailed || 'Delete failed'));
     }
   };
+
+  useEffect(() => {
+    if (deleteTarget) {
+      Alert.alert(
+        ac?.readingPlanDeleteTitle || 'Delete Question',
+        ac?.readingPlanDeleteMessage || 'This will permanently delete this quiz question.',
+        [
+          { text: ac?.readingPlanCancelBtn || 'Cancel', style: 'cancel', onPress: () => setDeleteTarget(null) },
+          { text: ac?.readingPlanDeleteBtn || 'Delete', style: 'destructive', onPress: confirmDeleteQuiz },
+        ],
+      );
+    }
+  }, [deleteTarget]);
 
   const addChapter = (i: number) =>
     updateDay(i, { chapters: [...days[i].chapters, { book: '', chapter: 1 }] });
@@ -395,19 +416,20 @@ const EditReadingPlan: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centered]}>
+      <SafeAreaView edges={['top']} style={[styles.container, styles.centered]}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
         <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={styles.loadingText}>Loading plan…</Text>
-      </View>
+        <Text style={[styles.loadingText, isRtl && { textAlign: 'right' }]}>{ac?.editPlanLoading || 'Loading plan…'}</Text>
+      </SafeAreaView>
     );
   }
 
   if (!meta) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <Text style={styles.errorText}>Plan not found</Text>
+        <Text style={styles.errorText}>{ac?.editPlanNotFound || 'Plan not found'}</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backLink}>Go back</Text>
+          <Text style={styles.backLink}>{ac?.editPlanGoBack || 'Go back'}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -429,7 +451,7 @@ const EditReadingPlan: React.FC = () => {
         ]}
       >
         <TouchableOpacity
-          style={styles.dayCardHeader}
+          style={[styles.dayCardHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
           onPress={() => setExpandedDay(isOpen ? -1 : day.dayNumber)}
         >
           <View
@@ -445,41 +467,42 @@ const EditReadingPlan: React.FC = () => {
               <Text style={styles.dayNumberText}>{day.dayNumber}</Text>
             )}
           </View>
-          <View style={styles.dayInfo}>
+          <View style={[styles.dayInfo, { marginLeft: isRtl ? 0 : 12, marginRight: isRtl ? 12 : 0 }]}>
             <Text
               style={[
                 styles.dayTitle,
                 isExists && styles.dayTitleExists,
                 !isExists && styles.dayTitleEmpty,
+                isRtl && { textAlign: 'right' },
               ]}
             >
-              {day.title || `Day ${day.dayNumber} — not configured`}
+              {day.title || (ac?.editPlanTapToConfigure || 'Day {count} — not configured').replace('{count}', String(day.dayNumber))}
             </Text>
             {isExists ? (
-              <View style={styles.dayMeta}>
-                <Text style={styles.dayChapters}>
+              <View style={[styles.dayMeta, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.dayChapters, isRtl && { textAlign: 'right' }]}>
                   {day.chapters.map((c) => `${c.book} ${c.chapter}`).join(' · ')}
                 </Text>
                 {day.reflectionQuestions.filter(r => r.trim()).length > 0 && (
-                  <Text style={styles.dayMetaItem}>
-                    {day.reflectionQuestions.filter(r => r.trim()).length} reflections
+                  <Text style={[styles.dayMetaItem, isRtl && { textAlign: 'right' }]}>
+                    {day.reflectionQuestions.filter(r => r.trim()).length} {(ac?.planFormReflectionLabel || 'Reflections').toLowerCase()}
                   </Text>
                 )}
                 {day.quizQuestions.length > 0 && (
-                  <Text style={styles.dayMetaItem}>
-                    {day.quizQuestions.length} quiz{day.quizQuestions.length > 1 ? 'zes' : ''}
+                  <Text style={[styles.dayMetaItem, isRtl && { textAlign: 'right' }]}>
+                    {day.quizQuestions.length} {(ac?.planFormQuizQuestionsLabel || 'Quiz').toLowerCase()}{day.quizQuestions.length > 1 ? 'zes' : ''}
                   </Text>
                 )}
               </View>
             ) : (
-              <Text style={styles.dayPendingText}>
-                Tap to configure
+              <Text style={[styles.dayPendingText, isRtl && { textAlign: 'right' }]}>
+                {ac?.editPlanTapToConfigure || 'Tap to configure'}
               </Text>
             )}
           </View>
-          <View style={styles.dayStatus}>
+          <View style={[styles.dayStatus, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             {isExists && (
-              <Text style={styles.statusUnsaved}>saved</Text>
+              <Text style={styles.statusUnsaved}>{ac?.editPlanSaved || 'saved'}</Text>
             )}
             {isOpen ? (
               <ChevronUp size={18} color={theme.muted} />
@@ -492,36 +515,36 @@ const EditReadingPlan: React.FC = () => {
         {isOpen && (
           <ScrollView style={styles.dayCardBody} showsVerticalScrollIndicator={false}>
             <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Day Title</Text>
+              <View style={[styles.labelRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormDayTitleLabel || 'Day Title'}</Text>
                 <Text style={styles.required}>*</Text>
               </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRtl && { textAlign: 'right' }]}
                 value={day.title}
                 onChangeText={(text) => updateDay(dayIdx, { title: text })}
-                placeholder="e.g. Creation — In the beginning"
+                placeholder={ac?.planFormDayTitlePlaceholder || "e.g. Creation — In the beginning"}
                 placeholderTextColor={theme.muted}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Chapters</Text>
+              <View style={[styles.labelRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormChaptersLabel || 'Chapters'}</Text>
                 <Text style={styles.required}>*</Text>
               </View>
               {day.chapters.map((ch, ci) => (
-                <View key={ci} style={styles.chapterRow}>
+                <View key={ci} style={[styles.chapterRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <TouchableOpacity style={[styles.bookPicker, { borderColor: theme.border }]}>
-                      <Text style={styles.bookPickerText}>
-                        {ch.book || 'Select book'}
+                    <TouchableOpacity style={[styles.bookPicker, { borderColor: theme.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                      <Text style={[styles.bookPickerText, isRtl && { textAlign: 'right' }]}>
+                        {ch.book || (ac?.planFormSelectBook || 'Select book')}
                       </Text>
                       <ChevronDown size={16} color={theme.muted} />
                     </TouchableOpacity>
                   </ScrollView>
                   <TextInput
-                    style={[styles.input, styles.chapterInput]}
+                    style={[styles.input, styles.chapterInput, isRtl && { textAlign: 'right' }]}
                     value={String(ch.chapter)}
                     onChangeText={(text) =>
                       updateChapter(dayIdx, ci, { chapter: parseInt(text) || 1 })
@@ -540,21 +563,21 @@ const EditReadingPlan: React.FC = () => {
                   )}
                 </View>
               ))}
-              <TouchableOpacity style={styles.addLink} onPress={() => addChapter(dayIdx)}>
+              <TouchableOpacity style={[styles.addLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={() => addChapter(dayIdx)}>
                 <Plus size={14} color={theme.primary} />
-                <Text style={styles.addLinkText}>Add Chapter</Text>
+                <Text style={styles.addLinkText}>{ac?.planFormAddChapter || 'Add Chapter'}</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Reflection Questions</Text>
+              <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormReflectionLabel || 'Reflection Questions'}</Text>
               {day.reflectionQuestions.map((q, ri) => (
-                <View key={ri} style={styles.chapterRow}>
+                <View key={ri} style={[styles.chapterRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <TextInput
-                    style={[styles.input, styles.flex1]}
+                    style={[styles.input, styles.flex1, isRtl && { textAlign: 'right' }]}
                     value={q}
                     onChangeText={(text) => updateReflection(dayIdx, ri, text)}
-                    placeholder={`Reflection ${ri + 1}`}
+                    placeholder={(ac?.planFormReflectionPlaceholder || 'Reflection {count}').replace('{count}', String(ri + 1))}
                     placeholderTextColor={theme.muted}
                   />
                   {day.reflectionQuestions.length > 1 && (
@@ -567,25 +590,25 @@ const EditReadingPlan: React.FC = () => {
                   )}
                 </View>
               ))}
-              <TouchableOpacity style={styles.addLink} onPress={() => addReflection(dayIdx)}>
+              <TouchableOpacity style={[styles.addLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={() => addReflection(dayIdx)}>
                 <Plus size={14} color={theme.primary} />
-                <Text style={styles.addLinkText}>Add Reflection</Text>
+                <Text style={styles.addLinkText}>{ac?.planFormAddReflection || 'Add Reflection'}</Text>
               </TouchableOpacity>
             </View>
 
             {meta.questionsEnabled && (
               <View style={styles.inputGroup}>
-                <View style={styles.quizHeader}>
+                <View style={[styles.quizHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <HelpCircle size={16} color="#7c3aed" />
-                  <Text style={styles.label}>Quiz Questions</Text>
+                  <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormQuizQuestionsLabel || 'Quiz Questions'}</Text>
                 </View>
                 {day.quizQuestions.map((quiz, qi) => (
                   <View key={qi} style={styles.quizCard}>
-                    <View style={styles.quizCardHeader}>
-                      <View style={styles.quizBadges}>
+                    <View style={[styles.quizCardHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                      <View style={[styles.quizBadges, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                         <Text style={styles.quizNumber}>Q{qi + 1}</Text>
                         {quiz._new && (
-                          <Text style={styles.quizNew}>new</Text>
+                          <Text style={styles.quizNew}>{ac?.editPlanNewBadge || 'new'}</Text>
                         )}
                       </View>
                       <TouchableOpacity
@@ -598,18 +621,18 @@ const EditReadingPlan: React.FC = () => {
                       </TouchableOpacity>
                     </View>
                     <TextInput
-                      style={[styles.input, styles.textArea]}
+                      style={[styles.input, styles.textArea, isRtl && { textAlign: 'right' }]}
                       value={quiz.question}
                       onChangeText={(text) =>
                         updateQuiz(dayIdx, qi, { question: text })
                       }
-                      placeholder="Question text…"
+                      placeholder={ac?.planFormQuizPlaceholder || "Question text…"}
                       placeholderTextColor={theme.muted}
                       multiline
                     />
                     <View style={styles.optionsGrid}>
                       {quiz.options.map((option, oi) => (
-                        <View key={oi} style={styles.optionRow}>
+                        <View key={oi} style={[styles.optionRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                           <TouchableOpacity
                             style={[
                               styles.optionRadio,
@@ -628,35 +651,35 @@ const EditReadingPlan: React.FC = () => {
                             )}
                           </TouchableOpacity>
                           <TextInput
-                            style={[styles.input, styles.optionInput]}
+                            style={[styles.input, styles.optionInput, isRtl && { textAlign: 'right' }]}
                             value={option}
                             onChangeText={(text) =>
                               updateQuizOption(dayIdx, qi, oi, text)
                             }
-                            placeholder={`Option ${oi + 1}`}
+                            placeholder={(ac?.planFormOptionPlaceholder || 'Option {count}').replace('{count}', String(oi + 1))}
                             placeholderTextColor={theme.muted}
                           />
                         </View>
                       ))}
                     </View>
                     <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Explanation</Text>
+                      <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormExplanationLabel || 'Explanation'}</Text>
                       <TextInput
-                        style={[styles.input, styles.textAreaSmall]}
+                        style={[styles.input, styles.textAreaSmall, isRtl && { textAlign: 'right' }]}
                         value={quiz.explanation}
                         onChangeText={(text) =>
                           updateQuiz(dayIdx, qi, { explanation: text })
                         }
-                        placeholder="Explain why this is correct..."
+                        placeholder={ac?.planFormExplanationPlaceholder || "Explain why this is correct..."}
                         placeholderTextColor={theme.muted}
                         multiline
                       />
                     </View>
                   </View>
                 ))}
-                <TouchableOpacity style={styles.addLink} onPress={() => addQuiz(dayIdx)}>
+                <TouchableOpacity style={[styles.addLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={() => addQuiz(dayIdx)}>
                   <Plus size={14} color={theme.primary} />
-                  <Text style={styles.addLinkText}>Add Question</Text>
+                  <Text style={styles.addLinkText}>{ac?.planFormAddQuestion || 'Add Question'}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -665,6 +688,7 @@ const EditReadingPlan: React.FC = () => {
               style={[
                 styles.saveDayBtn,
                 isExists && styles.saveDayBtnPrimary,
+                { flexDirection: isRtl ? 'row-reverse' : 'row' },
               ]}
               onPress={() => saveDay(dayIdx)}
               disabled={isSaving}
@@ -678,9 +702,10 @@ const EditReadingPlan: React.FC = () => {
                     style={[
                       styles.saveDayText,
                       isExists && styles.saveDayTextPrimary,
+                      isRtl && { textAlign: 'right' },
                     ]}
                   >
-                    Save Day {day.dayNumber}
+                    {(ac?.editPlanSaveDay || 'Save Day {count}').replace('{count}', String(day.dayNumber))}
                   </Text>
                 </>
               )}
@@ -692,41 +717,42 @@ const EditReadingPlan: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView edges={['top']} style={styles.container}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.surface} />
+      <View style={[styles.header, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <ChevronLeft size={20} color={theme.primary} />
+          {isRtl ? <ChevronRight size={20} color={theme.primary} /> : <ChevronLeft size={20} color={theme.primary} />}
         </TouchableOpacity>
         <TouchableOpacity onPress={loadPlan} style={styles.refreshBtn}>
           <RefreshCw size={20} color={theme.muted} />
         </TouchableOpacity>
-        <View style={styles.headerIcon}>
+        <View style={[styles.headerIcon, { marginLeft: isRtl ? 0 : 8, marginRight: isRtl ? 8 : 0 }]}>
           <BookOpen size={20} color={theme.primary} />
         </View>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>Edit Plan</Text>
-          <Text style={styles.headerSubtitle}>{meta.planId}</Text>
+          <Text style={[styles.headerTitle, isRtl && { textAlign: 'right' }]}>{ac?.editPlanTitle || 'Edit Plan'}</Text>
+          <Text style={[styles.headerSubtitle, isRtl && { textAlign: 'right' }]}>{meta.planId}</Text>
         </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Plan Info */}
         <View style={styles.card}>
-          <View style={styles.cardHeader}>
+          <View style={[styles.cardHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <BookOpen size={20} color={theme.primary} />
-            <Text style={styles.cardTitle}>Plan Info</Text>
+            <Text style={[styles.cardTitle, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 8 }]}>{ac?.editPlanCardPlanInfo || 'Plan Info'}</Text>
           </View>
-          <Text style={styles.cardSubtitle}>
-            Update metadata — days cannot change
+          <Text style={[styles.cardSubtitle, isRtl && { textAlign: 'right' }]}>
+            {ac?.editPlanCardPlanInfoSub || 'Update metadata — days cannot change'}
           </Text>
           
           <View style={styles.form}>
-            <View style={styles.switchRow}>
-              <View style={styles.switchInfo}>
-                <Text style={styles.switchLabel}>Active</Text>
+            <View style={[styles.switchRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <View style={[styles.switchInfo, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.switchLabel, isRtl && { textAlign: 'right' }]}>{ac?.editPlanActiveLabel || 'Active'}</Text>
               </View>
               <Switch
                 value={meta.isActive}
@@ -737,64 +763,62 @@ const EditReadingPlan: React.FC = () => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Title</Text>
+              <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormTitleLabel || 'Title'}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRtl && { textAlign: 'right' }]}
                 value={meta.title}
                 onChangeText={(text) => updateMeta('title', text)}
-                placeholder="Plan title"
+                placeholder={ac?.createPlanTitlePlaceholder || "Plan title"}
                 placeholderTextColor={theme.muted}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Description</Text>
+              <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormDescriptionLabel || 'Description'}</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textArea, isRtl && { textAlign: 'right' }]}
                 value={meta.description}
                 onChangeText={(text) => updateMeta('description', text)}
-                placeholder="Brief description…"
+                placeholder={ac?.createPlanDescPlaceholder || "Brief description…"}
                 placeholderTextColor={theme.muted}
                 multiline
                 numberOfLines={5}
               />
             </View>
 
-            <View style={styles.inputRow}>
-              <View style={styles.halfInput}>
-                <Text style={styles.label}>Category</Text>
-                <View style={styles.optionsRow}>
-                  {CATEGORIES.map((cat) => (
-                    <TouchableOpacity
-                      key={cat.value}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormCategoryLabel || 'Category'}</Text>
+              <View style={[styles.optionsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                {CATEGORIES.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.value}
+                    style={[
+                      styles.optionButton,
+                      { borderColor: theme.border },
+                      meta.category === cat.value && {
+                        backgroundColor: theme.primary,
+                        borderColor: theme.primary,
+                      },
+                    ]}
+                    onPress={() => updateMeta('category', cat.value)}
+                  >
+                    <Text
                       style={[
-                        styles.optionButton,
-                        { borderColor: theme.border },
-                        meta.category === cat.value && {
-                          backgroundColor: theme.primary,
-                          borderColor: theme.primary,
-                        },
+                        styles.optionText,
+                        { color: theme.text },
+                        meta.category === cat.value && { color: '#fff' },
                       ]}
-                      onPress={() => updateMeta('category', cat.value)}
                     >
-                      <Text
-                        style={[
-                          styles.optionText,
-                          { color: theme.text },
-                          meta.category === cat.value && { color: '#fff' },
-                        ]}
-                      >
-                        {cat.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Difficulty</Text>
-              <View style={styles.optionsRow}>
+              <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormDifficultyLabel || 'Difficulty'}</Text>
+              <View style={[styles.optionsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 {DIFFICULTIES.map((diff) => (
                   <TouchableOpacity
                     key={diff.value}
@@ -822,13 +846,13 @@ const EditReadingPlan: React.FC = () => {
               </View>
             </View>
 
-            <View style={styles.switchRow}>
-              <View style={styles.switchInfo}>
+            <View style={[styles.switchRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <View style={[styles.switchInfo, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <HelpCircle size={20} color={theme.primary} />
                 <View>
-                  <Text style={styles.switchLabel}>Quiz Questions</Text>
-                  <Text style={styles.switchSubLabel}>
-                    Enable daily quizzes for readers
+                  <Text style={[styles.switchLabel, isRtl && { textAlign: 'right' }]}>{ac?.planFormQuizLabel || 'Quiz Questions'}</Text>
+                  <Text style={[styles.switchSubLabel, isRtl && { textAlign: 'right' }]}>
+                    {ac?.planFormQuizSubLabel || 'Enable daily quizzes for readers'}
                   </Text>
                 </View>
               </View>
@@ -845,6 +869,7 @@ const EditReadingPlan: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.saveBtn,
+                { flexDirection: isRtl ? 'row-reverse' : 'row' },
                 savingMeta && styles.saveBtnDisabled,
               ]}
               onPress={saveMeta}
@@ -855,7 +880,7 @@ const EditReadingPlan: React.FC = () => {
               ) : (
                 <>
                   <Save size={18} color="#fff" />
-                  <Text style={styles.saveBtnText}>Save Info</Text>
+                  <Text style={styles.saveBtnText}>{ac?.editPlanSaveInfo || 'Save Info'}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -864,22 +889,24 @@ const EditReadingPlan: React.FC = () => {
 
         {/* Day Assignments */}
         <View style={styles.card}>
-          <View style={styles.cardHeader}>
+          <View style={[styles.cardHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <Calendar size={20} color={theme.primary} />
-            <Text style={styles.cardTitle}>Daily Assignments</Text>
+            <Text style={[styles.cardTitle, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 8 }]}>{ac?.editPlanCardDailyAssignments || 'Daily Assignments'}</Text>
           </View>
-          <Text style={styles.daysCount}>{meta.totalDays} days</Text>
+          <Text style={[styles.daysCount, isRtl && { textAlign: 'right' }]}>
+            {(ac?.editPlanDays || '{count} days').replace('{count}', String(meta.totalDays))}
+          </Text>
           
           <ScrollView style={styles.daysList} showsVerticalScrollIndicator={false}>
             {days.map((day, dayIdx) => renderDayCard(day, dayIdx))}
           </ScrollView>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
-const getStyles = (theme: ReturnType<typeof getTheme>) =>
+const getStyles = (theme: ReturnType<typeof getTheme>, isRtl: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -904,7 +931,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginTop: 8,
     },
     header: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       padding: 16,
       backgroundColor: theme.surface,
@@ -922,7 +949,6 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       backgroundColor: theme.primary + '20',
       alignItems: 'center',
       justifyContent: 'center',
-      marginLeft: 8,
     },
     headerInfo: {
       flex: 1,
@@ -949,7 +975,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       overflow: 'hidden',
     },
     cardHeader: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       padding: 16,
       backgroundColor: theme.cardBackground,
@@ -985,7 +1011,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 6,
     },
     labelRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 4,
     },
@@ -1014,7 +1040,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flex: 1,
     },
     optionsRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       flexWrap: 'wrap',
       gap: 8,
     },
@@ -1029,7 +1055,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontWeight: '600',
     },
     switchRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: 16,
@@ -1038,7 +1064,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 16,
     },
     switchInfo: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 12,
     },
@@ -1053,7 +1079,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginTop: 2,
     },
     saveBtn: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: 14,
@@ -1093,7 +1119,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       backgroundColor: theme.surface,
     },
     dayCardHeader: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       padding: 12,
     },
@@ -1118,7 +1144,6 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     dayInfo: {
       flex: 1,
-      marginLeft: 12,
     },
     dayTitle: {
       fontSize: 14,
@@ -1138,7 +1163,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginTop: 2,
     },
     dayMeta: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 12,
       marginTop: 4,
@@ -1155,7 +1180,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginTop: 4,
     },
     dayStatus: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
     },
@@ -1171,13 +1196,13 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       minHeight: 300,
     },
     chapterRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
       marginBottom: 8,
     },
     bookPicker: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       paddingHorizontal: 12,
       paddingVertical: 10,
@@ -1201,7 +1226,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       padding: 8,
     },
     addLink: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       paddingVertical: 8,
       gap: 4,
@@ -1212,7 +1237,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       color: theme.primary,
     },
     quizHeader: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
       marginBottom: 8,
@@ -1224,13 +1249,13 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 12,
     },
     quizCardHeader: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 8,
     },
     quizBadges: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       gap: 8,
     },
     quizNumber: {
@@ -1252,7 +1277,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginVertical: 12,
     },
     optionRow: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 12,
       marginBottom: 8,
@@ -1284,7 +1309,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       textAlignVertical: 'top',
     },
     saveDayBtn: {
-      flexDirection: 'row',
+      flexDirection: isRtl ? 'row-reverse' : 'row',
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: 12,

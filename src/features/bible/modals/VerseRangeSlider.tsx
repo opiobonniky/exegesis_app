@@ -28,6 +28,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import {
   getColors,
   SPACING,
@@ -93,6 +94,7 @@ export default function VerseRangeSlider({
   isDark,
   accentColor,
 }: VerseRangeSliderProps) {
+  const { translations } = useLanguage();
   const COLORS = getColors(isDark);
   const accent = accentColor ?? COLORS.primary;
 
@@ -235,13 +237,13 @@ export default function VerseRangeSlider({
       {/* Label row */}
       <View style={styles.labelRow}>
         <Text style={[styles.labelText, { color: COLORS.muted }]}>
-          Verse range
+          {translations?.bible?.verseRangeLabel || 'Verse range'}
         </Text>
         <Text style={[styles.rangeText, { color: accent }]}>
           {isSingleVerse ? `v${startVerse}` : `v${startVerse} – v${endVerse}`}
           <Text style={[styles.countText, { color: COLORS.muted }]}>
             {' '}
-            ({endVerse - startVerse + 1} verse
+            ({endVerse - startVerse + 1} {translations?.bible?.verses || 'verse'}
             {endVerse - startVerse + 1 !== 1 ? 's' : ''})
           </Text>
         </Text>

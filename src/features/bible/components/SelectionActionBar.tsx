@@ -28,6 +28,7 @@ import {
 } from '../../../constants/theme';
 import { SelectionActionBarProps } from '../types';
 import VerseRangeSlider from '../modals/VerseRangeSlider';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -130,7 +131,8 @@ export default function SelectionActionBar({
   onClear,
   onJournal,
   isDark,
-}: SelectionActionBarProps) {
+  isRtl,
+}: SelectionActionBarProps & { isRtl?: boolean }) {
   const COLORS = getColors(isDark);
 
   // Derive current range from selection
@@ -152,10 +154,13 @@ export default function SelectionActionBar({
     }).start();
   }, []);
 
+  const { translations } = useLanguage();
+  const bc = translations?.bible;
+
   const actions: any[] = [
     {
       key: 'listen',
-      label: 'Listen',
+      label: bc?.listen || 'Listen',
       icon: <Headphones size={22} color={COLORS.primary} strokeWidth={2} />,
       onPress: onListen,
       isPrimary: true,
@@ -163,27 +168,27 @@ export default function SelectionActionBar({
 
     {
       key: 'journal',
-      label: 'Journal',
+      label: bc?.journal || 'Journal',
       icon: <BookText size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onJournal,
     },
 
     {
       key: 'explain',
-      label: 'Explain',
+      label: bc?.explain || 'Explain',
       icon: <Lightbulb size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onExplain,
     },
 
     {
       key: 'highlight',
-      label: 'Highlight',
+      label: bc?.highlight || 'Highlight',
       icon: <Edit3 size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onHighlight,
     },
     {
       key: 'note',
-      label: 'Note',
+      label: bc?.note || 'Note',
       icon: (
         <FileText size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />
       ),
@@ -191,20 +196,20 @@ export default function SelectionActionBar({
     },
     {
       key: 'favorite',
-      label: 'Favorite',
+      label: bc?.favorite || 'Favorite',
       icon: <Star size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onFavorite,
     },
 
     {
       key: 'share',
-      label: 'Share',
+      label: bc?.share || 'Share',
       icon: <Share2 size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onShare,
     },
     {
       key: 'copy',
-      label: 'Copy',
+      label: bc?.copy || 'Copy',
       icon: <Copy size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onCopy,
     },
@@ -229,9 +234,9 @@ export default function SelectionActionBar({
       />
 
       {/* Header row */}
-      <View style={localStyles.header}>
+      <View style={[localStyles.header, isRtl && localStyles.headerRtl]}>
         {/* Left: book icon + selection count */}
-        <View style={localStyles.headerLeft}>
+        <View style={[localStyles.headerLeft, isRtl && localStyles.headerLeftRtl]}>
           <View
             style={[
               localStyles.bookIconWrap,
@@ -244,7 +249,9 @@ export default function SelectionActionBar({
             <Text style={[localStyles.countText, { color: COLORS.white }]}>
               {selectedCount}{' '}
               <Text style={localStyles.countSuffix}>
-                {selectedCount === 1 ? 'verse selected' : 'verses selected'}
+                {selectedCount === 1
+                  ? bc?.verseSelected || 'verse selected'
+                  : bc?.versesSelected || 'verses selected'}
               </Text>
             </Text>
           </View>
@@ -352,10 +359,16 @@ const localStyles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
   },
+  headerRtl: {
+    flexDirection: 'row-reverse',
+  },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  headerLeftRtl: {
+    flexDirection: 'row-reverse',
   },
   bookIconWrap: {
     width: 28,

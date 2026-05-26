@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { X, BookOpen, Search } from 'lucide-react-native';
 import { BookSelectorModalProps } from '../types';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import { getColors, FONT_SIZES } from '../../../constants/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -29,6 +30,8 @@ export default function BookSelectorModal({
   onSelectBook,
   isDark,
 }: BookSelectorModalProps) {
+  const { translations } = useLanguage();
+  const bc = translations?.bible;
   const COLORS = getColors(isDark);
 
   const [activeTab, setActiveTab] = useState<Tab>('Old');
@@ -141,7 +144,7 @@ export default function BookSelectorModal({
               <BookOpen size={18} color={COLORS.primary} strokeWidth={2} />
             </View>
             <View>
-              <Text style={[s.title, { color: COLORS.text }]}>Select Book</Text>
+              <Text style={[s.title, { color: COLORS.text }]}>{bc?.selectBookTitle || 'Select Book'}</Text>
               <Text style={[s.subtitle, { color: COLORS.muted }]}>
                 {books.length} books · {oldBooks.length} OT · {newBooks.length}{' '}
                 NT
@@ -173,7 +176,7 @@ export default function BookSelectorModal({
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search books…"
+            placeholder={bc?.searchBooksPlaceholder || 'Search books…'}
             placeholderTextColor={COLORS.muted}
             style={[s.searchInput, { color: COLORS.text }]}
             autoCorrect={false}
@@ -226,7 +229,7 @@ export default function BookSelectorModal({
                     },
                   ]}
                 >
-                  {tab} Testament
+                  {tab === 'Old' ? (bc?.oldTestamentTab || 'Old Testament') : (bc?.newTestamentTab || 'New Testament')}
                 </Text>
                 <Text
                   style={[
@@ -239,7 +242,7 @@ export default function BookSelectorModal({
                     },
                   ]}
                 >
-                  {tab === 'Old' ? oldBooks.length : newBooks.length} books
+                  {tab === 'Old' ? oldBooks.length : newBooks.length} {bc?.booksCount || 'books'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -255,7 +258,7 @@ export default function BookSelectorModal({
           {displayed.length === 0 ? (
             <View style={s.emptyWrap}>
               <Text style={[s.emptyText, { color: COLORS.muted }]}>
-                No books found for "{query}"
+                {bc?.noBooksFound || 'No books found for'} "{query}"
               </Text>
             </View>
           ) : (
@@ -326,7 +329,7 @@ export default function BookSelectorModal({
                         { color: isActive ? COLORS.primary : COLORS.muted },
                       ]}
                     >
-                      {book.chapters} ch
+                      {book.chapters} {bc?.chaptersAbbr || 'ch'}
                     </Text>
                   </View>
                 </TouchableOpacity>

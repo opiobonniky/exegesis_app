@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { X, Globe, Search } from 'lucide-react-native';
+import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import { getColors, FONT_SIZES } from '../../../constants/theme';
 import { bibleApi, mapFrontendId } from '../../../services/bibleApi';
 
@@ -43,6 +44,8 @@ export default function TranslationPickerModal({
   onSelectVersion,
   isDark,
 }: TranslationPickerModalProps) {
+  const { translations: lang } = useLanguage();
+  const bc = lang?.bible;
   const COLORS = getColors(isDark);
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -147,12 +150,12 @@ export default function TranslationPickerModal({
             </View>
             <View>
               <Text style={[s.title, { color: COLORS.text }]}>
-                Bible Translation
+                {bc?.selectTranslation || 'Bible Translation'}
               </Text>
               <Text style={[s.subtitle, { color: COLORS.muted }]}>
                 {loading
-                  ? 'Loading…'
-                  : `${displayed.length} translations available`}
+                  ? (bc?.loadingEllipsis || 'Loading…')
+                  : `${displayed.length} ${bc?.translationsAvailable || 'translations available'}`}
               </Text>
             </View>
           </View>
@@ -180,7 +183,7 @@ export default function TranslationPickerModal({
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search translations…"
+            placeholder={bc?.searchTranslationsPlaceholder || 'Search translations…'}
             placeholderTextColor={COLORS.muted}
             style={[s.searchInput, { color: COLORS.text }]}
             autoCorrect={false}
@@ -204,15 +207,15 @@ export default function TranslationPickerModal({
             <View style={s.loadingWrap}>
               <ActivityIndicator size="large" color={COLORS.primary} />
               <Text style={[s.loadingText, { color: COLORS.muted }]}>
-                Loading translations…
+                {bc?.loadingTranslationsText || 'Loading translations…'}
               </Text>
             </View>
           ) : displayed.length === 0 ? (
             <View style={s.emptyWrap}>
               <Text style={[s.emptyText, { color: COLORS.muted }]}>
                 {query
-                  ? `No translations found for "${query}"`
-                  : 'No translations available'}
+                  ? `${bc?.noTranslationsFound || 'No translations found for'} "${query}"`
+                  : (bc?.noTranslationsAvailable || 'No translations available')}
               </Text>
             </View>
           ) : (

@@ -19,6 +19,7 @@ import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { route } from '../../component/navigations/routes';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   getJournalEntry,
   toggleJournalFavorite,
@@ -37,6 +38,7 @@ import {
   Lightbulb,
   Sparkles,
   ChevronLeft,
+  ChevronRight,
 } from 'lucide-react-native';
 
 const JournalDetail = () => {
@@ -45,6 +47,9 @@ const JournalDetail = () => {
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const jc = translations?.journal;
 
   const entryId = routeParams?.params?.entryId;
 
@@ -63,7 +68,7 @@ const JournalDetail = () => {
         setEntry(res.returnData);
       }
     } catch (error) {
-      showToast('error', 'Failed to load entry');
+      showToast('error', jc?.failedToLoadEntry || 'Failed to load entry');
     } finally {
       setLoading(false);
     }
@@ -77,7 +82,7 @@ const JournalDetail = () => {
         setEntry(prev => prev ? { ...prev, isFavorite: !prev.isFavorite } : null);
       }
     } catch (error) {
-      showToast('error', 'Failed to update favorite');
+      showToast('error', jc?.failedToUpdateFavorite || 'Failed to update favorite');
     }
   };
 
@@ -90,17 +95,18 @@ const JournalDetail = () => {
     try {
       const res = await deleteJournalEntry(entry.id);
       if (res.returnCode === 200) {
-        showToast('success', 'Entry deleted');
+        showToast('success', jc?.entryDeleted || 'Entry deleted');
         navigation.goBack();
       }
     } catch (error) {
-      showToast('error', 'Failed to delete entry');
+      showToast('error', jc?.failedToDeleteEntry || 'Failed to delete entry');
     }
   };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
+    const locale = language === 'ar' ? 'ar-SA' : language === 'es' ? 'es-ES' : language === 'fr' ? 'fr-FR' : 'en-US';
+    return date.toLocaleDateString(locale, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
@@ -120,10 +126,22 @@ const JournalDetail = () => {
     return colors[cat] || colors.general;
   };
 
+  const getCategoryLabel = (cat: string): string => {
+    const labels: Record<string, string> = {
+      general: jc?.categoryGeneral || 'General',
+      study: jc?.categoryStudy || 'Study',
+      prayer: jc?.categoryPrayer || 'Prayer',
+      gratitude: jc?.categoryGratitude || 'Gratitude',
+      reflection: jc?.categoryReflection || 'Reflection',
+      application: jc?.categoryApplication || 'Application',
+    };
+    return labels[cat] || cat;
+  };
+
   if (loading || !entry) {
     return (
       <View style={[styles.container, { backgroundColor: COLORS.background }]}>
-        <Text style={{ color: COLORS.text }}>Loading...</Text>
+        <Text style={{ color: COLORS.text }}>{jc?.loadingLabel || 'Loading...'}</Text>
       </View>
     );
   }
@@ -132,12 +150,11 @@ const JournalDetail = () => {
     <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: COLORS.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: COLORS.surface }]}>
+      <View style={[styles.header, { backgroundColor: COLORS.surface, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-                <ChevronLeft size={24} color={COLORS.text} />
-
+          {isRtl ? <ChevronRight size={24} color={COLORS.text} /> : <ChevronLeft size={24} color={COLORS.text} />}
         </TouchableOpacity>
-        <View style={styles.headerActions}>
+        <View style={[styles.headerActions, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity onPress={handleToggleFavorite} style={styles.headerBtn}>
             <Star
               size={22}
@@ -156,36 +173,36 @@ const JournalDetail = () => {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Meta */}
-        <View style={styles.metaContainer}>
+        <View style={[styles.metaContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           {entry.category && (
             <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(entry.category) + '20' }]}>
               <Text style={[styles.categoryText, { color: getCategoryColor(entry.category) }]}>
-                {entry.category}
+                {getCategoryLabel(entry.category)}
               </Text>
             </View>
           )}
           {entry.mood && (
             <Text style={[styles.moodText, { color: COLORS.textSecondary }]}>
-              Feeling: {entry.mood}
+              {jc?.feelingLabel || 'Feeling:'} {entry.mood}
             </Text>
           )}
         </View>
 
         {/* Title */}
         {entry.title && (
-          <Text style={[styles.title, { color: COLORS.text }]}>{entry.title}</Text>
+          <Text style={[styles.title, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>{entry.title}</Text>
         )}
 
         {/* Date & Scripture */}
-        <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
+        <View style={[styles.infoRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <View style={[styles.infoItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <Calendar size={14} color={COLORS.muted} />
             <Text style={[styles.infoText, { color: COLORS.muted }]}>
               {formatDate(entry.createdOn)}
             </Text>
           </View>
           {entry.bookName && (
-            <View style={styles.infoItem}>
+            <View style={[styles.infoItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <BookOpen size={14} color={COLORS.muted} />
               <Text style={[styles.infoText, { color: COLORS.muted }]}>
                 {entry.bookName} {entry.chapter}:{entry.verseNumber}
@@ -196,51 +213,51 @@ const JournalDetail = () => {
 
         {/* Main Content */}
         <View style={[styles.section, { backgroundColor: COLORS.surface }]}>
-          <Text style={[styles.sectionTitle, { color: COLORS.text }]}>Journal Entry</Text>
-          <Text style={[styles.bodyText, { color: COLORS.textSecondary }]}>{entry.content}</Text>
+          <Text style={[styles.sectionTitle, { color: COLORS.text }]}>{jc?.journalEntrySection || 'Journal Entry'}</Text>
+          <Text style={[styles.bodyText, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>{entry.content}</Text>
         </View>
 
         {/* Gratitude */}
         {entry.gratitude && (
           <View style={[styles.section, { backgroundColor: COLORS.surface }]}>
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Heart size={16} color="#F59E0B" />
-              <Text style={[styles.sectionTitle, { color: COLORS.text, marginLeft: SPACING.xs }]}>Gratitude</Text>
+              <Text style={[styles.sectionTitle, { color: COLORS.text, marginLeft: isRtl ? 0 : SPACING.xs, marginRight: isRtl ? SPACING.xs : 0 }]}>{jc?.gratitudeLabel || 'Gratitude'}</Text>
             </View>
-            <Text style={[styles.bodyText, { color: COLORS.textSecondary }]}>{entry.gratitude}</Text>
+            <Text style={[styles.bodyText, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>{entry.gratitude}</Text>
           </View>
         )}
 
         {/* Learnings */}
         {entry.learnings && (
           <View style={[styles.section, { backgroundColor: COLORS.surface }]}>
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Lightbulb size={16} color="#3B82F6" />
-              <Text style={[styles.sectionTitle, { color: COLORS.text, marginLeft: SPACING.xs }]}>Learnings</Text>
+              <Text style={[styles.sectionTitle, { color: COLORS.text, marginLeft: isRtl ? 0 : SPACING.xs, marginRight: isRtl ? SPACING.xs : 0 }]}>{jc?.learningsLabel || 'Learnings'}</Text>
             </View>
-            <Text style={[styles.bodyText, { color: COLORS.textSecondary }]}>{entry.learnings}</Text>
+            <Text style={[styles.bodyText, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>{entry.learnings}</Text>
           </View>
         )}
 
         {/* Application */}
         {entry.application && (
           <View style={[styles.section, { backgroundColor: COLORS.surface }]}>
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Sparkles size={16} color="#10B981" />
-              <Text style={[styles.sectionTitle, { color: COLORS.text, marginLeft: SPACING.xs }]}>Application</Text>
+              <Text style={[styles.sectionTitle, { color: COLORS.text, marginLeft: isRtl ? 0 : SPACING.xs, marginRight: isRtl ? SPACING.xs : 0 }]}>{jc?.applicationLabel || 'Application'}</Text>
             </View>
-            <Text style={[styles.bodyText, { color: COLORS.textSecondary }]}>{entry.application}</Text>
+            <Text style={[styles.bodyText, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>{entry.application}</Text>
           </View>
         )}
 
         {/* Prayers */}
         {entry.prayers && (
           <View style={[styles.section, { backgroundColor: COLORS.surface }]}>
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Sparkles size={16} color="#8B5CF6" />
-              <Text style={[styles.sectionTitle, { color: COLORS.text, marginLeft: SPACING.xs }]}>Prayer Requests</Text>
+              <Text style={[styles.sectionTitle, { color: COLORS.text, marginLeft: isRtl ? 0 : SPACING.xs, marginRight: isRtl ? SPACING.xs : 0 }]}>{jc?.prayerRequestsLabel || 'Prayer Requests'}</Text>
             </View>
-            <Text style={[styles.bodyText, { color: COLORS.textSecondary }]}>{entry.prayers}</Text>
+            <Text style={[styles.bodyText, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>{entry.prayers}</Text>
           </View>
         )}
 

@@ -7,11 +7,11 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   Modal,
   Switch,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -22,13 +22,14 @@ import {
   updateUserByAdmin,
   SystemUser,
 } from '../../services/adminApi';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomTab from '../../component/navigations/BottomTab';
 import { getColors } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
-import { ChevronLeft, Edit, User, Mail, Phone, Gender, Heart, Shield, ToggleLeft, UserPlus } from 'lucide-react-native';
-import Toast from 'react-native-toast-message';
+import { ChevronLeft, ChevronRight, Edit, User, Mail, Phone, Shield, ToggleLeft, UserPlus } from 'lucide-react-native';
 import ActionModal from '../../reusable/ActionModal';
 import { showToast } from '../../helpers/Toash.helper';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 
 // ─── Dynamic Theme ───────────────────────────────────────────────────────────
 const getUsersPageTheme = (isDark: boolean) => {
@@ -57,6 +58,10 @@ const AdminUsersPage: React.FC = () => {
   const isDark = app?.isDark ?? false;
   const theme = getUsersPageTheme(isDark);
   const styles = getStyles(theme);
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const ac = translations?.admin;
+
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -94,9 +99,6 @@ const AdminUsersPage: React.FC = () => {
     async (pg: number = 1, searchTerm: string = '') => {
       try {
         const response = await getUsersByAdmin(searchTerm, pg, 20);
-
-        console.log('Fetched users:', JSON.stringify(response.users));
-
         const processedUsers = response.users.map((u: any) => ({
           ...u,
           roleName: u.userRole === 1 || u.userRole === '1' ? 'admin' : 'Member',
@@ -108,12 +110,12 @@ const AdminUsersPage: React.FC = () => {
         setPage(response.page);
       } catch (error) {
         console.error('Failed to fetch users:', error);
-        Alert.alert('Error', 'Failed to fetch users');
+        showToast('error', ac?.failedUpdateStatus || 'Failed to fetch users');
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [ac],
   );
 
   useEffect(() => {
@@ -143,13 +145,14 @@ const AdminUsersPage: React.FC = () => {
           u.username === username ? { ...u, status: !u.status } : u,
         ),
       );
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: `User ${user.status ? 'deactivated' : 'activated'} successfully`,
-      });
+      showToast(
+        'success',
+        user.status
+          ? (ac?.userDeactivated || 'User deactivated successfully')
+          : (ac?.userActivated || 'User activated successfully'),
+      );
     } catch (error: any) {
-      showToast('error', error.message || 'Failed to update user status');
+      showToast('error', error.message || (ac?.failedUpdateStatus || 'Failed to update user status'));
     } finally {
       setTogglingUsers(prev => {
         const next = new Set(prev);
@@ -174,10 +177,12 @@ const AdminUsersPage: React.FC = () => {
       );
       showToast(
         'success',
-        `User verification ${!user.emailVerified ? 'granted' : 'revoked'} successfully`,
+        !user.emailVerified
+          ? (ac?.verificationGranted || 'User verification granted successfully')
+          : (ac?.verificationRevoked || 'User verification revoked successfully'),
       );
     } catch (error: any) {
-      showToast('error', error.message || 'Failed to update verification');
+      showToast('error', error.message || (ac?.failedUpdateVerification || 'Failed to update verification'));
     } finally {
       setTogglingUsers(prev => {
         const next = new Set(prev);
@@ -189,28 +194,29 @@ const AdminUsersPage: React.FC = () => {
 
   const handleDeleteUser = (user: SystemUser) => {
     if (user.username === currentUsername) {
-      showToast('error', "You can't delete your own account.");
+      showToast('error', ac?.cannotDeleteSelf || "You can't delete your own account.");
       return;
     }
 
     setConfirmModalData({
-      title: 'Delete User',
-      message: `Are you sure you want to delete ${user.firstName} ${user.lastName}? This action cannot be undone.`,
-      confirmLabel: 'Delete',
-      cancelLabel: 'Cancel',
+      title: ac?.deleteUserTitle || 'Delete User',
+      message: (ac?.deleteUserMessage || 'Are you sure you want to delete {name}? This action cannot be undone.').replace('{name}', `${user.firstName} ${user.lastName}`),
+      confirmLabel: ac?.deleteLabel || 'Delete',
+      cancelLabel: ac?.cancelBtn || 'Cancel',
       severity: 'error',
       onConfirm: async () => {
         setConfirmModalData(null);
         try {
           await deleteUserByAdmin(user.username);
           setUsers(prev => prev.filter(u => u.username !== user.username));
-          showToast('success', 'User deleted successfully');
+          showToast('success', ac?.userDeleted || 'User deleted successfully');
         } catch (error: any) {
-          showToast('error', error.message || 'Failed to delete user');
+          showToast('error', error.message || (ac?.failedDeleteUser || 'Failed to delete user'));
         }
       },
     });
   };
+
   const handleEditUser = (user: SystemUser) => {
     setEditUser(user);
     setEditForm({
@@ -244,22 +250,21 @@ const AdminUsersPage: React.FC = () => {
         status: editForm.status,
       });
 
-      // Refresh the users list
       await fetchUsers();
 
       setEditModalVisible(false);
       setEditUser(null);
-      showToast('success', 'User updated successfully');
+      showToast('success', ac?.userUpdated || 'User updated successfully');
     } catch (error) {
       console.error('Error updating user:', error);
-      showToast('error', 'Failed to update user. Please try again.');
+      showToast('error', ac?.failedUpdateUser || 'Failed to update user. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
   const roleColor = (role: string) => {
-    if (role === 'admin') return '#7c3aed'; // keep custom or map to theme
+    if (role === 'admin') return '#7c3aed';
     return theme.primary;
   };
 
@@ -269,7 +274,7 @@ const AdminUsersPage: React.FC = () => {
 
   const renderUser = ({ item }: { item: SystemUser }) => (
     <View style={styles.userCard}>
-      <View style={styles.userHeader}>
+      <View style={[styles.userHeader, isRtl && { flexDirection: 'row-reverse' }]}>
         <View
           style={[styles.avatar, { backgroundColor: roleColor(item.roleName) }]}
         >
@@ -277,12 +282,12 @@ const AdminUsersPage: React.FC = () => {
             {getInitials(item.firstName, item.lastName)}
           </Text>
         </View>
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>
+        <View style={[styles.userInfo, isRtl && { marginLeft: 0, marginRight: 12 }]}>
+          <Text style={[styles.userName, isRtl && { textAlign: 'right' }]}>
             {item.firstName} {item.lastName}
           </Text>
-          <Text style={styles.userEmail}>{item.email}</Text>
-          <Text style={styles.userUsername}>@{item.username}</Text>
+          <Text style={[styles.userEmail, isRtl && { textAlign: 'right' }]}>{item.email}</Text>
+          <Text style={[styles.userUsername, isRtl && { textAlign: 'right' }]}>@{item.username}</Text>
         </View>
         <View
           style={[
@@ -293,12 +298,14 @@ const AdminUsersPage: React.FC = () => {
           <Text
             style={[styles.roleBadgeText, { color: roleColor(item.roleName) }]}
           >
-            {item.roleName}
+            {item.roleName === 'admin'
+              ? (ac?.roleAdmin || 'Admin')
+              : (ac?.roleMember || 'Member')}
           </Text>
         </View>
       </View>
 
-      <View style={styles.userStats}>
+      <View style={[styles.userStats, isRtl && { flexDirection: 'row-reverse' }]}>
         <TouchableOpacity
           style={[
             styles.statusBadge,
@@ -318,7 +325,9 @@ const AdminUsersPage: React.FC = () => {
                   : styles.statusTextInactive,
               ]}
             >
-              {item.emailVerified ? '✓ Verified' : '○ Unverified'}
+              {item.emailVerified
+                ? `✓ ${ac?.verified || 'Verified'}`
+                : `○ ${ac?.unverified || 'Unverified'}`}
             </Text>
           )}
         </TouchableOpacity>
@@ -337,18 +346,22 @@ const AdminUsersPage: React.FC = () => {
               item.status ? styles.statusTextActive : styles.statusTextInactive,
             ]}
           >
-            {item.status ? '● Active' : '○ Inactive'}
+            {item.status
+              ? `● ${ac?.active || 'Active'}`
+              : `○ ${ac?.inactive || 'Inactive'}`}
           </Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.userActions}>
+      <View style={[styles.userActions, isRtl && { flexDirection: 'row-reverse' }]}>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => handleEditUser(item)}
         >
           <Edit size={16} color={theme.primary} />
-          <Text style={[styles.editText, { color: theme.primary }]}>Edit</Text>
+          <Text style={[styles.editText, { color: theme.primary }, isRtl && { marginLeft: 0, marginRight: 4 }]}>
+            {ac?.editLabel || 'Edit'}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
@@ -361,7 +374,7 @@ const AdminUsersPage: React.FC = () => {
               item.username === currentUsername && { opacity: 0.5 },
             ]}
           >
-            Delete
+            {ac?.deleteLabel || 'Delete'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -370,34 +383,45 @@ const AdminUsersPage: React.FC = () => {
 
   const renderEmpty = () => (
     <View style={styles.empty}>
-      <Text style={styles.emptyText}>No users found</Text>
+      <Text style={[styles.emptyText, isRtl && { textAlign: 'right' }]}>
+        {ac?.noUsersFound || 'No users found'}
+      </Text>
     </View>
   );
 
+  const userCountText = `${totalCount} ${totalCount !== 1 ? (ac?.totalCountSuffixPlural || 'users') : (ac?.totalCountSuffix || 'user')}`;
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.surface} />
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerTop}>
+        <View style={[styles.headerTop, isRtl && { flexDirection: 'row-reverse' }]}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <ChevronLeft size={20} color={theme.primary} />
+            {isRtl ? (
+              <ChevronRight size={20} color={theme.primary} />
+            ) : (
+              <ChevronLeft size={20} color={theme.primary} />
+            )}
           </TouchableOpacity>
-          <Text style={styles.title}>User Management</Text>
+          <Text style={[styles.title, isRtl && { textAlign: 'right' }]}>
+            {ac?.userManagement || 'User Management'}
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
-        <Text style={styles.subtitle}>
-          {totalCount} user{totalCount !== 1 ? 's' : ''}
+        <Text style={[styles.subtitle, isRtl && { textAlign: 'right' }]}>
+          {userCountText}
         </Text>
       </View>
 
       {/* Search */}
       <View style={styles.searchContainer}>
         <TextInput
-          style={styles.searchInput}
-          placeholder="Search users..."
+          style={[styles.searchInput, isRtl && { textAlign: 'right' }]}
+          placeholder={ac?.searchUsersPlaceholder || 'Search users...'}
           value={search}
           onChangeText={handleSearch}
           placeholderTextColor={theme.muted}
@@ -435,6 +459,8 @@ const AdminUsersPage: React.FC = () => {
         onSave={handleSaveEdit}
         saving={saving}
         theme={theme}
+        ac={ac}
+        isRtl={isRtl}
         disableRoleChange={editUser?.username === currentUsername}
       />
       <ActionModal
@@ -448,7 +474,7 @@ const AdminUsersPage: React.FC = () => {
         onCancel={() => setConfirmModalData(null)}
         showCancel={true}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -462,6 +488,8 @@ const EditUserModal: React.FC<{
   onSave: () => void;
   saving: boolean;
   theme: ReturnType<typeof getUsersPageTheme>;
+  ac: any;
+  isRtl: boolean;
   disableRoleChange: boolean;
 }> = ({
   visible,
@@ -472,6 +500,8 @@ const EditUserModal: React.FC<{
   onSave,
   saving,
   theme,
+  ac,
+  isRtl,
   disableRoleChange = false,
 }) => {
   if (!user) return null;
@@ -481,23 +511,36 @@ const EditUserModal: React.FC<{
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
+  const GENDER_OPTIONS = [
+    { value: 'Male', label: ac?.genderMale || 'Male' },
+    { value: 'Female', label: ac?.genderFemale || 'Female' },
+    { value: 'Other', label: ac?.genderOther || 'Other' },
+  ];
+
+  const MARITAL_OPTIONS = [
+    { value: 'Single', label: ac?.maritalSingle || 'Single' },
+    { value: 'Married', label: ac?.maritalMarried || 'Married' },
+    { value: 'Divorced', label: ac?.maritalDivorced || 'Divorced' },
+    { value: 'Widowed', label: ac?.maritalWidowed || 'Widowed' },
+  ];
+
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={modalStyles.overlay}>
         <View style={[modalStyles.container, { backgroundColor: theme.surface }]}>
           {/* Header with Avatar */}
           <View style={[modalStyles.header, { borderBottomColor: theme.border }]}>
-            <View style={modalStyles.headerContent}>
+            <View style={[modalStyles.headerContent, isRtl && { flexDirection: 'row-reverse' }]}>
               <View style={[modalStyles.modalAvatar, { backgroundColor: theme.primary }]}>
                 <Text style={modalStyles.modalAvatarText}>
                   {getInitials(user.firstName, user.lastName)}
                 </Text>
               </View>
-              <View style={modalStyles.headerInfo}>
-                <Text style={[modalStyles.title, { color: theme.text }]}>
-                  Edit User
+              <View style={[modalStyles.headerInfo, isRtl && { marginLeft: 0, marginRight: 14 }]}>
+                <Text style={[modalStyles.title, { color: theme.text }, isRtl && { textAlign: 'right' }]}>
+                  {ac?.editUserTitle || 'Edit User'}
                 </Text>
-                <Text style={[modalStyles.subtitle, { color: theme.textSecondary }]}>
+                <Text style={[modalStyles.subtitle, { color: theme.textSecondary }, isRtl && { textAlign: 'right' }]}>
                   @{user.username}
                 </Text>
               </View>
@@ -511,59 +554,59 @@ const EditUserModal: React.FC<{
             <View style={modalStyles.form}>
               {/* Personal Information Section */}
               <View style={modalStyles.section}>
-                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }]}>
-                  Personal Information
+                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                  {ac?.personalInfoSection || 'Personal Information'}
                 </Text>
-                
+
                 <View style={modalStyles.inputGroup}>
-                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
-                    First Name *
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                    {ac?.firstNameField || 'First Name *'}
                   </Text>
-                  <View style={[modalStyles.inputContainer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                  <View style={[modalStyles.inputContainer, isRtl && { flexDirection: 'row-reverse' }, { borderColor: theme.border, backgroundColor: theme.bg }]}>
                     <User size={18} color={theme.muted} />
                     <TextInput
-                      style={[modalStyles.input, { color: theme.text }]}
+                      style={[modalStyles.input, { color: theme.text }, isRtl && { textAlign: 'right' }]}
                       value={form.firstName}
                       onChangeText={text =>
                         setForm(prev => ({ ...prev, firstName: text }))
                       }
-                      placeholder="Enter first name"
+                      placeholder={ac?.firstNamePlaceholder || 'Enter first name'}
                       placeholderTextColor={theme.muted}
                     />
                   </View>
                 </View>
 
                 <View style={modalStyles.inputGroup}>
-                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
-                    Last Name *
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                    {ac?.lastNameField || 'Last Name *'}
                   </Text>
-                  <View style={[modalStyles.inputContainer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                  <View style={[modalStyles.inputContainer, isRtl && { flexDirection: 'row-reverse' }, { borderColor: theme.border, backgroundColor: theme.bg }]}>
                     <User size={18} color={theme.muted} />
                     <TextInput
-                      style={[modalStyles.input, { color: theme.text }]}
+                      style={[modalStyles.input, { color: theme.text }, isRtl && { textAlign: 'right' }]}
                       value={form.lastName}
                       onChangeText={text =>
                         setForm(prev => ({ ...prev, lastName: text }))
                       }
-                      placeholder="Enter last name"
+                      placeholder={ac?.lastNamePlaceholder || 'Enter last name'}
                       placeholderTextColor={theme.muted}
                     />
                   </View>
                 </View>
 
                 <View style={modalStyles.inputGroup}>
-                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
-                    Middle Name
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                    {ac?.middleNameField || 'Middle Name'}
                   </Text>
-                  <View style={[modalStyles.inputContainer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                  <View style={[modalStyles.inputContainer, isRtl && { flexDirection: 'row-reverse' }, { borderColor: theme.border, backgroundColor: theme.bg }]}>
                     <User size={18} color={theme.muted} />
                     <TextInput
-                      style={[modalStyles.input, { color: theme.text }]}
+                      style={[modalStyles.input, { color: theme.text }, isRtl && { textAlign: 'right' }]}
                       value={form.middleName}
                       onChangeText={text =>
                         setForm(prev => ({ ...prev, middleName: text }))
                       }
-                      placeholder="Optional"
+                      placeholder={ac?.optionalPlaceholder || 'Optional'}
                       placeholderTextColor={theme.muted}
                     />
                   </View>
@@ -572,18 +615,18 @@ const EditUserModal: React.FC<{
 
               {/* Contact Information Section */}
               <View style={modalStyles.section}>
-                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }]}>
-                  Contact Information
+                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                  {ac?.contactInfoSection || 'Contact Information'}
                 </Text>
-                
+
                 <View style={modalStyles.inputGroup}>
-                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
-                    Email
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                    {ac?.emailField || 'Email'}
                   </Text>
-                  <View style={[modalStyles.readOnlyContainer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                  <View style={[modalStyles.readOnlyContainer, isRtl && { flexDirection: 'row-reverse' }, { borderColor: theme.border, backgroundColor: theme.bg }]}>
                     <Mail size={18} color={theme.muted} />
                     <TextInput
-                      style={[modalStyles.readOnlyInput, { color: theme.muted }]}
+                      style={[modalStyles.readOnlyInput, { color: theme.muted }, isRtl && { textAlign: 'right' }]}
                       value={user.email}
                       editable={false}
                     />
@@ -591,18 +634,18 @@ const EditUserModal: React.FC<{
                 </View>
 
                 <View style={modalStyles.inputGroup}>
-                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
-                    Phone Number
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                    {ac?.phoneField || 'Phone Number'}
                   </Text>
-                  <View style={[modalStyles.inputContainer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                  <View style={[modalStyles.inputContainer, isRtl && { flexDirection: 'row-reverse' }, { borderColor: theme.border, backgroundColor: theme.bg }]}>
                     <Phone size={18} color={theme.muted} />
                     <TextInput
-                      style={[modalStyles.input, { color: theme.text }]}
+                      style={[modalStyles.input, { color: theme.text }, isRtl && { textAlign: 'right' }]}
                       value={form.phoneNumber}
                       onChangeText={text =>
                         setForm(prev => ({ ...prev, phoneNumber: text }))
                       }
-                      placeholder="Enter phone number"
+                      placeholder={ac?.phonePlaceholder || 'Enter phone number'}
                       placeholderTextColor={theme.muted}
                       keyboardType="phone-pad"
                     />
@@ -612,36 +655,36 @@ const EditUserModal: React.FC<{
 
               {/* Additional Information Section */}
               <View style={modalStyles.section}>
-                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }]}>
-                  Additional Information
+                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                  {ac?.additionalInfoSection || 'Additional Information'}
                 </Text>
-                
+
                 <View style={modalStyles.inputGroup}>
-                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
-                    Gender
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                    {ac?.genderField || 'Gender'}
                   </Text>
-                  <View style={modalStyles.genderOptions}>
-                    {['Male', 'Female', 'Other'].map((option) => (
+                  <View style={[modalStyles.genderOptions, isRtl && { flexDirection: 'row-reverse' }]}>
+                    {GENDER_OPTIONS.map(({ value, label }) => (
                       <TouchableOpacity
-                        key={option}
+                        key={value}
                         style={[
                           modalStyles.genderBtn,
                           { borderColor: theme.border },
-                          form.gender === option && {
+                          form.gender === value && {
                             backgroundColor: theme.primary,
                             borderColor: theme.primary,
                           },
                         ]}
-                        onPress={() => setForm(prev => ({ ...prev, gender: option }))}
+                        onPress={() => setForm(prev => ({ ...prev, gender: value }))}
                       >
                         <Text
                           style={[
                             modalStyles.genderText,
                             { color: theme.text },
-                            form.gender === option && { color: '#fff' },
+                            form.gender === value && { color: '#fff' },
                           ]}
                         >
-                          {option}
+                          {label}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -649,31 +692,31 @@ const EditUserModal: React.FC<{
                 </View>
 
                 <View style={modalStyles.inputGroup}>
-                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
-                    Marital Status
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                    {ac?.maritalField || 'Marital Status'}
                   </Text>
-                  <View style={modalStyles.genderOptions}>
-                    {['Single', 'Married', 'Divorced', 'Widowed'].map((option) => (
+                  <View style={[modalStyles.genderOptions, isRtl && { flexDirection: 'row-reverse' }]}>
+                    {MARITAL_OPTIONS.map(({ value, label }) => (
                       <TouchableOpacity
-                        key={option}
+                        key={value}
                         style={[
                           modalStyles.genderBtn,
                           { borderColor: theme.border },
-                          form.maritalStatus === option && {
+                          form.maritalStatus === value && {
                             backgroundColor: theme.primary,
                             borderColor: theme.primary,
                           },
                         ]}
-                        onPress={() => setForm(prev => ({ ...prev, maritalStatus: option }))}
+                        onPress={() => setForm(prev => ({ ...prev, maritalStatus: value }))}
                       >
                         <Text
                           style={[
                             modalStyles.genderText,
                             { color: theme.text },
-                            form.maritalStatus === option && { color: '#fff' },
+                            form.maritalStatus === value && { color: '#fff' },
                           ]}
                         >
-                          {option}
+                          {label}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -683,15 +726,15 @@ const EditUserModal: React.FC<{
 
               {/* Role & Status Section */}
               <View style={modalStyles.section}>
-                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }]}>
-                  Role & Status
+                <Text style={[modalStyles.sectionTitle, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                  {ac?.roleStatusSection || 'Role & Status'}
                 </Text>
-                
+
                 <View style={modalStyles.inputGroup}>
-                  <Text style={[modalStyles.label, { color: theme.textSecondary }]}>
-                    Role {roleChangeDisabled && '(Cannot change your own role)'}
+                  <Text style={[modalStyles.label, { color: theme.textSecondary }, isRtl && { textAlign: 'right', marginLeft: 0, marginRight: 2 }]}>
+                    {ac?.roleField || 'Role'} {roleChangeDisabled ? ` ${ac?.cannotChangeOwnRole || '(Cannot change your own role)'}` : ''}
                   </Text>
-                  <View style={modalStyles.roleButtons}>
+                  <View style={[modalStyles.roleButtons, isRtl && { flexDirection: 'row-reverse' }]}>
                     <TouchableOpacity
                       style={[
                         modalStyles.roleBtn,
@@ -716,7 +759,7 @@ const EditUserModal: React.FC<{
                           form.roleName === 'admin' && { color: '#fff' },
                         ]}
                       >
-                        Admin
+                        {ac?.roleAdmin || 'Admin'}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -743,21 +786,23 @@ const EditUserModal: React.FC<{
                           form.roleName === 'Member' && { color: '#fff' },
                         ]}
                       >
-                        Member
+                        {ac?.roleMember || 'Member'}
                       </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
 
-                <View style={[modalStyles.statusRow, { backgroundColor: theme.bg, borderColor: theme.border }]}>
-                  <View style={modalStyles.statusInfo}>
+                <View style={[modalStyles.statusRow, isRtl && { flexDirection: 'row-reverse' }, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+                  <View style={[modalStyles.statusInfo, isRtl && { flexDirection: 'row-reverse' }]}>
                     <ToggleLeft size={20} color={form.status ? theme.success : theme.muted} />
                     <View>
-                      <Text style={[modalStyles.statusLabel, { color: theme.text }]}>
-                        Account Status
+                      <Text style={[modalStyles.statusLabel, { color: theme.text }, isRtl && { textAlign: 'right' }]}>
+                        {ac?.accountStatus || 'Account Status'}
                       </Text>
-                      <Text style={[modalStyles.statusSubLabel, { color: form.status ? theme.success : theme.error }]}>
-                        {form.status ? 'Active' : 'Inactive'}
+                      <Text style={[modalStyles.statusSubLabel, { color: form.status ? theme.success : theme.error }, isRtl && { textAlign: 'right' }]}>
+                        {form.status
+                          ? (ac?.active || 'Active')
+                          : (ac?.inactive || 'Inactive')}
                       </Text>
                     </View>
                   </View>
@@ -776,8 +821,8 @@ const EditUserModal: React.FC<{
               </View>
             </View>
           </ScrollView>
-          
-          <View style={[modalStyles.footer, { borderTopColor: theme.border }]}>
+
+          <View style={[modalStyles.footer, isRtl && { flexDirection: 'row-reverse' }, { borderTopColor: theme.border }]}>
             <TouchableOpacity
               style={[
                 modalStyles.btn,
@@ -788,7 +833,7 @@ const EditUserModal: React.FC<{
               disabled={saving}
             >
               <Text style={[modalStyles.btnText, { color: theme.text }]}>
-                Cancel
+                {ac?.cancelBtn || 'Cancel'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -805,7 +850,7 @@ const EditUserModal: React.FC<{
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={[modalStyles.btnText, { color: '#fff' }]}>
-                  Save Changes
+                  {ac?.saveChanges || 'Save Changes'}
                 </Text>
               )}
             </TouchableOpacity>

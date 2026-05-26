@@ -36,6 +36,7 @@ export interface BibleHeaderProps {
   chapter: number;
   version: { name: string; abbreviation: string };
   isDark: boolean;
+  isRtl?: boolean;
   onMenuPress: () => void;
   onBookPress: () => void;
   onSearchPress: () => void;
@@ -50,6 +51,7 @@ export default function BibleHeader({
   book,
   version,
   isDark,
+  isRtl,
   onMenuPress,
   onBookPress,
   onSearchPress,
@@ -91,7 +93,7 @@ export default function BibleHeader({
         */}
         <SafeAreaView edges={['top']} style={localStyles.safeArea}>
           {/* Fixed-height row — always visible regardless of inset */}
-          <View style={[localStyles.row, { paddingHorizontal: SPACING.lg ?? 16 }]}>
+          <View style={[localStyles.row, { paddingHorizontal: SPACING.lg ?? 16 }, isRtl && localStyles.rowRtl]}>
 
             {/* ── Menu ── */}
             <TouchableOpacity style={styles.iconButton} onPress={onMenuPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -164,6 +166,9 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingBottom:Platform.OS==='ios'?20:20
+  },
+  rowRtl: {
+    flexDirection: 'row-reverse',
   },
 
   // Title takes all remaining space between the side icons

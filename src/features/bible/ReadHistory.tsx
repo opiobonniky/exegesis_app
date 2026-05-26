@@ -18,6 +18,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Clock, History, TimerIcon, Trash2 } from 'lucide-react-native';
 
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import { sendPostRequest } from '../../services/api';
 import {
   getColors,
@@ -56,14 +57,14 @@ const PAGE_SIZE = 10;
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-const formatDateHeader = (dateKey: string) => {
+const formatDateHeader = (dateKey: string, bc?: any) => {
   const date = new Date(dateKey);
   const now = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(now.getDate() - 1);
+  const yest = new Date();
+  yest.setDate(now.getDate() - 1);
 
-  if (date.toDateString() === now.toDateString()) return 'Today';
-  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  if (date.toDateString() === now.toDateString()) return bc?.today || 'Today';
+  if (date.toDateString() === yest.toDateString()) return bc?.yesterday || 'Yesterday';
 
   const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
   if (diffDays < 7) return date.toLocaleDateString([], { weekday: 'long' });
@@ -205,6 +206,10 @@ export default function ReadHistory() {
     type: null,
   });
 
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
+  const bc = translations?.bible;
+
   if (!app) return null;
   const { isDark } = app;
   const COLORS = getColors(isDark);
@@ -279,7 +284,7 @@ export default function ReadHistory() {
       if (response.returnCode === 200) {
         setHistory(prev => prev.filter(item => item.id !== historyId));
         setTotalCount(prev => Math.max(0, prev - 1));
-        showToast('success', response.returnMessage || 'History item deleted');
+        showToast('success', response.returnMessage || (bc?.historyItemsDeleted || '{count} history items deleted').replace('{count}', '1'));
         fetchPage(0, true); // Refresh to ensure pagination integrity
       } else {
         showToast(
@@ -302,7 +307,7 @@ export default function ReadHistory() {
         setHistory([]);
         setTotalCount(0);
         setHasMore(false);
-        showToast('success', `${allIds.length} history items deleted`);
+        showToast('success', (bc?.historyItemsDeleted || '{count} history items deleted').replace('{count}', String(allIds.length)));
         fetchPage(0, true); // Refresh to ensure pagination integrity
       } else {
         showToast('error', response.returnMessage || 'Failed to clear history');
@@ -333,6 +338,7 @@ export default function ReadHistory() {
       marginBottom: SPACING.md,
       marginTop: SPACING.sm,
       textTransform: 'uppercase' as const,
+      textAlign: isRtl ? 'right' as const : 'left' as const,
     },
     historyCard: {
       backgroundColor: COLORS.cardBackground,
@@ -344,13 +350,13 @@ export default function ReadHistory() {
       shadowOpacity: 0.08,
       shadowRadius: 8,
       elevation: 2,
-      flexDirection: 'row' as const,
+      flexDirection: (isRtl ? 'row-reverse' : 'row') as 'row' | 'row-reverse',
       alignItems: 'center' as const,
       justifyContent: 'space-between' as const,
     },
     cardContent: { flex: 1 },
     cardHeader: {
-      flexDirection: 'row' as const,
+      flexDirection: (isRtl ? 'row-reverse' : 'row') as 'row' | 'row-reverse',
       justifyContent: 'space-between' as const,
       alignItems: 'center' as const,
       marginBottom: SPACING.xs,
@@ -359,10 +365,15 @@ export default function ReadHistory() {
       fontSize: FONT_SIZES.lg,
       fontWeight: '700' as const,
       color: COLORS.text,
+      textAlign: isRtl ? 'right' as const : 'left' as const,
     },
     timeText: { fontSize: FONT_SIZES.sm, color: COLORS.muted },
-    chapterText: { fontSize: FONT_SIZES.md, color: COLORS.textSecondary },
-    deleteButton: { padding: SPACING.sm, marginLeft: SPACING.md },
+    chapterText: {
+      fontSize: FONT_SIZES.md,
+      color: COLORS.textSecondary,
+      textAlign: isRtl ? 'right' as const : 'left' as const,
+    },
+    deleteButton: { padding: SPACING.sm, marginLeft: isRtl ? 0 : SPACING.md, marginRight: isRtl ? SPACING.md : 0 },
     clearAllButton: {
       backgroundColor: COLORS.error,
       paddingHorizontal: SPACING.lg,
@@ -403,7 +414,7 @@ export default function ReadHistory() {
   // ── render row ────────────────────────────────────────────────────────────
   const renderRow = ({ item: row }: { item: ListRow }) => {
     if (row.type === 'header') {
-      return <Text style={S.dateTitle}>{formatDateHeader(row.dateKey)}</Text>;
+      return <Text style={S.dateTitle}>{formatDateHeader(row.dateKey, bc)}</Text>;
     }
 
     const { item } = row;
@@ -425,7 +436,7 @@ export default function ReadHistory() {
             <Text style={S.timeText}>{formatWhatsAppTime(item.readAt)}</Text>
           </View>
           <Text style={S.chapterText}>
-            Chapter {item.chapter}
+            {bc?.chapter || 'Chapter'} {item.chapter}
             {item.lastVerse ? `:${item.lastVerse}` : ''}
             {item.lastVerse
               ? ` • ${getVerseText(item.bookName, item.chapter, item.lastVerse)}`
@@ -459,7 +470,9 @@ export default function ReadHistory() {
         activeOpacity={0.8}
       >
         <Text style={S.clearAllText}>
-          clear {history.length} items of {totalCount} history items
+          {(bc?.clearHistoryButton || 'clear {count} items of {total} history items')
+            .replace('{count}', String(history.length))
+            .replace('{total}', String(totalCount))}
         </Text>
       </TouchableOpacity>
     ) : null;
@@ -473,9 +486,9 @@ export default function ReadHistory() {
   const EmptyComponent = (
     <View style={S.emptyContainer}>
       <Clock size={48} color={COLORS.muted} />
-      <Text style={S.emptyTitle}>No Reading History</Text>
+      <Text style={S.emptyTitle}>{bc?.noHistory || 'No Reading History'}</Text>
       <Text style={S.emptyText}>
-        Start reading and your history will appear here
+        {bc?.noHistorySubtitle || 'Start reading and your history will appear here'}
       </Text>
     </View>
   );
@@ -483,7 +496,7 @@ export default function ReadHistory() {
   return (
     <View style={themeStyle.container}>
       <ActionHeader
-        title="Reading History"
+        title={bc?.readingHistory || 'Reading History'}
         onPress={() => navigation.goBack()}
         rightComponent={<History size={30} color={COLORS.text} />}
       />
@@ -528,17 +541,19 @@ export default function ReadHistory() {
         visible={deleteModal.visible}
         title={
           deleteModal.type === 'all'
-            ? `${history.length} History Items`
-            : 'Delete History Item?'
+            ? `${history.length} ${bc?.readingHistory || 'History Items'}`
+            : (bc?.deleteHistoryItem || 'Delete History Item?')
         }
         message={
           deleteModal.type === 'all'
-            ? `This will permanently delete  ${history.length} reading history items. This action cannot be undone.`
-            : `Are you sure you want to delete "${deleteModal.itemName}" from your reading history?`
+            ? (bc?.deleteAllConfirm || 'This will permanently delete {count} reading history items. This action cannot be undone.')
+              .replace('{count}', String(history.length))
+            : (bc?.deleteSingleConfirm || 'Are you sure you want to delete "{name}" from your reading history?')
+              .replace('{name}', deleteModal.itemName || '')
         }
         severity="warning"
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={bc?.delete || 'Delete'}
+        cancelLabel={bc?.cancel || 'Cancel'}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteModal({ visible: false, type: null })}
       />
