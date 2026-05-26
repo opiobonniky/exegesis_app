@@ -36,7 +36,7 @@ import {
 } from 'lucide-react-native';
 
 import { AppContext } from '../../common/AppContext';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   BORDER_RADIUS,
   getColors,
@@ -88,7 +88,7 @@ const FALLBACK_PITCH_LABELS: Record<string, string> = {
 export default function VoiceSettingsScreen() {
   const app = useContext(AppContext);
   const { translations: translation, language } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   if (!app) return null;
   const { isDark } = app;
   const COLORS = getColors(isDark);

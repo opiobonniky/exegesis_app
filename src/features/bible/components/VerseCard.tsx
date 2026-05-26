@@ -12,7 +12,7 @@ import { Heart, X, Lightbulb, BookText, Share2, Copy, Sun } from 'lucide-react-n
 import ExpandableText from '../../bible/ExpandableText';
 import { bibleTTS } from '../../../utilits/bibleTTS';
 import { route } from '../../../component/navigations/routes';
-import { useLanguage } from '../../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../../component/language-translation/LanguageProvider';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -85,7 +85,7 @@ export default function VerseCard({
 }: VerseCardProps) {
   const accent = colors.accent;
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const bc = translations?.bible;
 
   // ── Subscribe to bibleTTS directly — only THIS card re-renders per word ────

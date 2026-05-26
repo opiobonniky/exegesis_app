@@ -41,7 +41,7 @@ import { AppContext } from '../../common/AppContext';
 import { sendPostRequest } from '../../services/api';
 import { route } from '../../component/navigations/routes';
 import { showToast } from '../../helpers/Toash.helper';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import useBible from '../../features/bible/hooks/useBible';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -588,7 +588,7 @@ export default function Favorites() {
       StackNavigationProp<RootStackParamList, typeof route.bible>
     >();
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const bc = translations?.bible;
 
   const [loading, setLoading] = useState(true);

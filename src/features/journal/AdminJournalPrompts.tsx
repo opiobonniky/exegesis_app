@@ -20,7 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
 import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   getAllJournalPrompts,
   createJournalPrompt,
@@ -89,7 +89,7 @@ const AdminJournalPrompts = () => {
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const jc = translations?.journal;
 
   const [prompts, setPrompts] = useState<JournalPrompt[]>([]);

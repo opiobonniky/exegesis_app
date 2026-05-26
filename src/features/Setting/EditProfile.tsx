@@ -17,7 +17,7 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { AppContext } from '../../common/AppContext';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   BORDER_RADIUS,
   getColors,
@@ -39,7 +39,7 @@ export default function EditProfileScreen() {
   const app = useContext(AppContext);
   const navigation = useNavigation<any>();
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   if (!app || !app.userInfo) return null;

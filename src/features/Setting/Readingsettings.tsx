@@ -32,7 +32,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { AppContext } from '../../common/AppContext';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   BORDER_RADIUS,
   getColors,
@@ -59,7 +59,7 @@ export default function ReadingSettingsScreen() {
   const COLORS = getColors(isDark);
   // expose the translations object as `translation` for easier developer access
   const { translations: translation, language } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
 
   // Bible hook for connection status
   const { isOnline } = useBible();

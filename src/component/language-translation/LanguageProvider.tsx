@@ -10,6 +10,24 @@ import en from './en.json';
 import es from './es.json';
 import fr from './fr.json';
 import ar from './ar.json';
+import de from './de.json';
+import pt from './pt.json';
+import hi from './hi.json';
+import bn from './bn.json';
+import ta from './ta.json';
+import te from './te.json';
+import mr from './mr.json';
+import gu from './gu.json';
+import kn from './kn.json';
+import ml from './ml.json';
+import pa from './pa.json';
+import ur from './ur.json';
+import sw from './sw.json';
+import it from './it.json';
+import el from './el.json';
+import ru from './ru.json';
+import ne from './ne.json';
+import fil from './fil.json';
 import {
   Translations,
   Translator,
@@ -31,7 +49,12 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const [language, setLanguageState] = useState<Language>('en');
   const [loaded, setLoaded] = useState(false);
 
-  const translationsMap: Record<Language, Translations> = { en, es, fr, ar };
+  const translationsMap: Record<Language, Translations> = {
+    en, es, fr, ar,
+    de, pt,
+    hi, bn, ta, te, mr, gu, kn, ml, pa, ur,
+    sw, it, el, ru, ne, fil,
+  };
 
   // Resolve dot‑notation paths safely
   const resolve = (obj: any, path: string): any => {
@@ -75,13 +98,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
       try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (!mounted) return;
-        if (
-          stored &&
-          (stored === 'en' ||
-            stored === 'es' ||
-            stored === 'fr' ||
-            stored === 'ar')
-        ) {
+        if (stored && stored in translationsMap) {
           setLanguageState(stored as Language);
         }
       } catch (e) {
@@ -106,6 +123,8 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     </LanguageContext.Provider>
   );
 };
+
+export { isRtlLanguage, getLocale } from './localeUtils';
 
 export const useLanguage = () => {
   const ctx = useContext(LanguageContext);

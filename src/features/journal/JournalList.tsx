@@ -33,7 +33,7 @@ import { useNavigation } from '@react-navigation/native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import { getColors } from '../../constants/theme';
 import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
@@ -293,7 +293,7 @@ const JournalList = () => {
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const jc = translations?.journal;
 
   const [entries, setEntries] = useState<JournalEntry[]>([]);

@@ -29,7 +29,7 @@ import { AppContext } from '../../common/AppContext';
 import { ChevronLeft, ChevronRight, Edit, User, Mail, Phone, Shield, ToggleLeft, UserPlus } from 'lucide-react-native';
 import ActionModal from '../../reusable/ActionModal';
 import { showToast } from '../../helpers/Toash.helper';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 // ─── Dynamic Theme ───────────────────────────────────────────────────────────
 const getUsersPageTheme = (isDark: boolean) => {
@@ -59,7 +59,7 @@ const AdminUsersPage: React.FC = () => {
   const theme = getUsersPageTheme(isDark);
   const styles = getStyles(theme);
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const ac = translations?.admin;
 
   const [users, setUsers] = useState<SystemUser[]>([]);
@@ -326,7 +326,7 @@ const AdminUsersPage: React.FC = () => {
               ]}
             >
               {item.emailVerified
-                ? `✓ ${ac?.verified || 'Verified'}`
+                ? `✓ ${ac?.userVerified || 'Verified'}`
                 : `○ ${ac?.unverified || 'Unverified'}`}
             </Text>
           )}
@@ -348,7 +348,7 @@ const AdminUsersPage: React.FC = () => {
           >
             {item.status
               ? `● ${ac?.active || 'Active'}`
-              : `○ ${ac?.inactive || 'Inactive'}`}
+              : `○ ${ac?.userInactive || 'Inactive'}`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -802,7 +802,7 @@ const EditUserModal: React.FC<{
                       <Text style={[modalStyles.statusSubLabel, { color: form.status ? theme.success : theme.error }, isRtl && { textAlign: 'right' }]}>
                         {form.status
                           ? (ac?.active || 'Active')
-                          : (ac?.inactive || 'Inactive')}
+                          : (ac?.userInactive || 'Inactive')}
                       </Text>
                     </View>
                   </View>

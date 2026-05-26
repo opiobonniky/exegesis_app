@@ -37,7 +37,7 @@ import {
 } from 'lucide-react-native';
 import { sendPostRequest } from '../../services/api';
 import ActionHeader from '../../reusable/ActionHeader';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const CAL_CELL = Math.floor((SCREEN_W - SPACING.md * 2 - 32 - 6 * 4) / 7);
@@ -459,7 +459,7 @@ export default function PlanDetailScreen() {
   const { isDark } = useContext(AppContext)!;
   const { translations, language } = useLanguage();
   const rp = translations?.readingPlan;
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const P = useMemo(() => makePalette(isDark), [isDark]);
 
   const { planId, initialTab } = route.params ?? {};

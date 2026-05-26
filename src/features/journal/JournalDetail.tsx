@@ -19,7 +19,7 @@ import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { route } from '../../component/navigations/routes';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   getJournalEntry,
   toggleJournalFavorite,
@@ -48,7 +48,7 @@ const JournalDetail = () => {
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const jc = translations?.journal;
 
   const entryId = routeParams?.params?.entryId;

@@ -21,7 +21,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { ActivityRecord, getAllActivity } from '../../services/adminApi';
 import BottomTab from '../../component/navigations/BottomTab';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import { AppContext } from '../../common/AppContext';
 
 const AdminActivityPage: React.FC = () => {
@@ -29,7 +29,7 @@ const AdminActivityPage: React.FC = () => {
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const ac = translations?.admin;
 
   const [activities, setActivities] = useState<ActivityRecord[]>([]);
@@ -177,16 +177,18 @@ const AdminActivityPage: React.FC = () => {
     <SafeAreaView edges={['top']} style={styles.container}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="#fff" />
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          {isRtl ? <ChevronRight size={20} color="#2563eb" /> : <ChevronLeft size={20} color="#2563eb" />}
+      <View style={[styles.header, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          {isRtl ? <ChevronRight size={24} color="#2563eb" /> : <ChevronLeft size={24} color="#2563eb" />}
         </TouchableOpacity>
-        <Text style={[styles.title, { textAlign: isRtl ? 'right' : 'left' }]}>
-          {ac?.activityLogsTitle || 'Activity Logs'}
-        </Text>
-        <Text style={[styles.subtitle, { textAlign: isRtl ? 'right' : 'left' }]}>
-          {(ac?.activityLogsSessions || '{count} sessions').replace('{count}', String(totalCount))}
-        </Text>
+        <View style={[styles.headerContent, { marginLeft: isRtl ? 0 : 8, marginRight: isRtl ? 8 : 0 }]}>
+          <Text style={[styles.title, { textAlign: isRtl ? 'right' : 'left' }]}>
+            {ac?.activityLogsTitle || 'Activity Logs'}
+          </Text>
+          <Text style={[styles.subtitle, { textAlign: isRtl ? 'right' : 'left' }]}>
+            {(ac?.activityLogsSessions || '{count} sessions').replace('{count}', String(totalCount))}
+          </Text>
+        </View>
       </View>
 
       {/* Summary Stats */}
@@ -287,15 +289,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#f7f5f2',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
-    paddingTop: 8,
+    paddingTop: 12,
     backgroundColor: '#fff',
+  },
+  backBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  headerContent: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: '#1c1917',
-    marginTop: 8,
   },
   subtitle: {
     fontSize: 13,

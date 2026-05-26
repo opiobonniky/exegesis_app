@@ -51,8 +51,9 @@ import {
 } from '../../services/adminApi';
 import BottomTab from '../../component/navigations/BottomTab';
 import { useLanguage } from '../../component/language-translation/LanguageProvider';
-import { AdminTranslations } from '../../component/language-translation/type';
-import LanguagePickerModal from '../../component/LanguagePickerModal';
+import { AdminTranslations, Language } from '../../component/language-translation/type';
+import { isRtlLanguage, getLocale } from '../../component/language-translation/localeUtils';
+import LanguagePickerModal, { FLAGS, NATIVE_NAMES } from '../../component/LanguagePickerModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.78;
@@ -386,6 +387,8 @@ const Drawer: React.FC<{
   overlayOpacity: Animated.Value;
   isRtl: boolean;
   ac?: AdminTranslations;
+  currentLanguage?: Language;
+  onLanguagePress?: () => void;
 }> = ({
   isOpen,
   onClose,
@@ -398,6 +401,8 @@ const Drawer: React.FC<{
   overlayOpacity,
   isRtl,
   ac,
+  currentLanguage,
+  onLanguagePress,
 }) => {
   if (!isOpen) return null;
 
@@ -570,6 +575,18 @@ const Drawer: React.FC<{
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
+            style={[drawerStyles.navItem, { flexDirection: isRtl ? 'row-reverse' : 'row', borderLeftWidth: isRtl ? 0 : 3, borderRightWidth: isRtl ? 3 : 0, borderLeftColor: 'transparent', borderRightColor: 'transparent' }]}
+            onPress={onLanguagePress}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 22, marginRight: isRtl ? 0 : 8, marginLeft: isRtl ? 8 : 0 }}>
+              {currentLanguage ? FLAGS[currentLanguage] : '🌐'}
+            </Text>
+            <Text style={[drawerStyles.navLabel, { color: theme.drawerText, textAlign: isRtl ? 'right' : 'left' }]}>
+              {currentLanguage ? NATIVE_NAMES[currentLanguage] : 'Language'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[drawerStyles.navItem, drawerStyles.logoutItem, { flexDirection: isRtl ? 'row-reverse' : 'row', borderLeftWidth: isRtl ? 0 : 3, borderRightWidth: isRtl ? 3 : 0, borderLeftColor: 'transparent', borderRightColor: 'transparent' }]}
             onPress={onLogout}
             activeOpacity={0.7}
@@ -681,7 +698,7 @@ const AdminDashboard: React.FC = () => {
   const isDark = app?.isDark ?? false;
   const theme = getDashboardTheme(isDark);
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const ac = translations?.admin;
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -763,7 +780,7 @@ const AdminDashboard: React.FC = () => {
 
   const today = useMemo(
     () =>
-      new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
+      new Date().toLocaleDateString(getLocale(language), {
         weekday: 'long',
         month: 'long',
         day: 'numeric',
@@ -1151,14 +1168,14 @@ const AdminDashboard: React.FC = () => {
              onPress={() => navigation.navigate(route.adminDailyDevotion)}
              isRtl={isRtl}
            />
-           <QuickAction
-             icon={<Globe size={20} color="#64748b" />}
-             label={'Language'}
-             subtitle={`Current: ${language.toUpperCase()}`}
-             color="#64748b"
-             onPress={() => setLangPickerVisible(true)}
-             isRtl={isRtl}
-           />
+          <QuickAction
+            icon={<Globe size={20} color="#64748b" />}
+            label={translations?.profile?.menuItems?.language || 'Language'}
+            subtitle={`${FLAGS[language]}  ${NATIVE_NAMES[language]}`}
+            color="#64748b"
+            onPress={() => setLangPickerVisible(true)}
+            isRtl={isRtl}
+          />
          </View>
 
         <View style={rootStyles.bottomSpacer} />
@@ -1187,6 +1204,11 @@ const AdminDashboard: React.FC = () => {
           overlayOpacity={overlayOpacity}
           isRtl={isRtl}
           ac={ac}
+          currentLanguage={language}
+          onLanguagePress={() => {
+            closeDrawer();
+            setTimeout(() => setLangPickerVisible(true), 350);
+          }}
         />
       )}
     </View>

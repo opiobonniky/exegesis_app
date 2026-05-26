@@ -47,7 +47,7 @@ import {
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 interface Chapter {
   book: string;
@@ -158,7 +158,7 @@ const CreateReadingPlan: React.FC = () => {
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const theme = getTheme(isDark);
   const ac = translations?.admin;
   const styles = getStyles(theme, isRtl);

@@ -32,16 +32,15 @@ import {
   Target,
   LogOut,
   FileText,
-  CircleUserRoundIcon,
   Settings2,
   Mail,
   Phone,
   Calendar,
 } from 'lucide-react-native';
 import { AppContext } from '../../common/AppContext';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import { showToast } from '../../helpers/Toash.helper';
-import LanguagePickerModal from '../../component/LanguagePickerModal';
+import LanguagePickerModal, { FLAGS, NATIVE_NAMES } from '../../component/LanguagePickerModal';
 import {
   BORDER_RADIUS,
   getColors,
@@ -92,19 +91,7 @@ export default function ProfileScreen() {
   const user = userInfo as any;
   const COLORS = getColors(isDark);
   const { translations, setLanguage, language, t } = useLanguage();
-  const isRtl = language === 'ar';
-
-  const cycleLanguage = () => {
-    const langs = ['en', 'es', 'fr', 'ar'];
-    const idx = langs.indexOf(language as string);
-    const next = langs[(idx + 1) % langs.length];
-    setLanguage(next as any);
-    const names: Record<string, string> = { en: 'English', es: 'Español', fr: 'Français', ar: 'العربية' };
-    showToast(
-      'success',
-      `${t('profile.menuItems.language') || 'Language'}: ${names[next] || next}`,
-    );
-  };
+  const isRtl = isRtlLanguage(language);
 
   useEffect(() => {
     loadProfileData();
@@ -288,10 +275,11 @@ export default function ProfileScreen() {
             color: '#EC4899',
           },
           {
-            icon: CircleUserRoundIcon,
+            icon: Globe,
             label: t('profile.menuItems.language') || (translations.profile && translations.profile.menuItems?.language) || 'Language',
             onPress: () => setLangModalOpen(true),
             color: '#8B5CF6',
+            rightText: `${FLAGS[language]}  ${NATIVE_NAMES[language]}`,
           },
           {
             icon: User,
@@ -308,7 +296,7 @@ export default function ProfileScreen() {
         ],
       },
     ],
-    [COLORS.primary, COLORS.accent, isDark, stats, translations, t],
+    [COLORS.primary, COLORS.accent, isDark, stats, translations, t, language],
   );
 
   return (
@@ -533,6 +521,11 @@ export default function ProfileScreen() {
                     </View>
 
                     <View style={[styles.menuRight, isRtl && styles.menuRightRtl]}>
+                      {item.rightText && (
+                        <Text style={[styles.rightLangText, { color: COLORS.muted }]}>
+                          {item.rightText}
+                        </Text>
+                      )}
                       {item.badge && (
                         <View
                           style={[
@@ -904,6 +897,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: FONT_SIZES.xs,
     fontWeight: '700',
+  },
+  rightLangText: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginRight: 4,
   },
 
   logoutButton: {

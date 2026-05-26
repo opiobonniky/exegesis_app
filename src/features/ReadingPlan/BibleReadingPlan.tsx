@@ -38,7 +38,7 @@ import { showToast } from '../../helpers/Toash.helper';
 import { displayCustomTestNotification } from '../../utilits/firebaseService';
 import ActionModal from '../../reusable/ActionModal';
 import ActionHeader from '../../reusable/ActionHeader';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ export default function BibleReadingPlan() {
   const { isDark } = useContext(AppContext)!;
   const { translations, language } = useLanguage();
   const rp = translations?.readingPlan;
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const C = getColors(isDark);
 
   const [loading, setLoading] = useState(true);

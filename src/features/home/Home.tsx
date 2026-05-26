@@ -54,7 +54,7 @@ import { formatWhatsAppTime, getVerseText } from '../../utilits/bibleUtils';
 import ActionHeader from '../../reusable/ActionHeader';
 import { createStyles } from './homeStyle';
 import { bibleTTS } from '../../utilits/bibleTTS';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import { showToast } from '../../helpers/Toash.helper';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ export default function Home() {
   const tabBarAnimation = useRef(new Animated.Value(1)).current;
 
   const { language, translations: translation } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   // ── Banners & Quick Links ─────────────────────────────────────────────────
   const contentBanners = useMemo(
     () => [

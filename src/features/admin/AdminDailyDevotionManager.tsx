@@ -36,7 +36,7 @@ import {
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showToast } from '../../helpers/Toash.helper';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 const getTheme = (isDark: boolean) => {
   const colors = getColors(isDark);
@@ -69,7 +69,7 @@ const AdminDailyDevotionManager: React.FC = () => {
   const isDark = app?.isDark ?? false;
   const theme = getTheme(isDark);
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const ac = translations?.admin;
   const locale = getLocale(language);
   const styles = getStyles(theme, isRtl);

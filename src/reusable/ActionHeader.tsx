@@ -12,7 +12,7 @@ import React, { useContext, useEffect, useRef } from 'react';
 import { FONT_SIZES, getColors, SPACING } from '../constants/theme';
 import LinearGradient from 'react-native-linear-gradient';
 import { ChevronLeft, ChevronRight, Moon, Sun, User, BookOpen } from 'lucide-react-native';
-import { useLanguage } from '../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../component/language-translation/LanguageProvider';
 import { AppContext } from '../common/AppContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -185,7 +185,7 @@ const ActionHeader = (props: Props) => {
   }, [titleKey]);
 
   const { translations, language } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
 
   if (!app) return null;
   const { isDark } = app as any;

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   View,
   Text,
@@ -126,7 +126,7 @@ export default function ForgotPassword() {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
   const { translations, language } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const codeRefs = useRef<(TextInput | any)[]>([]);
 
   // ── Animations ─────────────────────────────────────────────────────────────

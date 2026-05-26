@@ -25,7 +25,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 
 import { AppContext } from '../../common/AppContext';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   BORDER_RADIUS,
   FONT_SIZES,
@@ -63,7 +63,7 @@ export default function NotificationSettingsScreen() {
   const navigation = useNavigation<any>();
   const COLORS = getColors(app?.isDark ?? false);
   const { translations: translation, language } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
 
   const [loading, setLoading] = useState(true);
 

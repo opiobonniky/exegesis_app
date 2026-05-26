@@ -41,7 +41,7 @@ import { showToast } from '../../helpers/Toash.helper';
 import { getChaptersForBook, getVerseText, getVersesForChapter, setActiveVersion } from '../../utilits/bibleUtils';
 import { BIBLE_VERSIONS } from '../../assets/bibleVersion/json/bibleVersions';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 const TESTAMENTS = [
   { value: 'Old' },
@@ -86,7 +86,7 @@ const AddDailyVerse: React.FC = () => {
   const route = useRoute<any>();
   const app = useContext(AppContext);
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const isDark = app?.isDark ?? false;
   const theme = getTheme(isDark);
   const styles = getStyles(theme, isRtl);

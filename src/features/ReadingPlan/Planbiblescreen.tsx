@@ -39,7 +39,7 @@ import {
 } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   getColors,
   SPACING,
@@ -137,7 +137,7 @@ export default function PlanBibleScreen() {
   const params = useRoute<any>().params as PlanBibleParams;
   const navigation = useNavigation<any>();
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const bc = translations?.bible;
 
   const reflections: string[] = params?.reflectionQuestions ?? [];

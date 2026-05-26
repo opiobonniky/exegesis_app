@@ -1,4 +1,26 @@
-export type Language = 'en' | 'es' | 'fr' | 'ar';
+export type Language =
+  | 'en'
+  | 'es'
+  | 'fr'
+  | 'ar'
+  | 'de'
+  | 'pt'
+  | 'hi'
+  | 'bn'
+  | 'ta'
+  | 'te'
+  | 'mr'
+  | 'gu'
+  | 'kn'
+  | 'ml'
+  | 'pa'
+  | 'ur'
+  | 'sw'
+  | 'it'
+  | 'el'
+  | 'ru'
+  | 'ne'
+  | 'fil';
 
 // Onboarding / Welcome screen translations
 export type OnboardingTranslations = {
@@ -926,10 +948,10 @@ export type AdminTranslations = {
   userManagement?: string;
   searchUsersPlaceholder?: string;
   noUsersFound?: string;
-  verified?: string;
+  userVerified?: string;
   unverified?: string;
   active?: string;
-  inactive?: string;
+  userInactive?: string;
   editLabel?: string;
   deleteLabel?: string;
   totalCountSuffix?: string;

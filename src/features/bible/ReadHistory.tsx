@@ -18,7 +18,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Clock, History, TimerIcon, Trash2 } from 'lucide-react-native';
 
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import { sendPostRequest } from '../../services/api';
 import {
   getColors,
@@ -207,7 +207,7 @@ export default function ReadHistory() {
   });
 
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const bc = translations?.bible;
 
   if (!app) return null;

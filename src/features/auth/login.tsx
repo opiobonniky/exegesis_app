@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import useLogin from './hooks/uselogin';
 import {
   View,
@@ -14,7 +14,6 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
-  Modal,
 } from 'react-native';
 import ActionModal from '../../reusable/ActionModal';
 import { getColors } from '../../constants/theme';
@@ -23,8 +22,9 @@ import { route } from '../../component/navigations/routes';
 import { testConnection } from '../../services/api';
 import { AppContext } from '../../common/AppContext';
 import KeyboardAwareness from '../../reusable/KeyboardAwareness';
+import LanguagePickerModal, { FLAGS, NATIVE_NAMES } from '../../component/LanguagePickerModal';
 // helpers
-import { Eye, EyeOff, Mail, Lock, Globe, X } from 'lucide-react-native';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
 import GoogleIcon from '../../assets/icons/google-icon.svg'; // ← NEW
 const { width } = Dimensions.get('window');
 
@@ -83,11 +83,10 @@ const Login = () => {
 
   // useLogin provides Google sign-in and normal login handlers
 
-  const { translations, language, setLanguage } = useLanguage();
-  const [langOpen, setLangOpen] = useState(false);
+  const { translations, language } = useLanguage();
   const [showLangModal, setShowLangModal] = useState(false);
   const C = getColors(isDark);
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
 
   React.useEffect(() => {
     if (userInfo) navigation.navigate(route.bible);
@@ -143,9 +142,9 @@ const Login = () => {
         ]}
         onPress={() => setShowLangModal(true)}
       >
-        <Globe size={16} color={C.text} style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
+        <Text style={{ fontSize: 18, marginRight: isRtl ? 0 : 6, marginLeft: isRtl ? 6 : 0 }}>{FLAGS[language]}</Text>
         <Text style={{ color: C.text, fontWeight: '600' }}>
-          {language.toUpperCase()}
+          {NATIVE_NAMES[language]}
         </Text>
       </TouchableOpacity>
 
@@ -190,64 +189,11 @@ const Login = () => {
 
             {/* language button moved above the logo */}
 
-            {/* language selection modal */}
-            <Modal
+            {/* Language picker bottom sheet — shows all 22 languages */}
+            <LanguagePickerModal
               visible={showLangModal}
-              transparent
-              animationType="fade"
               onRequestClose={() => setShowLangModal(false)}
-            >
-              <View
-                style={[s.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}
-              >
-                <View
-                  style={[
-                    s.modalContainer,
-                    { backgroundColor: C.surface, borderColor: C.border },
-                  ]}
-                >
-                  <Text style={[s.modalTitle, { color: C.text }]}>
-                    Select language
-                  </Text>
-                  {(
-                    [
-                      { code: 'en', label: 'English' },
-                      { code: 'es', label: 'Español' },
-                      { code: 'fr', label: 'Français' },
-                      { code: 'ar', label: 'العربية' },
-                    ] as const
-                  ).map(l => (
-                    <TouchableOpacity
-                      key={l.code}
-                      style={[
-                        s.modalOption,
-                        language === l.code && {
-                          backgroundColor: C.primary + '11',
-                        },
-                        isRtl && { flexDirection: 'row-reverse' },
-                      ]}
-                      onPress={() => {
-                        setLanguage(l.code as any);
-                        setShowLangModal(false);
-                      }}
-                    >
-                      <Text style={{ color: C.text, fontSize: 16 }}>
-                        {l.label}
-                      </Text>
-                      <Text style={{ color: C.muted, [isRtl ? 'marginRight' : 'marginLeft']: 8 }}>
-                        {l.code.toUpperCase()}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                  <TouchableOpacity
-                    style={[s.modalClose, { alignSelf: isRtl ? 'flex-start' : 'flex-end' }]}
-                    onPress={() => setShowLangModal(false)}
-                  >
-                    <X color={C.primary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
+            />
 
             <Text
               style={[
@@ -723,34 +669,7 @@ const s = StyleSheet.create({
     borderRadius: 10,
     zIndex: 100,
   },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    width: '80%',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  modalOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  modalClose: {
-    marginTop: 12,
-    alignSelf: 'flex-end',
-  },
+
   // INPUTS
   fieldWrap: {
     width: '100%',

@@ -22,7 +22,7 @@ import ActionHeader from '../../reusable/ActionHeader';
 import { useNavigation } from '@react-navigation/native';
 import ActionModal from '../../reusable/ActionModal';
 import { AppContext } from '../../common/AppContext';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 interface HighlightDto {
   id: number;
@@ -51,7 +51,7 @@ export default function Highlights() {
 
   const { isDark }: any = useContext(AppContext) || {};
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const bc = translations?.bible;
 
   const navigation = useNavigation<any>();

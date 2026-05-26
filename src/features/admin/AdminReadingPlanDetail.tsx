@@ -38,7 +38,7 @@ import { showToast } from '../../helpers/Toash.helper';
 import { Svg, Rect, G, Text as SvgText, Path } from 'react-native-svg';
 import { Image, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 const { width } = Dimensions.get('window');
 
@@ -83,7 +83,7 @@ const AdminReadingPlanDetail: React.FC = () => {
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const colors = getColors(isDark);
   const ac = translations?.admin;
   const styles = getStyles(isRtl);

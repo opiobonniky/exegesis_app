@@ -38,7 +38,7 @@ import {
 import { showToast } from '../../helpers/Toash.helper';
 import { BIBLE_VERSIONS } from '../../assets/bibleVersion/json/bibleVersions';
 import { getVerseText, setActiveVersion } from '../../utilits/bibleUtils';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 const BIBLE_VERSION_OPTIONS = BIBLE_VERSIONS.map(v => ({
   value: v.id,
@@ -88,7 +88,7 @@ const AddDailyDevotion: React.FC = () => {
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const ac = translations?.admin;
   const theme = getTheme(isDark);
   const styles = getStyles(theme, isRtl);

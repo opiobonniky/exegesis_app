@@ -28,7 +28,7 @@ import BottomTab from '../../component/navigations/BottomTab';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getColors } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   ChevronLeft,
   ChevronRight,
@@ -76,7 +76,7 @@ const AdminReadingPlans: React.FC = () => {
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const ac = translations?.admin;
   const theme = getReadingPlansTheme(isDark);
   const styles = getStyles(theme, isRtl);

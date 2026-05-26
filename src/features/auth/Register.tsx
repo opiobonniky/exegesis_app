@@ -1,5 +1,5 @@
 import React, { useContext, useRef, useState, useEffect } from 'react';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   View,
   Text,
@@ -57,7 +57,7 @@ interface PasswordReq {
 export default function Register() {
   const { isDark, setUserInfo }: any = useContext(AppContext);
   const { translations, language } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const navigation = useNavigation<any>();
   const routes = useRoute();
   const {

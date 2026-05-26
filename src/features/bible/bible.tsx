@@ -43,7 +43,7 @@ import {
   Lightbulb,
   BookOpen,
 } from 'lucide-react-native';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import LinearGradient from 'react-native-linear-gradient';
 
 import {
@@ -295,7 +295,7 @@ export default function Bible() {
   } = useBible();
 
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
 
   // ── Initialize from route params (bookName, chapter) when navigating from
   //  ReadingPlan daily screen, search results or other screens ──────────

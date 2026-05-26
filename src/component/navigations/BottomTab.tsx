@@ -26,7 +26,7 @@ import {
 } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
-import { useLanguage } from '../language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../language-translation/LanguageProvider';
 import { route } from './routes';
 
 interface BottomTabProps {
@@ -61,7 +61,7 @@ export default function BottomTab({
 
   const navigation = useNavigation<any>();
   const { translations, language } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
 
   // ── Sync with actual navigation state ──────────────────────────────
   const navigationState = useNavigationState(state => state);

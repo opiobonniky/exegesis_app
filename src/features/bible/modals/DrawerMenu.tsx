@@ -44,7 +44,7 @@ import {
 import { route } from '../../../component/navigations/routes';
 import { AppContext } from '../../../common/AppContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLanguage } from '../../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../../component/language-translation/LanguageProvider';
 
 type NavRouteKey = keyof typeof route;
 type IconType = React.ComponentType<{
@@ -71,7 +71,7 @@ export default function DrawerMenu({
 }: DrawerMenuProps) {
   const app = useContext(AppContext);
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const bc = translations?.bible;
 
   const COLORS = getColors(isDark);

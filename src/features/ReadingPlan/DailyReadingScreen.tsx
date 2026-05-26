@@ -44,7 +44,7 @@ import {
   isAtRiskReminderEnabled,
   getAtRiskReminderTime,
 } from './planNotificationService';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -275,7 +275,7 @@ export default function DailyReadingScreen() {
   const { isDark } = useContext(AppContext)!;
   const { translations, language } = useLanguage();
   const rp = translations?.readingPlan;
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
   const C = getColors(isDark);
   const { planId, day, totalDays: initialTotalDays } = routes.params;
 

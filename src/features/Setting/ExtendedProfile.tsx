@@ -22,7 +22,7 @@ import {
   Check,
 } from 'lucide-react-native';
 import { AppContext } from '../../common/AppContext';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   BORDER_RADIUS,
   getColors,
@@ -47,7 +47,7 @@ export default function ExtendedProfileScreen() {
   const { isDark } = app;
   const COLORS = getColors(isDark);
   const { language, translations } = useLanguage();
-  const isRtl = language === 'ar';
+  const isRtl = isRtlLanguage(language);
 
   /* ---------------- State ---------------- */
   const [loading, setLoading] = useState(false);
