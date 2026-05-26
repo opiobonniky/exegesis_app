@@ -22,6 +22,7 @@ import {
   Check,
 } from 'lucide-react-native';
 import { AppContext } from '../../common/AppContext';
+import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import {
   BORDER_RADIUS,
   getColors,
@@ -45,6 +46,8 @@ export default function ExtendedProfileScreen() {
 
   const { isDark } = app;
   const COLORS = getColors(isDark);
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
 
   /* ---------------- State ---------------- */
   const [loading, setLoading] = useState(false);
@@ -144,11 +147,11 @@ export default function ExtendedProfileScreen() {
     const e: Record<string, string> = {};
 
     if (alternativePhone && !validatePhone(alternativePhone)) {
-      e.alternativePhone = 'Phone number must be 10-15 digits';
+      e.alternativePhone = translations?.extendedProfile?.validation?.phoneInvalid || 'Phone number must be 10-15 digits';
     }
 
     if (emergencyContactPhone && !validatePhone(emergencyContactPhone)) {
-      e.emergencyContactPhone = 'Phone number must be 10-15 digits';
+      e.emergencyContactPhone = translations?.extendedProfile?.validation?.phoneInvalid || 'Phone number must be 10-15 digits';
     }
 
     // If emergency contact is provided, require all fields
@@ -158,13 +161,13 @@ export default function ExtendedProfileScreen() {
       emergencyContactRelationship
     ) {
       if (!emergencyContactName.trim()) {
-        e.emergencyContactName = 'Emergency contact name is required';
+        e.emergencyContactName = translations?.extendedProfile?.validation?.emergencyNameRequired || 'Emergency contact name is required';
       }
       if (!emergencyContactPhone) {
-        e.emergencyContactPhone = 'Emergency contact phone is required';
+        e.emergencyContactPhone = translations?.extendedProfile?.validation?.emergencyPhoneRequired || 'Emergency contact phone is required';
       }
       if (!emergencyContactRelationship.trim()) {
-        e.emergencyContactRelationship = 'Relationship is required';
+        e.emergencyContactRelationship = translations?.extendedProfile?.validation?.relationshipRequired || 'Relationship is required';
       }
     }
 
@@ -252,12 +255,12 @@ export default function ExtendedProfileScreen() {
   };
 
   const relationshipOptions = [
-    'Spouse',
-    'Parent',
-    'Sibling',
-    'Child',
-    'Friend',
-    'Other',
+    { label: translations?.extendedProfile?.relationshipOptions?.spouse || 'Spouse', value: 'Spouse' },
+    { label: translations?.extendedProfile?.relationshipOptions?.parent || 'Parent', value: 'Parent' },
+    { label: translations?.extendedProfile?.relationshipOptions?.sibling || 'Sibling', value: 'Sibling' },
+    { label: translations?.extendedProfile?.relationshipOptions?.child || 'Child', value: 'Child' },
+    { label: translations?.extendedProfile?.relationshipOptions?.friend || 'Friend', value: 'Friend' },
+    { label: translations?.extendedProfile?.relationshipOptions?.other || 'Other', value: 'Other' },
   ];
 
   const styles = StyleSheet.create({
@@ -267,7 +270,7 @@ export default function ExtendedProfileScreen() {
     },
     content: {
       padding: SPACING.lg,
-      paddingBottom: SPACING.lg,
+      paddingBottom: Platform.OS === 'ios' ? 40 : SPACING.lg,
     },
     heroCard: {
       backgroundColor: COLORS.cardBackground,
@@ -279,6 +282,9 @@ export default function ExtendedProfileScreen() {
       borderWidth: 1,
       borderColor: COLORS.border,
     },
+    heroCardRtl: {
+      flexDirection: 'row-reverse',
+    },
     heroIcon: {
       width: 56,
       height: 56,
@@ -287,6 +293,10 @@ export default function ExtendedProfileScreen() {
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: SPACING.md,
+    },
+    heroIconRtl: {
+      marginRight: 0,
+      marginLeft: SPACING.md,
     },
     heroText: {
       flex: 1,
@@ -317,6 +327,9 @@ export default function ExtendedProfileScreen() {
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
     },
+    sectionHeaderGradientRtl: {
+      flexDirection: 'row-reverse',
+    },
     sectionIconWrapper: {
       width: 44,
       height: 44,
@@ -324,6 +337,10 @@ export default function ExtendedProfileScreen() {
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: SPACING.md,
+    },
+    sectionIconWrapperRtl: {
+      marginRight: 0,
+      marginLeft: SPACING.md,
     },
     sectionTextWrapper: {
       flex: 1,
@@ -359,6 +376,9 @@ export default function ExtendedProfileScreen() {
       flexWrap: 'wrap',
       gap: SPACING.sm,
     },
+    chipContainerRtl: {
+      flexDirection: 'row-reverse',
+    },
     chip: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -367,8 +387,15 @@ export default function ExtendedProfileScreen() {
       borderRadius: BORDER_RADIUS.lg,
       borderWidth: 1,
     },
+    chipRtl: {
+      flexDirection: 'row-reverse',
+    },
     chipCheck: {
       marginRight: 6,
+    },
+    chipCheckRtl: {
+      marginRight: 0,
+      marginLeft: 6,
     },
     chipText: {
       fontSize: FONT_SIZES.sm,
@@ -389,6 +416,9 @@ export default function ExtendedProfileScreen() {
       gap: SPACING.md,
       borderWidth: 1,
       borderColor: isDark ? '#334155' : '#E2E8F0',
+    },
+    infoCardRtl: {
+      flexDirection: 'row-reverse',
     },
     infoIcon: {
       width: 36,
@@ -411,6 +441,9 @@ export default function ExtendedProfileScreen() {
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
     },
+    sectionHeaderRtl: {
+      flexDirection: 'row-reverse',
+    },
     sectionIconContainer: {
       width: 44,
       height: 44,
@@ -418,6 +451,10 @@ export default function ExtendedProfileScreen() {
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: SPACING.md,
+    },
+    sectionIconContainerRtl: {
+      marginRight: 0,
+      marginLeft: SPACING.md,
     },
     relationshipContainer: {
       marginTop: SPACING.sm,
@@ -456,10 +493,10 @@ export default function ExtendedProfileScreen() {
       colors={[color + '15', color + '08']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
-      style={styles.sectionHeaderGradient}
+      style={[styles.sectionHeaderGradient, isRtl && styles.sectionHeaderGradientRtl]}
     >
       <View
-        style={[styles.sectionIconWrapper, { backgroundColor: color + '20' }]}
+        style={[styles.sectionIconWrapper, isRtl && styles.sectionIconWrapperRtl, { backgroundColor: color + '20' }]}
       >
         {icon}
       </View>
@@ -484,6 +521,7 @@ export default function ExtendedProfileScreen() {
     <TouchableOpacity
       style={[
         styles.chip,
+        isRtl && styles.chipRtl,
         {
           backgroundColor: selected ? color + '15' : 'transparent',
           borderColor: selected ? color : '#E5E7EB',
@@ -492,7 +530,7 @@ export default function ExtendedProfileScreen() {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {selected && <Check size={14} color={color} style={styles.chipCheck} />}
+      {selected && <Check size={14} color={color} style={[styles.chipCheck, isRtl && styles.chipCheckRtl]} />}
       <Text style={[styles.chipText, { color: selected ? color : '#6B7280' }]}>
         {label}
       </Text>
@@ -502,7 +540,7 @@ export default function ExtendedProfileScreen() {
   return (
     <View style={styles.container}>
       <ActionHeader
-        title="Additional Information"
+        title={translations?.extendedProfile?.title || 'Additional Information'}
         onPress={() => navigation.goBack()}
       />
 
@@ -515,23 +553,23 @@ export default function ExtendedProfileScreen() {
           <View style={styles.section}>
             <SectionHeader
               icon={<User size={22} color={COLORS.primary} />}
-              title="Personal Details"
-              description="Additional personal information"
+              title={translations?.extendedProfile?.personalDetails?.title || 'Personal Details'}
+              description={translations?.extendedProfile?.personalDetails?.description || 'Additional personal information'}
               color={COLORS.primary}
             />
 
-            <View style={styles.form}>
-              <InputField
-                label="Middle Name"
-                placeholder="Middle name (optional)"
-                value={middleName}
-                onChangeText={setMiddleName}
-                leftIcon={<User size={20} color={COLORS.muted} />}
-              />
+            <View style={styles.form}>                <InputField
+                  label={translations?.extendedProfile?.personalDetails?.fields?.middleName || 'Middle Name'}
+                  placeholder={translations?.extendedProfile?.personalDetails?.fields?.middleNamePlaceholder || 'Middle name (optional)'}
+                  value={middleName}
+                  onChangeText={setMiddleName}
+                  leftIcon={<User size={20} color={COLORS.muted} />}
+                  isRtl={isRtl}
+                />
 
               <InputField
-                label="Alternative Phone"
-                placeholder="Alternative phone (optional)"
+                label={translations?.extendedProfile?.personalDetails?.fields?.alternativePhone || 'Alternative Phone'}
+                placeholder={translations?.extendedProfile?.personalDetails?.fields?.alternativePhonePlaceholder || 'Alternative phone (optional)'}
                 value={alternativePhone}
                 onChangeText={text => {
                   setAlternativePhone(text);
@@ -541,6 +579,7 @@ export default function ExtendedProfileScreen() {
                 error={errors.alternativePhone}
                 keyboardType="phone-pad"
                 leftIcon={<Phone size={20} color={COLORS.muted} />}
+                isRtl={isRtl}
               />
             </View>
           </View>
@@ -549,37 +588,40 @@ export default function ExtendedProfileScreen() {
           <View style={styles.section}>
             <SectionHeader
               icon={<Heart size={22} color="#8B5CF6" />}
-              title="Ministry & Service"
-              description="Your ministry involvement"
+              title={translations?.extendedProfile?.ministryService?.title || 'Ministry & Service'}
+              description={translations?.extendedProfile?.ministryService?.description || 'Your ministry involvement'}
               color="#8B5CF6"
             />
 
             <View style={styles.form}>
               <InputField
-                label="Ministry Group"
-                placeholder="E.g., Youth Ministry, Worship Team"
+                label={translations?.extendedProfile?.ministryService?.fields?.ministryGroup || 'Ministry Group'}
+                placeholder={translations?.extendedProfile?.ministryService?.fields?.ministryGroupPlaceholder || 'E.g., Youth Ministry, Worship Team'}
                 value={ministryGroup}
                 onChangeText={setMinistryGroup}
                 leftIcon={<Briefcase size={20} color={COLORS.muted} />}
+                isRtl={isRtl}
               />
 
               <InputField
-                label="Service Position"
-                placeholder="E.g., Leader, Member, Volunteer"
+                label={translations?.extendedProfile?.ministryService?.fields?.servicePosition || 'Service Position'}
+                placeholder={translations?.extendedProfile?.ministryService?.fields?.servicePositionPlaceholder || 'E.g., Leader, Member, Volunteer'}
                 value={servicePosition}
                 onChangeText={setServicePosition}
                 leftIcon={<Briefcase size={20} color={COLORS.muted} />}
+                isRtl={isRtl}
               />
 
               <View>
-                <Text style={[styles.label, { marginLeft: 2 }]}>
-                  Spiritual Gifts
+                <Text style={[styles.label, { marginLeft: isRtl ? 0 : 2, marginRight: isRtl ? 2 : 0 }]}>
+                  {translations?.extendedProfile?.ministryService?.fields?.spiritualGifts || 'Spiritual Gifts'}
                 </Text>
                 <InputField
-                  placeholder="E.g., Teaching, Worship, Administration"
+                  placeholder={translations?.extendedProfile?.ministryService?.fields?.spiritualGiftsPlaceholder || 'E.g., Teaching, Worship, Administration'}
                   value={spiritualGifts}
                   onChangeText={setSpiritualGifts}
                   leftIcon={<Heart size={20} color={COLORS.muted} />}
+                  isRtl={isRtl}
                 />
               </View>
             </View>
@@ -589,15 +631,15 @@ export default function ExtendedProfileScreen() {
           <View style={styles.section}>
             <SectionHeader
               icon={<AlertCircle size={22} color="#EF4444" />}
-              title="Emergency Contact"
-              description="Person to contact in case of emergency"
+              title={translations?.extendedProfile?.emergencyContact?.title || 'Emergency Contact'}
+              description={translations?.extendedProfile?.emergencyContact?.description || 'Person to contact in case of emergency'}
               color="#EF4444"
             />
 
             <View style={styles.form}>
               <InputField
-                label="Contact Name"
-                placeholder="Full name"
+                label={translations?.extendedProfile?.emergencyContact?.fields?.contactName || 'Contact Name'}
+                placeholder={translations?.extendedProfile?.emergencyContact?.fields?.contactNamePlaceholder || 'Full name'}
                 value={emergencyContactName}
                 onChangeText={text => {
                   setEmergencyContactName(text);
@@ -606,11 +648,12 @@ export default function ExtendedProfileScreen() {
                 }}
                 error={errors.emergencyContactName}
                 leftIcon={<User size={20} color={COLORS.muted} />}
+                isRtl={isRtl}
               />
 
               <InputField
-                label="Contact Phone"
-                placeholder="Phone number"
+                label={translations?.extendedProfile?.emergencyContact?.fields?.contactPhone || 'Contact Phone'}
+                placeholder={translations?.extendedProfile?.emergencyContact?.fields?.contactPhonePlaceholder || 'Phone number'}
                 value={emergencyContactPhone}
                 onChangeText={text => {
                   setEmergencyContactPhone(text);
@@ -620,18 +663,19 @@ export default function ExtendedProfileScreen() {
                 error={errors.emergencyContactPhone}
                 keyboardType="phone-pad"
                 leftIcon={<Phone size={20} color={COLORS.muted} />}
+                isRtl={isRtl}
               />
 
               <View style={styles.relationshipContainer}>
-                <Text style={styles.label}>Relationship</Text>
-                <View style={styles.chipContainer}>
+                <Text style={styles.label}>{translations?.extendedProfile?.emergencyContact?.fields?.relationship || 'Relationship'}</Text>
+                <View style={[styles.chipContainer, isRtl && styles.chipContainerRtl]}>
                   {relationshipOptions.map(option => (
                     <ChipOption
-                      key={option}
-                      label={option}
-                      selected={emergencyContactRelationship === option}
+                      key={option.value}
+                      label={option.label}
+                      selected={emergencyContactRelationship === option.value}
                       onPress={() => {
-                        setEmergencyContactRelationship(option);
+                        setEmergencyContactRelationship(option.value);
                         if (errors.emergencyContactRelationship)
                           setErrors({
                             ...errors,
@@ -660,7 +704,7 @@ export default function ExtendedProfileScreen() {
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
             <PrimaryButton
-              title={loading ? 'Saving...' : 'Save Changes'}
+              title={loading ? (translations?.extendedProfile?.saving || 'Saving...') : (translations?.extendedProfile?.save || 'Save Changes')}
               onPress={handleSave}
               disabled={loading || !hasChanges}
               loading={loading}
@@ -668,10 +712,10 @@ export default function ExtendedProfileScreen() {
           </View>
 
           {/* Info Card */}
-          <View style={styles.infoCard}>
+          <View style={[styles.infoCard, isRtl && styles.infoCardRtl]}>
             <AlertCircle size={20} color={COLORS.primary} />
             <Text style={styles.infoText}>
-              All fields are optional. Fill out what's relevant to you.
+              {translations?.extendedProfile?.info || "All fields are optional. Fill out what's relevant to you."}
             </Text>
           </View>
         </ScrollView>

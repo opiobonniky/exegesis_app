@@ -11,7 +11,7 @@ import {
 import React, { useContext, useEffect, useRef } from 'react';
 import { FONT_SIZES, getColors, SPACING } from '../constants/theme';
 import LinearGradient from 'react-native-linear-gradient';
-import { ChevronLeft, Moon, Sun, User, BookOpen } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Moon, Sun, User, BookOpen } from 'lucide-react-native';
 import { useLanguage } from '../component/language-translation/LanguageProvider';
 import { AppContext } from '../common/AppContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -63,11 +63,12 @@ const DEFAULT_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) 
 // ── Logo lockup ───────────────────────────────────────────────────────────────
 
 const LogoLockup = ({ compact = false, appName, tagline }: { compact?: boolean; appName?: string; tagline?: string }) => {
-  const { translations } = useLanguage();
+  const { translations, language } = useLanguage();
+  const rtl = language === 'ar';
 
   // Emblem: gradient circle with a book icon for a cleaner, modern look.
   return (
-    <View style={logo.wrap}>
+    <View style={[logo.wrap, rtl && logo.wrapRtl]}>
       <LinearGradient
         colors={['#6D28D9', '#4F46E5']}
         start={{ x: 0, y: 0 }}
@@ -99,6 +100,9 @@ const logo = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  wrapRtl: {
+    flexDirection: 'row-reverse',
   },
   image: {
     width: 72,
@@ -180,6 +184,9 @@ const ActionHeader = (props: Props) => {
     ]).start();
   }, [titleKey]);
 
+  const { translations, language } = useLanguage();
+  const isRtl = language === 'ar';
+
   if (!app) return null;
   const { isDark } = app as any;
   const COLORS = getColors(isDark);
@@ -220,16 +227,16 @@ const ActionHeader = (props: Props) => {
         />
         <View style={[styles.container, { paddingTop: 0, backgroundColor: isDark ? undefined : COLORS.background }]}> 
           <View style={styles.shimmerLine} />
-          <View style={[styles.homeCompactTop, { paddingTop: topInset }]}> 
-            <View style={styles.homeLeft}> 
-              <View style={{ marginRight: 8 }}>{logoComponent ? logoComponent : <LogoLockup compact appName={appName} tagline={taglineText} />}</View>
+          <View style={[styles.homeCompactTop, isRtl && styles.homeCompactTopRtl, { paddingTop: topInset }]}> 
+            <View style={[styles.homeLeft, isRtl && styles.homeLeftRtl]}> 
+              <View style={isRtl ? { marginLeft: 8 } : { marginRight: 8 }}>{logoComponent ? logoComponent : <LogoLockup compact appName={appName} tagline={taglineText} />}</View>
               <View>
                 {showGreeting && <Text style={[styles.greeting, { color: COLORS.textSecondary }]}>{greeting}</Text>}
                 <Text style={[styles.userName, { color: COLORS.text }]}>{userName} 👋</Text>
               </View>
             </View>
 
-            <View style={styles.homeRight}> 
+            <View style={[styles.homeRight, isRtl && styles.homeRightRtl]}> 
               <TouchableOpacity
                 style={styles.iconBtn}
                 onPress={onThemeToggle}
@@ -243,7 +250,7 @@ const ActionHeader = (props: Props) => {
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.avatarBtn, { marginLeft: 8, backgroundColor: isDark ? undefined : COLORS.surface, borderColor: isDark ? undefined : COLORS.border }]}
+                style={[styles.avatarBtn, { marginLeft: isRtl ? 0 : 8, marginRight: isRtl ? 8 : 0, backgroundColor: isDark ? undefined : COLORS.surface, borderColor: isDark ? undefined : COLORS.border }]}
                 onPress={onProfilePress}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 activeOpacity={0.8}
@@ -285,7 +292,7 @@ const ActionHeader = (props: Props) => {
           style={styles.container}
         >
           <View style={styles.shimmerLine} />
-          <View style={[styles.topBar, { paddingTop: topInset }]}> 
+          <View style={[styles.topBar, isRtl && styles.topBarRtl, { paddingTop: topInset }]}> 
             {onPress && !hideBack ? (
               <>
                 <TouchableOpacity
@@ -295,18 +302,26 @@ const ActionHeader = (props: Props) => {
                   style={styles.sideSlot}
                 >
                   <View style={styles.backCircle}>
-                    <ChevronLeft
-                      color={COLORS.white}
-                      size={20}
-                      strokeWidth={2.5}
-                    />
+                    {isRtl ? (
+                      <ChevronRight
+                        color={COLORS.white}
+                        size={20}
+                        strokeWidth={2.5}
+                      />
+                    ) : (
+                      <ChevronLeft
+                        color={COLORS.white}
+                        size={20}
+                        strokeWidth={2.5}
+                      />
+                    )}
                   </View>
                 </TouchableOpacity>
                 <View style={{ paddingTop: 6 }}>
                   {stdLogo ? stdLogo : <LogoLockup compact />}
                 </View>
                 {rightComponent ? (
-                  <View style={[styles.sideSlot, { alignItems: 'flex-end' }]}>
+                  <View style={[styles.sideSlot, { alignItems: isRtl ? 'flex-start' : 'flex-end' }]}>
                     <View style={styles.rightCircle}>{rightComponent}</View>
                   </View>
                 ) : (
@@ -320,7 +335,7 @@ const ActionHeader = (props: Props) => {
                 </View>
                 <View style={{ flex: 1 }} />
                 {rightComponent && (
-                  <View style={[styles.sideSlot, { alignItems: 'flex-end' }]}>
+                  <View style={[styles.sideSlot, { alignItems: isRtl ? 'flex-start' : 'flex-end' }]}>
                     <View style={styles.rightCircle}>{rightComponent}</View>
                   </View>
                 )}
@@ -354,7 +369,7 @@ const ActionHeader = (props: Props) => {
               { backgroundColor: COLORS.primary + '20' },
             ]}
           />
-           <View style={[styles.topBar, { paddingTop: topInset }]}> 
+           <View style={[styles.topBar, isRtl && styles.topBarRtl, { paddingTop: topInset }]}> 
             {onPress && !hideBack ? (
               <>
                 <TouchableOpacity
@@ -372,18 +387,26 @@ const ActionHeader = (props: Props) => {
                       },
                     ]}
                   >
-                    <ChevronLeft
-                      color={COLORS.text}
-                      size={20}
-                      strokeWidth={2.5}
-                    />
+                    {isRtl ? (
+                      <ChevronRight
+                        color={COLORS.text}
+                        size={20}
+                        strokeWidth={2.5}
+                      />
+                    ) : (
+                      <ChevronLeft
+                        color={COLORS.text}
+                        size={20}
+                        strokeWidth={2.5}
+                      />
+                    )}
                   </View>
                 </TouchableOpacity>
                 <View style={{ paddingTop: 10 }}>
                   {stdLogo ? stdLogo : <LogoLockup compact />}
                 </View>
                 {rightComponent ? (
-                  <View style={[styles.sideSlot, { alignItems: 'flex-end' }]}>
+                  <View style={[styles.sideSlot, { alignItems: isRtl ? 'flex-start' : 'flex-end' }]}>
                     <View
                       style={[
                         styles.rightCircle,
@@ -407,7 +430,7 @@ const ActionHeader = (props: Props) => {
                  </View>
                 <View style={{ flex: 1 }} />
                 {rightComponent && (
-                  <View style={[styles.sideSlot, { alignItems: 'flex-end' }]}>
+                  <View style={[styles.sideSlot, { alignItems: isRtl ? 'flex-start' : 'flex-end' }]}>
                     <View
                       style={[
                         styles.rightCircle,
@@ -499,6 +522,9 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xs,
     paddingTop: SPACING.xs,
   },
+  topBarRtl: {
+    flexDirection: 'row-reverse',
+  },
 
   // Compact home layout
   homeCompactTop: {
@@ -508,16 +534,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingBottom: SPACING.xs,
   },
+  homeCompactTopRtl: {
+    flexDirection: 'row-reverse',
+  },
 
   homeLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+  homeLeftRtl: {
+    flexDirection: 'row-reverse',
+  },
 
   homeRight: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  homeRightRtl: {
+    flexDirection: 'row-reverse',
   },
 
   separator: {

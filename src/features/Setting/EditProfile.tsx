@@ -38,7 +38,8 @@ import { showToast } from '../../helpers/Toash.helper';
 export default function EditProfileScreen() {
   const app = useContext(AppContext);
   const navigation = useNavigation<any>();
-  const { translations, language, setLanguage, t } = useLanguage();
+  const { language, translations } = useLanguage();
+  const isRtl = language === 'ar';
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   if (!app || !app.userInfo) return null;
@@ -223,15 +224,15 @@ export default function EditProfileScreen() {
   
 
   const genderOptions = [
-    { label: t('editProfile.gender.male') || 'Male', value: 'Male' },
-    { label: t('editProfile.gender.female') || 'Female', value: 'Female' },
+    { label: translations?.editProfile?.gender?.male || 'Male', value: 'Male' },
+    { label: translations?.editProfile?.gender?.female || 'Female', value: 'Female' },
   ];
 
   const maritalStatusOptions = [
-    { label: t('editProfile.marital.single') || 'Single', value: 'Single' },
-    { label: t('editProfile.marital.married') || 'Married', value: 'Married' },
-    { label: t('editProfile.marital.divorced') || 'Divorced', value: 'Divorced' },
-    { label: t('editProfile.marital.widowed') || 'Widowed', value: 'Widowed' },
+    { label: translations?.editProfile?.marital?.single || 'Single', value: 'Single' },
+    { label: translations?.editProfile?.marital?.married || 'Married', value: 'Married' },
+    { label: translations?.editProfile?.marital?.divorced || 'Divorced', value: 'Divorced' },
+    { label: translations?.editProfile?.marital?.widowed || 'Widowed', value: 'Widowed' },
   ];
 
   const styles = StyleSheet.create({
@@ -241,6 +242,7 @@ export default function EditProfileScreen() {
     },
     content: {
       padding: SPACING.lg,
+      paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     },
     photoSection: {
       alignItems: 'center',
@@ -303,6 +305,10 @@ export default function EditProfileScreen() {
       position: 'absolute',
       bottom: 2,
       right: 2,
+    },
+    cameraButtonRtl: {
+      right: undefined,
+      left: 2,
       width: 28,
       height: 28,
       borderRadius: 14,
@@ -340,9 +346,16 @@ export default function EditProfileScreen() {
       alignItems: 'center',
       justifyContent: 'space-between',
     },
+    moreInfoContentRtl: {
+      flexDirection: 'row-reverse',
+    },
     moreInfoLeft: {
       flex: 1,
       marginRight: SPACING.md,
+    },
+    moreInfoLeftRtl: {
+      marginRight: 0,
+      marginLeft: SPACING.md,
     },
     moreInfoTitle: {
       fontSize: FONT_SIZES.md,
@@ -387,6 +400,9 @@ export default function EditProfileScreen() {
       flexDirection: 'row',
       gap: SPACING.sm,
     },
+    rowRtl: {
+      flexDirection: 'row-reverse',
+    },
     halfInput: {
       flex: 1,
     },
@@ -403,6 +419,9 @@ export default function EditProfileScreen() {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: SPACING.sm,
+    },
+    optionsContainerRtl: {
+      flexDirection: 'row-reverse',
     },
     optionButton: {
       paddingHorizontal: SPACING.lg,
@@ -425,6 +444,9 @@ export default function EditProfileScreen() {
       height: 50,
       borderRadius: BORDER_RADIUS.md,
       gap: SPACING.sm,
+    },
+    cancelButtonRtl: {
+      flexDirection: 'row-reverse',
     },
     cancelText: {
       fontSize: FONT_SIZES.md,
@@ -462,7 +484,7 @@ const floatingLang = StyleSheet.create({
   return (
     <View style={styles.container}>
       <ActionHeader
-        title={t('editProfile.title') || 'Edit Profile Information'}
+        title={translations?.editProfile?.title || 'Edit Profile Information'}
         onPress={() => navigation.goBack()}
       />
 
@@ -483,13 +505,13 @@ const floatingLang = StyleSheet.create({
                 onPress={() => navigation.navigate(route.extendedProfile)}
                 activeOpacity={0.7}
               >
-                <View style={styles.moreInfoContent}>
-                  <View style={styles.moreInfoLeft}>
+                <View style={[styles.moreInfoContent, isRtl && styles.moreInfoContentRtl]}>
+                  <View style={[styles.moreInfoLeft, isRtl && styles.moreInfoLeftRtl]}>
                   <Text style={styles.moreInfoTitle}>
-                    {t('editProfile.additionalInfo.title') || 'Additional Information'}
+                    {translations?.editProfile?.additionalInfo?.title || 'Additional Information'}
                   </Text>
                   <Text style={styles.moreInfoDesc}>
-                    {t('editProfile.additionalInfo.desc') || 'Ministry, emergency contacts, address & more'}
+                    {translations?.editProfile?.additionalInfo?.desc || 'Ministry, emergency contacts, address & more'}
                   </Text>
                   </View>
                   <View style={styles.moreInfoIcon}>
@@ -500,14 +522,14 @@ const floatingLang = StyleSheet.create({
 
             {/* ── BASIC INFO FORM ────────────────────────────────────────── */}
             <View style={styles.formCard}>
-              <Text style={styles.sectionTitle}>{t('editProfile.section.personal') || 'Personal Information'}</Text>
+              <Text style={styles.sectionTitle}>{translations?.editProfile?.section?.personal || 'Personal Information'}</Text>
 
               <View style={styles.form}>
-                <View style={styles.row}>
+                <View style={[styles.row, isRtl && styles.rowRtl]}>
                   <View style={styles.halfInput}>
                     <InputField
-                      label={t('editProfile.fields.firstName') || 'First Name'}
-                      placeholder={t('editProfile.placeholders.firstName') || 'First name'}
+                      label={translations?.editProfile?.fields?.firstName || 'First Name'}
+                      placeholder={translations?.editProfile?.placeholders?.firstName || 'First name'}
                       value={firstName}
                       onChangeText={text => {
                         setFirstName(text);
@@ -516,12 +538,13 @@ const floatingLang = StyleSheet.create({
                       }}
                       error={errors.firstName}
                       leftIcon={<User size={20} color={COLORS.muted} />}
+                      isRtl={isRtl}
                     />
                   </View>
-                  <View style={styles.halfInput}>
+                  <View style={[styles.halfInput]}>
                     <InputField
-                      label={t('editProfile.fields.lastName') || 'Last Name'}
-                      placeholder={t('editProfile.placeholders.lastName') || 'Last name'}
+                      label={translations?.editProfile?.fields?.lastName || 'Last Name'}
+                      placeholder={translations?.editProfile?.placeholders?.lastName || 'Last name'}
                       value={lastName}
                       onChangeText={text => {
                         setLastName(text);
@@ -530,13 +553,14 @@ const floatingLang = StyleSheet.create({
                       }}
                       error={errors.lastName}
                       leftIcon={<User size={20} color={COLORS.muted} />}
+                      isRtl={isRtl}
                     />
                   </View>
                 </View>
 
                 <InputField
-                  label={t('editProfile.fields.email') || 'Email Address'}
-                  placeholder={t('editProfile.placeholders.email') || 'Email'}
+                  label={translations?.editProfile?.fields?.email || 'Email Address'}
+                  placeholder={translations?.editProfile?.placeholders?.email || 'Email'}
                   value={email}
                   onChangeText={text => {
                     setEmail(text);
@@ -546,11 +570,12 @@ const floatingLang = StyleSheet.create({
                   keyboardType="email-address"
                   autoCapitalize="none"
                   leftIcon={<Mail size={20} color={COLORS.muted} />}
+                  isRtl={isRtl}
                 />
 
                 <InputField
-                  label={t('editProfile.fields.phone') || 'Phone Number'}
-                  placeholder={t('editProfile.placeholders.phone') || 'Phone (optional)'}
+                  label={translations?.editProfile?.fields?.phone || 'Phone Number'}
+                  placeholder={translations?.editProfile?.placeholders?.phone || 'Phone (optional)'}
                   value={phoneNumber}
                   onChangeText={text => {
                     setPhoneNumber(text);
@@ -560,19 +585,20 @@ const floatingLang = StyleSheet.create({
                   error={errors.phoneNumber}
                   keyboardType="phone-pad"
                   leftIcon={<Phone size={20} color={COLORS.muted} />}
+                  isRtl={isRtl}
                 />
 
                 <DatePickerInput
-                  label={t('editProfile.fields.dob') || 'Date of Birth'}
-                  placeholder={t('editProfile.placeholders.dob') || 'Select date (optional)'}
+                  label={translations?.editProfile?.fields?.dob || 'Date of Birth'}
+                  placeholder={translations?.editProfile?.placeholders?.dob || 'Select date (optional)'}
                   value={dateOfBirth}
                   onChangeDate={setDateOfBirth}
                 />
 
                 {/* Gender */}
                 <View style={styles.pickerContainer}>
-                  <Text style={styles.label}>{t('editProfile.fields.gender') || 'Gender'}</Text>
-                  <View style={styles.optionsContainer}>
+                  <Text style={styles.label}>{translations?.editProfile?.fields?.gender || 'Gender'}</Text>
+                  <View style={[styles.optionsContainer, isRtl && styles.optionsContainerRtl]}>
                     {genderOptions.map(option => (
                       <TouchableOpacity
                         key={option.value}
@@ -611,8 +637,8 @@ const floatingLang = StyleSheet.create({
 
                 {/* Marital Status */}
                 <View style={styles.pickerContainer}>
-                  <Text style={styles.label}>{t('editProfile.fields.marital') || 'Marital Status'}</Text>
-                  <View style={styles.optionsContainer}>
+                  <Text style={styles.label}>{translations?.editProfile?.fields?.marital || 'Marital Status'}</Text>
+                  <View style={[styles.optionsContainer, isRtl && styles.optionsContainerRtl]}>
                     {maritalStatusOptions.map(option => (
                       <TouchableOpacity
                         key={option.value}
@@ -654,7 +680,7 @@ const floatingLang = StyleSheet.create({
             {/* ── ACTION BUTTONS ─────────────────────────────────────────── */}
             <View style={styles.actionButtons}>
               <PrimaryButton
-                title={loading ? (t('editProfile.saving') || 'Saving...') : (t('editProfile.save') || 'Save Changes')}
+                title={loading ? (translations?.editProfile?.saving || 'Saving...') : (translations?.editProfile?.save || 'Save Changes')}
                 onPress={handleSave}
                 disabled={loading}
                 loading={loading}
@@ -664,7 +690,7 @@ const floatingLang = StyleSheet.create({
             {/* Info */}
             <View style={styles.infoCard}>
               <Text style={styles.infoText}>
-                {t('editProfile.info.emailChange') || '💡 Changes to your email may require verification'}
+                {translations?.editProfile?.info?.emailChange || '💡 Changes to your email may require verification'}
               </Text>
             </View>
           </ScrollView>

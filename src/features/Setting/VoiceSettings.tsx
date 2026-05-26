@@ -87,7 +87,8 @@ const FALLBACK_PITCH_LABELS: Record<string, string> = {
 
 export default function VoiceSettingsScreen() {
   const app = useContext(AppContext);
-  const { translations: translation } = useLanguage();
+  const { translations: translation, language } = useLanguage();
+  const isRtl = language === 'ar';
   if (!app) return null;
   const { isDark } = app;
   const COLORS = getColors(isDark);
@@ -337,8 +338,8 @@ export default function VoiceSettingsScreen() {
           end={{ x: 1, y: 1 }}
           style={[styles.hero, { borderColor: gold + '28' }]}
         >
-          <View style={[styles.heroBubble, { borderColor: gold + '14' }]} />
-          <View style={styles.heroInner}>
+          <View          style={[styles.heroBubble, isRtl ? { left: -45 } : { right: -45 }, { borderColor: gold + '14' }]} />
+          <View style={[styles.heroInner, isRtl && { flexDirection: 'row-reverse' }]}>
             <View
               style={[
                 styles.heroRing,
@@ -388,12 +389,13 @@ export default function VoiceSettingsScreen() {
         </LinearGradient>
 
         {/* ── Narrator voice ──────────────────────────────────────────── */}
-        <SectionLabel text={(translation?.voiceSettings?.narratorLabel || 'NARRATOR VOICE').toUpperCase()} isDark={isDark} />
+        <SectionLabel text={(translation?.voiceSettings?.narratorLabel || 'NARRATOR VOICE').toUpperCase()} isDark={isDark} isRtl={isRtl} />
         <TouchableOpacity
           onPress={() => setPickerOpen(true)}
           activeOpacity={0.75}
           style={[
             styles.voiceBtn,
+            isRtl && { flexDirection: 'row-reverse' },
             { backgroundColor: surface, borderColor: border },
           ]}
         >
@@ -426,10 +428,11 @@ export default function VoiceSettingsScreen() {
         </TouchableOpacity>
 
         {/* ── Preview ─────────────────────────────────────────────────── */}
-        <SectionLabel text={(translation?.voiceSettings?.previewLabel || 'PREVIEW').toUpperCase()} isDark={isDark} />
+        <SectionLabel text={(translation?.voiceSettings?.previewLabel || 'PREVIEW').toUpperCase()} isDark={isDark} isRtl={isRtl} />
         <View
           style={[
             styles.previewCard,
+            isRtl && { flexDirection: 'row-reverse' },
             {
               backgroundColor: surface,
               borderColor: isPlaying ? gold + '65' : border,
@@ -455,6 +458,7 @@ export default function VoiceSettingsScreen() {
             activeOpacity={0.8}
             style={[
               styles.playBtn,
+              isRtl && { flexDirection: 'row-reverse' },
               {
                 backgroundColor: isPlaying ? '#C0392B18' : gold,
                 borderColor: isPlaying ? '#C0392B55' : 'transparent',
@@ -478,7 +482,7 @@ export default function VoiceSettingsScreen() {
           </View>
 
         {/* ── Speech controls ──────────────────────────────────────────── */}
-        <SectionLabel text={(translation?.voiceSettings?.speechControlsLabel || 'SPEECH CONTROLS').toUpperCase()} isDark={isDark} />
+        <SectionLabel text={(translation?.voiceSettings?.speechControlsLabel || 'SPEECH CONTROLS').toUpperCase()} isDark={isDark} isRtl={isRtl} />
         <View
           style={[
             styles.controlCard,
@@ -504,6 +508,7 @@ export default function VoiceSettingsScreen() {
             deviceDefaultLabel={translation?.voiceSettings?.deviceDefaultBadge || 'Device default'}
             resetLabel={translation?.voiceSettings?.reset || 'Reset'}
             deviceHintLabel={translation?.voiceSettings?.deviceHint || 'Move the slider to override your device setting'}
+            isRtl={isRtl}
           />
 
           <View style={[styles.divider, { backgroundColor: border }]} />
@@ -527,6 +532,7 @@ export default function VoiceSettingsScreen() {
             deviceDefaultLabel={translation?.voiceSettings?.deviceDefaultBadge || 'Device default'}
             resetLabel={translation?.voiceSettings?.reset || 'Reset'}
             deviceHintLabel={translation?.voiceSettings?.deviceHint || 'Move the slider to override your device setting'}
+            isRtl={isRtl}
           />
         </View>
 
@@ -551,7 +557,12 @@ export default function VoiceSettingsScreen() {
             ]}
           >
             <View style={[styles.handle, { backgroundColor: gold + '40' }]} />
-            <View style={styles.sheetHead}>
+            <View
+              style={[
+                styles.sheetHead,
+                isRtl && { flexDirection: 'row-reverse' },
+              ]}
+            >
               <Text style={[styles.sheetTitle, { color: COLORS.text }]}> 
                 {translation?.voiceSettings?.selectVoice || 'Select Voice'}
               </Text>
@@ -611,7 +622,13 @@ export default function VoiceSettingsScreen() {
                          : (translation?.voiceSettings?.quality?.localHeading || 'Local · Works offline');
                   return (
                     <View key={q}>
-                      <Text style={[styles.groupLbl, { color: gold }]}>
+                      <Text
+                        style={[
+                          styles.groupLbl,
+                          isRtl && styles.groupLblRtl,
+                          { color: gold },
+                        ]}
+                      >
                         {heading}
                       </Text>
                       {group.slice(0, 20).map(v => {
@@ -621,19 +638,20 @@ export default function VoiceSettingsScreen() {
                             key={v.id}
                             onPress={() => applyVoice(v.id)}
                             activeOpacity={0.7}
-                            style={[
-                              styles.voiceRow,
-                              {
-                                backgroundColor: sel
-                                  ? gold + '14'
-                                  : 'transparent',
-                                borderColor: sel
-                                  ? gold + '55'
-                                  : isDark
-                                    ? 'rgba(255,255,255,0.07)'
-                                    : 'rgba(0,0,0,0.07)',
-                              },
-                            ]}
+                          style={[
+                            styles.voiceRow,
+                            isRtl && { flexDirection: 'row-reverse' },
+                            {
+                              backgroundColor: sel
+                                ? gold + '14'
+                                : 'transparent',
+                              borderColor: sel
+                                ? gold + '55'
+                                : isDark
+                                  ? 'rgba(255,255,255,0.07)'
+                                  : 'rgba(0,0,0,0.07)',
+                            },
+                          ]}
                           >
                             <View style={{ flex: 1 }}>
                               <Text
@@ -661,14 +679,25 @@ export default function VoiceSettingsScreen() {
                             {sel ? (
                               <CheckCircle size={17} color={gold} />
                             ) : (
-                              <ChevronRight
-                                size={15}
-                                color={
-                                  isDark
-                                    ? 'rgba(255,255,255,0.22)'
-                                    : 'rgba(0,0,0,0.20)'
-                                }
-                              />
+                              isRtl ? (
+                                <ChevronDown
+                                  size={15}
+                                  color={
+                                    isDark
+                                      ? 'rgba(255,255,255,0.22)'
+                                      : 'rgba(0,0,0,0.20)'
+                                  }
+                                />
+                              ) : (
+                                <ChevronRight
+                                  size={15}
+                                  color={
+                                    isDark
+                                      ? 'rgba(255,255,255,0.22)'
+                                      : 'rgba(0,0,0,0.20)'
+                                  }
+                                />
+                              )
                             )}
                           </TouchableOpacity>
                         );
@@ -706,6 +735,7 @@ function SliderBlock({
   deviceDefaultLabel,
   resetLabel,
   deviceHintLabel,
+  isRtl,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -724,13 +754,14 @@ function SliderBlock({
   deviceDefaultLabel?: string;
   resetLabel?: string;
   deviceHintLabel?: string;
+  isRtl?: boolean;
 }) {
   const mutedTrack = isDark ? 'rgba(255,255,255,0.11)' : 'rgba(0,0,0,0.09)';
 
   return (
     <View style={sliderStyles.block}>
       {/* Header row */}
-      <View style={sliderStyles.header}>
+      <View style={[sliderStyles.header, isRtl && { flexDirection: 'row-reverse' }]}>
         {icon}
         <Text style={[sliderStyles.label, { color: COLORS.text }]}>
           {label}
@@ -753,7 +784,7 @@ function SliderBlock({
             </View>
         ) : (
           /* Custom value badge + reset button */
-          <View style={sliderStyles.customRow}>
+          <View style={[sliderStyles.customRow, isRtl && { flexDirection: 'row-reverse' }]}>
             <View
               style={[
                 sliderStyles.snapBadge,
@@ -772,6 +803,7 @@ function SliderBlock({
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={[
                 sliderStyles.resetBtn,
+                isRtl && { flexDirection: 'row-reverse' },
                 {
                   borderColor: isDark
                     ? 'rgba(255,255,255,0.14)'
@@ -865,11 +897,12 @@ function SliderBlock({
 
 // ─── SectionLabel ─────────────────────────────────────────────────────────────
 
-function SectionLabel({ text, isDark }: { text: string; isDark: boolean }) {
+function SectionLabel({ text, isDark, isRtl }: { text: string; isDark: boolean; isRtl?: boolean }) {
   return (
     <Text
       style={[
         styles.sectionLbl,
+        isRtl && styles.sectionLblRtl,
         { color: isDark ? 'rgba(255,255,255,0.27)' : 'rgba(0,0,0,0.28)' },
       ]}
     >
@@ -882,7 +915,7 @@ function SectionLabel({ text, isDark }: { text: string; isDark: boolean }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  scroll: { padding: SPACING.lg, paddingTop: 0, paddingBottom: 32 },
+  scroll: { padding: SPACING.lg, paddingTop: 0, paddingBottom: Platform.OS === 'ios' ? 40 : 32 },
 
   sectionLbl: {
     fontSize: FONT_SIZES.xs,
@@ -891,6 +924,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: SPACING.sm,
     marginLeft: 2,
+  },
+  sectionLblRtl: {
+    marginLeft: 0,
+    marginRight: 2,
   },
 
   // Hero
@@ -905,7 +942,6 @@ const styles = StyleSheet.create({
   heroBubble: {
     position: 'absolute',
     top: -45,
-    right: -45,
     width: 140,
     height: 140,
     borderRadius: 70,
@@ -1024,6 +1060,10 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     marginBottom: SPACING.sm,
     marginLeft: 2,
+  },
+  groupLblRtl: {
+    marginLeft: 0,
+    marginRight: 2,
   },
   voiceRow: {
     flexDirection: 'row',

@@ -58,7 +58,8 @@ export default function ReadingSettingsScreen() {
   const { isDark, toggleTheme, bibleVersionId, setBibleVersion } = app;
   const COLORS = getColors(isDark);
   // expose the translations object as `translation` for easier developer access
-  const { translations: translation } = useLanguage();
+  const { translations: translation, language } = useLanguage();
+  const isRtl = language === 'ar';
 
   // Bible hook for connection status
   const { isOnline } = useBible();
@@ -183,6 +184,7 @@ export default function ReadingSettingsScreen() {
               }
               label={translation?.readingSettings?.bibleTranslation || 'Bible Translation'}
               COLORS={COLORS}
+              isRtl={isRtl}
             />
             <Text style={{ fontSize: 10, color: isOnline ? '#10B981' : '#888' }}>
               {statusLabel}
@@ -219,6 +221,7 @@ export default function ReadingSettingsScreen() {
         <View
           style={[
             s.searchBar,
+            isRtl && s.searchBarRtl,
             { backgroundColor: surface, borderColor: border },
           ]}
         >
@@ -279,6 +282,7 @@ export default function ReadingSettingsScreen() {
                     activeOpacity={0.7}
                     style={[
                       s.versionRow,
+                      isRtl && s.versionRowRtl,
                       !isLast && {
                         borderBottomWidth: 1,
                         borderBottomColor: border,
@@ -310,7 +314,7 @@ export default function ReadingSettingsScreen() {
 
                     {/* Name + year */}
                     <View style={{ flex: 1 }}>
-                      <View style={s.rowTitleRow}>
+                      <View style={[s.rowTitleRow, isRtl && s.rowTitleRowRtl]}>
                         <Text
                           style={[
                             s.rowName,
@@ -371,6 +375,7 @@ export default function ReadingSettingsScreen() {
           icon={<Type size={15} color={COLORS.primary} strokeWidth={2} />}
           label={translation?.readingSettings?.textSize || 'Text Size'}
           COLORS={COLORS}
+          isRtl={isRtl}
           style={{ marginTop: SPACING.xl }}
         />
 
@@ -378,6 +383,7 @@ export default function ReadingSettingsScreen() {
         <View
           style={[
             s.fontCard,
+            isRtl && s.fontCardRtl,
             { backgroundColor: surface, borderColor: border },
           ]}
         >
@@ -465,7 +471,7 @@ export default function ReadingSettingsScreen() {
               {'"'}
             </Text>
           </Text>
-          <Text style={[s.previewRef, { color: COLORS.muted }]}> {translation?.readingSettings?.preview?.ref || '— John 3:16'}</Text>
+          <Text style={[s.previewRef, isRtl && s.previewRefRtl, { color: COLORS.muted }]}> {translation?.readingSettings?.preview?.ref || '— John 3:16'}</Text>
         </View>
 
         {/* ═════════════════════════════════════════════════════════════════
@@ -475,13 +481,14 @@ export default function ReadingSettingsScreen() {
           icon={<Volume2 size={15} color="#10B981" strokeWidth={2} />}
           label={translation?.readingSettings?.readingVoice || 'Reading Voice'}
           COLORS={COLORS}
+          isRtl={isRtl}
           style={{ marginTop: SPACING.xl }}
         />
 
         <TouchableOpacity
           onPress={() => navigation.navigate(route.voiceSettings)}
           activeOpacity={0.7}
-          style={[s.linkRow, { backgroundColor: surface, borderColor: border }]}
+          style={[s.linkRow, isRtl && s.linkRowRtl, { backgroundColor: surface, borderColor: border }]}
         >
           <View style={[s.linkIcon, { backgroundColor: '#10B98118' }]}>
             <Volume2 size={18} color="#10B981" strokeWidth={2} />
@@ -490,7 +497,7 @@ export default function ReadingSettingsScreen() {
             <Text style={[s.linkLabel, { color: COLORS.text }]}>{translation?.readingSettings?.voiceSettings?.label || 'Voice Settings'}</Text>
             <Text style={[s.linkSub, { color: COLORS.muted }]}>{translation?.readingSettings?.voiceSettings?.subtitle || 'Speed, pitch, narrator voice'}</Text>
           </View>
-          <ChevronRight size={16} color={COLORS.muted} strokeWidth={2} />
+          {isRtl ? <ChevronRight size={16} color={COLORS.muted} strokeWidth={2} style={{ transform: [{ scaleX: -1 }] }} /> : <ChevronRight size={16} color={COLORS.muted} strokeWidth={2} />}
         </TouchableOpacity>
 
         {/* ══════════════════════════════════════════════════════════════════
@@ -500,11 +507,12 @@ export default function ReadingSettingsScreen() {
           icon={<Palette size={15} color={COLORS.accent} strokeWidth={2} />}
           label={translation?.readingSettings?.appearance?.label || 'Appearance'}
           COLORS={COLORS}
+          isRtl={isRtl}
           style={{ marginTop: SPACING.xl }}
         />
 
         <View
-          style={[s.linkRow, { backgroundColor: surface, borderColor: border }]}
+          style={[s.linkRow, isRtl && s.linkRowRtl, { backgroundColor: surface, borderColor: border }]}
         >
           <View style={[s.linkIcon, { backgroundColor: `${COLORS.accent}18` }]}>
             {isDark ? (
@@ -544,15 +552,17 @@ function SectionHeader({
   label,
   COLORS,
   style,
+  isRtl,
 }: {
   icon: React.ReactNode;
   label: string;
   COLORS: any;
   style?: any;
+  isRtl?: boolean;
 }) {
   return (
-    <View style={[sh.row, style]}>
-      <View style={[sh.iconWrap, { backgroundColor: `${COLORS.primary}12` }]}>
+    <View style={[sh.row, isRtl && sh.rowRtl, style]}>
+      <View style={[sh.iconWrap, isRtl && sh.iconWrapRtl, { backgroundColor: `${COLORS.primary}12` }]}>
         {icon}
       </View>
       <Text style={[sh.label, { color: COLORS.muted }]}>
@@ -569,12 +579,19 @@ const sh = StyleSheet.create({
     gap: 8,
     marginBottom: SPACING.sm,
   },
+  rowRtl: {
+    flexDirection: 'row-reverse',
+  },
   iconWrap: {
     width: 26,
     height: 26,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  iconWrapRtl: {
+    marginRight: 0,
+    marginLeft: 8,
   },
   label: {
     fontSize: 10,
@@ -682,6 +699,9 @@ const s = StyleSheet.create({
     borderWidth: 1,
     marginBottom: SPACING.sm,
   },
+  searchBarRtl: {
+    flexDirection: 'row-reverse',
+  },
   searchInput: {
     flex: 1,
     fontSize: FONT_SIZES.sm,
@@ -703,6 +723,9 @@ const s = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     gap: 12,
   },
+  versionRowRtl: {
+    flexDirection: 'row-reverse',
+  },
   rowBadge: {
     width: 46,
     height: 28,
@@ -721,6 +744,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     flexWrap: 'nowrap',
+  },
+  rowTitleRowRtl: {
+    flexDirection: 'row-reverse',
   },
   rowName: { fontSize: FONT_SIZES.sm },
   yearPill: {
@@ -757,6 +783,9 @@ const s = StyleSheet.create({
     overflow: 'hidden',
     height: 56,
     marginBottom: SPACING.sm,
+  },
+  fontCardRtl: {
+    flexDirection: 'row-reverse',
   },
   fontBtn: {
     width: 56,
@@ -811,6 +840,9 @@ const s = StyleSheet.create({
     marginTop: SPACING.sm,
     textAlign: 'right',
   },
+  previewRefRtl: {
+    textAlign: 'left',
+  },
 
   // ── Link row (Voice / Appearance) ────────────────────────────────────────
   linkRow: {
@@ -822,6 +854,9 @@ const s = StyleSheet.create({
     borderRadius: BORDER_RADIUS.xl,
     borderWidth: 1,
     marginBottom: 8,
+  },
+  linkRowRtl: {
+    flexDirection: 'row-reverse',
   },
   linkIcon: {
     width: 40,

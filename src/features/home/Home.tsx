@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Pressable,
   Modal,
+  Platform,
   RefreshControl,
   ActivityIndicator,
   Animated,
@@ -25,6 +26,7 @@ import {
   History,
   Heart,
   ArrowRight,
+  ArrowLeft,
   MenuSquareIcon,
   Clock,
   CalendarDays,
@@ -37,6 +39,7 @@ import {
   Share2,
   ChevronDown,
   ChevronLeft,
+  ChevronRight,
   BookOpen,
   GraduationCap,
   X,
@@ -146,7 +149,7 @@ export default function Home() {
   const tabBarAnimation = useRef(new Animated.Value(1)).current;
 
   const { language, translations: translation } = useLanguage();
-
+  const isRtl = language === 'ar';
   // ── Banners & Quick Links ─────────────────────────────────────────────────
   const contentBanners = useMemo(
     () => [
@@ -487,8 +490,8 @@ export default function Home() {
       >
         {/* ── Daily Verse Card ── */}
         <View style={styles.verseCard}>
-          <View style={styles.verseCardHeader}>
-            <View style={styles.verseCardHeaderLeft}>
+          <View style={[styles.verseCardHeader, isRtl && styles.verseCardHeaderRtl]}>
+            <View style={[styles.verseCardHeaderLeft, isRtl && styles.verseCardHeaderLeftRtl]}>
               <View style={styles.verseIconBox}>
                 <BookOpen size={16} color="#FFFFFF" strokeWidth={2} />
               </View>
@@ -512,7 +515,7 @@ export default function Home() {
             </View>
 
             <TouchableOpacity
-              style={styles.lordsBookTag}
+              style={[styles.lordsBookTag, isRtl && styles.lordsBookTagRtl]}
               onPress={() => setShowDatePicker(true)}
             >
               <CalendarDays size={13} color="#FFFFFF" strokeWidth={2} />
@@ -525,7 +528,7 @@ export default function Home() {
           <View style={styles.verseCardDivider} />
 
           {verseLoading || (isCustomDate && customDateLoading) ? (
-            <View style={styles.verseLoadingRow}>
+            <View style={[styles.verseLoadingRow, isRtl && styles.verseLoadingRowRtl]}>
               <ActivityIndicator size="small" color={COLORS.primary} />
               <Text style={styles.verseLoadingText}>
                 {translation?.home?.loadingVerse || 'Loading verse...'}
@@ -533,9 +536,9 @@ export default function Home() {
             </View>
           ) : (
             <>
-              <View style={styles.verseReferenceRow}>
-                <View style={styles.verseRefLeft}>
-                  {isCustomDate && (
+              <View style={[styles.verseReferenceRow, isRtl && styles.verseReferenceRowRtl]}>
+                <View style={[styles.verseRefLeft, isRtl && styles.verseRefLeftRtl]}>
+                  {isCustomDate ? (
                     <TouchableOpacity
                       onPress={() => {
                         setIsCustomDate(false);
@@ -544,9 +547,9 @@ export default function Home() {
                       }}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <ChevronLeft size={14} color={COLORS.primary} />
+                      <ChevronRight size={14} color={COLORS.primary} />
                     </TouchableOpacity>
-                  )}
+                  ) : null}
                   <BookMarked size={14} color={COLORS.primary} />
                   <Text style={styles.verseRefText}>
                     {isCustomDate && customDailyVerse
@@ -615,7 +618,7 @@ export default function Home() {
                   )}
 
                   <TouchableOpacity
-                    style={styles.showMoreBtn}
+                    style={[styles.showMoreBtn, isRtl && styles.showMoreBtnRtl]}
                     onPress={() => {
                       if (showMore) {
                         setShowMore(false);
@@ -637,9 +640,9 @@ export default function Home() {
                 </View>
               )}
 
-              <View style={styles.verseActions}>
+              <View style={[styles.verseActions, isRtl && styles.verseActionsRtl]}>
                 <TouchableOpacity
-                  style={styles.verseActionBtn}
+                  style={[styles.verseActionBtn, isRtl && styles.verseActionBtnRtl]}
                   onPress={() => {
                     const closing = showExplanation;
                     setShowExplanation(!showExplanation);
@@ -659,7 +662,7 @@ export default function Home() {
 
                 {/* Share Button */}
                 <TouchableOpacity
-                  style={styles.verseActionBtn}
+                  style={[styles.verseActionBtn, isRtl && styles.verseActionBtnRtl]}
                   activeOpacity={0.6}
                   onPress={() => handleShare()}
                 >
@@ -676,20 +679,15 @@ export default function Home() {
         {/* ── Back to Today Banner (when viewing custom date) ── */}
         {isCustomDate && (
           <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              marginHorizontal: 20,
-              marginBottom: 12,
-              paddingVertical: 10,
-              paddingHorizontal: 20,
-              borderRadius: 12,
-              backgroundColor: COLORS.primary + '15',
-              borderWidth: 1,
-              borderColor: COLORS.primary + '30',
-            }}
+            style={[
+              styles.backToTodayBanner,
+              isRtl && styles.backToTodayBannerRtl,
+              {
+                backgroundColor: COLORS.primary + '15',
+                borderWidth: 1,
+                borderColor: COLORS.primary + '30',
+              },
+            ]}
             onPress={() => {
               setIsCustomDate(false);
               setSelectedDate('');
@@ -720,6 +718,7 @@ export default function Home() {
                 onPress={btn.onPress}
                 style={[
                   styles.bannerRow,
+                  isRtl && styles.bannerRowRtl,
                   { backgroundColor: btn.color },
                   idx === 0 && styles.bannerFirst,
                   idx === contentBanners.length - 1 && styles.bannerLast,
@@ -739,7 +738,7 @@ export default function Home() {
           <Text style={styles.sectionTitle}>
             {translation?.home?.quickActionsTitle || 'Quick Actions'}
           </Text>
-          <View style={styles.quickLinksCompact}>
+          <View style={[styles.quickLinksCompact, isRtl && styles.quickLinksCompactRtl]}>
             {quickLinks.map(link => (
               <TouchableOpacity
                 key={link.id}
@@ -767,7 +766,7 @@ export default function Home() {
           <Text style={styles.sectionTitle}>
             {translation?.home?.yourStatsTitle || 'Your Stats'}
           </Text>
-          <View style={styles.statsGrid}>
+          <View style={[styles.statsGrid, isRtl && styles.statsGridRtl]}>
             {[
               {
                 label: translation?.profile?.stats?.chapters || 'Chapters',
@@ -811,7 +810,7 @@ export default function Home() {
 
         {/* ── Recent Activity ── */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, isRtl && styles.sectionHeaderRtl]}>
             <Text style={styles.sectionTitle}>
               {translation?.home?.recentActivityTitle || 'Recent Activity'}
             </Text>
@@ -880,6 +879,7 @@ export default function Home() {
                     key={idx}
                     style={[
                       activityStyles.activityCard,
+                      isRtl && activityStyles.activityCardRtl,
                       { backgroundColor: COLORS.cardBackground },
                     ]}
                     onPress={() =>
@@ -894,13 +894,14 @@ export default function Home() {
                     <View
                       style={[
                         activityStyles.iconBox,
+                        isRtl && activityStyles.iconBoxRtl,
                         { backgroundColor: iconColor + '20' },
                       ]}
                     >
                       <ActivityIcon size={18} color={iconColor} />
                     </View>
                     <View style={activityStyles.activityContent}>
-                      <View style={activityStyles.activityTop}>
+                      <View style={[activityStyles.activityTop, isRtl && activityStyles.activityTopRtl]}>
                         <Text
                           style={[
                             activityStyles.activityLabel,
@@ -927,7 +928,11 @@ export default function Home() {
                         {act.book} {act.chapter}:{act.verse}
                       </Text>
                     </View>
-                    <ArrowRight size={16} color={COLORS.muted} />
+                    {isRtl ? (
+                      <ArrowLeft size={16} color={COLORS.muted} />
+                    ) : (
+                      <ArrowRight size={16} color={COLORS.muted} />
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -971,7 +976,7 @@ export default function Home() {
             {/* Header */}
             <View
               style={{
-                flexDirection: 'row',
+                flexDirection: isRtl ? 'row-reverse' : 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: 16,
@@ -1013,11 +1018,11 @@ export default function Home() {
                 marginBottom: 8,
               }}
             >
-              {'This Week'}
+              {translation?.home?.thisWeek || 'This Week'}
             </Text>
             <View
               style={{
-                flexDirection: 'row',
+                flexDirection: isRtl ? 'row-reverse' : 'row',
                 gap: 6,
                 marginBottom: 20,
                 justifyContent: 'center',
@@ -1098,7 +1103,7 @@ export default function Home() {
             {/* ── Month / Year Picker ── */}
             <View
               style={{
-                flexDirection: 'row',
+                flexDirection: isRtl ? 'row-reverse' : 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 marginBottom: 12,
@@ -1123,7 +1128,11 @@ export default function Home() {
                   alignItems: 'center',
                 }}
               >
-                <ChevronLeft size={18} color={COLORS.text} />
+                {isRtl ? (
+                  <ArrowRight size={18} color={COLORS.text} />
+                ) : (
+                  <ChevronLeft size={18} color={COLORS.text} />
+                )}
               </TouchableOpacity>
 
               <Text
@@ -1154,12 +1163,16 @@ export default function Home() {
                   alignItems: 'center',
                 }}
               >
-                <ArrowRight size={18} color={COLORS.text} />
+                {isRtl ? (
+                  <ChevronLeft size={18} color={COLORS.text} />
+                ) : (
+                  <ArrowRight size={18} color={COLORS.text} />
+                )}
               </TouchableOpacity>
             </View>
 
             {/* ── Calendar Grid ── */}
-            <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+            <View style={{ flexDirection: isRtl ? 'row-reverse' : 'row', marginBottom: 6 }}>
               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
                 <View
                   key={`weekday-header-${index}`}
@@ -1257,7 +1270,7 @@ export default function Home() {
                 rows.push(
                   <View
                     key={`week-${i}`}
-                    style={{ flexDirection: 'row', gap: 2, marginBottom: 2 }}
+                    style={{ flexDirection: isRtl ? 'row-reverse' : 'row', gap: 2, marginBottom: 2 }}
                   >
                     {weekCells}
                   </View>,
@@ -1278,7 +1291,7 @@ export default function Home() {
             {/* Navigate to full Daily Verse page */}
             <TouchableOpacity
               style={{
-                flexDirection: 'row',
+                flexDirection: isRtl ? 'row-reverse' : 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 8,
@@ -1350,6 +1363,16 @@ const activityStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+  },
+  activityCardRtl: {
+    flexDirection: 'row-reverse',
+  },
+  iconBoxRtl: {
+    marginRight: 0,
+    marginLeft: 12,
+  },
+  activityTopRtl: {
+    flexDirection: 'row-reverse',
   },
   activityContent: { flex: 1 },
   activityTop: {

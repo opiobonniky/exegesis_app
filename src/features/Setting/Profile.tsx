@@ -92,6 +92,7 @@ export default function ProfileScreen() {
   const user = userInfo as any;
   const COLORS = getColors(isDark);
   const { translations, setLanguage, language, t } = useLanguage();
+  const isRtl = language === 'ar';
 
   const cycleLanguage = () => {
     const langs = ['en', 'es', 'fr', 'ar'];
@@ -331,7 +332,7 @@ export default function ProfileScreen() {
           ]}
         >
           <View style={styles.profileHeader}>
-            <View style={styles.profileTitleRow}>
+            <View style={[styles.profileTitleRow, isRtl && styles.profileTitleRowRtl]}>
               <View style={styles.profileNameSection}>
                 <Text style={[styles.profileName, { color: COLORS.text }]}>
                   {user?.firstName} {user?.lastName}
@@ -362,7 +363,7 @@ export default function ProfileScreen() {
 
           <View style={styles.profileDetails}>
             <View style={styles.detailRow}>
-              <View style={styles.detailLabel}>
+              <View style={[styles.detailLabel, isRtl && styles.detailLabelRtl]}>
                 <Mail size={14} color={COLORS.muted} />
                 <Text style={[styles.detailLabelText, { color: COLORS.muted }]}> 
                   {t('profile.fields.email') || (translations.profile && translations.profile.fields?.email) || 'Email'}
@@ -378,7 +379,7 @@ export default function ProfileScreen() {
 
             {user?.phoneNumber ? (
               <View style={styles.detailRow}>
-                <View style={styles.detailLabel}>
+                <View style={[styles.detailLabel, isRtl && styles.detailLabelRtl]}>
                   <Phone size={14} color={COLORS.muted} />
                   <Text
                     style={[styles.detailLabelText, { color: COLORS.muted }]}
@@ -393,7 +394,7 @@ export default function ProfileScreen() {
             ) : null}
 
             <View style={styles.detailRow}>
-              <View style={styles.detailLabel}>
+              <View style={[styles.detailLabel, isRtl && styles.detailLabelRtl]}>
                 <Calendar size={14} color={COLORS.muted} />
                 <Text style={[styles.detailLabelText, { color: COLORS.muted }]}> 
                   {t('profile.fields.memberSince') || (translations.profile && translations.profile.fields?.memberSince) || 'Member since'}
@@ -442,7 +443,7 @@ export default function ProfileScreen() {
         {/* ── MENU SECTIONS ────────────────────────────────────────────── */}
         {menuSections.map((section, sectionIndex) => (
           <View key={sectionIndex} style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: COLORS.muted }]}>
+            <Text style={[styles.sectionTitle, isRtl && styles.sectionTitleRtl, { color: COLORS.muted }]}>
               {section.title}
             </Text>
 
@@ -468,13 +469,14 @@ export default function ProfileScreen() {
                         },
                       ]}
                     >
-                      <View style={styles.menuLeft}>
-                        <View
-                          style={[
-                            styles.menuIconContainer,
-                            { backgroundColor: item.color + '15' },
-                          ]}
-                        >
+                      <View style={[styles.menuLeft, isRtl && styles.menuLeftRtl]}>   
+                            <View
+                            style={[
+                              styles.menuIconContainer,
+                              isRtl && styles.menuIconContainerRtl,
+                              { backgroundColor: item.color + '15' },
+                            ]}
+                          >
                           <Icon size={20} color={item.color} />
                         </View>
                         <Text
@@ -515,10 +517,11 @@ export default function ProfileScreen() {
                     }
                     activeOpacity={0.6}
                   >
-                    <View style={styles.menuLeft}>
+                    <View style={[styles.menuLeft, isRtl && styles.menuLeftRtl]}>
                       <View
                         style={[
                           styles.menuIconContainer,
+                          isRtl && styles.menuIconContainerRtl,
                           { backgroundColor: item.color + '15' },
                         ]}
                       >
@@ -529,7 +532,7 @@ export default function ProfileScreen() {
                       </Text>
                     </View>
 
-                    <View style={styles.menuRight}>
+                    <View style={[styles.menuRight, isRtl && styles.menuRightRtl]}>
                       {item.badge && (
                         <View
                           style={[
@@ -540,7 +543,7 @@ export default function ProfileScreen() {
                           <Text style={styles.badgeText}>{item.badge}</Text>
                         </View>
                       )}
-                      <ChevronRight size={20} color={COLORS.muted} />
+                      {isRtl ? <ChevronRight size={20} color={COLORS.muted} style={{ transform: [{ scaleX: -1 }] }} /> : <ChevronRight size={20} color={COLORS.muted} />}
                     </View>
                   </TouchableOpacity>
                 );
@@ -553,6 +556,7 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={[
             styles.logoutButton,
+            isRtl && styles.logoutButtonRtl,
             { backgroundColor: COLORS.cardBackground },
             loggingOut && { opacity: 0.6 },
           ]}
@@ -563,6 +567,7 @@ export default function ProfileScreen() {
           <View
             style={[
               styles.logoutIconContainer,
+              isRtl && styles.logoutIconContainerRtl,
               { backgroundColor: COLORS.error + '15' },
             ]}
           >
@@ -642,7 +647,7 @@ const styles = StyleSheet.create({
   content: {
     padding: SPACING.lg,
     paddingTop: 0,
-    paddingBottom: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
 
   // ── Profile card ──
@@ -665,6 +670,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  profileTitleRowRtl: {
+    flexDirection: 'row-reverse',
   },
   profileNameSection: {
     flex: 1,
@@ -703,6 +711,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     marginBottom: 4,
+  },
+  detailLabelRtl: {
+    flexDirection: 'row-reverse',
   },
   detailLabelText: {
     fontSize: FONT_SIZES.xs,
@@ -831,6 +842,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  sectionTitleRtl: {
+    marginLeft: 0,
+    marginRight: SPACING.xs,
+  },
   menuCard: {
     borderRadius: BORDER_RADIUS.xl,
     overflow: 'hidden',
@@ -851,6 +866,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  menuLeftRtl: {
+    flexDirection: 'row-reverse',
+  },
   menuIconContainer: {
     width: 40,
     height: 40,
@@ -858,6 +876,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.md,
+  },
+  menuIconContainerRtl: {
+    marginRight: 0,
+    marginLeft: SPACING.md,
   },
   menuLabel: {
     fontSize: FONT_SIZES.md,
@@ -867,6 +889,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
+  },
+  menuRightRtl: {
+    flexDirection: 'row-reverse',
   },
   badge: {
     paddingHorizontal: SPACING.sm,
@@ -893,6 +918,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  logoutButtonRtl: {
+    flexDirection: 'row-reverse',
+  },
   logoutIconContainer: {
     width: 40,
     height: 40,
@@ -900,6 +928,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.md,
+  },
+  logoutIconContainerRtl: {
+    marginRight: 0,
+    marginLeft: SPACING.md,
   },
   logoutText: {
     fontSize: FONT_SIZES.md,

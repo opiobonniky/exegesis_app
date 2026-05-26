@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -61,7 +62,8 @@ export default function NotificationSettingsScreen() {
   const app = useContext(AppContext);
   const navigation = useNavigation<any>();
   const COLORS = getColors(app?.isDark ?? false);
-  const { translations: translation } = useLanguage();
+  const { translations: translation, language } = useLanguage();
+  const isRtl = language === 'ar';
 
   const [loading, setLoading] = useState(true);
 
@@ -196,10 +198,10 @@ export default function NotificationSettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View
-          style={[s.hero, { backgroundColor: surface, borderColor: border }]}
+          style={[s.hero, isRtl && s.heroRtl, { backgroundColor: surface, borderColor: border }]}
         >
           <View
-            style={[s.heroIcon, { backgroundColor: `${COLORS.primary}15` }]}
+            style={[s.heroIcon, isRtl && s.heroIconRtl, { backgroundColor: `${COLORS.primary}15` }]}
           >
             <Bell size={18} color={COLORS.primary} />
           </View>
@@ -219,6 +221,7 @@ export default function NotificationSettingsScreen() {
           subtitle={translation?.notificationSettings?.dailyVerseSub || 'A gentle daily reminder to read the verse of the day.'}
           icon={<Star size={16} color={COLORS.accent} />}
           COLORS={COLORS}
+          isRtl={isRtl}
         />
         <View
           style={[s.card, { backgroundColor: surface, borderColor: border }]}
@@ -229,6 +232,7 @@ export default function NotificationSettingsScreen() {
             onValueChange={toggleDailyVerse}
             COLORS={COLORS}
             icon={<Bell size={18} color={COLORS.accent} />}
+            isRtl={isRtl}
           />
           <RowLink
             label={translation?.notificationSettings?.reminderTime || 'Reminder time'}
@@ -237,6 +241,7 @@ export default function NotificationSettingsScreen() {
             onPress={() => openPicker('dailyVerse')}
             COLORS={COLORS}
             icon={<Clock size={18} color={COLORS.accent} />}
+            isRtl={isRtl}
           />
         </View>
 
@@ -246,6 +251,7 @@ export default function NotificationSettingsScreen() {
           subtitle={translation?.notificationSettings?.readingPlanSub || 'Daily reading reminders and a completion nudge if today’s task exists.'}
           icon={<BookOpen size={16} color={COLORS.primary} />}
           COLORS={COLORS}
+          isRtl={isRtl}
         />
         <View
           style={[s.card, { backgroundColor: surface, borderColor: border }]}
@@ -256,6 +262,7 @@ export default function NotificationSettingsScreen() {
             onValueChange={togglePlan}
             COLORS={COLORS}
             icon={<Bell size={18} color={COLORS.primary} />}
+            isRtl={isRtl}
           />
           <RowLink
             label={translation?.notificationSettings?.dailyReminderTime || 'Daily reminder time'}
@@ -264,6 +271,7 @@ export default function NotificationSettingsScreen() {
             onPress={() => openPicker('readingPlan')}
             COLORS={COLORS}
             icon={<Clock size={18} color={COLORS.primary} />}
+            isRtl={isRtl}
           />
         </View>
 
@@ -273,6 +281,7 @@ export default function NotificationSettingsScreen() {
           subtitle={translation?.notificationSettings?.missedDaySub || "Evening reminder if today's reading assignment isn't completed."}
           icon={<AlertCircle size={16} color="#F59E0B" />}
           COLORS={COLORS}
+          isRtl={isRtl}
         />
         <View
           style={[s.card, { backgroundColor: surface, borderColor: border }]}
@@ -283,6 +292,7 @@ export default function NotificationSettingsScreen() {
             onValueChange={toggleAtRisk}
             COLORS={COLORS}
             icon={<AlertCircle size={18} color="#F59E0B" />}
+            isRtl={isRtl}
           />
           <RowLink
             label={translation?.notificationSettings?.reminderTime || 'Reminder time'}
@@ -291,6 +301,7 @@ export default function NotificationSettingsScreen() {
             onPress={() => openPicker('atRisk')}
             COLORS={COLORS}
             icon={<Clock size={18} color="#F59E0B" />}
+            isRtl={isRtl}
           />
         </View>
 
@@ -328,15 +339,17 @@ function SectionHeader({
   subtitle,
   icon,
   COLORS,
+  isRtl,
 }: {
   title: string;
   subtitle?: string;
   icon: React.ReactNode;
   COLORS: any;
+  isRtl: boolean;
 }) {
   return (
-    <View style={s.sectionHeader}>
-      <View style={[s.sectionIconWrap, { backgroundColor: COLORS.surface }]}>
+    <View style={[s.sectionHeader, isRtl && s.sectionHeaderRtl]}>
+      <View style={[s.sectionIconWrap, isRtl && s.sectionIconWrapRtl, { backgroundColor: COLORS.surface }]}>
         {icon}
       </View>
       <View style={{ flex: 1 }}>
@@ -357,17 +370,19 @@ function RowSwitch({
   onValueChange,
   icon,
   COLORS,
+  isRtl
 }: {
   label: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
   icon: React.ReactNode;
   COLORS: any;
+  isRtl: boolean;
 }) {
   return (
-    <View style={s.row}>
-      <View style={s.rowLeft}>
-        <View style={[s.rowIcon, { backgroundColor: `${COLORS.primary}10` }]}>
+    <View style={[s.row, isRtl && s.rowRtl]}>
+      <View style={[s.rowLeft, isRtl && s.rowLeftRtl]}>
+        <View style={[s.rowIcon, isRtl && s.rowIconRtl, { backgroundColor: `${COLORS.primary}10` }]}>
           {icon}
         </View>
         <Text style={[s.rowLabel, { color: COLORS.text }]}>{label}</Text>
@@ -390,6 +405,7 @@ function RowLink({
   disabled,
   icon,
   COLORS,
+  isRtl
 }: {
   label: string;
   value: string;
@@ -397,23 +413,24 @@ function RowLink({
   disabled?: boolean;
   icon: React.ReactNode;
   COLORS: any;
+  isRtl: boolean;
 }) {
   return (
     <TouchableOpacity
-      style={[s.row, disabled && { opacity: 0.55 }]}
+      style={[s.row, isRtl && s.rowRtl, disabled && { opacity: 0.55 }]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.7}
     >
-      <View style={s.rowLeft}>
-        <View style={[s.rowIcon, { backgroundColor: `${COLORS.primary}10` }]}>
+      <View style={[s.rowLeft, isRtl && s.rowLeftRtl]}>
+        <View style={[s.rowIcon, isRtl && s.rowIconRtl, { backgroundColor: `${COLORS.primary}10` }]}>
           {icon}
         </View>
         <Text style={[s.rowLabel, { color: COLORS.text }]}>{label}</Text>
       </View>
-      <View style={s.rowRight}>
-        <Text style={[s.rowValue, { color: COLORS.muted }]}>{value}</Text>
-        <ChevronRight size={18} color={COLORS.muted} />
+      <View style={[s.rowRight, isRtl && s.rowRightRtl]}>
+        <Text style={[s.rowValue, isRtl && s.rowValueRtl, { color: COLORS.muted }]}>{value}</Text>
+        {isRtl ? <ChevronRight size={18} color={COLORS.muted} style={{ transform: [{ scaleX: -1 }] }} /> : <ChevronRight size={18} color={COLORS.muted} />}
       </View>
     </TouchableOpacity>
   );
@@ -421,7 +438,7 @@ function RowLink({
 
 const s = StyleSheet.create({
   root: { flex: 1 },
-  scroll: { padding: SPACING.lg, paddingBottom: 40 },
+  scroll: { padding: SPACING.lg, paddingBottom: Platform.OS === 'ios' ? 60 : 40 },
 
   hero: {
     flexDirection: 'row',
@@ -431,6 +448,9 @@ const s = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.lg,
   },
+  heroRtl: {
+    flexDirection: 'row-reverse',
+  },
   heroIcon: {
     width: 42,
     height: 42,
@@ -438,6 +458,10 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: SPACING.md,
+  },
+  heroIconRtl: {
+    marginRight: 0,
+    marginLeft: SPACING.md,
   },
   heroTitle: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
   heroSub: { marginTop: 4, fontSize: FONT_SIZES.sm, lineHeight: 18 },
@@ -448,6 +472,9 @@ const s = StyleSheet.create({
     marginBottom: SPACING.sm,
     marginTop: SPACING.md,
   },
+  sectionHeaderRtl: {
+    flexDirection: 'row-reverse',
+  },
   sectionIconWrap: {
     width: 30,
     height: 30,
@@ -455,6 +482,10 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: SPACING.sm,
+  },
+  sectionIconWrapRtl: {
+    marginRight: 0,
+    marginLeft: SPACING.sm,
   },
   sectionTitle: { fontSize: FONT_SIZES.md, fontWeight: '800' },
   sectionSub: { marginTop: 2, fontSize: FONT_SIZES.xs, lineHeight: 16 },
@@ -471,7 +502,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  rowRtl: {
+    flexDirection: 'row-reverse',
+  },
   rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  rowLeftRtl: { flexDirection: 'row-reverse' },
   rowIcon: {
     width: 34,
     height: 34,
@@ -480,9 +515,12 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginRight: SPACING.sm,
   },
+  rowIconRtl: { marginRight: 0, marginLeft: SPACING.sm },
   rowLabel: { fontSize: FONT_SIZES.sm, fontWeight: '700', flex: 1 },
   rowRight: { flexDirection: 'row', alignItems: 'center' },
+  rowRightRtl: { flexDirection: 'row-reverse' },
   rowValue: { marginRight: 8, fontSize: FONT_SIZES.sm, fontWeight: '600' },
+  rowValueRtl: { marginRight: 0, marginLeft: 8 },
 
   footerNote: {
     marginTop: SPACING.lg,

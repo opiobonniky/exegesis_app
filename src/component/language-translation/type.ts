@@ -131,6 +131,114 @@ export type Translations = {
   [k: string]: any;
 };
 
+// Bottom Tab translations
+export type BottomTabTranslations = {
+  home?: string;
+  bible?: string;
+  plan?: string;
+  profile?: string;
+  dashboard?: string;
+  users?: string;
+  verse?: string;
+  devotion?: string;
+};
+
+// Edit Profile translations
+export type EditProfileTranslations = {
+  title?: string;
+  section?: { personal?: string };
+  fields?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    dob?: string;
+    gender?: string;
+    marital?: string;
+  };
+  placeholders?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    dob?: string;
+  };
+  gender?: {
+    male?: string;
+    female?: string;
+  };
+  marital?: {
+    single?: string;
+    married?: string;
+    divorced?: string;
+    widowed?: string;
+  };
+  additionalInfo?: {
+    title?: string;
+    desc?: string;
+  };
+  saving?: string;
+  save?: string;
+  info?: {
+    emailChange?: string;
+  };
+};
+
+// Extended Profile translations
+export type ExtendedProfileTranslations = {
+  title?: string;
+  personalDetails?: {
+    title?: string;
+    description?: string;
+    fields?: {
+      middleName?: string;
+      middleNamePlaceholder?: string;
+      alternativePhone?: string;
+      alternativePhonePlaceholder?: string;
+    };
+  };
+  ministryService?: {
+    title?: string;
+    description?: string;
+    fields?: {
+      ministryGroup?: string;
+      ministryGroupPlaceholder?: string;
+      servicePosition?: string;
+      servicePositionPlaceholder?: string;
+      spiritualGifts?: string;
+      spiritualGiftsPlaceholder?: string;
+    };
+  };
+  emergencyContact?: {
+    title?: string;
+    description?: string;
+    fields?: {
+      contactName?: string;
+      contactNamePlaceholder?: string;
+      contactPhone?: string;
+      contactPhonePlaceholder?: string;
+      relationship?: string;
+    };
+  };
+  relationshipOptions?: {
+    spouse?: string;
+    parent?: string;
+    sibling?: string;
+    child?: string;
+    friend?: string;
+    other?: string;
+  };
+  save?: string;
+  saving?: string;
+  info?: string;
+  validation?: {
+    phoneInvalid?: string;
+    emergencyNameRequired?: string;
+    emergencyPhoneRequired?: string;
+    relationshipRequired?: string;
+  };
+};
+
 // Profile / Settings translations
 export type ProfileTranslations = {
   title?: string;
@@ -195,5 +303,5 @@ export interface LanguageContextProps {
   // callable translator that also exposes nested keys (e.g. t.login.title)
   t: Translator;
   // full translation object for dot‑notation property access
-  translations: Translations & { profile?: ProfileTranslations };
+  translations: Translations & { profile?: ProfileTranslations; editProfile?: EditProfileTranslations; extendedProfile?: ExtendedProfileTranslations; bottomTab?: BottomTabTranslations };
 }

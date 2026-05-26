@@ -1,4 +1,4 @@
-import { Dimensions, StyleSheet } from 'react-native';
+import { Dimensions, Platform, StyleSheet } from 'react-native';
 import { BORDER_RADIUS, FONT_SIZES, SPACING } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -8,7 +8,7 @@ export const createStyles = (COLORS: any) =>
     // ── Root ───────────────────────────────────────────────────────────────
     container: { flex: 1, backgroundColor: COLORS.background },
     scrollView: { flex: 1 },
-    scrollContent: { paddingBottom: 110 },
+    scrollContent: { paddingBottom: Platform.OS === 'ios' ? 130 : 110 },
 
     // ── Section layout ─────────────────────────────────────────────────────
     section: {
@@ -21,6 +21,9 @@ export const createStyles = (COLORS: any) =>
       alignItems: 'center',
       marginBottom: SPACING.sm,
     },
+    sectionHeaderRtl: {
+      flexDirection: 'row-reverse',
+    },
     sectionTitle: {
       fontSize: FONT_SIZES.lg,
       fontWeight: '700',
@@ -31,7 +34,6 @@ export const createStyles = (COLORS: any) =>
       fontSize: FONT_SIZES.sm,
       fontWeight: '600',
     },
-
     // ── Daily Verse Card ───────────────────────────────────────────────────
     verseCard: {
       marginHorizontal: SPACING.lg,
@@ -55,10 +57,16 @@ export const createStyles = (COLORS: any) =>
       paddingHorizontal: SPACING.md,
       paddingVertical: SPACING.sm + 2,
     },
+    verseCardHeaderRtl: {
+      flexDirection: 'row-reverse',
+    },
     verseCardHeaderLeft: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: SPACING.sm,
+    },
+    verseCardHeaderLeftRtl: {
+      flexDirection: 'row-reverse',
     },
     verseIconBox: {
       width: 32,
@@ -89,6 +97,9 @@ export const createStyles = (COLORS: any) =>
       borderWidth: 1,
       borderColor: 'rgba(255,255,255,0.3)',
     },
+    lordsBookTagRtl: {
+      flexDirection: 'row-reverse',
+    },
     lordsBookTagText: {
       fontSize: FONT_SIZES.xs,
       fontWeight: '600',
@@ -104,6 +115,9 @@ export const createStyles = (COLORS: any) =>
       padding: SPACING.lg,
       gap: SPACING.sm,
     },
+    verseLoadingRowRtl: {
+      flexDirection: 'row-reverse',
+    },
     verseLoadingText: {
       fontSize: FONT_SIZES.sm,
       color: COLORS.muted,
@@ -116,10 +130,16 @@ export const createStyles = (COLORS: any) =>
       paddingTop: SPACING.md,
       paddingBottom: SPACING.xs,
     },
+    verseReferenceRowRtl: {
+      flexDirection: 'row-reverse',
+    },
     verseRefLeft: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
+    },
+    verseRefLeftRtl: {
+      flexDirection: 'row-reverse',
     },
     verseRefText: {
       fontSize: FONT_SIZES.sm,
@@ -152,6 +172,9 @@ export const createStyles = (COLORS: any) =>
       borderTopWidth: 1,
       borderTopColor: COLORS.border,
     },
+    verseActionsRtl: {
+      flexDirection: 'row-reverse',
+    },
     verseActionBtn: {
       flex: 1,
       flexDirection: 'row',
@@ -159,6 +182,9 @@ export const createStyles = (COLORS: any) =>
       justifyContent: 'center',
       gap: 6,
       paddingVertical: SPACING.sm + 2,
+    },
+    verseActionBtnRtl: {
+      flexDirection: 'row-reverse',
     },
     verseActionText: {
       fontSize: FONT_SIZES.sm,
@@ -180,6 +206,9 @@ export const createStyles = (COLORS: any) =>
       paddingVertical: SPACING.lg,
       paddingHorizontal: SPACING.lg,
       gap: SPACING.md,
+    },
+    bannerRowRtl: {
+      flexDirection: 'row-reverse',
     },
     bannerFirst: {
       borderTopLeftRadius: BORDER_RADIUS.lg,
@@ -277,6 +306,9 @@ export const createStyles = (COLORS: any) =>
       flexWrap: 'wrap',
       justifyContent: 'space-between',
     },
+    quickLinksCompactRtl: {
+      flexDirection: 'row-reverse',
+    },
     quickLinkCompactCard: {
       width: (width - SPACING.lg * 2 - SPACING.sm * 3) / 4,
       alignItems: 'center',
@@ -301,6 +333,9 @@ export const createStyles = (COLORS: any) =>
     statsGrid: {
       flexDirection: 'row',
       gap: SPACING.sm,
+    },
+    statsGridRtl: {
+      flexDirection: 'row-reverse',
     },
     statCard: {
       flex: 1,
@@ -331,6 +366,24 @@ export const createStyles = (COLORS: any) =>
       alignItems: 'center',
       paddingVertical: 10,
       marginTop: 8,
+    },
+    showMoreBtnRtl: {
+      flexDirection: 'row-reverse',
+    },
+    // ── Back to Today Banner ──
+    backToTodayBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginHorizontal: 20,
+      marginBottom: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      borderRadius: 12,
+    },
+    backToTodayBannerRtl: {
+      flexDirection: 'row-reverse',
     },
     showMoreText: {
       color: COLORS.primary,

@@ -135,7 +135,17 @@
     "title": "Welcome",
     "message": "Welcome to the app!"
   },
-  "appTagline": "Your Daily Spiritual Companion"
+  "appTagline": "Your Daily Spiritual Companion",
+  "bottomTab": {
+    "home": "Home",
+    "bible": "Bible",
+    "plan": "Plan",
+    "profile": "Profile",
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "verse": "Verse",
+    "devotion": "Devotion"
+  }
   ,
     "readingSettings": {
     "title": "Reading Settings",
@@ -181,6 +191,100 @@
     "missedDaySub": "Evening reminder if today's reading assignment isn't completed.",
     "enableMissedDay": "Enable missed day reminder",
     "footerTip": "Tip: If notifications don't show, enable them in your phone settings and disable battery optimizations for this app."
+  },
+  "extendedProfile": {
+    "title": "Additional Information",
+    "personalDetails": {
+      "title": "Personal Details",
+      "description": "Additional personal information",
+      "fields": {
+        "middleName": "Middle Name",
+        "middleNamePlaceholder": "Middle name (optional)",
+        "alternativePhone": "Alternative Phone",
+        "alternativePhonePlaceholder": "Alternative phone (optional)"
+      }
+    },
+    "ministryService": {
+      "title": "Ministry & Service",
+      "description": "Your ministry involvement",
+      "fields": {
+        "ministryGroup": "Ministry Group",
+        "ministryGroupPlaceholder": "E.g., Youth Ministry, Worship Team",
+        "servicePosition": "Service Position",
+        "servicePositionPlaceholder": "E.g., Leader, Member, Volunteer",
+        "spiritualGifts": "Spiritual Gifts",
+        "spiritualGiftsPlaceholder": "E.g., Teaching, Worship, Administration"
+      }
+    },
+    "emergencyContact": {
+      "title": "Emergency Contact",
+      "description": "Person to contact in case of emergency",
+      "fields": {
+        "contactName": "Contact Name",
+        "contactNamePlaceholder": "Full name",
+        "contactPhone": "Contact Phone",
+        "contactPhonePlaceholder": "Phone number",
+        "relationship": "Relationship"
+      }
+    },
+    "relationshipOptions": {
+      "spouse": "Spouse",
+      "parent": "Parent",
+      "sibling": "Sibling",
+      "child": "Child",
+      "friend": "Friend",
+      "other": "Other"
+    },
+    "save": "Save Changes",
+    "saving": "Saving...",
+    "info": "All fields are optional. Fill out what's relevant to you.",
+    "validation": {
+      "phoneInvalid": "Phone number must be 10-15 digits",
+      "emergencyNameRequired": "Emergency contact name is required",
+      "emergencyPhoneRequired": "Emergency contact phone is required",
+      "relationshipRequired": "Relationship is required"
+    }
+  },
+  "editProfile": {
+    "title": "Edit Profile Information",
+    "section": {
+      "personal": "Personal Information"
+    },
+    "fields": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email Address",
+      "phone": "Phone Number",
+      "dob": "Date of Birth",
+      "gender": "Gender",
+      "marital": "Marital Status"
+    },
+    "placeholders": {
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone (optional)",
+      "dob": "Select date (optional)"
+    },
+    "gender": {
+      "male": "Male",
+      "female": "Female"
+    },
+    "marital": {
+      "single": "Single",
+      "married": "Married",
+      "divorced": "Divorced",
+      "widowed": "Widowed"
+    },
+    "additionalInfo": {
+      "title": "Additional Information",
+      "desc": "Ministry, emergency contacts, address & more"
+    },
+    "saving": "Saving...",
+    "save": "Save Changes",
+    "info": {
+      "emailChange": "💡 Changes to your email may require verification"
+    }
   },
   "profile": {
     "title": "Profile Information",

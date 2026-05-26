@@ -23,10 +23,10 @@ import {
   FONT_SIZES,
   BORDER_RADIUS,
   getColors,
-  createThemeStyles,
 } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
+import { useLanguage } from '../language-translation/LanguageProvider';
 import { route } from './routes';
 
 interface BottomTabProps {
@@ -60,6 +60,8 @@ export default function BottomTab({
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
 
   const navigation = useNavigation<any>();
+  const { translations, language } = useLanguage();
+  const isRtl = language === 'ar';
 
   // ── Sync with actual navigation state ──────────────────────────────
   const navigationState = useNavigationState(state => state);
@@ -100,25 +102,25 @@ if (isUserAdmin) {
     tabs = [
       {
         id: 'adminDashboard',
-        label: 'Dashboard',
+        label: translations?.bottomTab?.dashboard || 'Dashboard',
         icon: ShieldIcon,
         onPress: () => navigation.navigate(route.adminDashboard),
       },
       {
         id: 'adminUsers',
-        label: 'Users',
+        label: translations?.bottomTab?.users || 'Users',
         icon: User,
         onPress: () => navigation.navigate(route.adminUsers),
       },
       {
         id: 'adminVerse',
-        label: 'Verse',
+        label: translations?.bottomTab?.verse || 'Verse',
         icon: BookOpen,
         onPress: () => navigation.navigate(route.adminDailyVerse),
       },
       {
         id: 'adminDevotion',
-        label: 'Devotion',
+        label: translations?.bottomTab?.devotion || 'Devotion',
         icon: Lightbulb,
         onPress: () => navigation.navigate(route.adminDailyDevotion),
       },
@@ -128,25 +130,25 @@ if (isUserAdmin) {
     tabs = [
       {
         id: 'home',
-        label: 'Home',
+        label: translations?.bottomTab?.home || 'Home',
         icon: Home,
         onPress: () => navigation.navigate(route.home),
       },
       {
         id: 'bible',
-        label: 'Bible',
+        label: translations?.bottomTab?.bible || 'Bible',
         icon: BookOpen,
         onPress: () => navigation.navigate(route.bible),
       },
       {
         id: 'Plan',
-        label: 'Plan',
+        label: translations?.bottomTab?.plan || 'Plan',
         icon: CalendarClockIcon,
         onPress: () => navigation.navigate(route.readingPlan),
       },
       {
         id: 'profile',
-        label: 'Profile',
+        label: translations?.bottomTab?.profile || 'Profile',
         icon: LucideUserCircle,
         onPress: () => navigation.navigate(route.profile),
       },
@@ -155,7 +157,7 @@ if (isUserAdmin) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, isRtl && styles.tabBarRtl]}>
         {tabs.map(tab => {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
@@ -187,7 +189,11 @@ if (isUserAdmin) {
               </View>
 
               <Text
-                style={[styles.tabLabel, isActive && styles.tabLabelActive]}
+                style={[
+                  styles.tabLabel,
+                  isActive && styles.tabLabelActive,
+                  isRtl && styles.tabLabelRtl,
+                ]}
               >
                 {tab.label}
               </Text>
@@ -222,6 +228,9 @@ const createStyles = (COLORS: any) =>
       shadowRadius: 8,
       elevation: 8,
     },
+    tabBarRtl: {
+      flexDirection: 'row-reverse',
+    },
     tabItem: {
       flex: 1,
       alignItems: 'center',
@@ -246,6 +255,10 @@ const createStyles = (COLORS: any) =>
       fontSize: FONT_SIZES.xs,
       color: COLORS.muted,
       fontWeight: '500',
+    },
+    tabLabelRtl: {
+      textAlign: 'right',
+      writingDirection: 'rtl',
     },
     tabLabelActive: {
       color: COLORS.accent,

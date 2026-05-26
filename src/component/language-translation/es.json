@@ -142,8 +142,112 @@
     "cancel": "Cancelar",
     "confirm": "Confirmar"
   },
-  "appTagline": "Tu compañero espiritual diario"
+  "appTagline": "Tu compañero espiritual diario",
+  "bottomTab": {
+    "home": "Inicio",
+    "bible": "Biblia",
+    "plan": "Plan",
+    "profile": "Perfil",
+    "dashboard": "Panel",
+    "users": "Usuarios",
+    "verse": "Verso",
+    "devotion": "Devoción"
+  }
   ,
+  "extendedProfile": {
+    "title": "Información adicional",
+    "personalDetails": {
+      "title": "Detalles personales",
+      "description": "Información personal adicional",
+      "fields": {
+        "middleName": "Segundo nombre",
+        "middleNamePlaceholder": "Segundo nombre (opcional)",
+        "alternativePhone": "Teléfono alternativo",
+        "alternativePhonePlaceholder": "Teléfono alternativo (opcional)"
+      }
+    },
+    "ministryService": {
+      "title": "Ministerio y Servicio",
+      "description": "Su participación ministerial",
+      "fields": {
+        "ministryGroup": "Grupo ministerial",
+        "ministryGroupPlaceholder": "Ej: Ministerio Juvenil, Equipo de Alabanza",
+        "servicePosition": "Puesto de servicio",
+        "servicePositionPlaceholder": "Ej: Líder, Miembro, Voluntario",
+        "spiritualGifts": "Dones espirituales",
+        "spiritualGiftsPlaceholder": "Ej: Enseñanza, Alabanza, Administración"
+      }
+    },
+    "emergencyContact": {
+      "title": "Contacto de emergencia",
+      "description": "Persona a contactar en caso de emergencia",
+      "fields": {
+        "contactName": "Nombre del contacto",
+        "contactNamePlaceholder": "Nombre completo",
+        "contactPhone": "Teléfono del contacto",
+        "contactPhonePlaceholder": "Número de teléfono",
+        "relationship": "Parentesco"
+      }
+    },
+    "relationshipOptions": {
+      "spouse": "Cónyuge",
+      "parent": "Padre/Madre",
+      "sibling": "Hermano",
+      "child": "Hijo",
+      "friend": "Amigo",
+      "other": "Otro"
+    },
+    "save": "Guardar cambios",
+    "saving": "Guardando...",
+    "info": "Todos los campos son opcionales. Complete lo que sea relevante para usted.",
+    "validation": {
+      "phoneInvalid": "El número de teléfono debe tener entre 10 y 15 dígitos",
+      "emergencyNameRequired": "El nombre del contacto de emergencia es obligatorio",
+      "emergencyPhoneRequired": "El teléfono del contacto de emergencia es obligatorio",
+      "relationshipRequired": "El parentesco es obligatorio"
+    }
+  },
+  "editProfile": {
+    "title": "Editar información del perfil",
+    "section": {
+      "personal": "Información personal"
+    },
+    "fields": {
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "email": "Correo electrónico",
+      "phone": "Número de teléfono",
+      "dob": "Fecha de nacimiento",
+      "gender": "Género",
+      "marital": "Estado civil"
+    },
+    "placeholders": {
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "email": "Correo",
+      "phone": "Teléfono (opcional)",
+      "dob": "Seleccionar fecha (opcional)"
+    },
+    "gender": {
+      "male": "Masculino",
+      "female": "Femenino"
+    },
+    "marital": {
+      "single": "Soltero",
+      "married": "Casado",
+      "divorced": "Divorciado",
+      "widowed": "Viudo"
+    },
+    "additionalInfo": {
+      "title": "Información adicional",
+      "desc": "Ministerio, contactos de emergencia, dirección y más"
+    },
+    "saving": "Guardando...",
+    "save": "Guardar cambios",
+    "info": {
+      "emailChange": "💡 Los cambios en tu correo pueden requerir verificación"
+    }
+  },
   "profile": {
     "title": "Información del perfil",
     "stats": {

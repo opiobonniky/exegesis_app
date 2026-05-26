@@ -142,9 +142,113 @@
     "cancel": "إلغاء",
     "confirm": "تأكيد"
   },
-  "appTagline": "رفيقك الروحي اليومي"
+  "appTagline": "رفيقك الروحي اليومي",
+  "bottomTab": {
+    "home": "الرئيسية",
+    "bible": "الكتاب المقدس",
+    "plan": "الخطة",
+    "profile": "الملف الشخصي",
+    "dashboard": "لوحة التحكم",
+    "users": "المستخدمون",
+    "verse": "آية",
+    "devotion": "تأمل"
+  }
   ,
-    "profile": {
+  "extendedProfile": {
+    "title": "معلومات إضافية",
+    "personalDetails": {
+      "title": "التفاصيل الشخصية",
+      "description": "معلومات شخصية إضافية",
+      "fields": {
+        "middleName": "الاسم الأوسط",
+        "middleNamePlaceholder": "الاسم الأوسط (اختياري)",
+        "alternativePhone": "هاتف بديل",
+        "alternativePhonePlaceholder": "هاتف بديل (اختياري)"
+      }
+    },
+    "ministryService": {
+      "title": "الخدمة والوزارة",
+      "description": "مشاركتك في الخدمة",
+      "fields": {
+        "ministryGroup": "مجموعة الخدمة",
+        "ministryGroupPlaceholder": "مثال: خدمة الشباب، فرقة التسبيح",
+        "servicePosition": "منصب الخدمة",
+        "servicePositionPlaceholder": "مثال: قائد، عضو، متطوع",
+        "spiritualGifts": "المواهب الروحية",
+        "spiritualGiftsPlaceholder": "مثال: تعليم، تسبيح، إدارة"
+      }
+    },
+    "emergencyContact": {
+      "title": "جهة الاتصال في الطوارئ",
+      "description": "شخص للاتصال به في حالات الطوارئ",
+      "fields": {
+        "contactName": "اسم جهة الاتصال",
+        "contactNamePlaceholder": "الاسم الكامل",
+        "contactPhone": "هاتف جهة الاتصال",
+        "contactPhonePlaceholder": "رقم الهاتف",
+        "relationship": "صلة القرابة"
+      }
+    },
+    "relationshipOptions": {
+      "spouse": "زوج/زوجة",
+      "parent": "والد/والدة",
+      "sibling": "أخ/أخت",
+      "child": "ابن/ابنة",
+      "friend": "صديق",
+      "other": "آخر"
+    },
+    "save": "حفظ التغييرات",
+    "saving": "جارٍ الحفظ...",
+    "info": "جميع الحقول اختيارية. املأ ما يناسبك.",
+    "validation": {
+      "phoneInvalid": "يجب أن يكون رقم الهاتف من 10 إلى 15 رقمًا",
+      "emergencyNameRequired": "اسم جهة الاتصال في الطوارئ مطلوب",
+      "emergencyPhoneRequired": "هاتف جهة الاتصال في الطوارئ مطلوب",
+      "relationshipRequired": "صلة القرابة مطلوبة"
+    }
+  },
+  "editProfile": {
+    "title": "تعديل معلومات الملف الشخصي",
+    "section": {
+      "personal": "المعلومات الشخصية"
+    },
+    "fields": {
+      "firstName": "الاسم الأول",
+      "lastName": "اسم العائلة",
+      "email": "البريد الإلكتروني",
+      "phone": "رقم الهاتف",
+      "dob": "تاريخ الميلاد",
+      "gender": "الجنس",
+      "marital": "الحالة الاجتماعية"
+    },
+    "placeholders": {
+      "firstName": "الاسم الأول",
+      "lastName": "اسم العائلة",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف (اختياري)",
+      "dob": "اختر التاريخ (اختياري)"
+    },
+    "gender": {
+      "male": "ذكر",
+      "female": "أنثى"
+    },
+    "marital": {
+      "single": "أعزب",
+      "married": "متزوج",
+      "divorced": "مطلق",
+      "widowed": "أرمل"
+    },
+    "additionalInfo": {
+      "title": "معلومات إضافية",
+      "desc": "الخدمة، جهات الاتصال الطارئة، العنوان والمزيد"
+    },
+    "saving": "جارٍ الحفظ...",
+    "save": "حفظ التغييرات",
+    "info": {
+      "emailChange": "💡 قد تتطلب التغييرات في بريدك الإلكتروني التحقق"
+    }
+  },
+  "profile": {
     "title": "معلومات الملف الشخصي",
     "stats": {
       "books": "الكتب",
