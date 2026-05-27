@@ -552,7 +552,7 @@
     "save": "Save",
     "historyItemsDeleted": "{count} history items deleted",
 
-    // Daily Devotional
+   
     "loadingDevotional": "Loading devotional\u2026",
     "noDevotionalToday": "No devotional available today",
     "todaysDevotion": "Today's devotion",
@@ -560,14 +560,14 @@
     "meditationVerseText": "Meditate on this verse today.\nLet God's word guide your thoughts and actions.",
     "dailyDevotionalTitle": "Daily Devotional",
 
-    // Daily Verse Screen
+   
     "loadingVerseOfDay": "Loading verse of the day\u2026",
     "noVerseToday": "No verse available today",
     "dailyVerseTitle": "Daily Verse",
     "verseCopiedTitle": "Copied",
     "verseCopiedMessage": "Verse copied to clipboard",
 
-    // Full Verse Explanation
+    
     "loadingExplanation": "Loading explanation\u2026",
     "somethingWentWrong": "Something went wrong",
     "tryAgain": "Try again",
@@ -1209,7 +1209,6 @@
     "dailyReadingDayCompleteText": "Day Complete!",
     "dailyReadingDayLabel": "Day",
 
-    // Daily Devotional
     "loadingDevotional": "Loading devotional\u2026",
     "noDevotionalToday": "No devotional available today",
     "todaysDevotion": "Today's devotion",
@@ -1217,14 +1216,12 @@
     "meditationVerseText": "Meditate on this verse today.\nLet God's word guide your thoughts and actions.",
     "dailyDevotionalTitle": "Daily Devotional",
 
-    // Daily Verse Screen
     "loadingVerseOfDay": "Loading verse of the day\u2026",
     "noVerseToday": "No verse available today",
     "dailyVerseTitle": "Daily Verse",
     "verseCopiedTitle": "Copied",
     "verseCopiedMessage": "Verse copied to clipboard",
 
-    // Full Verse Explanation
     "loadingExplanation": "Loading explanation\u2026",
     "somethingWentWrong": "Something went wrong",
     "tryAgain": "Try again",
@@ -1237,7 +1234,6 @@
     "updatedLabel": "Updated",
     "addedLabel": "Added",
 
-    // Show less/more
     "showLess": "Show less",
     "showMore": "Show More",
 
@@ -1283,5 +1279,36 @@
     "planDetailQuizLabel": "QUIZ",
     "planDetailPlanNotFound": "Plan not found",
     "planDetailNotAnswered": "Not answered yet"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view":"View",
+    "copy":"Copy",
+    "copied":"Copied",
+     "share":"Share"
   }
 }

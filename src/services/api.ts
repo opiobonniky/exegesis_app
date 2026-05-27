@@ -109,10 +109,10 @@ export const sendPostRequest = async <T = any>(
     return response.data;
   } catch (error: any) {
     if (error.response?.data) {
-      const err = new Error(
-        error.response.data.returnMessage || 'Request failed',
-      );
-      (err as any).returnCode = error.response.data.returnCode;
+      const { returnCode, returnMessage, returnData } = error.response.data;
+      const err = new Error(returnMessage || 'Request failed');
+      (err as any).returnCode = returnCode;
+      (err as any).returnData = returnData;
       throw err;
     }
     console.error(`❌ POST ${controller}/${request} failed`, error);

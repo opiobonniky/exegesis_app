@@ -378,19 +378,29 @@ export const addDailyVerse = async (
     published?: boolean;
   },
   id?: number,
-): Promise<DailyVerse> => {
-  const response = await sendPostRequest<DailyVerse>(
-    'admin',
-    'add-daily-verse',
-    {
-      id,
-      ...verseData,
-    },
-  );
-  if (response.returnCode !== 200) {
-    throw new Error(response.returnMessage || 'Failed to add daily verse');
+): Promise<{ verse: DailyVerse; conflict?: { type: string; field: string; existing: any }[] }> => {
+  try {
+    const response = await sendPostRequest<DailyVerse>(
+      'admin',
+      'add-daily-verse',
+      {
+        id,
+        ...verseData,
+      },
+    );
+    if (response.returnCode !== 200) {
+      throw new Error(response.returnMessage || 'Failed to add daily verse');
+    }
+    return { verse: response.returnData as DailyVerse };
+  } catch (error: any) {
+    if (error.returnCode === 409) {
+      return {
+        verse: null as any,
+        conflict: error.returnData?.conflicts,
+      };
+    }
+    throw error;
   }
-  return response.returnData as DailyVerse;
 };
 
 export const deleteDailyVerse = async (verseId: number): Promise<void> => {
@@ -452,6 +462,8 @@ export const addDailyDevotion = async (
       ...devotionData,
     },
   );
+
+  
   if (response.returnCode !== 200) {
     throw new Error(response.returnMessage || 'Failed to add daily devotion');
   }

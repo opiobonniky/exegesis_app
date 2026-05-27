@@ -27,8 +27,10 @@ interface ActionModalProps {
   severity?: ModalSeverity;
   confirmLabel?: string;
   cancelLabel?: string;
+  extraLabel?: string;
   onConfirm: () => void;
   onCancel?: () => void;
+  onExtra?: () => void;
   showCancel?: boolean; // Explicit control (default: !!onCancel && !!cancelLabel)
   closeOnBackdrop?: boolean; // Whether tapping outside closes modal
   confirmButtonColor?: string; // Optional override
@@ -41,8 +43,10 @@ export default function ActionModal({
   severity = 'info',
   confirmLabel = 'OK',
   cancelLabel = 'Cancel',
+  extraLabel,
   onConfirm,
   onCancel,
+  onExtra,
   showCancel: propShowCancel,
   closeOnBackdrop = true,
   confirmButtonColor,
@@ -171,12 +175,7 @@ export default function ActionModal({
               </View>
 
               {/* Buttons */}
-              <View
-                style={[
-                  styles.buttonRow,
-                  hasCancel ? {} : styles.singleButtonRow,
-                ]}
-              >
+              <View style={styles.buttonRow}>
                 {hasCancel && (
                   <TouchableOpacity
                     style={[
@@ -193,6 +192,26 @@ export default function ActionModal({
                       numberOfLines={1}
                     >
                       {cancelLabel}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {extraLabel && onExtra && (
+                  <TouchableOpacity
+                    style={[
+                      styles.button,
+                      styles.cancelButton,
+                      { borderColor: COLORS.border },
+                    ]}
+                    onPress={onExtra}
+                    accessibilityLabel={extraLabel}
+                    accessibilityRole="button"
+                  >
+                    <Text
+                      style={[styles.cancelText, { color: COLORS.text }]}
+                      numberOfLines={1}
+                    >
+                      {extraLabel}
                     </Text>
                   </TouchableOpacity>
                 )}

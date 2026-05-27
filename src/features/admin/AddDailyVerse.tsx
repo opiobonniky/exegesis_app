@@ -36,10 +36,12 @@ import {
   Search,
   X,
   ChevronDown,
+  AlertTriangle,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
 import { getChaptersForBook, getVerseText, getVersesForChapter, setActiveVersion } from '../../utilits/bibleUtils';
 import { BIBLE_VERSIONS } from '../../assets/bibleVersion/json/bibleVersions';
+import ActionModal from '../../reusable/ActionModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
@@ -106,6 +108,8 @@ const AddDailyVerse: React.FC = () => {
   const [displayDate, setDisplayDate] = useState(new Date());
   const [published, setPublished] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [conflictModalVisible, setConflictModalVisible] = useState(false);
+  const [conflictData, setConflictData] = useState<{ conflict: any; payload: any } | null>(null);
 
   const [verseText, setVerseText] = useState('');
 
@@ -180,12 +184,29 @@ const AddDailyVerse: React.FC = () => {
       };
 
       if (isEditing && editingVerse?.id) {
-        await addDailyVerse(payload, editingVerse.id);
-        showToast('success', ac?.dailyVerseUpdated || 'Daily verse updated!');
-      } else {
-        await addDailyVerse(payload);
-        showToast('success', ac?.dailyVerseAdded || 'Daily verse added!');
+        const result = await addDailyVerse(payload, editingVerse.id);
+
+       
+
+        if (result.conflict) {
+          showToast('warning', ac?.dailyVerseConflictUpdate || 'Updated existing verse instead');
+        } else {
+          showToast('success', ac?.dailyVerseUpdated || 'Daily verse updated!');
+        }
+        navigation.goBack();
+        return;
       }
+
+      const result = await addDailyVerse(payload);
+
+      if (result.conflict) {
+        setConflictData({ conflict: result.conflict[0], payload });
+        setConflictModalVisible(true);
+        setSaving(false);
+        return;
+      }
+
+      showToast('success', ac?.dailyVerseAdded || 'Daily verse added!');
       navigation.goBack();
     } catch (error) {
       showToast('error', isEditing
@@ -631,6 +652,51 @@ const AddDailyVerse: React.FC = () => {
           )}
         </View>
       </Modal>
+
+      <ActionModal
+        visible={conflictModalVisible}
+        title={ac?.dailyVerseConflictTitle || 'Verse Already Exists'}
+        message={
+          conflictData
+            ? (conflictData.conflict.type === 'date'
+                ? (ac?.dailyVerseConflictDateMsg || 'A verse already exists for this date ({ref}). Update it?')
+                    .replace('{ref}', `${conflictData.conflict.existing.bookName} ${conflictData.conflict.existing.chapter}:${conflictData.conflict.existing.verseNumber}`)
+                : (ac?.dailyVerseConflictRefMsg || 'This verse ({ref}) already exists for another date. Update the existing one?')
+                    .replace('{ref}', `${conflictData.conflict.existing.bookName} ${conflictData.conflict.existing.chapter}:${conflictData.conflict.existing.verseNumber}`))
+            : ''
+        }
+        severity="warning"
+        cancelLabel={bible?.cancel || 'Cancel'}
+        extraLabel={ac?.dailyVerseViewExisting || 'View Existing'}
+        confirmLabel={ac?.dailyVerseConflictUpdate || 'Update'}
+        onCancel={() => {
+          setConflictModalVisible(false);
+          setConflictData(null);
+        }}
+        onExtra={() => {
+          setConflictModalVisible(false);
+          setConflictData(null);
+          setSaving(false);
+          navigation.goBack();
+        }}
+        onConfirm={async () => {
+          if (!conflictData) return;
+          const { conflict, payload } = conflictData;
+          setConflictModalVisible(false);
+          setConflictData(null);
+          try {
+            const updateResult = await addDailyVerse({ ...payload }, conflict.existing.id);
+            if (updateResult) {
+              showToast('success', ac?.dailyVerseUpdated || 'Daily verse updated!');
+              navigation.goBack();
+            }
+          } catch {
+            showToast('error', ac?.dailyVerseFailedUpdate || 'Failed to update verse');
+            setSaving(false);
+          }
+        }}
+        closeOnBackdrop={false}
+      />
     </SafeAreaView>
   );
 };
