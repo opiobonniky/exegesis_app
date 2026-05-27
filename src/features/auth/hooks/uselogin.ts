@@ -110,8 +110,7 @@ export default function useLogin() {
       setGoogleUser(user);
       await submitGoogleLogin(idToken, user);
     } catch (error: any) {
-      console.log('Google Sign-In Error:', error);
-      showToast('error', error?.message || 'Google sign-in failed');
+      showToast('warning', "You canceled the google sign-in process.");
     } finally {
       setGoogleLoading(false);
     }

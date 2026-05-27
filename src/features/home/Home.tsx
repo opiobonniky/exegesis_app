@@ -279,7 +279,7 @@ export default function Home() {
           date: getTodayLabel(),
         });
       }else {
-        showToast("warning", "No daily verse found for today");
+        // showToast("warning", "No daily verse found for today");
       }
     } catch (e) {
       console.error('Error loading daily verse:', e);
