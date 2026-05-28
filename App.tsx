@@ -15,6 +15,7 @@ const App = () => {
 
   const [isAppUpdated, setIsAppUpdated] = useState(true);
   const isAndroid = Platform.OS === 'android';
+  const isIos = Platform.OS === 'ios';
 
   useEffect(() => {
   const checkAppVersion = async () => {
@@ -67,18 +68,21 @@ const App = () => {
           </SocketProvider>
           <Toast config={toastConfig} />
         </View>
-      <ActionModal
-        visible={isAndroid && !isAppUpdated}
-        severity='warning'
-        title='Update Available'
-        message='A newer version of Exegesis is available. Please update to continue.'
-        confirmLabel='Update'
-        onConfirm={() => {
-        // Open Google Play internal test page for Android update
-        Linking.openURL('https://play.google.com/apps/internaltest/4701501480508116942');
-        setIsAppUpdated(true);
-        }}
-      />
+    <ActionModal
+  visible={!isAppUpdated}  // works for both platforms now
+  severity='warning'
+  title='Update Available'
+  message='A newer version of Exegesis is available. Please update to continue.'
+  confirmLabel='Update'
+  onConfirm={() => {
+    if (isAndroid) {
+      Linking.openURL('https://play.google.com/apps/internaltest/4701501480508116942');
+    } else if (isIos) {
+      Linking.openURL('https://apps.apple.com/app/idYOUR_APP_ID'); // replace with your App Store ID
+    }
+    setIsAppUpdated(true);
+  }}
+/>
     </AppProvider>
     </LanguageProvider>
   );
