@@ -38,7 +38,6 @@
   "createAccount": {
     "text": "Crear Nueva Cuenta"
   },
-
   "validation": {
     "emailRequired": "El correo es obligatorio",
     "invalidEmail": "Por favor ingrese un correo válido",
@@ -65,7 +64,6 @@
     "tryAgainLater": "Por favor intente más tarde",
     "failedResendCode": "Fallo al reenviar el código"
   },
-
   "welcome": {
     "title": "Bienvenido",
     "message": "¡Bienvenido a la aplicación!"
@@ -131,9 +129,15 @@
     "alreadyVerified": "¿Ya verificado? Iniciar sesión"
   },
   "steps": {
-    "email": { "eyebrow": "PASO 1 DE 3" },
-    "verify": { "eyebrow": "PASO 2 DE 3" },
-    "reset": { "eyebrow": "PASO 3 DE 3" }
+    "email": {
+      "eyebrow": "PASO 1 DE 3"
+    },
+    "verify": {
+      "eyebrow": "PASO 2 DE 3"
+    },
+    "reset": {
+      "eyebrow": "PASO 3 DE 3"
+    }
   },
   "timePicker": {
     "selectTime": "Seleccionar hora",
@@ -152,8 +156,7 @@
     "users": "Usuarios",
     "verse": "Verso",
     "devotion": "Devoción"
-  }
-  ,
+  },
   "extendedProfile": {
     "title": "Información adicional",
     "personalDetails": {
@@ -286,8 +289,7 @@
       "confirmLabel": "Cerrar sesión",
       "cancelLabel": "Cancelar"
     }
-  }
-  ,
+  },
   "readingSettings": {
     "title": "Ajustes de lectura",
     "status": {
@@ -303,7 +305,9 @@
     "trySuggestions": "Pruebe \"NIV\", \"KJV\", \"ESV\"…",
     "textSize": "Tamaño del texto",
     "previewLabel": "VISTA PREVIA",
-    "preview": { "ref": "— Juan 3:16" },
+    "preview": {
+      "ref": "— Juan 3:16"
+    },
     "readingVoice": "Voz de lectura",
     "voiceSettings": {
       "label": "Configuración de voz",
@@ -316,8 +320,7 @@
       "lightDesc": "Cambiar a un tema más brillante",
       "darkDesc": "Cambiar a un tema más oscuro"
     }
-  }
-  ,
+  },
   "notificationSettings": {
     "heroTitle": "Administrar recordatorios",
     "heroSub": "Elige cuándo deseas recibir notificaciones para el Verso del día y tu Plan de lectura.",
@@ -333,8 +336,7 @@
     "missedDaySub": "Recordatorio vespertino si la asignación de lectura de hoy no está completada.",
     "enableMissedDay": "Activar recordatorio de día perdido",
     "footerTip": "Consejo: Si las notificaciones no aparecen, actívalas en la configuración del teléfono y desactiva las optimizaciones de batería para esta app."
-  }
-  ,
+  },
   "voiceSettings": {
     "title": "Voz y Narración",
     "loadingVoices": "Cargando voces…",
@@ -373,8 +375,7 @@
     "voicePitch": "Tono de voz",
     "reset": "Restablecer",
     "deviceHint": "Mueva el control para anular la configuración de su dispositivo"
-  }
-  ,
+  },
   "bible": {
     "noContent": "Selecciona un libro y capítulo para comenzar a leer",
     "search": "Buscar",
@@ -491,12 +492,9 @@
     "warm": "Cálidos",
     "cool": "Fríos",
     "nature": "Naturaleza",
-
-    // Plan Bible Screen
     "planBiblePauseReflect": "Pausa y Reflexiona",
     "planBibleQuestionsForReading": "{count} preguntas para esta lectura",
     "planBibleSingleQuestionForReading": "1 pregunta para esta lectura",
-
     "noFavorites": "Aún no hay favoritos",
     "savedVerses": "{count} verso guardado",
     "removeFavorite": "Quitar favorito",
@@ -532,31 +530,24 @@
     "deleteSingleConfirm": "¿Estás seguro de que deseas eliminar \"{name}\" de tu historial de lectura?",
     "clearHistoryButton": "borrar {count} elementos de {total} del historial",
     "delete": "Eliminar",
-    "myNotes": "Mis notas",
     "noNotes": "Aún no hay notas",
     "noNotesSubtitle": "Agrega notas a los versículos mientras lees la Biblia",
     "editNote": "Editar nota",
     "writeNotePlaceholder": "Escribe tu nota...",
     "save": "Guardar",
     "historyItemsDeleted": "{count} elementos del historial eliminados",
-
-    // Daily Devotional
-    "loadingDevotional": "Cargando devocional\u2026",
+    "loadingDevotional": "Cargando devocional…",
     "noDevotionalToday": "No hay devocional disponible hoy",
     "todaysDevotion": "Devoción de hoy",
     "meditationDevotionText": "Medita en esta palabra hoy.\nDeja que guíe tus pensamientos y acciones.",
     "meditationVerseText": "Medita en este versículo hoy.\nDeja que la palabra de Dios guíe tus pensamientos y acciones.",
     "dailyDevotionalTitle": "Devocional Diario",
-
-    // Daily Verse Screen
-    "loadingVerseOfDay": "Cargando versículo del día\u2026",
+    "loadingVerseOfDay": "Cargando versículo del día…",
     "noVerseToday": "No hay versículo disponible hoy",
     "dailyVerseTitle": "Versículo del Día",
     "verseCopiedTitle": "Copiado",
     "verseCopiedMessage": "Versículo copiado al portapapeles",
-
-    // Full Verse Explanation
-    "loadingExplanation": "Cargando explicación\u2026",
+    "loadingExplanation": "Cargando explicación…",
     "somethingWentWrong": "Algo salió mal",
     "tryAgain": "Intentar de nuevo",
     "noContentAvailable": "No hay contenido disponible.",
@@ -567,23 +558,11 @@
     "verseExplanationTitle": "Explicación del Versículo",
     "updatedLabel": "Actualizado",
     "addedLabel": "Agregado",
-
-    // Show less/more
     "showLess": "Mostrar menos",
     "showMore": "Continuar leyendo",
-    "continueReading": "Continuar leyendo",
-
-    // Daily greeting
     "dailyGreetingMorning": "Buenos días",
     "dailyGreetingAfternoon": "Buenas tardes",
     "dailyGreetingEvening": "Buenas noches",
-
-    "verseOfTheDay": "Versículo del día",
-
-    // Action labels
-    "explain": "Explicar",
-    "reflection": "Reflexión",
-    "learnMore": "Saber más",
     "verseLabel": "Versículo"
   },
   "admin": {
@@ -1138,7 +1117,6 @@
     "bpDone": "Hecho",
     "bpComplete": "Completado",
     "bpOfLabel": "de",
-
     "dailyReadingCurrentProgress": "Progreso",
     "dailyReadingInProgress": "En Progreso",
     "dailyReadingCompleted": "Completado",
@@ -1196,7 +1174,6 @@
     "dailyReadingChapterBibleBtn": "Abrir en la Biblia",
     "dailyReadingDayCompleteText": "¡Día Completado!",
     "dailyReadingDayLabel": "Día",
-
     "planDetailDays": "{count} Días",
     "planDetailCalendar": "Calendario",
     "planDetailStats": "Estadísticas",
@@ -1238,5 +1215,36 @@
     "planDetailQuizLabel": "CUESTIONARIO",
     "planDetailPlanNotFound": "Plan no encontrado",
     "planDetailNotAnswered": "No respondida aún"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

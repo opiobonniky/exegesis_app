@@ -468,7 +468,7 @@ const AddDailyVerse: React.FC = () => {
                   value={verseText}
                   onChangeText={setVerseText}
                   multiline
-                  placeholder="Verse text"
+                  placeholder={ac?.dailyVerseVerseTextPlaceholder || 'Verse text'}
                   placeholderTextColor={theme.muted}
                   editable={false}
                 />

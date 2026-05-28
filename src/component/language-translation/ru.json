@@ -125,9 +125,15 @@
     "alreadyVerified": "Уже подтверждено? Войти"
   },
   "steps": {
-    "email": { "eyebrow": "ШАГ 1 ИЗ 3" },
-    "verify": { "eyebrow": "ШАГ 2 ИЗ 3" },
-    "reset": { "eyebrow": "ШАГ 3 ИЗ 3" }
+    "email": {
+      "eyebrow": "ШАГ 1 ИЗ 3"
+    },
+    "verify": {
+      "eyebrow": "ШАГ 2 ИЗ 3"
+    },
+    "reset": {
+      "eyebrow": "ШАГ 3 ИЗ 3"
+    }
   },
   "welcome": {
     "title": "Добро пожаловать",
@@ -179,7 +185,9 @@
     "trySuggestions": "Попробуйте \"NIV\", \"KJV\", \"ESV\"…",
     "textSize": "Размер текста",
     "previewLabel": "ПРЕДПРОСМОТР",
-    "preview": { "ref": "— Иоанна 3:16" },
+    "preview": {
+      "ref": "— Иоанна 3:16"
+    },
     "readingVoice": "Голос чтения",
     "voiceSettings": {
       "label": "Настройки голоса",
@@ -535,7 +543,6 @@
     "deleteSingleConfirm": "Вы уверены, что хотите удалить \"{name}\" из истории чтения?",
     "clearHistoryButton": "очистить {count} из {total} элементов истории",
     "delete": "Удалить",
-    "myNotes": "Мои заметки",
     "noNotes": "Еще нет заметок",
     "noNotesSubtitle": "Добавляйте заметки к стихам во время чтения Библии",
     "editNote": "Редактировать заметку",
@@ -566,14 +573,9 @@
     "addedLabel": "Добавлено",
     "showLess": "Показать меньше",
     "showMore": "Продолжить чтение",
-    "continueReading": "Продолжить чтение",
     "dailyGreetingMorning": "Доброе утро",
     "dailyGreetingAfternoon": "Добрый день",
     "dailyGreetingEvening": "Добрый вечер",
-    "verseOfTheDay": "Стих дня",
-    "explain": "Объяснить",
-    "reflection": "Размышление",
-    "learnMore": "Узнать больше",
     "verseLabel": "Стих"
   },
   "admin": {
@@ -1225,5 +1227,36 @@
     "planDetailQuizLabel": "ТЕСТ",
     "planDetailPlanNotFound": "План не найден",
     "planDetailNotAnswered": "Еще не отвечено"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

@@ -125,9 +125,15 @@
     "alreadyVerified": "ஏற்கனவே சரிபார்க்கப்பட்டதா? உள்நுழைக"
   },
   "steps": {
-    "email": { "eyebrow": "படி 1 இன் 3" },
-    "verify": { "eyebrow": "படி 2 இன் 3" },
-    "reset": { "eyebrow": "படி 3 இன் 3" }
+    "email": {
+      "eyebrow": "படி 1 இன் 3"
+    },
+    "verify": {
+      "eyebrow": "படி 2 இன் 3"
+    },
+    "reset": {
+      "eyebrow": "படி 3 இன் 3"
+    }
   },
   "welcome": {
     "title": "வரவேற்கிறோம்",
@@ -179,7 +185,9 @@
     "trySuggestions": "\\\"NIV\\\", \\\"KJV\\\", \\\"ESV\\\"… முயற்சிக்கவும்",
     "textSize": "உரை அளவு",
     "previewLabel": "முன்னோட்டம்",
-    "preview": { "ref": "— யோவான் 3:16" },
+    "preview": {
+      "ref": "— யோவான் 3:16"
+    },
     "readingVoice": "வாசிப்புக் குரல்",
     "voiceSettings": {
       "label": "குரல் அமைப்புகள்",
@@ -535,7 +543,6 @@
     "deleteSingleConfirm": "\\\"{name}\\\" ஐ உங்கள் வாசிப்பு வரலாற்றிலிருந்து நீக்க விரும்புகிறீர்களா?",
     "clearHistoryButton": "மொத்தம் {total} இல் {count} உருப்படிகளை அழி",
     "delete": "நீக்கு",
-    "myNotes": "என் குறிப்புகள்",
     "noNotes": "இதுவரை குறிப்புகள் இல்லை",
     "noNotesSubtitle": "விவிலியத்தை வாசிக்கும்போது வசனங்களில் குறிப்புகளைச் சேர்க்கவும்",
     "editNote": "குறிப்பைத் திருத்து",
@@ -569,10 +576,6 @@
     "dailyGreetingMorning": "காலை வணக்கம்",
     "dailyGreetingAfternoon": "மதிய வணக்கம்",
     "dailyGreetingEvening": "மாலை வணக்கம்",
-    "verseOfTheDay": "இன்றைய வசனம்",
-    "explain": "விளக்கு",
-    "reflection": "சிந்தனை",
-    "learnMore": "மேலும் அறிக",
     "verseLabel": "வசனம்"
   },
   "admin": {
@@ -1225,5 +1228,36 @@
     "planDetailQuizLabel": "வினாடி வினா",
     "planDetailPlanNotFound": "திட்டம் இல்லை",
     "planDetailNotAnswered": "இதுவரை பதில் அளிக்கப்படவில்லை"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

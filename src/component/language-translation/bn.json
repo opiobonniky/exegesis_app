@@ -125,9 +125,15 @@
     "alreadyVerified": "ইতিমধ্যে যাচাই? সাইন ইন করুন"
   },
   "steps": {
-    "email": { "eyebrow": "ধাপ 1 এর 3" },
-    "verify": { "eyebrow": "ধাপ 2 এর 3" },
-    "reset": { "eyebrow": "ধাপ 3 এর 3" }
+    "email": {
+      "eyebrow": "ধাপ 1 এর 3"
+    },
+    "verify": {
+      "eyebrow": "ধাপ 2 এর 3"
+    },
+    "reset": {
+      "eyebrow": "ধাপ 3 এর 3"
+    }
   },
   "welcome": {
     "title": "স্বাগতম",
@@ -179,7 +185,9 @@
     "trySuggestions": "\"NIV\", \"KJV\", \"ESV\"… চেষ্টা করুন",
     "textSize": "টেক্সট আকার",
     "previewLabel": "পূর্বরূপ",
-    "preview": { "ref": "— যোহন 3:16" },
+    "preview": {
+      "ref": "— যোহন 3:16"
+    },
     "readingVoice": "পড়ার কণ্ঠস্বর",
     "voiceSettings": {
       "label": "কণ্ঠস্বর সেটিংস",
@@ -535,7 +543,6 @@
     "deleteSingleConfirm": "আপনি কি নিশ্চিত \"{name}\" আপনার পড়ার ইতিহাস থেকে মুছতে চান?",
     "clearHistoryButton": "মোট {total} এর মধ্যে {count} আইটেম পরিষ্কার করুন",
     "delete": "মুছুন",
-    "myNotes": "আমার নোট",
     "noNotes": "এখনো কোনো নোট নেই",
     "noNotesSubtitle": "বাইবেল পড়ার সময় পদে নোট যোগ করুন",
     "editNote": "নোট সম্পাদনা",
@@ -569,10 +576,6 @@
     "dailyGreetingMorning": "শুভ সকাল",
     "dailyGreetingAfternoon": "শুভ বিকাল",
     "dailyGreetingEvening": "শুভ সন্ধ্যা",
-    "verseOfTheDay": "দিনের পদ",
-    "explain": "ব্যাখ্যা করুন",
-    "reflection": "প্রতিফলন",
-    "learnMore": "আরও জানুন",
     "verseLabel": "পদ"
   },
   "admin": {
@@ -1225,5 +1228,36 @@
     "planDetailQuizLabel": "কুইজ",
     "planDetailPlanNotFound": "পরিকল্পনা পাওয়া যায়নি",
     "planDetailNotAnswered": "এখনো উত্তর দেওয়া হয়নি"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

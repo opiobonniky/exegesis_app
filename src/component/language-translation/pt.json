@@ -125,9 +125,15 @@
     "alreadyVerified": "Já verificado? Faça login"
   },
   "steps": {
-    "email": { "eyebrow": "ETAPA 1 DE 3" },
-    "verify": { "eyebrow": "ETAPA 2 DE 3" },
-    "reset": { "eyebrow": "ETAPA 3 DE 3" }
+    "email": {
+      "eyebrow": "ETAPA 1 DE 3"
+    },
+    "verify": {
+      "eyebrow": "ETAPA 2 DE 3"
+    },
+    "reset": {
+      "eyebrow": "ETAPA 3 DE 3"
+    }
   },
   "welcome": {
     "title": "Bem-vindo",
@@ -179,7 +185,9 @@
     "trySuggestions": "Tente \"NVI\", \"ARA\", \"NTLH\"…",
     "textSize": "Tamanho do Texto",
     "previewLabel": "VISUALIZAR",
-    "preview": { "ref": "— João 3:16" },
+    "preview": {
+      "ref": "— João 3:16"
+    },
     "readingVoice": "Voz de Leitura",
     "voiceSettings": {
       "label": "Configurações de Voz",
@@ -431,7 +439,7 @@
     "cancel": "Cancelar",
     "done": "Concluído",
     "verseOfTheDay": "Versículo do Dia",
-    "continueReading": "Continuar Leitura",
+    "continueReading": "Continuar lendo",
     "myNotes": "Minhas Notas",
     "readingHistory": "Histórico de Leitura",
     "language": "Idioma",
@@ -535,7 +543,6 @@
     "deleteSingleConfirm": "Tem certeza que deseja excluir \"{name}\" do seu histórico de leitura?",
     "clearHistoryButton": "limpar {count} itens de {total} do histórico",
     "delete": "Excluir",
-    "myNotes": "Minhas Notas",
     "noNotes": "Nenhuma nota ainda",
     "noNotesSubtitle": "Adicione notas aos versículos enquanto lê a Bíblia",
     "editNote": "Editar Nota",
@@ -566,14 +573,9 @@
     "addedLabel": "Adicionado",
     "showLess": "Mostrar menos",
     "showMore": "Continuar lendo",
-    "continueReading": "Continuar lendo",
     "dailyGreetingMorning": "Bom dia",
     "dailyGreetingAfternoon": "Boa tarde",
     "dailyGreetingEvening": "Boa noite",
-    "verseOfTheDay": "Versículo do Dia",
-    "explain": "Explicar",
-    "reflection": "Reflexão",
-    "learnMore": "Saiba Mais",
     "verseLabel": "Versículo"
   },
   "admin": {
@@ -1225,5 +1227,36 @@
     "planDetailQuizLabel": "QUIZ",
     "planDetailPlanNotFound": "Plano não encontrado",
     "planDetailNotAnswered": "Ainda não respondido"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

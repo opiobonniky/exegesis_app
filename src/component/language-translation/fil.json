@@ -125,9 +125,15 @@
     "alreadyVerified": "Na-verify na? Mag-sign In"
   },
   "steps": {
-    "email": { "eyebrow": "HAKBANG 1 NG 3" },
-    "verify": { "eyebrow": "HAKBANG 2 NG 3" },
-    "reset": { "eyebrow": "HAKBANG 3 NG 3" }
+    "email": {
+      "eyebrow": "HAKBANG 1 NG 3"
+    },
+    "verify": {
+      "eyebrow": "HAKBANG 2 NG 3"
+    },
+    "reset": {
+      "eyebrow": "HAKBANG 3 NG 3"
+    }
   },
   "welcome": {
     "title": "Maligayang Pagdating",
@@ -179,7 +185,9 @@
     "trySuggestions": "Subukan ang \"NIV\", \"KJV\", \"ESV\"…",
     "textSize": "Laki ng Teksto",
     "previewLabel": "PREVIEW",
-    "preview": { "ref": "— Juan 3:16" },
+    "preview": {
+      "ref": "— Juan 3:16"
+    },
     "readingVoice": "Boses sa Pagbasa",
     "voiceSettings": {
       "label": "Mga Setting ng Boses",
@@ -535,7 +543,6 @@
     "deleteSingleConfirm": "Sigurado ka bang gusto mong tanggalin ang \"{name}\" mula sa iyong reading history?",
     "clearHistoryButton": "i-clear ang {count} items sa {total} history items",
     "delete": "Tanggalin",
-    "myNotes": "Aking mga Tala",
     "noNotes": "Wala pang tala",
     "noNotesSubtitle": "Magdagdag ng mga tala sa mga talata habang nagbabasa ng Bibliya",
     "editNote": "I-edit ang Tala",
@@ -569,10 +576,6 @@
     "dailyGreetingMorning": "Magandang umaga",
     "dailyGreetingAfternoon": "Magandang hapon",
     "dailyGreetingEvening": "Magandang gabi",
-    "verseOfTheDay": "Talata ng Araw",
-    "explain": "Ipaliwanag",
-    "reflection": "Pagninilay",
-    "learnMore": "Matuto Pa",
     "verseLabel": "Talata"
   },
   "admin": {
@@ -1225,5 +1228,36 @@
     "planDetailQuizLabel": "QUIZ",
     "planDetailPlanNotFound": "Hindi nahanap ang plano",
     "planDetailNotAnswered": "Hindi pa nasasagot"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

@@ -125,9 +125,15 @@
     "alreadyVerified": "Umeshathibitishwa? Ingia"
   },
   "steps": {
-    "email": { "eyebrow": "HATUA 1 KATI YA 3" },
-    "verify": { "eyebrow": "HATUA 2 KATI YA 3" },
-    "reset": { "eyebrow": "HATUA 3 KATI YA 3" }
+    "email": {
+      "eyebrow": "HATUA 1 KATI YA 3"
+    },
+    "verify": {
+      "eyebrow": "HATUA 2 KATI YA 3"
+    },
+    "reset": {
+      "eyebrow": "HATUA 3 KATI YA 3"
+    }
   },
   "welcome": {
     "title": "Karibu",
@@ -179,7 +185,9 @@
     "trySuggestions": "Jaribu \"NIV\", \"KJV\", \"ESV\"…",
     "textSize": "Ukubwa wa Maandishi",
     "previewLabel": "ONYO",
-    "preview": { "ref": "— Yohana 3:16" },
+    "preview": {
+      "ref": "— Yohana 3:16"
+    },
     "readingVoice": "Sauti ya Usomaji",
     "voiceSettings": {
       "label": "Mipangilio ya Sauti",
@@ -535,7 +543,6 @@
     "deleteSingleConfirm": "Una uhakika unataka kufuta \"{name}\" kutoka kwenye historia yako ya usomaji?",
     "clearHistoryButton": "futa vitu {count} kati ya {total} vya historia",
     "delete": "Futa",
-    "myNotes": "Maelezo Yangu",
     "noNotes": "Hakuna maelezo bado",
     "noNotesSubtitle": "Ongeza maelezo kwenye mistari unaposoma Biblia",
     "editNote": "Hariri Maelezo",
@@ -569,10 +576,6 @@
     "dailyGreetingMorning": "Habari za asubuhi",
     "dailyGreetingAfternoon": "Habari za mchana",
     "dailyGreetingEvening": "Habari za jioni",
-    "verseOfTheDay": "Mstari wa Siku",
-    "explain": "Elezea",
-    "reflection": "Tafakari",
-    "learnMore": "Jifunze Zaidi",
     "verseLabel": "Mstari"
   },
   "admin": {
@@ -1225,5 +1228,36 @@
     "planDetailQuizLabel": "JARIBIO",
     "planDetailPlanNotFound": "Mpango haukupatikana",
     "planDetailNotAnswered": "Bado haujajibiwa"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

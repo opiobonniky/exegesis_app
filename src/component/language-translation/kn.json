@@ -125,9 +125,15 @@
     "alreadyVerified": "ಈಗಾಗಲೇ ದೃಢೀಕರಿಸಲಾಗಿದೆಯೇ? ಸೈನ್ ಇನ್"
   },
   "steps": {
-    "email": { "eyebrow": "ಹಂತ 1 ರಲ್ಲಿ 3" },
-    "verify": { "eyebrow": "ಹಂತ 2 ರಲ್ಲಿ 3" },
-    "reset": { "eyebrow": "ಹಂತ 3 ರಲ್ಲಿ 3" }
+    "email": {
+      "eyebrow": "ಹಂತ 1 ರಲ್ಲಿ 3"
+    },
+    "verify": {
+      "eyebrow": "ಹಂತ 2 ರಲ್ಲಿ 3"
+    },
+    "reset": {
+      "eyebrow": "ಹಂತ 3 ರಲ್ಲಿ 3"
+    }
   },
   "welcome": {
     "title": "ಸುಸ್ವಾಗತ",
@@ -179,7 +185,9 @@
     "trySuggestions": "\"NIV\", \"KJV\", \"ESV\"… ಪ್ರಯತ್ನಿಸಿ",
     "textSize": "ಪಠ್ಯ ಗಾತ್ರ",
     "previewLabel": "ಪೂರ್ವವೀಕ್ಷಣೆ",
-    "preview": { "ref": "— ಯೋಹಾನ 3:16" },
+    "preview": {
+      "ref": "— ಯೋಹಾನ 3:16"
+    },
     "readingVoice": "ಓದುವ ಧ್ವನಿ",
     "voiceSettings": {
       "label": "ಧ್ವನಿ ಸೆಟ್ಟಿಂಗ್ಗಳು",
@@ -431,7 +439,7 @@
     "cancel": "ರದ್ದುಮಾಡಿ",
     "done": "ಮುಗಿದಿದೆ",
     "verseOfTheDay": "ದಿನದ ವಾಕ್ಯ",
-    "continueReading": "ಓದುವುದನ್ನು ಮುಂದುವರಿಸಿ",
+    "continueReading": "ಮುಂದುವರಿಸಿ",
     "myNotes": "ನನ್ನ ಟಿಪ್ಪಣಿಗಳು",
     "readingHistory": "ಓದುವ ಇತಿಹಾಸ",
     "language": "ಭಾಷೆ",
@@ -535,7 +543,6 @@
     "deleteSingleConfirm": "\"{name}\" ಅನ್ನು ನಿಮ್ಮ ಓದುವ ಇತಿಹಾಸದಿಂದ ಅಳಿಸಲು ನೀವು ಖಚಿತವಾಗಿ ಬಯಸುವಿರಾ?",
     "clearHistoryButton": "{total} ಇತಿಹಾಸ ಐಟಂಗಳಲ್ಲಿ {count} ಅಳಿಸಿ",
     "delete": "ಅಳಿಸಿ",
-    "myNotes": "ನನ್ನ ಟಿಪ್ಪಣಿಗಳು",
     "noNotes": "ಇನ್ನೂ ಟಿಪ್ಪಣಿಗಳಿಲ್ಲ",
     "noNotesSubtitle": "ಬೈಬಲ್ ಓದುವಾಗ ವಾಕ್ಯಗಳಿಗೆ ಟಿಪ್ಪಣಿಗಳನ್ನು ಸೇರಿಸಿ",
     "editNote": "ಟಿಪ್ಪಣಿ ಸಂಪಾದಿಸಿ",
@@ -566,14 +573,9 @@
     "addedLabel": "ಸೇರಿಸಲಾಗಿದೆ",
     "showLess": "ಕಡಿಮೆ ತೋರಿಸಿ",
     "showMore": "ಮುಂದುವರಿಸಿ",
-    "continueReading": "ಮುಂದುವರಿಸಿ",
     "dailyGreetingMorning": "ಶುಭೋದಯ",
     "dailyGreetingAfternoon": "ಶುಭ ಮಧ್ಯಾಹ್ನ",
     "dailyGreetingEvening": "ಶುಭ ಸಂಜೆ",
-    "verseOfTheDay": "ದಿನದ ವಾಕ್ಯ",
-    "explain": "ವಿವರಿಸಿ",
-    "reflection": "ಚಿಂತನೆ",
-    "learnMore": "ಇನ್ನಷ್ಟು ತಿಳಿಯಿರಿ",
     "verseLabel": "ವಾಕ್ಯ"
   },
   "admin": {
@@ -1225,5 +1227,36 @@
     "planDetailQuizLabel": "ಕ್ವಿಜ್",
     "planDetailPlanNotFound": "ಯೋಜನೆ ಕಂಡುಬಂದಿಲ್ಲ",
     "planDetailNotAnswered": "ಇನ್ನೂ ಉತ್ತರಿಸಲಾಗಿಲ್ಲ"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

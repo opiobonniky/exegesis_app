@@ -125,9 +125,15 @@
     "alreadyVerified": "پہلے سے تصدیق شدہ؟ سائن ان کریں"
   },
   "steps": {
-    "email": { "eyebrow": "مرحلہ 1 از 3" },
-    "verify": { "eyebrow": "مرحلہ 2 از 3" },
-    "reset": { "eyebrow": "مرحلہ 3 از 3" }
+    "email": {
+      "eyebrow": "مرحلہ 1 از 3"
+    },
+    "verify": {
+      "eyebrow": "مرحلہ 2 از 3"
+    },
+    "reset": {
+      "eyebrow": "مرحلہ 3 از 3"
+    }
   },
   "welcome": {
     "title": "خوش آمدید",
@@ -179,7 +185,9 @@
     "trySuggestions": "\"NIV\"، \"KJV\"، \"ESV\"… آزمائیں",
     "textSize": "متن کا سائز",
     "previewLabel": "پیش منظر",
-    "preview": { "ref": "— یوحنا 3:16" },
+    "preview": {
+      "ref": "— یوحنا 3:16"
+    },
     "readingVoice": "پڑھنے کی آواز",
     "voiceSettings": {
       "label": "آواز کی ترتیبات",
@@ -535,7 +543,6 @@
     "deleteSingleConfirm": "کیا آپ واقعی \"{name}\" کو اپنی پڑھنے کی تاریخ سے حذف کرنا چاہتے ہیں؟",
     "clearHistoryButton": "کل {total} میں سے {count} آئٹمز صاف کریں",
     "delete": "حذف کریں",
-    "myNotes": "میرے نوٹس",
     "noNotes": "ابھی تک کوئی نوٹ نہیں",
     "noNotesSubtitle": "بائبل پڑھتے وقت آیات پر نوٹس شامل کریں",
     "editNote": "نوٹ میں ترمیم کریں",
@@ -569,10 +576,6 @@
     "dailyGreetingMorning": "صبح بخیر",
     "dailyGreetingAfternoon": "دوپہر بخیر",
     "dailyGreetingEvening": "شام بخیر",
-    "verseOfTheDay": "دن کی آیت",
-    "explain": "وضاحت کریں",
-    "reflection": "غور و فکر",
-    "learnMore": "مزید جانیں",
     "verseLabel": "آیت"
   },
   "admin": {
@@ -1225,5 +1228,36 @@
     "planDetailQuizLabel": "کوئز",
     "planDetailPlanNotFound": "منصوبہ نہیں ملا",
     "planDetailNotAnswered": "ابھی جواب نہیں دیا"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

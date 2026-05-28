@@ -31,10 +31,17 @@ interface ActionModalProps {
   onConfirm: () => void;
   onCancel?: () => void;
   onExtra?: () => void;
-  showCancel?: boolean; // Explicit control (default: !!onCancel && !!cancelLabel)
-  closeOnBackdrop?: boolean; // Whether tapping outside closes modal
-  confirmButtonColor?: string; // Optional override
+  showCancel?: boolean;
+  closeOnBackdrop?: boolean;
+  confirmButtonColor?: string;
 }
+
+const severityTheme = {
+  success: { icon: '✓' },
+  error: { icon: '✕' },
+  warning: { icon: '!' },
+  info: { icon: 'i' },
+};
 
 export default function ActionModal({
   visible,
@@ -56,66 +63,74 @@ export default function ActionModal({
 
   const COLORS = useMemo(() => getColors(app.isDark), [app.isDark]);
 
-  const scaleAnim = useRef(new Animated.Value(0.85)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(12)).current;
 
   useEffect(() => {
     if (visible) {
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
-          tension: 140,
-          friction: 12,
+          tension: 220,
+          friction: 20,
           useNativeDriver: true,
         }),
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 220,
+          duration: 160,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 160,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
       Animated.parallel([
         Animated.timing(scaleAnim, {
-          toValue: 0.85,
-          duration: 140,
+          toValue: 0.95,
+          duration: 100,
           useNativeDriver: true,
         }),
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 140,
+          duration: 100,
           useNativeDriver: true,
         }),
       ]).start();
     }
   }, [visible]);
 
-  const getSeverityStyles = () => {
+  const getSeverityColors = () => {
     switch (severity) {
       case 'success':
-        return { accent: COLORS.success, bg: `${COLORS.success}15` };
+        return { accent: COLORS.success, tint: `${COLORS.success}15`, bar: COLORS.success };
       case 'error':
-        return { accent: COLORS.error, bg: `${COLORS.error}15` };
+        return { accent: COLORS.error, tint: `${COLORS.error}15`, bar: COLORS.error };
       case 'warning':
-        return { accent: '#F59E0B', bg: '#FEF3C715' };
+        return { accent: COLORS.warning, tint: `${COLORS.warning}15`, bar: COLORS.warning };
       case 'info':
       default:
-        return { accent: COLORS.primary, bg: `${COLORS.primary}15` };
+        return { accent: COLORS.primary, tint: `${COLORS.primary}15`, bar: COLORS.primary };
     }
   };
 
-  const { accent, bg } = getSeverityStyles();
+  const { accent, tint, bar } = getSeverityColors();
   const finalConfirmColor = confirmButtonColor || accent;
 
   const hasCancel =
     propShowCancel ?? (Boolean(onCancel) && Boolean(cancelLabel));
+  const hasExtra = Boolean(extraLabel && onExtra);
+  const buttonCount = 1 + (hasCancel ? 1 : 0) + (hasExtra ? 1 : 0);
 
   const handleBackdropPress = () => {
     if (closeOnBackdrop) {
       if (hasCancel && onCancel) {
         onCancel();
       } else {
-        onConfirm(); // fallback to confirm if no cancel
+        onConfirm();
       }
     }
   };
@@ -132,7 +147,9 @@ export default function ActionModal({
     >
       <TouchableWithoutFeedback onPress={handleBackdropPress}>
         <View style={styles.overlay}>
-          <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
+          <Animated.View
+            style={[styles.backdrop, { backgroundColor: COLORS.overlay, opacity: fadeAnim }]}
+          />
 
           <TouchableWithoutFeedback>
             <Animated.View
@@ -141,76 +158,79 @@ export default function ActionModal({
                 {
                   backgroundColor: COLORS.surface,
                   transform: [{ scale: scaleAnim }],
-                  borderColor: `${accent}40`,
-                  borderWidth: 1,
+                  opacity: fadeAnim,
+                  shadowColor: COLORS.shadowColor,
                 },
               ]}
             >
-              {/* Icon / Emoji */}
-              <View style={[styles.iconWrapper, { backgroundColor: bg }]}>
-                <Text style={[styles.icon, { color: accent }]}>
-                  {severity === 'success'
-                    ? '✓'
-                    : severity === 'error'
-                      ? '✕'
-                      : severity === 'warning'
-                        ? '⚠'
-                        : 'ℹ'}
-                </Text>
-              </View>
+              {/* Severity Bar */}
+              <View style={[styles.severityBar, { backgroundColor: bar }]} />
 
-              {/* Title & Message */}
-              <View style={styles.content}>
+              {/* Body */}
+              <View style={styles.body}>
+                {/* Icon */}
+                <View style={[styles.iconRing, { borderColor: `${accent}40` }]}>
+                  <View style={[styles.iconFill, { backgroundColor: tint }]}>
+                    <Text style={[styles.iconText, { color: accent }]}>
+                      {severityTheme[severity].icon}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Title */}
                 <Text
                   style={[styles.title, { color: COLORS.text }]}
                   numberOfLines={2}
-                  adjustsFontSizeToFit
                 >
                   {title}
                 </Text>
 
-                <Text style={[styles.message, { color: COLORS.textSecondary }]}>
-                  {message}
-                </Text>
+                {/* Message */}
+                {message ? (
+                  <Text style={[styles.message, { color: COLORS.textSecondary }]}>
+                    {message}
+                  </Text>
+                ) : null}
               </View>
 
+              {/* Divider */}
+              <View style={[styles.divider, { backgroundColor: COLORS.border }]} />
+
               {/* Buttons */}
-              <View style={styles.buttonRow}>
+              <View
+                style={[
+                  styles.buttonRow,
+                  { marginHorizontal: SPACING.lg, marginBottom: SPACING.md },
+                  buttonCount === 1 && styles.buttonRowSingle,
+                ]}
+              >
                 {hasCancel && (
                   <TouchableOpacity
                     style={[
                       styles.button,
-                      styles.cancelButton,
-                      { borderColor: COLORS.border },
+                      styles.outlinedButton,
+                      { borderColor: `${COLORS.text}25` },
                     ]}
                     onPress={onCancel}
-                    accessibilityLabel={cancelLabel}
-                    accessibilityRole="button"
+                    activeOpacity={0.7}
                   >
-                    <Text
-                      style={[styles.cancelText, { color: COLORS.text }]}
-                      numberOfLines={1}
-                    >
+                    <Text style={[styles.outlinedText, { color: COLORS.textSecondary }]} numberOfLines={1}>
                       {cancelLabel}
                     </Text>
                   </TouchableOpacity>
                 )}
 
-                {extraLabel && onExtra && (
+                {hasExtra && (
                   <TouchableOpacity
                     style={[
                       styles.button,
-                      styles.cancelButton,
-                      { borderColor: COLORS.border },
+                      styles.outlinedButton,
+                      { borderColor: `${COLORS.text}25` },
                     ]}
                     onPress={onExtra}
-                    accessibilityLabel={extraLabel}
-                    accessibilityRole="button"
+                    activeOpacity={0.7}
                   >
-                    <Text
-                      style={[styles.cancelText, { color: COLORS.text }]}
-                      numberOfLines={1}
-                    >
+                    <Text style={[styles.outlinedText, { color: COLORS.textSecondary }]} numberOfLines={1}>
                       {extraLabel}
                     </Text>
                   </TouchableOpacity>
@@ -223,8 +243,7 @@ export default function ActionModal({
                     { backgroundColor: finalConfirmColor },
                   ]}
                   onPress={onConfirm}
-                  accessibilityLabel={confirmLabel}
-                  accessibilityRole="button"
+                  activeOpacity={0.85}
                 >
                   <Text style={styles.confirmText} numberOfLines={1}>
                     {confirmLabel}
@@ -244,81 +263,105 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: SPACING.lg,
+    padding: SPACING.xxl,
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContainer: {
     width: '100%',
-    maxWidth: Platform.OS === 'ios' ? 340 : 320,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
+    maxWidth: Platform.OS === 'ios' ? 310 : 290,
+    borderRadius: BORDER_RADIUS.lg,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 20,
   },
-  iconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  severityBar: {
+    height: 4,
+  },
+  body: {
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING.lg,
+  },
+  iconRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
   },
-  icon: {
-    fontSize: 36,
-    fontWeight: 'bold',
-  },
-  content: {
+  iconFill: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.xl,
+  },
+  iconText: {
+    fontSize: 22,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontStyle: 'italic',
   },
   title: {
-    fontSize: FONT_SIZES.xl,
+    fontSize: FONT_SIZES.lg,
     fontWeight: '700',
-    marginBottom: SPACING.sm,
     textAlign: 'center',
+    letterSpacing: 0.15,
+    marginBottom: SPACING.sm,
   },
   message: {
-    fontSize: FONT_SIZES.md,
-    lineHeight: 24,
+    fontSize: FONT_SIZES.sm,
+    lineHeight: 20,
     textAlign: 'center',
+    letterSpacing: 0.1,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: SPACING.lg,
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: SPACING.md,
-    justifyContent: 'space-between',
+    gap: SPACING.sm,
   },
-  singleButtonRow: {
+  buttonRowSingle: {
     justifyContent: 'center',
   },
   button: {
     flex: 1,
-    height: 48,
-    borderRadius: BORDER_RADIUS.lg,
+    height: 40,
+    borderRadius: Platform.OS === 'ios' ? 10 : 8,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.sm,
   },
   confirmButton: {
-    // background set inline
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  cancelButton: {
-    borderWidth: 1.5,
+  outlinedButton: {
+    borderWidth: 1,
     backgroundColor: 'transparent',
   },
   confirmText: {
     color: 'white',
-    fontWeight: '700',
-    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    fontSize: FONT_SIZES.xs,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
-  cancelText: {
-    fontWeight: '700',
-    fontSize: FONT_SIZES.md,
+  outlinedText: {
+    fontWeight: '600',
+    fontSize: FONT_SIZES.xs,
+    letterSpacing: 0.3,
   },
 });

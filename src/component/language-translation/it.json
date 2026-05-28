@@ -125,9 +125,15 @@
     "alreadyVerified": "Già verificato? Accedi"
   },
   "steps": {
-    "email": { "eyebrow": "PASSO 1 DI 3" },
-    "verify": { "eyebrow": "PASSO 2 DI 3" },
-    "reset": { "eyebrow": "PASSO 3 DI 3" }
+    "email": {
+      "eyebrow": "PASSO 1 DI 3"
+    },
+    "verify": {
+      "eyebrow": "PASSO 2 DI 3"
+    },
+    "reset": {
+      "eyebrow": "PASSO 3 DI 3"
+    }
   },
   "timePicker": {
     "selectTime": "Seleziona ora",
@@ -186,7 +192,9 @@
     "trySuggestions": "Prova \\\"NIV\\\", \\\"KJV\\\", \\\"ESV\\\"…",
     "textSize": "Dimensione testo",
     "previewLabel": "ANTEPRIMA",
-    "preview": { "ref": "— Giovanni 3:16" },
+    "preview": {
+      "ref": "— Giovanni 3:16"
+    },
     "readingVoice": "Voce di lettura",
     "voiceSettings": {
       "label": "Impostazioni voce",
@@ -271,7 +279,9 @@
   },
   "editProfile": {
     "title": "Modifica informazioni profilo",
-    "section": { "personal": "Informazioni personali" },
+    "section": {
+      "personal": "Informazioni personali"
+    },
     "fields": {
       "firstName": "Nome",
       "lastName": "Cognome",
@@ -288,7 +298,10 @@
       "phone": "Telefono (opzionale)",
       "dob": "Seleziona data (opzionale)"
     },
-    "gender": { "male": "Maschio", "female": "Femmina" },
+    "gender": {
+      "male": "Maschio",
+      "female": "Femmina"
+    },
     "marital": {
       "single": "Celibe/Nubile",
       "married": "Sposato",
@@ -301,7 +314,9 @@
     },
     "saving": "Salvataggio...",
     "save": "Salva modifiche",
-    "info": { "emailChange": "💡 Le modifiche alla tua email potrebbero richiedere verifica" }
+    "info": {
+      "emailChange": "💡 Le modifiche alla tua email potrebbero richiedere verifica"
+    }
   },
   "profile": {
     "title": "Informazioni profilo",
@@ -346,9 +361,23 @@
     "title": "Voce e Narrazione",
     "loadingVoices": "Caricamento voci…",
     "selectVoice": "Seleziona una voce",
-    "quality": { "neural": "Neurale", "enhanced": "Migliorata", "local": "Locale" },
-    "rateSnaps": { "slow": "Lento", "calm": "Calmo", "normal": "Normale", "quick": "Veloce", "fast": "Molto veloce" },
-    "pitchSnaps": { "low": "Basso", "natural": "Naturale", "high": "Alto" },
+    "quality": {
+      "neural": "Neurale",
+      "enhanced": "Migliorata",
+      "local": "Locale"
+    },
+    "rateSnaps": {
+      "slow": "Lento",
+      "calm": "Calmo",
+      "normal": "Normale",
+      "quick": "Veloce",
+      "fast": "Molto veloce"
+    },
+    "pitchSnaps": {
+      "low": "Basso",
+      "natural": "Naturale",
+      "high": "Alto"
+    },
     "speedReset": "Velocità reimpostata: viene utilizzata la velocità predefinita del dispositivo.",
     "pitchReset": "Tono reimpostato: viene utilizzato il tono predefinito del dispositivo.",
     "voiceUpdated": "Voce aggiornata",
@@ -521,7 +550,6 @@
     "deleteSingleConfirm": "Sei sicuro di voler eliminare \\\"{name}\\\" dalla cronologia?",
     "clearHistoryButton": "cancella {count} di {total} elementi cronologia",
     "delete": "Elimina",
-    "myNotes": "Le mie note",
     "noNotes": "Ancora nessuna nota",
     "noNotesSubtitle": "Aggiungi note ai versetti mentre leggi la Bibbia",
     "editNote": "Modifica nota",
@@ -1204,5 +1232,36 @@
     "planDetailQuizLabel": "QUIZ",
     "planDetailPlanNotFound": "Piano non trovato",
     "planDetailNotAnswered": "Non ancora risposta"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

@@ -125,9 +125,15 @@
     "alreadyVerified": "ഇതിനകം സ്ഥിരീകരിച്ചോ? സൈൻ ഇൻ ചെയ്യുക"
   },
   "steps": {
-    "email": { "eyebrow": "ഘട്ടം 1 / 3" },
-    "verify": { "eyebrow": "ഘട്ടം 2 / 3" },
-    "reset": { "eyebrow": "ഘട്ടം 3 / 3" }
+    "email": {
+      "eyebrow": "ഘട്ടം 1 / 3"
+    },
+    "verify": {
+      "eyebrow": "ഘട്ടം 2 / 3"
+    },
+    "reset": {
+      "eyebrow": "ഘട്ടം 3 / 3"
+    }
   },
   "timePicker": {
     "selectTime": "സമയം തിരഞ്ഞെടുക്കുക",
@@ -186,7 +192,9 @@
     "trySuggestions": "\"NIV\", \"KJV\", \"ESV\"… എന്നിവ പരീക്ഷിക്കുക",
     "textSize": "വാചക വലുപ്പം",
     "previewLabel": "പ്രിവ്യൂ",
-    "preview": { "ref": "— യോഹന്നാൻ 3:16" },
+    "preview": {
+      "ref": "— യോഹന്നാൻ 3:16"
+    },
     "readingVoice": "വായനാ ശബ്ദം",
     "voiceSettings": {
       "label": "ശബ്ദ ക്രമീകരണങ്ങൾ",
@@ -542,7 +550,6 @@
     "deleteSingleConfirm": "\"{name}\" നിങ്ങളുടെ വായനാ ചരിത്രത്തിൽ നിന്ന് ഇല്ലാതാക്കണമെന്ന് ഉറപ്പാണോ?",
     "clearHistoryButton": "ആകെ {total} ൽ നിന്ന് {count} ഇനങ്ങൾ മായ്ക്കുക",
     "delete": "ഇല്ലാതാക്കുക",
-    "myNotes": "എന്റെ കുറിപ്പുകൾ",
     "noNotes": "ഇതുവരെ കുറിപ്പുകളൊന്നുമില്ല",
     "noNotesSubtitle": "ബൈബിൾ വായിക്കുമ്പോൾ വാക്യങ്ങളിൽ കുറിപ്പുകൾ ചേർക്കുക",
     "editNote": "കുറിപ്പ് എഡിറ്റ് ചെയ്യുക",
@@ -576,10 +583,6 @@
     "dailyGreetingMorning": "സുപ്രഭാതം",
     "dailyGreetingAfternoon": "ശുഭ മദ്ധ്യാഹ്നം",
     "dailyGreetingEvening": "ശുഭ സന്ധ്യ",
-    "verseOfTheDay": "ദിവസത്തെ വാക്യം",
-    "explain": "വിശദീകരിക്കുക",
-    "reflection": "ധ്യാനം",
-    "learnMore": "കൂടുതലറിയുക",
     "verseLabel": "വാക്യം"
   },
   "admin": {
@@ -1230,5 +1233,36 @@
     "planDetailQuizLabel": "ക്വിസ്",
     "planDetailPlanNotFound": "പദ്ധതി കണ്ടെത്തിയില്ല",
     "planDetailNotAnswered": "ഇതുവരെ ഉത്തരം നൽകിയിട്ടില്ല"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

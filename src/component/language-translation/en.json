@@ -504,7 +504,6 @@
     "cool": "Cool",
     "nature": "Nature",
 
-    // Plan Bible Screen
     "planBiblePauseReflect": "Pause & Reflect",
     "planBibleQuestionsForReading": "{count} questions for this reading",
     "planBibleSingleQuestionForReading": "1 question for this reading",
@@ -580,19 +579,16 @@
     "updatedLabel": "Updated",
     "addedLabel": "Added",
 
-    // Show less/more
     "showLess": "Show less",
     "showMore": "Continue reading",
     "continueReading": "Continue reading",
 
-    // Daily greeting
     "dailyGreetingMorning": "Good morning",
     "dailyGreetingAfternoon": "Good afternoon",
     "dailyGreetingEvening": "Good evening",
 
     "verseOfTheDay": "Verse of the Day",
 
-    // Action labels
     "explain": "Explain",
     "reflection": "Reflection",
     "learnMore": "Learn More",
@@ -729,6 +725,15 @@
     "dailyVerseModalSelectChapter": "Select Chapter",
     "dailyVerseModalSelectVerse": "Select Verse",
     "dailyVerseModalSelectVersion": "Select Bible Version",
+
+    "dailyVerseConflictTitle": "Verse Already Exists",
+    "dailyVerseConflictDateMsg": "A verse already exists for this date ({ref}). Update it?",
+    "dailyVerseConflictRefMsg": "This verse ({ref}) already exists for another date. Update the existing one?",
+    "dailyVerseConflictUpdate": "Update",
+    "dailyVerseViewExisting": "View Existing",
+
+    "dailyVerseVerseTextPlaceholder": "Verse text",
+
     "dvManagerTitle": "Daily Verses",
     "dvManagerAdd": "Add",
     "dvManagerSearchFilter": "Search & Filter",

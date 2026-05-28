@@ -38,7 +38,6 @@
   "createAccount": {
     "text": "إنشاء حساب"
   },
-
   "validation": {
     "emailRequired": "البريد الإلكتروني مطلوب",
     "invalidEmail": "يرجى إدخال بريد إلكتروني صالح",
@@ -65,7 +64,6 @@
     "tryAgainLater": "يرجى المحاولة مرة أخرى لاحقًا",
     "failedResendCode": "فشل إعادة إرسال الكود"
   },
-
   "welcome": {
     "title": "أهلا وسهلا",
     "message": "أهلا بك في التطبيق!"
@@ -131,9 +129,15 @@
     "alreadyVerified": "تم التحقق بالفعل؟ تسجيل الدخول"
   },
   "steps": {
-    "email": { "eyebrow": "الخطوة 1 من 3" },
-    "verify": { "eyebrow": "الخطوة 2 من 3" },
-    "reset": { "eyebrow": "الخطوة 3 من 3" }
+    "email": {
+      "eyebrow": "الخطوة 1 من 3"
+    },
+    "verify": {
+      "eyebrow": "الخطوة 2 من 3"
+    },
+    "reset": {
+      "eyebrow": "الخطوة 3 من 3"
+    }
   },
   "timePicker": {
     "selectTime": "اختر الوقت",
@@ -152,8 +156,7 @@
     "users": "المستخدمون",
     "verse": "آية",
     "devotion": "تأمل"
-  }
-  ,
+  },
   "extendedProfile": {
     "title": "معلومات إضافية",
     "personalDetails": {
@@ -286,8 +289,7 @@
       "confirmLabel": "تسجيل الخروج",
       "cancelLabel": "إلغاء"
     }
-  }
-  ,
+  },
   "readingSettings": {
     "title": "إعدادات القراءة",
     "status": {
@@ -303,7 +305,9 @@
     "trySuggestions": "حاول \"NIV\", \"KJV\", \"ESV\"…",
     "textSize": "حجم النص",
     "previewLabel": "معاينة",
-    "preview": { "ref": "— يوحنا 3:16" },
+    "preview": {
+      "ref": "— يوحنا 3:16"
+    },
     "readingVoice": "صوت القراءة",
     "voiceSettings": {
       "label": "إعدادات الصوت",
@@ -316,8 +320,7 @@
       "lightDesc": "التبديل إلى سمة أكثر إشراقًا",
       "darkDesc": "التبديل إلى سمة أكثر قتامة"
     }
-  }
-  ,
+  },
   "notificationSettings": {
     "heroTitle": "إدارة التذكيرات",
     "heroSub": "اختر متى تريد أن تتلقى إشعارات لآية اليوم وخطة القراءة الخاصة بك.",
@@ -333,8 +336,7 @@
     "missedDaySub": "تذكير في المساء إذا لم تُكمل مهمة القراءة لليوم.",
     "enableMissedDay": "تفعيل تذكير اليوم الفائت",
     "footerTip": "نصيحة: إذا لم تظهر الإشعارات، قم بتمكينها في إعدادات الهاتف وأوقف تحسينات البطارية لهذه التطبيق."
-  }
-  ,
+  },
   "voiceSettings": {
     "title": "الصوت والسرد",
     "loadingVoices": "جارٍ تحميل الأصوات…",
@@ -373,8 +375,7 @@
     "voicePitch": "نغمة الصوت",
     "reset": "إعادة تعيين",
     "deviceHint": "حرّك شريط التمرير لتجاوز إعداد جهازك"
-  }
-  ,
+  },
   "bible": {
     "noContent": "اختر سفرًا وإصحاحًا لبدء القراءة",
     "search": "بحث",
@@ -491,12 +492,9 @@
     "warm": "دافئ",
     "cool": "بارد",
     "nature": "طبيعي",
-
-    // Plan Bible Screen
     "planBiblePauseReflect": "توقف وتأمل",
     "planBibleQuestionsForReading": "{count} أسئلة لهذه القراءة",
     "planBibleSingleQuestionForReading": "سؤال واحد لهذه القراءة",
-
     "noFavorites": "لا توجد مفضلات بعد",
     "savedVerses": "{count} آية محفوظة",
     "removeFavorite": "إزالة من المفضلة",
@@ -532,31 +530,24 @@
     "deleteSingleConfirm": "هل أنت متأكد أنك تريد حذف \"{name}\" من سجل القراءة؟",
     "clearHistoryButton": "مسح {count} عنصر من أصل {total} عنصر في سجل القراءة",
     "delete": "حذف",
-    "myNotes": "ملاحظاتي",
     "noNotes": "لا توجد ملاحظات بعد",
     "noNotesSubtitle": "أضف ملاحظات للآيات أثناء قراءة الكتاب المقدس",
     "editNote": "تعديل الملاحظة",
     "writeNotePlaceholder": "اكتب ملاحظتك...",
     "save": "حفظ",
     "historyItemsDeleted": "تم حذف {count} عنصر من السجل",
-
-    // Daily Devotional
-    "loadingDevotional": "جارٍ تحميل التأمل\u2026",
+    "loadingDevotional": "جارٍ تحميل التأمل…",
     "noDevotionalToday": "لا يتوفر تأمل اليوم",
     "todaysDevotion": "تأمل اليوم",
     "meditationDevotionText": "تأمل في هذه الكلمة اليوم.\nدعها ترشد أفكارك وأعمالك.",
     "meditationVerseText": "تأمل في هذه الآية اليوم.\nدع كلمة الله ترشد أفكارك وأعمالك.",
     "dailyDevotionalTitle": "التأمل اليومي",
-
-    // Daily Verse Screen
-    "loadingVerseOfDay": "جارٍ تحميل آية اليوم\u2026",
+    "loadingVerseOfDay": "جارٍ تحميل آية اليوم…",
     "noVerseToday": "لا توجد آية متاحة اليوم",
     "dailyVerseTitle": "آية اليوم",
     "verseCopiedTitle": "تم النسخ",
     "verseCopiedMessage": "تم نسخ الآية إلى الحافظة",
-
-    // Full Verse Explanation
-    "loadingExplanation": "جارٍ تحميل الشرح\u2026",
+    "loadingExplanation": "جارٍ تحميل الشرح…",
     "somethingWentWrong": "حدث خطأ ما",
     "tryAgain": "حاول مرة أخرى",
     "noContentAvailable": "لا يوجد محتوى متاح.",
@@ -567,23 +558,11 @@
     "verseExplanationTitle": "شرح الآية",
     "updatedLabel": "تم التحديث",
     "addedLabel": "تمت الإضافة",
-
-    // Show less/more
     "showLess": "عرض أقل",
     "showMore": "متابعة القراءة",
-    "continueReading": "متابعة القراءة",
-
-    // Daily greeting
     "dailyGreetingMorning": "صباح الخير",
     "dailyGreetingAfternoon": "مساء الخير",
     "dailyGreetingEvening": "طاب مساؤك",
-
-    "verseOfTheDay": "آية اليوم",
-
-    // Action labels
-    "explain": "شرح",
-    "reflection": "تأمل",
-    "learnMore": "اعرف المزيد",
     "verseLabel": "آية"
   },
   "admin": {
@@ -1138,7 +1117,6 @@
     "bpDone": "تم",
     "bpComplete": "مكتمل",
     "bpOfLabel": "من",
-
     "dailyReadingCurrentProgress": "التقدم",
     "dailyReadingInProgress": "قيد التقدم",
     "dailyReadingCompleted": "مكتمل",
@@ -1196,7 +1174,6 @@
     "dailyReadingChapterBibleBtn": "فتح في الكتاب المقدس",
     "dailyReadingDayCompleteText": "اليوم مكتمل!",
     "dailyReadingDayLabel": "يوم",
-
     "planDetailDays": "{count} أيام",
     "planDetailCalendar": "التقويم",
     "planDetailStats": "إحصائيات",
@@ -1238,5 +1215,36 @@
     "planDetailQuizLabel": "اختبار",
     "planDetailPlanNotFound": "الخطة غير موجودة",
     "planDetailNotAnswered": "لم يتم الإجابة"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

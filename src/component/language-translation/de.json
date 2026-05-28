@@ -125,9 +125,15 @@
     "alreadyVerified": "Bereits bestätigt? Anmelden"
   },
   "steps": {
-    "email": { "eyebrow": "SCHRITT 1 VON 3" },
-    "verify": { "eyebrow": "SCHRITT 2 VON 3" },
-    "reset": { "eyebrow": "SCHRITT 3 VON 3" }
+    "email": {
+      "eyebrow": "SCHRITT 1 VON 3"
+    },
+    "verify": {
+      "eyebrow": "SCHRITT 2 VON 3"
+    },
+    "reset": {
+      "eyebrow": "SCHRITT 3 VON 3"
+    }
   },
   "timePicker": {
     "selectTime": "Uhrzeit auswählen",
@@ -186,7 +192,9 @@
     "trySuggestions": "Versuchen Sie \\\"NIV\\\", \\\"KJV\\\", \\\"ESV\\\"…",
     "textSize": "Textgröße",
     "previewLabel": "VORSCHAU",
-    "preview": { "ref": "— Johannes 3:16" },
+    "preview": {
+      "ref": "— Johannes 3:16"
+    },
     "readingVoice": "Vorlesestimme",
     "voiceSettings": {
       "label": "Spracheinstellungen",
@@ -542,7 +550,6 @@
     "deleteSingleConfirm": "Sind Sie sicher, dass Sie \\\"{name}\\\" aus Ihrem Leseverlauf löschen möchten?",
     "clearHistoryButton": "{count} von {total} Verlaufseinträge löschen",
     "delete": "Löschen",
-    "myNotes": "Meine Notizen",
     "noNotes": "Noch keine Notizen",
     "noNotesSubtitle": "Fügen Sie Notizen zu Versen hinzu, während Sie die Bibel lesen",
     "editNote": "Notiz bearbeiten",
@@ -1225,5 +1232,36 @@
     "planDetailQuizLabel": "QUIZ",
     "planDetailPlanNotFound": "Plan nicht gefunden",
     "planDetailNotAnswered": "Noch nicht beantwortet"
+  },
+  "common": {
+    "loading": "Loading...",
+    "networkError": "Network error. Please check your connection and try again.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "searchPlaceholder": "Search...",
+    "noResultsFound": "No results found.",
+    "noFound": "No found.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "requiredField": "{field} is required.",
+    "optional": "optional",
+    "selectOption": "-- Select {field} --",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

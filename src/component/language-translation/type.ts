@@ -1033,7 +1033,16 @@ export type AdminTranslations = {
   dailyVerseLearnMorePlaceholder?: string;
   dailyVerseModalSelectBook?: string;
   dailyVerseModalSelectChapter?: string;
-  dailyVerseModalSelectVerse?: string;    dailyVerseModalSelectVersion?: string;
+  dailyVerseModalSelectVerse?: string;
+  dailyVerseModalSelectVersion?: string;
+
+  // Daily Verse conflict modal
+  dailyVerseConflictTitle?: string;
+  dailyVerseConflictDateMsg?: string;
+  dailyVerseConflictRefMsg?: string;
+  dailyVerseConflictUpdate?: string;
+  dailyVerseViewExisting?: string;
+  dailyVerseVerseTextPlaceholder?: string;
 
   // Daily Verse Manager (list/management screen)
   dvManagerTitle?: string;
