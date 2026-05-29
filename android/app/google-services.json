@@ -1,58 +1,49 @@
 {
   "project_info": {
-    "project_number": "270479211517",
-    "project_id": "exegesis-app",
-    "storage_bucket": "exegesis-app.firebasestorage.app"
+    "project_number": "683836491679",
+    "project_id": "exegesis-bd116",
+    "storage_bucket": "exegesis-bd116.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:270479211517:android:5100b45ce53ad7ea42b794",
+        "mobilesdk_app_id": "1:683836491679:android:802670ddd358f00af11faa",
         "android_client_info": {
-          "package_name": "com.himfirstmedia.exegesis"
+          "package_name": "com.himfirstapps.exegesis"
         }
       },
       "oauth_client": [
         {
-          "client_id": "270479211517-akoh3dr2rpquabcjjsndn4e02sj20n4m.apps.googleusercontent.com",
+          "client_id": "683836491679-bddh317ungjlfq3t7p12ppm5qvk8qp9q.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.himfirstmedia.exegesis",
+            "package_name": "com.himfirstapps.exegesis",
             "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
           }
         },
         {
-          "client_id": "270479211517-g5vnbnaum00j8gav0jlqts07aldpe7uu.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.himfirstmedia.exegesis",
-            "certificate_hash": "7120f4521ac182e881bedcd236138376cfd20e55"
-          }
-        },
-        {
-          "client_id": "270479211517-qp1bdrg1iv4odtv83cgdavblqalvija2.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.himfirstmedia.exegesis",
-            "certificate_hash": "b9a0eb79ec6f9d139c7bb23592a7adee8de2a1e5"
-          }
-        },
-        {
-          "client_id": "270479211517-kinap7kv1bcd3dlpuodt5fkju361fdqb.apps.googleusercontent.com",
+          "client_id": "683836491679-f2lflbbbh2hnthd53h9eq2qjuaetcjjg.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDZPREoExl5yhvGKAahyM09YFE_siijU3Y"
+          "current_key": "AIzaSyBIw8ds0SPZCLf95UxmWbJlmRhHdKa3d1k"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "270479211517-kinap7kv1bcd3dlpuodt5fkju361fdqb.apps.googleusercontent.com",
+              "client_id": "683836491679-f2lflbbbh2hnthd53h9eq2qjuaetcjjg.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "683836491679-k1i0usjv73havp5o79k9ib23t98fse8q.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.himfirstapps.exegesis"
+              }
             }
           ]
         }

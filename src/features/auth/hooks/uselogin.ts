@@ -27,10 +27,9 @@ export default function useLogin() {
   useEffect(() => {
     GoogleSignin.configure({
       webClientId:
-        '270479211517-kinap7kv1bcd3dlpuodt5fkju361fdqb.apps.googleusercontent.com',
+        '683836491679-f2lflbbbh2hnthd53h9eq2qjuaetcjjg.apps.googleusercontent.com',
       iosClientId:
-        '270479211517-f0rnvklms45eqdjrorund65balbr0s4f.apps.googleusercontent.com',
-      prompt: 'select_account',
+        '683836491679-k1i0usjv73havp5o79k9ib23t98fse8q.apps.googleusercontent.com',
     });
   }, []);
 

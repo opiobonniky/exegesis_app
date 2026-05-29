@@ -19,7 +19,6 @@ import ActionModal from '../../reusable/ActionModal';
 import { getColors } from '../../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import { route } from '../../component/navigations/routes';
-import { testConnection } from '../../services/api';
 import { AppContext } from '../../common/AppContext';
 import KeyboardAwareness from '../../reusable/KeyboardAwareness';
 import LanguagePickerModal, { FLAGS, NATIVE_NAMES } from '../../component/LanguagePickerModal';
