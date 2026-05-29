@@ -90,7 +90,6 @@ const Login = () => {
 
   React.useEffect(() => {
     if (userInfo) navigation.navigate(route.bible);
-    testConnection();
 
     Animated.sequence([
       Animated.parallel([

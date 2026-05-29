@@ -23,6 +23,9 @@ const App = () => {
       const latestVersion = await getLatestAppVersion();
       const currentVersion = getVersion();
 
+      console.log('Latest version from Firestore:', latestVersion);
+      console.log('Current app version....:', currentVersion);
+
       if (latestVersion && currentVersion) {
         setIsAppUpdated(latestVersion === currentVersion);
       } else {

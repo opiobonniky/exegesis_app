@@ -120,26 +120,6 @@ export const sendPostRequest = async <T = any>(
   }
 };
 
-// Add this to your api.ts file temporarily
-export const testConnection = async () => {
-  const testUrls = [
-    'http://192.168.100.128:7001',
-    'http://10.0.2.2:7001',
-    'http://localhost:7001',
-  ];
-
-  console.log('🧪 Testing network connectivity...');
-
-  for (const url of testUrls) {
-    try {
-      console.log(`Testing: ${url}`);
-      const response = await axios.get(`${url}/health`, { timeout: 5000 });
-      console.log(`✅ ${url} - SUCCESS:`, response.status);
-    } catch (error: any) {
-      console.log(`❌ ${url} - FAILED:`, error.message, error.code);
-    }
-  }
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Journal API Functions

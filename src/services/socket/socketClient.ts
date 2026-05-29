@@ -22,7 +22,6 @@ const STORAGE_KEYS = {
 
 const log = (...args: any[]) => {
   if (!debugEnabled) return;
-  console.log('[socket]', ...args);
 };
 
 export const setSocketDebug = (enabled: boolean) => {
@@ -61,9 +60,9 @@ const getSocketURL = async (): Promise<string> => {
     // - Wi-Fi device: Metro host IP
     const metroHost = getDevServerHost();
     const candidates: string[] = [
-      'http://localhost:7001',
-      ...(Platform.OS === 'android' ? ['http://10.0.2.2:7001'] : []),
-      ...(metroHost ? [`http://${metroHost}:7001`] : []),
+      'https://exegesisbackend-production.up.railway.app/',
+      ...(Platform.OS === 'android' ? ['https://exegesisbackend-production.up.railway.app/'] : []),
+      ...(metroHost ? [`https://exegesisbackend-production.up.railway.app/`] : []),
     ];
 
     const probe = async (baseUrl: string): Promise<boolean> => {
@@ -104,7 +103,7 @@ const getSocketURL = async (): Promise<string> => {
     return resolvingDevSocketUrl;
   }
 
-  return 'https://exegesis-bible.onrender.com';
+  return 'https://exegesisbackend-production.up.railway.app/';
 };
 
 // Optional: if your backend uses a different socket namespace, set it here.
@@ -147,10 +146,7 @@ export const connectSocket = async (opts?: {
   setState('connecting');
 
   const url = await getSocketURL();
-  if (__DEV__) {
-    log('metro', { scriptURL: NativeModules?.SourceCode?.scriptURL });
-  }
-  log('connecting', { url, path: getSocketPath(), topics: opts?.topics ?? [] });
+  
 
   socket = io(url, {
     path: getSocketPath(),
@@ -178,7 +174,6 @@ export const connectSocket = async (opts?: {
 
     // If your backend expects auth after connect:
     if (token) {
-      log('emit', 'client:auth');
       socket?.emit('client:auth', { token });
     }
 
@@ -186,7 +181,6 @@ export const connectSocket = async (opts?: {
 
     // Subscribe to topics/channels (server-defined)
     if (opts?.topics?.length) {
-      log('emit', 'client:subscribe', opts.topics);
       socket?.emit('client:subscribe', { topics: opts.topics });
     }
   });
@@ -197,7 +191,6 @@ export const connectSocket = async (opts?: {
   });
 
   socket.on('error', err => {
-    log('error', err);
     setState('error');
   });
 
