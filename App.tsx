@@ -41,7 +41,7 @@ const App = () => {
   useEffect(() => {
     const setupApp = async () => {
       try {
-        await initializeNotifications();
+        // await initializeNotifications();
       } catch (error) {
         console.error('Failed to initialize notifications:', error);
       }
