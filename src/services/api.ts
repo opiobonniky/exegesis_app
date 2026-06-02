@@ -14,15 +14,14 @@ export interface GenericResponse<T = any> {
 }
 
 const getBaseURL = () => {
-  return 'http://localhost:5001';
-  // if (__DEV__) {
-  //   if(Platform.OS === 'android') {
-  //     return 'http://localhost:5001'; // For Android emulator, use localhost
-  //   }
-  //   return 'http://192.168.100.22:5001';
-  // } else {
-  //   return 'https://exegesisbackend-production.up.railway.app/';
-  // }
+  if (__DEV__) {
+    if(Platform.OS === 'android') {
+      return 'http://localhost:5001'; // For Android emulator, use localhost
+    }
+    return 'http://192.168.100.22:5001';
+  } else {
+    return 'https://exegesisbackend-production.up.railway.app/';
+  }
 };
 
 const BASE_URL = getBaseURL();
