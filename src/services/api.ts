@@ -36,6 +36,8 @@ export const api: AxiosInstance = axios.create({
   },
 });
 
+console.log('API Base URL:', BASE_URL , "token:", AsyncStorage.getItem(TOKEN_KEY));
+
 // Request interceptor
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {

@@ -53,7 +53,10 @@ const { width: SW } = Dimensions.get('window');
 // ─────────────────────────────────────────────
 interface Chapter {
   book: string;
-  chapter: number;
+  startChapter: number;
+  endChapter: number;
+  /** @deprecated use startChapter/endChapter instead */
+  chapter?: number;
 }
 interface QuizQuestion {
   questionId: number;
@@ -1141,14 +1144,14 @@ export default function DailyReadingScreen() {
               <View style={[s.assignmentBadge, { backgroundColor: C.primary + '10' }]}>
                 <BookOpen size={12} color={C.primary} />
                 <Text style={[s.assignmentBadgeText, { color: C.primary }]}>
-                  {assignment.chapters.length} {(rp?.dailyReadingChaptersCount || 'Chapters')}
+                  {(rp?.dailyReadingChaptersCount || '{count} chapters').replace('{count}', String(assignment.chapters.length))}
                 </Text>
               </View>
               {hasQuiz && (
                 <View style={[s.assignmentBadge, { backgroundColor: '#8b5cf615' }]}>
                   <HelpCircle size={12} color="#8b5cf6" />
                   <Text style={[s.assignmentBadgeText, { color: '#8b5cf6' }]}>
-                    {quizTotal} {(rp?.dailyReadingQuizCount || 'Quiz')}
+                    {(rp?.dailyReadingQuizCount || '{count} questions').replace('{count}', String(quizTotal))}
                   </Text>
                 </View>
               )}
@@ -1176,7 +1179,7 @@ export default function DailyReadingScreen() {
                     backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                   },
                 ]}
-                onPress={() => handleOpenBible(ch.book, ch.chapter)}
+                onPress={() => handleOpenBible(ch.book, ch.startChapter)}
                 activeOpacity={0.7}
               >
                 <View style={[s.chapterIconCircle, { backgroundColor: C.primary, marginRight: isRtl ? 0 : 15, marginLeft: isRtl ? 15 : 0 }]}>
@@ -1187,7 +1190,8 @@ export default function DailyReadingScreen() {
                     {ch.book}
                   </Text>
                   <Text style={[s.chapterNumberLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                    {(rp?.dailyReadingChapterLabel || 'Chapter') + ' ' + ch.chapter}
+                    {(rp?.dailyReadingChapterLabel || 'Chapter {chapter}')
+                      .replace('{chapter}', String(ch.startChapter === ch.endChapter ? ch.startChapter : `${ch.startChapter}\u2013${ch.endChapter}`))}
                   </Text>
                 </View>
                 <View style={[s.readCta, { backgroundColor: C.primary + '15' }]}>

@@ -678,7 +678,9 @@ function ActivePlanCard({
             )}
           </View>
           <Text style={[s.activePlanSub, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-            {done} {rp?.bpOfLabel || 'of'} {plan.totalDays} {rp?.bpDaysLabel || 'days'} {rp?.bpDaysDone || 'done'}
+            {(rp?.bpDaysDone || '{done} of {total} days done')
+              .replace('{done}', String(done))
+              .replace('{total}', String(plan.totalDays))}
           </Text>
           <TouchableOpacity
             style={[
@@ -737,7 +739,7 @@ function ActivePlanCard({
         <StatChip
           icon={<CheckCircle size={13} color={C.success} />}
           value={String(done)}
-          label={rp?.bpDaysDone || 'Done'}
+          label={rp?.bpDone || 'Done'}
           C={C}
           isRtl={isRtl}
         />
