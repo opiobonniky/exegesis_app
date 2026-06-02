@@ -22,7 +22,6 @@ const STORAGE_KEYS = {
 
 const log = (...args: any[]) => {
   if (!debugEnabled) return;
-  console.log('[socket]', ...args);
 };
 
 export const setSocketDebug = (enabled: boolean) => {
@@ -186,7 +185,6 @@ export const connectSocket = async (opts?: {
 
     // Subscribe to topics/channels (server-defined)
     if (opts?.topics?.length) {
-      log('emit', 'client:subscribe', opts.topics);
       socket?.emit('client:subscribe', { topics: opts.topics });
     }
   });

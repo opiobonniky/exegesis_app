@@ -5,6 +5,7 @@ import axios, {
 } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { showToast } from '../helpers/Toash.helper';
+import { Platform } from 'react-native';
 
 export interface GenericResponse<T = any> {
   returnCode: number;
@@ -14,8 +15,9 @@ export interface GenericResponse<T = any> {
 
 const getBaseURL = () => {
   if (__DEV__) {
-    // For physical device on WiFi: use ur local IP (192.168.100.123)
-    // For Android emulator: use 10.0.2.2
+    if(Platform.OS === 'android') {
+      return 'http://localhost:5001'; // For Android emulator, use localhost
+    }
     return 'http://192.168.100.22:5001';
   } else {
     return 'https://exegesisbackend-production.up.railway.app/';
