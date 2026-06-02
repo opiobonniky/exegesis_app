@@ -14,14 +14,15 @@ export interface GenericResponse<T = any> {
 }
 
 const getBaseURL = () => {
-  if (__DEV__) {
-    if(Platform.OS === 'android') {
-      return 'http://localhost:5001'; // For Android emulator, use localhost
-    }
-    return 'http://192.168.100.22:5001';
-  } else {
-    return 'https://exegesisbackend-production.up.railway.app/';
-  }
+  return 'http://localhost:5001';
+  // if (__DEV__) {
+  //   if(Platform.OS === 'android') {
+  //     return 'http://localhost:5001'; // For Android emulator, use localhost
+  //   }
+  //   return 'http://192.168.100.22:5001';
+  // } else {
+  //   return 'https://exegesisbackend-production.up.railway.app/';
+  // }
 };
 
 const BASE_URL = getBaseURL();
@@ -105,9 +106,11 @@ export const sendPostRequest = async <T = any>(
   data: object = {},
 ): Promise<GenericResponse<T>> => {
   try {
+            const language = await AsyncStorage.getItem('@app:language') || 'es';
+
     const response = await api.post<GenericResponse<T>>(
       `/${controller}/${request}`,
-      data,
+      { ...data, lang: language },
     );
     return response.data;
   } catch (error: any) {

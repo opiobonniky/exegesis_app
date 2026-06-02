@@ -279,6 +279,7 @@ export default function Bible() {
     speechRate,
     sleepTimerRemaining,
     onSpeedToggle,
+    onSpeedReset,
     onSleepTimerToggle,
     handleAudioScopeChange,
     handleAfterPlayChange,
@@ -614,6 +615,13 @@ export default function Bible() {
                 verseText: verse ? verse.text : '',
               });
             }}
+            onLongPress={vn =>
+              guard('Highlights are saved to your account. Sign in to use this feature.', () => {
+                setPendingVerses([vn]);
+                toggleVerseSelection(vn);
+                setShowHighlightPicker(true);
+              })
+            }
             onCloseExplanation={vn => {
               clearVerseExplanationForVerse(vn);
               setExplanationOpen(false);
@@ -934,6 +942,7 @@ export default function Bible() {
         speechRate={speechRate}
         sleepTimerRemaining={sleepTimerRemaining}
         onSpeedToggle={onSpeedToggle}
+        onSpeedReset={onSpeedReset}
         onSleepTimerToggle={onSleepTimerToggle}
         onPrev={goToPreviousSelectedVerse}
         onNext={goToNextSelectedVerse}

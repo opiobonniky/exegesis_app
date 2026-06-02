@@ -324,7 +324,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = R64F9DSWBG;
 				INFOPLIST_FILE = Exegesis/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "PAB App";
+				INFOPLIST_KEY_CFBundleDisplayName = "Exegesis";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

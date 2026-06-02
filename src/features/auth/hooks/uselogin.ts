@@ -30,7 +30,6 @@ export default function useLogin() {
         '270479211517-kinap7kv1bcd3dlpuodt5fkju361fdqb.apps.googleusercontent.com',
       iosClientId:
         '270479211517-f0rnvklms45eqdjrorund65balbr0s4f.apps.googleusercontent.com',
-      prompt: 'select_account',
     });
   }, []);
 

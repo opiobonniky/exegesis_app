@@ -38,6 +38,7 @@ export interface AudioControlBarProps {
   speechRate?: number;
   sleepTimerRemaining?: number;
   onSpeedToggle?: () => void;
+  onSpeedReset?: () => void;
   onSleepTimerToggle?: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -121,6 +122,7 @@ export default function AudioControlBar({
   speechRate = 1.0,
   sleepTimerRemaining = 0,
   onSpeedToggle,
+  onSpeedReset,
   onSleepTimerToggle,
   onPrev,
   onNext,
@@ -187,21 +189,28 @@ export default function AudioControlBar({
   const progressPct = Math.min(1, Math.max(0, progress));
 
   const repeatIcon = () => {
-    // Use `afterPlay` prop directly (not the ref) so the icon updates on each render
     if (afterPlay === 'repeat_one')
       return <Repeat1 size={18} color={accent} strokeWidth={2.2} />;
+    if (afterPlay === 'repeat')
+      return <Repeat size={17} color={accent} strokeWidth={2.2} />;
     if (afterPlay === 'continue')
       return <Repeat size={17} color={accent} strokeWidth={2.2} />;
     return (
       <Repeat
         size={17}
-        color={afterPlay === 'repeat' ? accent : COLORS.muted}
+        color={COLORS.muted}
         strokeWidth={2}
       />
     );
   };
 
-  const sleepLabel = () => {
+  const repeatLabel = () => {
+    if (afterPlay === 'repeat') return 'All';
+    if (afterPlay === 'repeat_one') return 'One';
+    return 'None';
+  };
+
+  const sleepIcon = () => {
     const v = sleepTimerRemaining;
     if (v > 0) {
       if (v >= 60) {
@@ -220,6 +229,11 @@ export default function AudioControlBar({
       );
     }
     return <Timer size={16} color={COLORS.muted} />;
+  };
+
+  const sleepLabel = () => {
+    if (sleepTimerRemaining <= 0) return 'Timer';
+    return 'Sleep';
   };
 
   return (
@@ -327,31 +341,57 @@ export default function AudioControlBar({
           <View style={styles.controlsRow}>
             {/* Left: repeat + speed + timer */}
             <View style={styles.leftGroup}>
-              <CtrlBtn onPress={onRepeatToggle} isDark={isDark}>
-                {repeatIcon()}
-              </CtrlBtn>
+              <View style={styles.btnWithLabel}>
+                <CtrlBtn onPress={onRepeatToggle} isDark={isDark}>
+                  {repeatIcon()}
+                </CtrlBtn>
+                <Text style={[styles.btnLabel, { color: COLORS.muted }]}>{repeatLabel()}</Text>
+              </View>
 
-              <CtrlBtn
-                onPress={onSpeedToggle ?? (() => {})}
-                isDark={isDark}
-                size={46}
-              >
+              <View style={styles.btnWithLabel}>
+                <CtrlBtn
+                  onPress={onSpeedToggle ?? (() => {})}
+                  isDark={isDark}
+                  size={46}
+                >
                 <Text
                   style={[
                     styles.speedText,
                     { color: speechRate !== 1.0 ? accent : COLORS.muted },
                   ]}
                 >
-                  {speechRate}x
+                  {speechRate === 1.0 ? '1x' : `${speechRate}x`}
                 </Text>
-              </CtrlBtn>
+                </CtrlBtn>
+                {speechRate !== 1.0 ? (
+                  <TouchableOpacity onPress={onSpeedReset ?? (() => {})} activeOpacity={0.6}>
+                    <Text style={[styles.btnLabel, { color: accent }]}>
+                      reset
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={[styles.btnLabel, { color: COLORS.muted }]}>
+                    {speechRate === 1.0 ? 'Normal' : speechRate < 1.0 ? 'Slow' : 'Fast'}
+                  </Text>
+                )}
+              </View>
 
-              <CtrlBtn
-                onPress={onSleepTimerToggle ?? (() => {})}
-                isDark={isDark}
-              >
-                {sleepLabel()}
-              </CtrlBtn>
+              <View style={styles.btnWithLabel}>
+                <CtrlBtn
+                  onPress={onSleepTimerToggle ?? (() => {})}
+                  isDark={isDark}
+                >
+                  {sleepIcon()}
+                </CtrlBtn>
+                <Text
+                  style={[
+                    styles.btnLabel,
+                    { color: sleepTimerRemaining > 0 ? '#F59E0B' : COLORS.muted },
+                  ]}
+                >
+                  {sleepLabel()}
+                </Text>
+              </View>
             </View>
 
             {/* Center: prev + play/pause + next */}
@@ -520,5 +560,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
+  },
+  btnWithLabel: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  btnLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
 });

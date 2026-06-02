@@ -201,6 +201,7 @@ export type VerseListProps = {
   onExplain?: (verseNumber: number) => void;
   onShare?: (verseNumber: number) => void;
   onCopy?: (verseNumber: number) => void;
+  onLongPress?: (verseNumber: number) => void;
   onDoubleTap?: (verseNumber: number) => void;
   onCloseExplanation?: (verseNumber: number) => void;
   explanationMap?: Record<number, string>;
@@ -243,6 +244,7 @@ export default function VerseList({
   onShare,
   onCopy,
   onDoubleTap,
+  onLongPress,
   onCloseExplanation,
   explanationMap,
   onExplainOpen,
@@ -306,6 +308,7 @@ export default function VerseList({
         onShare={onShare ? () => onShare(verseNumber) : undefined}
         onCopy={onCopy ? () => onCopy(verseNumber) : undefined}
         onDoubleTap={onDoubleTap ? () => onDoubleTap(verseNumber) : undefined}
+        onLongPress={onLongPress ? () => onLongPress(verseNumber) : undefined}
         onExplain={
           onExplain
             ? () => {

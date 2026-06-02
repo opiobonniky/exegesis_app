@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Vibration,
   View,
 } from 'react-native';
 import { Heart, X, Lightbulb, BookText, Share2, Copy, Sun } from 'lucide-react-native';
@@ -38,6 +39,7 @@ type VerseCardProps = {
   onShare?: () => void;
   onCopy?: () => void;
   onDoubleTap?: () => void;
+  onLongPress?: () => void;
   onCloseExplanation?: () => void;
   showExplanation?: boolean;
   explanationText?: string;
@@ -71,6 +73,7 @@ export default function VerseCard({
   onShare,
   onCopy,
   onDoubleTap,
+  onLongPress,
   onCloseExplanation,
   showExplanation,
   explanationText,
@@ -161,9 +164,9 @@ export default function VerseCard({
       },
     ];
 
-    // For RTL, verse number comes first in source so it renders on the
-    // rightmost side with writingDirection 'rtl' (LTR number at start of
-    // RTL paragraph → right side; Arabic text flows left from there).
+    // For RTL, verse number comes first in source, with writingDirection 'rtl'
+    // so the verse number (LTR) renders on the rightmost side, and the Arabic
+    // text flows left from there. No whitespace between > and first child.
     const renderRtlContent = (children: React.ReactNode) => (
       <Text
         style={[
@@ -174,10 +177,8 @@ export default function VerseCard({
             opacity: isActiveAudio ? 1 : 0.88,
             writingDirection: 'rtl' as const,
           },
-        ]}
-      >
-        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}</Text>
-        {'  '}
+        ]}>
+        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}{'  '}</Text>
         {children}
       </Text>
     );
@@ -187,12 +188,9 @@ export default function VerseCard({
         style={[
           styles.verseText,
           { fontSize, lineHeight, opacity: isActiveAudio ? 1 : 0.88 },
-        ]}
-      >          <Text style={numStyle}>
-            {toArabicIndic(isRtl, verseNum)}
-            {'  '}
-          </Text>
-          {children}
+        ]}>
+        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}{'  '}</Text>
+        {children}
       </Text>
     );
 
@@ -202,8 +200,7 @@ export default function VerseCard({
       afterContent: string,
     ) => (
       <Text style={[styles.verseText, { fontSize, lineHeight, opacity: 1, writingDirection: 'rtl' as const }]}>
-        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}</Text>
-        {'  '}
+        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}{'  '}</Text>
         {beforeContent}
         <Animated.Text
           style={[
@@ -254,10 +251,7 @@ export default function VerseCard({
 
     return (
       <Text style={[styles.verseText, { fontSize, lineHeight, opacity: 1 }]}>
-        <Text style={numStyle}>
-          {toArabicIndic(isRtl, verseNum)}
-          {'  '}
-        </Text>
+        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}{'  '}</Text>
         {before}
         <Animated.Text
           style={[
@@ -386,6 +380,11 @@ export default function VerseCard({
     }
   }, [onPress, onDoubleTap]);
 
+  const handleLongPress = useCallback(() => {
+    Vibration.vibrate(10);
+    onLongPress?.();
+  }, [onLongPress]);
+
   return (
     <Pressable
       style={({ pressed }) => [
@@ -393,6 +392,7 @@ export default function VerseCard({
         pressed && styles.versePressed,
       ]}
       onPress={handlePress}
+      onLongPress={handleLongPress}
       android_ripple={{ color: `${accent}1A` }}
     >
       {/* OUTER plain View — no animated props, never claimed by any driver */}

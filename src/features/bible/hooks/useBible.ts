@@ -689,7 +689,7 @@ lastTTSVerseNumRef.current = verse.num;
   // ── Speed ────────────────────────────────────────────────────────────────────
   const onSpeedToggle = useCallback(() => {
     setSpeechRate(prev => {
-      const rates = [0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 2.0];
+      const rates = [0.5, 1.0, 1.5, 2.0];
       const next = rates[(rates.indexOf(prev) + 1) % rates.length];
       bibleTTS
         .setRate(next)
@@ -716,8 +716,25 @@ lastTTSVerseNumRef.current = verse.num;
     });
   }, [speakVerseAtIndex]);
 
+  const onSpeedReset = useCallback(() => {
+    setSpeechRate(1.0);
+    bibleTTS.setRate(1.0).then(() => {
+      if (ttsActiveRef.current && !isPausedRef.current && !stopRequestedRef.current) {
+        const idx = audioVerseIndexRef.current;
+        stopRequestedRef.current = true;
+        bibleTTS
+          .stop()
+          .then(() => {
+            stopRequestedRef.current = false;
+            speakVerseAtIndex(idx, true);
+          })
+          .catch(console.warn);
+      }
+    });
+  }, [speakVerseAtIndex]);
+
   // ── Sleep timer ──────────────────────────────────────────────────────────────
-  const sleepTimerValues = [0, 60, 180, 300, 900]; // 0 = off, rest in seconds
+  const sleepTimerValues = [0, 300, 600, 900, 1800, 60]; // 0 = off, then 5min, 10min, 15min, 30min, 1min
   const onSleepTimerToggle = useCallback(() => {
     setSleepTimerRemaining(prev => {
       const currentIdx = sleepTimerValues.indexOf(prev);
@@ -1292,6 +1309,7 @@ lastTTSVerseNumRef.current = verse.num;
     speechRate,
     sleepTimerRemaining,
     onSpeedToggle,
+    onSpeedReset,
     onSleepTimerToggle,
     handleAudioScopeChange,
     handleAfterPlayChange,
