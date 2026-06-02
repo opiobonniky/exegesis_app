@@ -1898,7 +1898,7 @@ export default function PlanDetailScreen() {
 
         <View style={[S.chipsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           {[
-            { num: `${completedDays.length}/${total}`, label: rp?.planDetailDaysDone || 'Days Done' },
+            { num: `${completedDays.length}/${total}`, label: 'Days Done' },
             { num: `🔥 ${planDetail.streak}`, label: rp?.planDetailStreak || 'Streak' },
             {
               num: `${Math.round(planDetail.quiz_accuracy_percentage)}%`,

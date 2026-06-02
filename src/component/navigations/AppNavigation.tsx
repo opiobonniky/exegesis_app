@@ -373,6 +373,12 @@ const AppNavigation = () => {
             require('../../features/journal/AdminJournalTemplates').default
           }
         />
+        <Stack.Screen
+          name={route.verseResources}
+          getComponent={() =>
+            require('../../features/bible/VerseResourcesScreen').default
+          }
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -62,7 +62,6 @@ import {
   DrawerMenu,
   NoteModal,
   TranslationPickerModal,
-  VerseResourceSheet,
 } from './modals';
 
 if (
@@ -339,11 +338,7 @@ export default function Bible() {
   const [gateVisible, setGateVisible] = useState(false);
   const [gateMessage, setGateMessage] = useState('');
   const [explanationOpen, setExplanationOpen] = useState(false);
-  const [resourceSheetVisible, setResourceSheetVisible] = useState(false);
-  const [resourceVerse, setResourceVerse] = useState<{
-    number: number;
-    text: string;
-  } | null>(null);
+
 
   const showGate = (msg: string) => {
     clearSelection();
@@ -612,11 +607,12 @@ export default function Bible() {
             onDoubleTap={vn => {
               clearSelection();
               const verse = versesArray.find(v => v.num === vn);
-              setResourceVerse({
-                number: vn,
-                text: verse ? verse.text : '',
+              navigation.navigate(route.verseResources, {
+                bookName: currentBook,
+                chapter: currentChapter,
+                verseNumber: vn,
+                verseText: verse ? verse.text : '',
               });
-              setResourceSheetVisible(true);
             }}
             onCloseExplanation={vn => {
               clearVerseExplanationForVerse(vn);
@@ -676,11 +672,12 @@ export default function Bible() {
           onDoubleTap={vn => {
             clearSelection();
             const verse = versesArray.find(v => v.num === vn);
-            setResourceVerse({
-              number: vn,
-              text: verse ? verse.text : '',
+            navigation.navigate(route.verseResources, {
+              bookName: currentBook,
+              chapter: currentChapter,
+              verseNumber: vn,
+              verseText: verse ? verse.text : '',
             });
-            setResourceSheetVisible(true);
           }}
           onCloseExplanation={vn => {
             clearVerseExplanationForVerse(vn);
@@ -881,19 +878,6 @@ export default function Bible() {
         onSelectVersion={handleVersionChange}
         isDark={isDark}
       />
-
-      {/* ── Verse Resource Sheet (double-tap to open) ───────────────────── */}
-      {resourceVerse && (
-        <VerseResourceSheet
-          visible={resourceSheetVisible}
-          onClose={() => setResourceSheetVisible(false)}
-          bookName={currentBook}
-          chapter={currentChapter}
-          verseNumber={resourceVerse.number}
-          verseText={resourceVerse.text}
-          isDark={isDark}
-        />
-      )}
 
       {/* ── Bottom Tab — navigation gated for guests ─────────────────────── */}
       {!isFromReadingPlan && (

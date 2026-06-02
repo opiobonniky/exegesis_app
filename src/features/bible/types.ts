@@ -144,16 +144,6 @@ export interface ExplanationModalProps {
   isDark: boolean;
 }
 
-export interface VerseResourceSheetProps {
-  visible: boolean;
-  onClose: () => void;
-  bookName: string;
-  chapter: number;
-  verseNumber: number;
-  verseText: string;
-  isDark: boolean;
-}
-
 export interface HighlightPickerModalProps {
   visible: boolean;
   onClose: () => void;

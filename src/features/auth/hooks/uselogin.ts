@@ -59,6 +59,8 @@ export default function useLogin() {
           roleName: returnData.roleName,
         };
 
+        console.log('Google Login Success:', JSON.stringify(info));
+
         const dashboardRoute =
           info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
 

@@ -193,7 +193,15 @@ export default function Home() {
         label: translation?.home?.banners?.resources || 'Resources',
         icon: Globe,
         color: '#0D47A1',
-        onPress: () => navigation.navigate(route.home),
+        onPress: () => {
+          const v = isCustomDate && customDailyVerse ? customDailyVerse : dailyVerse;
+          navigation.navigate(route.verseResources, {
+            bookName: v?.bookName || 'John',
+            chapter: v?.chapter || 3,
+            verseNumber: v?.verseNumber || 16,
+            verseText: v?.text || '',
+          });
+        },
       },
       {
         id: 'support',
@@ -203,7 +211,7 @@ export default function Home() {
         onPress: () => navigation.navigate(route.home),
       },
     ],
-    [navigation, translation],
+    [navigation, translation, dailyVerse, customDailyVerse, isCustomDate],
   );
 
   const quickLinks = useMemo(
@@ -277,6 +285,9 @@ export default function Home() {
           translation: d.translation ?? 'NKJV',
           text: d.text ?? '',
           date: getTodayLabel(),
+          bookName: d.bookName,
+          chapter: Number(d.chapter),
+          verseNumber: Number(d.verseNumber),
         });
       }else {
         // showToast("warning", "No daily verse found for today");

@@ -801,7 +801,7 @@ function ActivePlanCard({
           <Play size={14} color={C.text} fill={C.text} />
           <Text style={[s.ctaSolidText, { color: C.text }]}>
             {done === 0
-              ? `${rp?.bpBeginDay || 'Begin Day'} 1`
+              ? `${(rp?.bpBeginDay || 'Begin Day {day}').replace('{day}', '1')}`
               : `${rp?.bpContinue || 'Continue'} \u00B7 ${rp?.bpDaysLabel || 'Day'} ${nextDay}`}
           </Text>
         </TouchableOpacity>
