@@ -968,16 +968,18 @@ function VerseRefText({
   onPress,
   COLORS,
   isDark,
+  isRtl,
 }: {
   text: string;
   onPress: (ref: VerseRef) => void;
   COLORS: ReturnType<typeof getColors>;
   isDark: boolean;
+  isRtl?: boolean;
 }) {
   const segments = useMemo(() => parseVerseRefs(text), [text]);
 
   return (
-    <View style={vrStyles.container}>
+    <View style={[vrStyles.container, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
       {segments.map((seg, idx) => {
         if (typeof seg === 'string') {
           return (

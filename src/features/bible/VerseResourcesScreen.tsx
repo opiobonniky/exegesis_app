@@ -32,7 +32,7 @@ import {
   BORDER_RADIUS,
 } from '../../constants/theme';
 import ActionHeader from '../../reusable/ActionHeader';
-import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage, toArabicIndic } from '../../component/language-translation/LanguageProvider';
 import ExpandableText from './ExpandableText';
 import {
   getVerseResources,
@@ -433,7 +433,7 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
             <View style={[styles.heroContent, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
               <View style={[styles.heroPillRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <View style={styles.heroPill}><Text style={styles.heroPillText}>{bookName} {chapter}</Text></View>
-                <View style={[styles.heroPill, styles.heroPillAccent]}><Text style={[styles.heroPillText, styles.heroPillTextAccent]}>{bc?.verseLabel || 'Verse'} {verseNumber}</Text></View>
+                <View style={[styles.heroPill, styles.heroPillAccent]}><Text style={[styles.heroPillText, styles.heroPillTextAccent]}>{bc?.verseLabel || 'Verse'} {toArabicIndic(isRtl, verseNumber)}</Text></View>
               </View>
               <Text style={[styles.heroRef, { textAlign: isRtl ? 'right' : 'left' }]}>{verseRef}</Text>
               <ActivityIndicator color="rgba(255,255,255,0.7)" style={{ marginTop: 12 }} />
@@ -458,11 +458,10 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
             <View style={[styles.heroContent, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
               <View style={[styles.heroPillRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <View style={styles.heroPill}><Text style={styles.heroPillText}>{bookName} {chapter}</Text></View>
-                <View style={[styles.heroPill, styles.heroPillAccent]}><Text style={[styles.heroPillText, styles.heroPillTextAccent]}>{bc?.verseLabel || 'Verse'} {verseNumber}</Text></View>
+                <View style={[styles.heroPill, styles.heroPillAccent]}><Text style={[styles.heroPillText, styles.heroPillTextAccent]}>{bc?.verseLabel || 'Verse'} {toArabicIndic(isRtl, verseNumber)}</Text></View>
               </View>
               <Text style={[styles.heroRef, { textAlign: isRtl ? 'right' : 'left' }]}>{verseRef}</Text>
-              {verseText ? (
-                <Text style={[styles.heroVerse, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={3}>{verseNumber}. {verseText}</Text>
+              {verseText ? (                    <Text style={[styles.heroVerse, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={3}>{toArabicIndic(isRtl, verseNumber)}. {verseText}</Text>
               ) : null}
             </View>
           </LinearGradient>
@@ -536,7 +535,7 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
                       <Text style={styles.heroPillText}>{bookName} {chapter}</Text>
                     </View>
                     <View style={[styles.heroPill, styles.heroPillAccent]}>
-                      <Text style={[styles.heroPillText, styles.heroPillTextAccent]}>{bc?.verseLabel || 'Verse'} {verseNumber}</Text>
+                      <Text style={[styles.heroPillText, styles.heroPillTextAccent]}>{bc?.verseLabel || 'Verse'} {toArabicIndic(isRtl, verseNumber)}</Text>
                     </View>
                     {isDemo && (
                       <View style={[styles.heroPill, { backgroundColor: 'rgba(255,193,7,0.25)', borderColor: 'rgba(255,193,7,0.5)' }]}>
@@ -546,7 +545,7 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
                   </View>
                   <Text style={[styles.heroRef, { textAlign: isRtl ? 'right' : 'left' }]}>{verseRef}</Text>
                   {verseText ? (
-                    <Text style={[styles.heroVerse, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={3}>{verseNumber}. {verseText}</Text>
+                    <Text style={[styles.heroVerse, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={3}>{toArabicIndic(isRtl, verseNumber)}. {verseText}</Text>
                   ) : null}
                 </View>
               </LinearGradient>

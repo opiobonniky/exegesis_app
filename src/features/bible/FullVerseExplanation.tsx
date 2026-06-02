@@ -32,7 +32,7 @@ import ExpandableText from './ExpandableText';
 import ActionHeader from '../../reusable/ActionHeader';
 import { BookOpen, RefreshCw, AlertCircle, BookText } from 'lucide-react-native';
 import { route } from '../../component/navigations/routes';
-import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { useLanguage, toArabicIndic, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 type VerseData = {
   id?: number;
@@ -63,7 +63,8 @@ function stripBulletPrefix(line: string) {
 }
 
 export default function FullVerseExplanation({ route, navigation }: any) {
-  const { translations } = useLanguage();
+  const { translations, language } = useLanguage();
+  const isRtl = isRtlLanguage(language);
   const insets = useSafeAreaInsets();
 
   const app: any = useContext(AppContext);
@@ -191,8 +192,8 @@ export default function FullVerseExplanation({ route, navigation }: any) {
     const bn = data?.bookName ?? bookName ?? '—';
     const ch = data?.chapter ?? chapter ?? '—';
     const vn = data?.verseNumber ?? verseNumber ?? '—';
-    return `${bn} ${ch}:${vn}`;
-  }, [data, bookName, chapter, verseNumber]);
+    return `${bn} ${ch}:${toArabicIndic(isRtl, vn)}`;
+  }, [data, bookName, chapter, verseNumber, isRtl]);
 
   const bookLabel = useMemo(() => {
     const bn = data?.bookName ?? bookName ?? '';
@@ -202,8 +203,8 @@ export default function FullVerseExplanation({ route, navigation }: any) {
 
   const verseLabel = useMemo(() => {
     const vn = data?.verseNumber ?? verseNumber ?? '';
-    return `${translations?.bible?.verseLabel || 'Verse'} ${vn}`;
-  }, [data, verseNumber]);
+    return `${translations?.bible?.verseLabel || 'Verse'} ${toArabicIndic(isRtl, vn)}`;
+  }, [data, verseNumber, isRtl]);
 
   const heroGradient = isDark
     ? ['#0D1829', '#1A3F7A', '#0D1829']

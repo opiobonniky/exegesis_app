@@ -305,6 +305,7 @@ export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
       fontWeight: '400',
       letterSpacing: 0.15,
       textAlign: 'justify',
+      writingDirection: rtl ? 'rtl' : 'ltr',
     },
 
     verseRightIcons: {

@@ -19,7 +19,7 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { ExplanationModalProps } from '../types';
-import { useLanguage } from '../../../component/language-translation/LanguageProvider';
+import { useLanguage, toArabicIndic, isRtlLanguage } from '../../../component/language-translation/LanguageProvider';
 import {
   getColors,
   FONT_SIZES,
@@ -41,7 +41,8 @@ export default function ExplanationModal({
   onReadMore,
   isDark,
 }: ExplanationModalProps) {
-  const { translations } = useLanguage();
+  const { translations, language } = useLanguage();
+  const isRtl = isRtlLanguage(language);
   const bc = translations?.bible;
   const COLORS = getColors(isDark);
 
@@ -210,7 +211,7 @@ export default function ExplanationModal({
                     ]}
                   >
                     <Text style={[s.verseNumText, { color: COLORS.primary }]}>
-                      {v}
+                      {toArabicIndic(isRtl, v)}
                     </Text>
                   </View>
                   {/* Verse text */}

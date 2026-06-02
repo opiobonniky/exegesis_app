@@ -16,7 +16,7 @@ import {
   Square,
   Volume2,
 } from 'lucide-react-native';
-import { useLanguage } from '../../../component/language-translation/LanguageProvider';
+import { useLanguage, toArabicIndic } from '../../../component/language-translation/LanguageProvider';
 import { getColors } from '../../../constants/theme';
 import { ChapterNavigationProps } from '../types';
 import { createBibleStyles } from '../bibleStyle';
@@ -200,7 +200,7 @@ export default function ChapterNavigation({
       </Pressable>
 
       <TouchableOpacity style={styles.chapterButton} onPress={onSelectChapter}>
-        <Text style={styles.chapterButtonText}>{t?.bible?.chapter || 'Ch.'} {currentChapter}</Text>
+        <Text style={styles.chapterButtonText}>{t?.bible?.chapter || 'Ch.'} {toArabicIndic(isRtl ?? false, currentChapter)}</Text>
         <Text style={styles.chapterButtonIcon}>▼</Text>
       </TouchableOpacity>
 

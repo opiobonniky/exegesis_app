@@ -124,7 +124,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export { isRtlLanguage, getLocale } from './localeUtils';
+export { isRtlLanguage, getLocale, toArabicIndic } from './localeUtils';
 
 export const useLanguage = () => {
   const ctx = useContext(LanguageContext);

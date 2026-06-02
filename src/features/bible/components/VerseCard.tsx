@@ -12,7 +12,7 @@ import { Heart, X, Lightbulb, BookText, Share2, Copy, Sun } from 'lucide-react-n
 import ExpandableText from '../../bible/ExpandableText';
 import { bibleTTS } from '../../../utilits/bibleTTS';
 import { route } from '../../../component/navigations/routes';
-import { useLanguage, isRtlLanguage } from '../../../component/language-translation/LanguageProvider';
+import { useLanguage, isRtlLanguage, toArabicIndic } from '../../../component/language-translation/LanguageProvider';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -147,6 +147,8 @@ export default function VerseCard({
   }, [activeWordOffset]);
 
   // ── Verse text — with word highlight when a word offset is provided ────────
+  // ── RTL handling: For RTL languages (Arabic, Urdu), the verse number is
+  //    placed AFTER the text so it appears at the rightmost (start) position.
   const renderVerseText = () => {
     const lineHeight = Math.round(fontSize * 1.75);
     const numStyle = [
@@ -159,22 +161,83 @@ export default function VerseCard({
       },
     ];
 
-    // No active word → plain render
-    if (!isActiveAudio || !activeWordOffset) {
-      return (
-        <Text
-          style={[
-            styles.verseText,
-            { fontSize, lineHeight, opacity: isActiveAudio ? 1 : 0.88 },
-          ]}
-        >
-          <Text style={numStyle}>
-            {verseNum}
+    // For RTL, verse number comes first in source so it renders on the
+    // rightmost side with writingDirection 'rtl' (LTR number at start of
+    // RTL paragraph → right side; Arabic text flows left from there).
+    const renderRtlContent = (children: React.ReactNode) => (
+      <Text
+        style={[
+          styles.verseText,
+          {
+            fontSize,
+            lineHeight,
+            opacity: isActiveAudio ? 1 : 0.88,
+            writingDirection: 'rtl' as const,
+          },
+        ]}
+      >
+        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}</Text>
+        {'  '}
+        {children}
+      </Text>
+    );
+
+    const renderLtrContent = (children: React.ReactNode) => (
+      <Text
+        style={[
+          styles.verseText,
+          { fontSize, lineHeight, opacity: isActiveAudio ? 1 : 0.88 },
+        ]}
+      >          <Text style={numStyle}>
+            {toArabicIndic(isRtl, verseNum)}
             {'  '}
           </Text>
-          {text}
-        </Text>
-      );
+          {children}
+      </Text>
+    );
+
+    const renderRtlWordContent = (
+      beforeContent: string,
+      wordContent: string,
+      afterContent: string,
+    ) => (
+      <Text style={[styles.verseText, { fontSize, lineHeight, opacity: 1, writingDirection: 'rtl' as const }]}>
+        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}</Text>
+        {'  '}
+        {beforeContent}
+        <Animated.Text
+          style={[
+            wordStyles.highlight,
+            {
+              backgroundColor: wordAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [
+                  'transparent',
+                  isActiveAudio ? 'rgba(255, 193, 7, 0.42)' : 'transparent',
+                ],
+              }),
+              transform: [
+                {
+                  scale: wordAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.05],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {wordContent}
+        </Animated.Text>
+        {afterContent}
+      </Text>
+    );
+
+    // No active word → plain render
+    if (!isActiveAudio || !activeWordOffset) {
+      return isRtl
+        ? renderRtlContent(text)
+        : renderLtrContent(text);
     }
 
     // Active word → split text into before / word / after
@@ -185,10 +248,14 @@ export default function VerseCard({
     const word = text.slice(safeStart, safeEnd);
     const after = text.slice(safeEnd);
 
+    if (isRtl) {
+      return renderRtlWordContent(before, word, after);
+    }
+
     return (
       <Text style={[styles.verseText, { fontSize, lineHeight, opacity: 1 }]}>
         <Text style={numStyle}>
-          {verseNum}
+          {toArabicIndic(isRtl, verseNum)}
           {'  '}
         </Text>
         {before}

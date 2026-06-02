@@ -10,6 +10,18 @@ const RTL_LANGUAGES: Language[] = ['ar', 'ur'];
 export const isRtlLanguage = (lang: Language): boolean =>
   RTL_LANGUAGES.includes(lang);
 
+/** Arabic-Indic digits used in Arabic and Urdu scripts. */
+const ARABIC_INDIC_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+
+/**
+ * Converts a number to Arabic-Indic numerals (٠ ١ ٢ ٣…) if the language is
+ * RTL (Arabic / Urdu). For LTR languages, returns the number unchanged.
+ */
+export const toArabicIndic = (isRtl: boolean, num: number | string): string => {
+  if (!isRtl) return String(num);
+  return String(num).replace(/[0-9]/g, d => ARABIC_INDIC_DIGITS[parseInt(d, 10)]);
+};
+
 /** Returns the corresponding Intl locale string for a Language code. */
 export const getLocale = (lang: Language): string => {
   const localeMap: Partial<Record<Language, string>> = {
