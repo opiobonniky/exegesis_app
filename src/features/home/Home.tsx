@@ -82,6 +82,8 @@ type DailyVerse = {
   translation: string;
   text: string;
   date: string;
+  explanation?: string | null;
+  learnMore?: string | null;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -288,6 +290,8 @@ export default function Home() {
           bookName: d.bookName,
           chapter: Number(d.chapter),
           verseNumber: Number(d.verseNumber),
+          explanation: d.explanation ?? null,
+          learnMore: d.learnMore ?? null,
         });
       }else {
         // showToast("warning", "No daily verse found for today");
@@ -319,6 +323,8 @@ export default function Home() {
           bookName: d.bookName,
           chapter: d.chapter,
           verseNumber: d.verseNumber,
+          explanation: d.explanation ?? null,
+          learnMore: d.learnMore ?? null,
         });
         setIsCustomDate(true);
         // Auto-play the selected verse
@@ -616,15 +622,21 @@ export default function Home() {
               {showExplanation && (
                 <View style={styles.explainSection}>
                   <Text style={styles.explainText}>
-                    {translation?.home?.explainIntro ||
-                      "This is one of the most famous and powerful verses in the Bible. It beautifully summarizes God's love and the plan of salvation through Jesus Christ."}
+                    {(isCustomDate && customDailyVerse
+                      ? customDailyVerse.explanation
+                      : dailyVerse?.explanation) ??
+                      (translation?.home?.explainIntro ||
+                        "This is one of the most famous and powerful verses in the Bible. It beautifully summarizes God's love and the plan of salvation through Jesus Christ.")}
                   </Text>
 
                   {showMore && (
                     <Text style={styles.explainText}>
-                      {translation?.home?.explainMoreFull ||
-                        translation?.home?.explainMore ||
-                        'God demonstrated His immense love by sending His only Son, Jesus Christ, to earth. Anyone who believes in Him receives forgiveness of sins and the gift of eternal life. This salvation is freely available to all people through faith alone — not by works, but by grace.'}
+                      {(isCustomDate && customDailyVerse
+                        ? customDailyVerse.learnMore
+                        : dailyVerse?.learnMore) ??
+                        (translation?.home?.explainMoreFull ||
+                          translation?.home?.explainMore ||
+                          'God demonstrated His immense love by sending His only Son, Jesus Christ, to earth. Anyone who believes in Him receives forgiveness of sins and the gift of eternal life. This salvation is freely available to all people through faith alone — not by works, but by grace.')}
                     </Text>
                   )}
 
