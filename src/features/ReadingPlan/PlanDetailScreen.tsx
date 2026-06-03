@@ -47,7 +47,9 @@ const CAL_CELL = Math.floor((SCREEN_W - SPACING.md * 2 - 32 - 6 * 4) / 7);
 // ─────────────────────────────────────────────────────────────────────────────
 interface Chapter {
   book: string;
-  chapter: number;
+  chapter?: number;
+  startChapter?: number;
+  endChapter?: number;
 }
 
 interface QuizQuestion {
@@ -501,13 +503,15 @@ export default function PlanDetailScreen() {
       if (res?.returnCode === 200 && Array.isArray(res.returnData)) {
         setAssignments(
           res.returnData
-            .filter((r: any) => typeof r?.day === 'number')
+            .filter((r: any) => typeof r?.dayNumber === 'number' || typeof r?.day === 'number')
             .map((r: any) => ({
-              day: r.day,
+              day: r.day ?? r.dayNumber,
               title: r.title || '',
-              chapters: r.chapters || [],
+              chapters: r.chapters ?? [],
               completed: r.completed || false,
-              reflectionQuestions: r.reflectionQuestions || [],
+              reflectionQuestions: Array.isArray(r.reflectionQuestions)
+                ? r.reflectionQuestions
+                : [],
               quizQuestions: r.quizQuestions || [],
             })),
         );
@@ -558,14 +562,12 @@ export default function PlanDetailScreen() {
 
   const calData = useMemo(
     () =>
-      planDetail?.start_date
-        ? buildCalCells(
-            planDetail.start_date,
-            planDetail.total_days,
-            completedSet,
-            today,
-          )
-        : null,
+      buildCalCells(
+        planDetail?.start_date ?? new Date().toISOString(),
+        planDetail?.total_days ?? 0,
+        completedSet,
+        today,
+      ),
     [planDetail, completedSet, today],
   );
 
@@ -694,7 +696,7 @@ export default function PlanDetailScreen() {
           </View>
           <Text style={{ fontSize: 11, color: P.textMuted, textAlign: isRtl ? 'right' : 'left' }} numberOfLines={1}>
             {(a?.chapters ?? [])
-              .map(ch => `${ch.book} ${ch.chapter}`)
+              .map(ch => `${ch.book} ${(ch.startChapter ?? ch.chapter)}`)
               .join(' · ')}
           </Text>
         </View>
@@ -730,7 +732,7 @@ export default function PlanDetailScreen() {
   // TAB: Calendar
   // ─────────────────────────────────────────────────────────────────────
   const renderCalendar = () => {
-    if (!calData) return null;
+    if (!calData || !planDetail) return null;
     const { cells, year, month } = calData;
     const weeks: (CalCell | null)[][] = [];
     for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
@@ -981,10 +983,10 @@ export default function PlanDetailScreen() {
             >
               <Text style={{ fontSize: 11, color: P.textSub }}>
                 {(rp?.planDetailStarted || 'Started') + ' '}
-                {fmt(planDetail.start_date!, {
+                {planDetail.start_date ? fmt(planDetail.start_date, {
                   month: 'short',
                   day: 'numeric',
-                })}
+                }) : '—'}
               </Text>
               <Text style={{ fontSize: 11, fontWeight: '700', color: P.goldL }}>
                 {pct}%
@@ -1059,7 +1061,7 @@ export default function PlanDetailScreen() {
                     lineHeight: 16,
                   }}
                 >
-                  {planDetail.streak}
+                  {planDetail.streak ?? 0}
                 </Text>
                 <Text
                   style={{ fontSize: 9, color: P.gold, letterSpacing: 0.5 }}
@@ -1104,7 +1106,7 @@ export default function PlanDetailScreen() {
             </View>
           ) : (
             assignments.map((a, idx) => {
-              const planDate = new Date(planDetail.start_date!);
+              const planDate = new Date(planDetail.start_date ?? new Date().toISOString());
               planDate.setDate(planDate.getDate() + a.day - 1);
               const isLast = idx === assignments.length - 1;
               const isDone = completedSet.has(a.day);
@@ -1255,7 +1257,7 @@ export default function PlanDetailScreen() {
                       numberOfLines={1}
                     >
                       {(a.chapters ?? [])
-                        .map(ch => `${ch.book} ${ch.chapter}`)
+                        .map(ch => `${ch.book} ${(ch.startChapter ?? ch.chapter)}`)
                         .join(' · ')}
                     </Text>
                     {isDone && qTotal > 0 && (
@@ -1305,11 +1307,11 @@ export default function PlanDetailScreen() {
     const activityData = [
       {
         label: rp?.planDetailStarted || 'Started',
-        value: fmt(planDetail.start_date!, {
+        value: planDetail.start_date ? fmt(planDetail.start_date, {
           month: 'long',
           day: 'numeric',
           year: 'numeric',
-        }),
+        }) : '—',
       },
       {
         label: rp?.planDetailDaysElapsed || 'Days Elapsed',
@@ -1385,7 +1387,7 @@ export default function PlanDetailScreen() {
                 },
                 {
                   label: rp?.planDetailStreak || 'Streak',
-                  value: `🔥 ${planDetail.streak} ${rp?.planDetailDaysLabel || 'day'}${planDetail.streak !== 1 ? 's' : ''}`,
+                  value: `🔥 ${planDetail.streak ?? 0} ${rp?.planDetailDaysLabel || 'day'}${(planDetail.streak ?? 0) !== 1 ? 's' : ''}`,
                   color: '#D8B4FE',
                 },
               ].map((row, i, arr) => (
@@ -1714,7 +1716,7 @@ export default function PlanDetailScreen() {
                         color: P.goldL,
                       }}
                     >
-                      {ch.book} {ch.chapter}
+                      {ch.book} {(ch.startChapter ?? ch.chapter)}
                     </Text>
                   </View>
                 ))}
@@ -1859,7 +1861,7 @@ export default function PlanDetailScreen() {
   // Root render
   // ─────────────────────────────────────────────────────────────────────
   const TABS: { key: TabKey; label: string; Icon: any }[] = [
-    { key: 'list', label: rp?.planDetailDays || 'Days', Icon: List },
+    { key: 'list', label: (rp?.planDetailDays || '{count} Days').replace('{count}', String(total)), Icon: List },
     { key: 'calendar', label: rp?.planDetailCalendar || 'Calendar', Icon: CalendarDays },
     { key: 'stats', label: rp?.planDetailStats || 'Stats', Icon: BarChart2 },
   ];
@@ -1898,8 +1900,8 @@ export default function PlanDetailScreen() {
 
         <View style={[S.chipsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           {[
-            { num: `${completedDays.length}/${total}`, label: 'Days Done' },
-            { num: `🔥 ${planDetail.streak}`, label: rp?.planDetailStreak || 'Streak' },
+            { num: `${completedDays.length}/${total}`, label: rp?.planDetailDone || 'Days Done' },
+            { num: `🔥 ${planDetail.streak ?? 0}`, label: rp?.planDetailStreak || 'Streak' },
             {
               num: `${Math.round(planDetail.quiz_accuracy_percentage)}%`,
               label: rp?.planDetailQuiz || 'Quiz',
