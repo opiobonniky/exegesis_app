@@ -21,6 +21,7 @@ import {
   BookOpen,
   ChevronDown,
   ChevronUp,
+  Plus,
 } from 'lucide-react-native';
 import { sendPostRequest } from '../../services/api';
 import { getVerseText } from '../../utilits/bibleUtils';
@@ -28,6 +29,7 @@ import { getVersionById } from '../../assets/bibleVersion/json/bibleVersions';
 import ActionHeader from '../../reusable/ActionHeader';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useLanguage } from '../../component/language-translation/LanguageProvider';
+import { route } from '../../component/navigations/routes';
 
 type DailyVerse = {
   id: number;
@@ -133,7 +135,15 @@ function DevotionBody({
 export default function DailyDevotionalScreen() {
   const { translations } = useLanguage();
   const app = useContext(AppContext);
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate(route.home);
+    }
+  };
 
   const [loading, setLoading] = useState(true);
   const [devotion, setDevotion] = useState<DailyVerse | null>(null);
@@ -493,10 +503,33 @@ export default function DailyDevotionalScreen() {
   const headerTitle =
     scrollOffset > 50 && sectionTitle ? sectionTitle : getGreeting();
 
+  const adminAddBtn = app.isAdmin ? (
+    <TouchableOpacity
+      onPress={() => navigation.navigate('AddDailyDevotion')}
+      activeOpacity={0.7}
+      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+    >
+      <View
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: COLORS.primary + '20',
+          borderWidth: 1,
+          borderColor: COLORS.primary + '30',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Plus size={18} color={COLORS.primary} strokeWidth={2.5} />
+      </View>
+    </TouchableOpacity>
+  ) : undefined;
+
   return (
     // ── Outer View keeps ActionHeader fixed ──
     <View style={s.outer}>
-      <ActionHeader title={headerTitle} onPress={() => navigation.goBack()} />
+      <ActionHeader title={headerTitle} onPress={goBack} rightComponent={adminAddBtn} />
 
       {/* Only this ScrollView scrolls */}
       <ScrollView

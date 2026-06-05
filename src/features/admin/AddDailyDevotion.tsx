@@ -22,7 +22,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { addDailyDevotion, DailyDevotion } from '../../services/adminApi';
-import { getColors } from '../../constants/theme';
+import { getColors, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import {
   ChevronLeft,
@@ -81,6 +81,8 @@ const getTheme = (isDark: boolean) => {
     success: colors.success,
   };
 };
+
+const isIOS = Platform.OS === 'ios';
 
 const AddDailyDevotion: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -450,7 +452,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>, isRtl: boolean) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 16,
-      paddingVertical: 16,
+      paddingVertical: 4,
       borderBottomWidth: 1,
     },
     backBtn: {

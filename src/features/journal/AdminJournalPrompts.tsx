@@ -15,6 +15,7 @@ import {
   TextInput,
   Modal,
   Switch,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
@@ -82,6 +83,8 @@ const BOOKS = [
   'Hebrews', 'James', '1 Peter', '2 Peter',
   '1 John', '2 John', '3 John', 'Jude', 'Revelation',
 ];
+
+const isIOS = Platform.OS === 'ios';
 
 const AdminJournalPrompts = () => {
   const navigation = useNavigation<any>();
@@ -269,7 +272,7 @@ const AdminJournalPrompts = () => {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: COLORS.background }]}>
+    <View style={[styles.container, { backgroundColor: COLORS.background },{paddingTop: isIOS ? SPACING.xxxl : 0}]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: COLORS.surface, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }}>

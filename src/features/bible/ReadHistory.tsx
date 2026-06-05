@@ -57,7 +57,7 @@ const PAGE_SIZE = 10;
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-const formatDateHeader = (dateKey: string, bc?: any) => {
+const formatDateHeader = (dateKey: string, bc?: any, locale: string = 'en') => {
   const date = new Date(dateKey);
   const now = new Date();
   const yest = new Date();
@@ -67,9 +67,9 @@ const formatDateHeader = (dateKey: string, bc?: any) => {
   if (date.toDateString() === yest.toDateString()) return bc?.yesterday || 'Yesterday';
 
   const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
-  if (diffDays < 7) return date.toLocaleDateString([], { weekday: 'long' });
+  if (diffDays < 7) return date.toLocaleDateString(locale, { weekday: 'long' });
 
-  return date.toLocaleDateString([], {
+  return date.toLocaleDateString(locale, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
@@ -414,7 +414,7 @@ export default function ReadHistory() {
   // ── render row ────────────────────────────────────────────────────────────
   const renderRow = ({ item: row }: { item: ListRow }) => {
     if (row.type === 'header') {
-      return <Text style={S.dateTitle}>{formatDateHeader(row.dateKey, bc)}</Text>;
+      return <Text style={S.dateTitle}>{formatDateHeader(row.dateKey, bc, language)}</Text>;
     }
 
     const { item } = row;
@@ -433,7 +433,7 @@ export default function ReadHistory() {
         >
           <View style={S.cardHeader}>
             <Text style={S.bookText}>{item.bookName}</Text>
-            <Text style={S.timeText}>{formatWhatsAppTime(item.readAt)}</Text>
+            <Text style={S.timeText}>{formatWhatsAppTime(item.readAt, language)}</Text>
           </View>
           <Text style={S.chapterText}>
             {bc?.chapter || 'Chapter'} {item.chapter}

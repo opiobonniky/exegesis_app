@@ -257,9 +257,10 @@ export default function Home() {
   // ── Data Fetching ─────────────────────────────────────────────────────────
   const formatActivityTime = (act: any): string => {
     try {
+      if (act.formattedTime) return act.formattedTime;
       const timeVal = act.time;
       if (!timeVal || typeof timeVal !== 'object') {
-        if (typeof timeVal === 'string') return formatWhatsAppTime(timeVal);
+        if (typeof timeVal === 'string') return formatWhatsAppTime(timeVal, language);
         return translation?.home?.recentLabel || 'Recent';
       }
       const timeStr = timeVal.createdOn || timeVal.updatedOn;
@@ -267,7 +268,7 @@ export default function Home() {
       const time = new Date(timeStr);
       if (isNaN(time.getTime()))
         return translation?.home?.recentLabel || 'Recent';
-      return formatWhatsAppTime(timeStr);
+      return formatWhatsAppTime(timeStr, language);
     } catch {
       return translation?.home?.recentLabel || 'Recent';
     }

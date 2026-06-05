@@ -173,6 +173,7 @@ export interface JournalTemplate {
   isActive: boolean;
   isDefault: boolean;
   createdOn: string;
+  prompts: JournalPrompt[]; // This will be populated on the client side after fetching promptsJson
 }
 
 export interface JournalStats {

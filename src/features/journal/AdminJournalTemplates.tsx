@@ -10,6 +10,7 @@ import {
   Modal,
   Switch,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
@@ -54,6 +55,9 @@ const getCategoryLabel = (value: string, jc: any): string => {
   };
   return labels[value] || value;
 };
+
+
+const isIOS = Platform.OS === 'ios';
 
 const AdminJournalTemplates = () => {
   const navigation = useNavigation<any>();
@@ -122,7 +126,7 @@ const AdminJournalTemplates = () => {
 
     setSaving(true);
     try {
-      const data = {
+      const data:any = {
         name: templateName.trim(),
         description: templateDescription.trim() || undefined,
         category: templateCategory,
@@ -236,7 +240,7 @@ const AdminJournalTemplates = () => {
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: COLORS.surface, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+      <View style={[styles.header, { backgroundColor: COLORS.surface, flexDirection: isRtl ? 'row-reverse' : 'row' },{paddingTop: isIOS ? 1.2*SPACING.xxxl : 10}]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }}>
           {isRtl ? <ChevronRight size={20} color={COLORS.primary} /> : <ChevronLeft size={20} color={COLORS.primary} />}
           <Text style={[styles.backText, { color: COLORS.primary }]}>{jc?.backLabel || 'Back'}</Text>

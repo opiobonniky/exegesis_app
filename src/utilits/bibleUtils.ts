@@ -299,7 +299,7 @@ export const searchVersesIndexed = (
 /*  Date / time helpers (unchanged)                                    */
 /* ------------------------------------------------------------------ */
 
-export const formatWhatsAppTime = (dateString: string): string => {
+export const formatWhatsAppTime = (dateString: string, locale: string = 'en'): string => {
   const date = new Date(dateString);
   const now = new Date();
 
@@ -317,13 +317,24 @@ export const formatWhatsAppTime = (dateString: string): string => {
     date.getFullYear() === yesterday.getFullYear();
 
   if (isToday)
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (isYesterday) return 'Yesterday';
+    return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+
+  if (isYesterday) {
+    try {
+      if (typeof Intl !== 'undefined' && typeof Intl.RelativeTimeFormat !== 'undefined') {
+        return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-1, 'day');
+      }
+    } catch {
+      // Intl.RelativeTimeFormat not supported — fall through
+    }
+    // Fallback: show localized weekday name (e.g. "Mercredi", "Mittwoch")
+    return date.toLocaleDateString(locale, { weekday: 'long' });
+  }
 
   const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
-  if (diffDays < 7) return date.toLocaleDateString([], { weekday: 'short' });
+  if (diffDays < 7) return date.toLocaleDateString(locale, { weekday: 'short' });
 
-  return date.toLocaleDateString([], {
+  return date.toLocaleDateString(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
