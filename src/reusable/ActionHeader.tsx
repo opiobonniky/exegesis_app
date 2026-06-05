@@ -8,11 +8,12 @@ import {
   Animated,
   Image,
 } from 'react-native';
-import React, { useContext, useEffect, useRef } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { FONT_SIZES, getColors, SPACING } from '../constants/theme';
 import LinearGradient from 'react-native-linear-gradient';
 import { ChevronLeft, ChevronRight, Moon, Sun, User, BookOpen } from 'lucide-react-native';
 import { useLanguage, isRtlLanguage } from '../component/language-translation/LanguageProvider';
+import { useTranslation } from '../hooks/useTranslation';
 import { AppContext } from '../common/AppContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -65,8 +66,17 @@ const DEFAULT_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) 
 const LogoLockup = ({ compact = false, appName, tagline }: { compact?: boolean; appName?: string; tagline?: string }) => {
   const { translations, language } = useLanguage();
   const rtl = language === 'ar';
+  const [translatedAppName, setTranslatedAppName] = useState('');
 
-  // Emblem: gradient circle with a book icon for a cleaner, modern look.
+  useEffect(() => {
+    const name = appName || 'Exegesis';
+    if (language !== 'en') {
+      useTranslation(name).then(setTranslatedAppName).catch(() => setTranslatedAppName(name));
+    } else {
+      setTranslatedAppName(name);
+    }
+  }, [appName, language]);
+
   return (
     <View style={[logo.wrap, rtl && logo.wrapRtl]}>
       <LinearGradient
@@ -85,7 +95,7 @@ const LogoLockup = ({ compact = false, appName, tagline }: { compact?: boolean; 
             compact && { fontSize: 14, lineHeight: 18 },
           ]}
         >
-          {appName || 'Exegesis'}
+          {translatedAppName || appName || 'Exegesis'}
         </Text>
         <Text style={[logo.tagline, compact && { fontSize: 10 }]}> 
           {tagline || translations.appTagline || 'Your Daily Spiritual Companion'}

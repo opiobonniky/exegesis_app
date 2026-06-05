@@ -68,11 +68,35 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
 
   const translate = (key: string) => {
     const value = resolve(translationsMap[language], key);
-    return value ?? key;
+    if (value !== undefined) return value;
+    const fallback = resolve(translationsMap['en'], key);
+    return fallback ?? key;
   };
 
   // expose the full translation object for dot‑notation access
-  const translations = (translationsMap[language] || {}) as Translations;
+  // deepMerge: selected language first (source), then English as fallback
+  const deepMerge = (target: any, source: any): any => {
+    const result = { ...target };
+    for (const key of Object.keys(source)) {
+      if (
+        source[key] !== null &&
+        typeof source[key] === 'object' &&
+        !Array.isArray(source[key])
+      ) {
+        result[key] = deepMerge(
+          target[key] !== undefined ? target[key] : {},
+          source[key],
+        );
+      } else if (result[key] === undefined || result[key] === '') {
+        result[key] = source[key];
+      }
+    }
+    return result;
+  };
+  const translations = deepMerge(
+    translationsMap[language] || {},
+    translationsMap['en'],
+  ) as Translations;
 
   // create a callable translator that also contains the nested props
   const t = Object.assign(

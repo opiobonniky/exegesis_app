@@ -1103,6 +1103,15 @@ export type AdminTranslations = {
   planFormTotalDaysLabel?: string;
   planFormCategoryLabel?: string;
   planFormDifficultyLabel?: string;
+  planCategoryIntro?: string;
+  planCategoryWholeBible?: string;
+  planCategoryNT?: string;
+  planCategoryOT?: string;
+  planCategorySingleBook?: string;
+  planCategoryTopical?: string;
+  planDifficultyEasy?: string;
+  planDifficultyMedium?: string;
+  planDifficultyHard?: string;
   planFormQuizLabel?: string;
   planFormQuizSubLabel?: string;
   planFormDayTitleLabel?: string;

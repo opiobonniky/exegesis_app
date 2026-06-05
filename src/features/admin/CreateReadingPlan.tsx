@@ -95,19 +95,19 @@ const BIBLE_BOOKS = [
   'Jude', 'Revelation',
 ];
 
-const CATEGORIES = [
-  { value: 'intro', label: 'Introduction' },
-  { value: 'whole-bible', label: 'Whole Bible' },
-  { value: 'nt', label: 'New Testament' },
-  { value: 'ot', label: 'Old Testament' },
-  { value: 'book', label: 'Single Book' },
-  { value: 'topical', label: 'Topical' },
+const getCategories = (t: any) => [
+  { value: 'intro', label: t('admin.planCategoryIntro') || 'Introduction' },
+  { value: 'whole-bible', label: t('admin.planCategoryWholeBible') || 'Whole Bible' },
+  { value: 'nt', label: t('admin.planCategoryNT') || 'New Testament' },
+  { value: 'ot', label: t('admin.planCategoryOT') || 'Old Testament' },
+  { value: 'book', label: t('admin.planCategorySingleBook') || 'Single Book' },
+  { value: 'topical', label: t('admin.planCategoryTopical') || 'Topical' },
 ];
 
-const DIFFICULTIES = [
-  { value: 'easy', label: 'Easy' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'hard', label: 'Hard' },
+const getDifficulties = (t: any) => [
+  { value: 'easy', label: t('readingPlan.bpDifficultyEasy') || t('admin.planDifficultyEasy') || 'Easy' },
+  { value: 'medium', label: t('readingPlan.bpDifficultyMedium') || t('admin.planDifficultyMedium') || 'Medium' },
+  { value: 'hard', label: t('readingPlan.bpDifficultyHard') || t('admin.planDifficultyHard') || 'Hard' },
 ];
 
 const STEPS = [
@@ -157,7 +157,7 @@ const CreateReadingPlan: React.FC = () => {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
-  const { language, translations } = useLanguage();
+  const { language, translations, t } = useLanguage();
   const isRtl = isRtlLanguage(language);
   const theme = getTheme(isDark);
   const ac = translations?.admin;
@@ -423,7 +423,7 @@ const CreateReadingPlan: React.FC = () => {
         <View style={styles.inputGroup}>
           <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormCategoryLabel || 'Category'}</Text>
           <View style={[styles.optionsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-            {CATEGORIES.map(cat => (
+            {getCategories(t).map(cat => (
               <TouchableOpacity
                 key={cat.value}
                 style={[
@@ -453,7 +453,7 @@ const CreateReadingPlan: React.FC = () => {
         <View style={styles.inputGroup}>
           <Text style={[styles.label, isRtl && { textAlign: 'right' }]}>{ac?.planFormDifficultyLabel || 'Difficulty'}</Text>
           <View style={[styles.optionsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-            {DIFFICULTIES.map(diff => (
+            {getDifficulties(t).map(diff => (
               <TouchableOpacity
                 key={diff.value}
                 style={[
@@ -824,7 +824,7 @@ const CreateReadingPlan: React.FC = () => {
         <View style={[styles.reviewBadges, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <Text style={styles.reviewBadge}>{meta.totalDays} days</Text>
           <Text style={styles.reviewBadge}>
-            {CATEGORIES.find(c => c.value === meta.category)?.label}
+            {getCategories(t).find(c => c.value === meta.category)?.label}
           </Text>
           <Text style={styles.reviewBadge}>{meta.difficulty}</Text>
           {meta.questionsEnabled && (

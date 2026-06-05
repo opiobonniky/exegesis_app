@@ -56,6 +56,7 @@ import { createStyles } from './homeStyle';
 import { bibleTTS } from '../../utilits/bibleTTS';
 import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import { showToast } from '../../helpers/Toash.helper';
+import { useTranslation } from '../../hooks/useTranslation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ActivityType = 'read' | 'highlight' | 'note' | 'favorite' | 'plan';
@@ -144,11 +145,14 @@ export default function Home() {
   const [isCustomDate, setIsCustomDate] = useState(false);
   const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
   const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const [translatedVerseText, setTranslatedVerseText] = useState('');
+  const [translatedReference, setTranslatedReference] = useState('');
   const sharingRef = useRef(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
   const tabBarAnimation = useRef(new Animated.Value(1)).current;
+
 
   const { language, translations: translation } = useLanguage();
   const isRtl = isRtlLanguage(language);
@@ -270,7 +274,6 @@ export default function Home() {
   };
 
   const loadDailyVerse = useCallback(async () => {
-    // Reset custom date when loading today's verse
     setIsCustomDate(false);
     setSelectedDate('');
     setCustomDailyVerse(null);
@@ -279,13 +282,12 @@ export default function Home() {
       const res = await sendPostRequest('bible', 'get-todays-verse', {});
       if (res.returnCode === 200 && res.returnData) {
         const d = res.returnData;
+        const verseText = d.text ?? '';
+        const ref = `${d.bookName} ${d.chapter}:${d.verseNumber}`;
         setDailyVerse({
-          reference:
-            (d.reference ?? d.bookName)
-              ? `${d.bookName} ${d.chapter}:${d.verseNumber}`
-              : 'John 3:16',
+          reference: ref,
           translation: d.translation ?? 'NKJV',
-          text: d.text ?? '',
+          text: verseText,
           date: getTodayLabel(),
           bookName: d.bookName,
           chapter: Number(d.chapter),
@@ -293,15 +295,27 @@ export default function Home() {
           explanation: d.explanation ?? null,
           learnMore: d.learnMore ?? null,
         });
-      }else {
-        // showToast("warning", "No daily verse found for today");
+        if (verseText && language !== 'en') {
+          const [translated, translatedRef] = await Promise.all([
+            useTranslation(verseText),
+            useTranslation(ref),
+          ]);
+          setTranslatedVerseText(translated);
+          setTranslatedReference(translatedRef);
+        } else {
+          setTranslatedVerseText(verseText);
+          setTranslatedReference(ref);
+        }
+      } else {
+        setTranslatedVerseText('');
+        setTranslatedReference('');
       }
     } catch (e) {
       console.error('Error loading daily verse:', e);
     } finally {
       setVerseLoading(false);
     }
-  }, []);
+  }, [language]);
 
   const loadVerseByDate = useCallback(async (dateStr: string) => {
     setCustomDateLoading(true);
@@ -312,13 +326,12 @@ export default function Home() {
       console.log('Verse by date response:', JSON.stringify(res));
       if (res.returnCode === 200 && res.returnData) {
         const d = res.returnData;
+        const verseText = d.text ?? '';
+        const ref = `${d.bookName} ${d.chapter}:${d.verseNumber}`;
         setCustomDailyVerse({
-          reference:
-            (d.reference ?? d.bookName)
-              ? `${d.bookName} ${d.chapter}:${d.verseNumber}`
-              : 'John 3:16',
+          reference: ref,
           translation: d.translation ?? 'NKJV',
-          text: d.text ?? '',
+          text: verseText,
           date: dateStr,
           bookName: d.bookName,
           chapter: d.chapter,
@@ -327,12 +340,20 @@ export default function Home() {
           learnMore: d.learnMore ?? null,
         });
         setIsCustomDate(true);
-        // Auto-play the selected verse
-        if (d.text) {
-          bibleTTS.speak(
-            d.text,
-            d.reference ?? `${d.bookName} ${d.chapter}:${d.verseNumber}`,
-          );
+        if (verseText && language !== 'en') {
+          const [translated, translatedRef] = await Promise.all([
+            useTranslation(verseText),
+            useTranslation(ref),
+          ]);
+          setTranslatedVerseText(translated);
+          setTranslatedReference(translatedRef);
+          bibleTTS.speak(translated, translatedRef);
+        } else {
+          setTranslatedVerseText(verseText);
+          setTranslatedReference(ref);
+          if (d.text) {
+            bibleTTS.speak(d.text, ref);
+          }
         }
       } else {
         showToast("warning", "No verse found for the selected date");
@@ -344,13 +365,14 @@ export default function Home() {
     } finally {
       setCustomDateLoading(false);
     }
-  }, []);
+  }, [language]);
 
   const loadHomeStats = useCallback(async () => {
     try {
       const [statsRes, activityRes] = await Promise.all([
         sendPostRequest('bible', 'get-home-stats', {}),
         sendPostRequest('bible', 'get-recent-activity', { limit: 10 }),
+        
       ]);
 
       if (statsRes.returnCode === 200) {
@@ -569,9 +591,7 @@ export default function Home() {
                   ) : null}
                   <BookMarked size={14} color={COLORS.primary} />
                   <Text style={styles.verseRefText}>
-                    {isCustomDate && customDailyVerse
-                      ? customDailyVerse.reference
-                      : (dailyVerse?.reference ?? 'John 3:16')}{' '}
+                    {translatedReference || 'John 3:16'}{' '}
                     <Text style={styles.verseTranslation}>
                       (
                       {isCustomDate && customDailyVerse
@@ -594,7 +614,7 @@ export default function Home() {
                         ? customDailyVerse
                         : dailyVerse;
                     if (verse?.text) {
-                      bibleTTS.speak(verse.text, verse.reference);
+                      bibleTTS.speak(verse.text, translatedReference || verse.reference);
                     }
                   }}
                 >
@@ -610,12 +630,7 @@ export default function Home() {
               </View>
 
               <Text style={styles.verseBodyText}>
-                {isCustomDate && customDailyVerse
-                  ? customDailyVerse.text || getVerseText('John', 3, 16)
-                  : dailyVerse?.text &&
-                      String(dailyVerse.text).trim().length > 0
-                    ? dailyVerse.text
-                    : getVerseText('John', 3, 16)}
+                {translatedVerseText || getVerseText('John', 3, 16)}
               </Text>
 
               {/* Explanation Section */}

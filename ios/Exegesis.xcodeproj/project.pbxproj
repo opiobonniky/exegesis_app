@@ -294,7 +294,8 @@
 				DEVELOPMENT_TEAM = R64F9DSWBG;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Exegesis/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Exegesis";
+				INFOPLIST_KEY_CFBundleDisplayName = Exegesis;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -324,7 +325,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = R64F9DSWBG;
 				INFOPLIST_FILE = Exegesis/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Exegesis";
+				INFOPLIST_KEY_CFBundleDisplayName = Exegesis;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
