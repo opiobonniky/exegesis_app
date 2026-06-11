@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -22,15 +22,27 @@ import {
 } from 'lucide-react-native';
 import {
   getColors,
-  FONT_SIZES,
-  BORDER_RADIUS,
-  SPACING,
 } from '../../../constants/theme';
 import { SelectionActionBarProps } from '../types';
 import VerseRangeSlider from '../modals/VerseRangeSlider';
 import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 
-const PANEL_WIDTH = 270;
+const PANEL_WIDTH = 290;
+
+type ActionItem = {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  onPress: () => void;
+  isPrimary?: boolean;
+  section: 'actions' | 'tools' | 'share';
+};
+
+const SECTION_ORDER: Record<string, { label: string; order: number }> = {
+  actions: { label: 'Actions', order: 0 },
+  tools: { label: 'Tools', order: 1 },
+  share: { label: 'Share & Export', order: 2 },
+};
 
 function ActionButton({
   label,
@@ -45,23 +57,18 @@ function ActionButton({
   isPrimary?: boolean;
   COLORS: any;
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const bgAnim = useRef(new Animated.Value(0)).current;
 
   const handlePressIn = () =>
-    Animated.spring(scale, {
-      toValue: 0.92,
-      useNativeDriver: true,
-      speed: 50,
-      bounciness: 4,
-    }).start();
+    Animated.timing(bgAnim, { toValue: 1, duration: 120, useNativeDriver: false }).start();
 
   const handlePressOut = () =>
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 30,
-      bounciness: 8,
-    }).start();
+    Animated.timing(bgAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
+
+  const bgColor = bgAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(255,255,255,0)', 'rgba(255,255,255,0.12)'],
+  });
 
   return (
     <TouchableOpacity
@@ -70,20 +77,18 @@ function ActionButton({
       onPressOut={handlePressOut}
       activeOpacity={1}
     >
-      <Animated.View
-        style={[localStyles.actionRow, { transform: [{ scale }] }]}
-      >
+      <Animated.View style={[localStyles.actionRow, { backgroundColor: bgColor }]}>
         <View
           style={[
             localStyles.actionIcon,
             isPrimary
               ? {
                   backgroundColor: COLORS.white,
-                  borderColor: 'rgba(255,255,255,0.6)',
+                  borderColor: 'rgba(255,255,255,0.5)',
                 }
               : {
-                  backgroundColor: 'rgba(255,255,255,0.15)',
-                  borderColor: 'rgba(255,255,255,0.25)',
+                  backgroundColor: 'rgba(255,255,255,0.12)',
+                  borderColor: 'rgba(255,255,255,0.18)',
                 },
           ]}
         >
@@ -92,7 +97,7 @@ function ActionButton({
         <Text
           style={[
             localStyles.actionLabel,
-            { color: isPrimary ? COLORS.white : 'rgba(255,255,255,0.85)' },
+            { color: isPrimary ? COLORS.white : 'rgba(255,255,255,0.88)' },
           ]}
           numberOfLines={1}
         >
@@ -130,43 +135,60 @@ export default function SelectionActionBar({
   const endVerse = sortedVerses[sortedVerses.length - 1] ?? 1;
 
   const slideAnim = useRef(new Animated.Value(PANEL_WIDTH)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+
   React.useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      speed: 18,
-      bounciness: 6,
-    }).start();
+    Animated.parallel([
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        speed: 18,
+        bounciness: 6,
+      }),
+      Animated.timing(backdropOpacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
   const { translations } = useLanguage();
   const bc = translations?.bible;
 
-  const actions: any[] = [
+  const dismiss = useCallback(() => {
+    onClear?.();
+  }, [onClear]);
+
+  const actions: ActionItem[] = [
     {
       key: 'listen',
       label: bc?.listen || 'Listen',
       icon: <Headphones size={18} color={COLORS.primary} strokeWidth={2} />,
-      onPress: onListen,
+      onPress: () => { onListen?.(); dismiss(); },
       isPrimary: true,
+      section: 'actions',
     },
     {
       key: 'journal',
       label: bc?.journal || 'Journal',
       icon: <BookText size={18} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
-      onPress: onJournal,
+      onPress: () => { onJournal?.(); dismiss(); },
+      section: 'actions',
     },
     {
       key: 'explain',
       label: bc?.explain || 'Explain',
       icon: <Lightbulb size={18} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
-      onPress: onExplain,
+      onPress: () => { onExplain?.(); dismiss(); },
+      section: 'actions',
     },
     {
       key: 'highlight',
       label: bc?.highlight || 'Highlight',
       icon: <Edit3 size={18} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
-      onPress: onHighlight,
+      onPress: () => { onHighlight?.(); dismiss(); },
+      section: 'tools',
     },
     {
       key: 'note',
@@ -174,36 +196,59 @@ export default function SelectionActionBar({
       icon: (
         <FileText size={18} color="rgba(255,255,255,0.9)" strokeWidth={2} />
       ),
-      onPress: onNote,
+      onPress: () => { onNote?.(); dismiss(); },
+      section: 'tools',
     },
     {
       key: 'favorite',
       label: bc?.favorite || 'Favorite',
       icon: <Star size={18} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
-      onPress: onFavorite,
+      onPress: () => { onFavorite?.(); dismiss(); },
+      section: 'tools',
     },
     {
       key: 'share',
       label: bc?.share || 'Share',
       icon: <Share2 size={18} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
-      onPress: onShare,
+      onPress: () => { onShare?.(); dismiss(); },
+      section: 'share',
     },
     {
       key: 'copy',
       label: bc?.copy || 'Copy',
       icon: <Copy size={18} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
-      onPress: onCopy,
+      onPress: () => { onCopy?.(); dismiss(); },
+      section: 'share',
     },
-  ].filter((action): action is any => action !== null);
+  ];
+
+  const groupedActions = useMemo(() => {
+    const groups: { section: string; items: ActionItem[] }[] = [];
+    const seen = new Set<string>();
+    for (const a of actions) {
+      if (!seen.has(a.section)) {
+        seen.add(a.section);
+        groups.push({ section: a.section, items: [a] });
+      } else {
+        groups[groups.length - 1].items.push(a);
+      }
+    }
+    return groups;
+  }, [actions]);
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {/* Backdrop */}
-      <TouchableOpacity
-        style={StyleSheet.absoluteFill}
-        activeOpacity={1}
-        onPress={onClear}
-      />
+      {/* Animated backdrop */}
+      <Animated.View
+        style={[localStyles.backdrop, { opacity: backdropOpacity }]}
+      >
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={onClear}
+        />
+      </Animated.View>
+
       <Animated.View
         style={[
           localStyles.container,
@@ -216,29 +261,28 @@ export default function SelectionActionBar({
         {/* Header */}
         <View style={[localStyles.header, isRtl && localStyles.headerRtl]}>
           <View style={[localStyles.headerLeft, isRtl && localStyles.headerLeftRtl]}>
-            <View style={[localStyles.bookIconWrap, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+            <View style={[localStyles.bookIconWrap, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
               <BookOpen size={13} color={COLORS.white} strokeWidth={2.5} />
             </View>
-            <Text style={[localStyles.countText, { color: COLORS.white }]}>
-              {selectedCount}{' '}
-              <Text style={localStyles.countSuffix}>
-                {selectedCount === 1
-                  ? bc?.verseSelected || 'verse selected'
-                  : bc?.versesSelected || 'verses selected'}
+            <View style={localStyles.headerTextGroup}>
+              <Text style={[localStyles.countText, { color: COLORS.white }]}>
+                {selectedCount}{' '}
+                <Text style={localStyles.countSuffix}>
+                  {selectedCount === 1
+                    ? bc?.verseSelected || 'verse selected'
+                    : bc?.versesSelected || 'verses selected'}
+                </Text>
               </Text>
-            </Text>
+            </View>
           </View>
           <TouchableOpacity
             onPress={onClear}
-            style={[localStyles.closeBtn, { backgroundColor: 'rgba(255,255,255,0.18)' }]}
+            style={[localStyles.closeBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <X size={14} color={COLORS.white} strokeWidth={2.5} />
+            <X size={15} color={COLORS.white} strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
-
-        {/* Divider */}
-        <View style={[localStyles.divider, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
 
         {/* Verse Range Slider */}
         {totalVerses > 1 && (
@@ -254,25 +298,28 @@ export default function SelectionActionBar({
           </View>
         )}
 
-        {/* Actions list */}
+        {/* Action groups */}
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={localStyles.scrollContent}
           style={localStyles.scrollView}
         >
-          {actions.map((action, index) => (
-            <React.Fragment key={action.key}>
-              {index === 2 && (
-                <View style={[localStyles.separator, { backgroundColor: 'rgba(255,255,255,0.2)' }]} />
-              )}
-              <ActionButton
-                label={action.label}
-                icon={action.icon}
-                onPress={action.onPress}
-                isPrimary={action.isPrimary}
-                COLORS={COLORS}
-              />
-            </React.Fragment>
+          {groupedActions.map((group) => (
+            <View key={group.section}>
+              <Text style={[localStyles.sectionHeader, { color: 'rgba(255,255,255,0.45)' }]}>
+                {SECTION_ORDER[group.section]?.label || group.section}
+              </Text>
+              {group.items.map((action) => (
+                <ActionButton
+                  key={action.key}
+                  label={action.label}
+                  icon={action.icon}
+                  onPress={action.onPress}
+                  isPrimary={action.isPrimary}
+                  COLORS={COLORS}
+                />
+              ))}
+            </View>
           ))}
         </ScrollView>
       </Animated.View>
@@ -281,29 +328,34 @@ export default function SelectionActionBar({
 }
 
 const localStyles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    zIndex: 199,
+  },
   container: {
     position: 'absolute',
     right: 0,
     top: 0,
     bottom: 0,
     width: PANEL_WIDTH,
-    paddingTop: Platform.OS === 'ios' ? 60 : 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 28,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
+    borderTopLeftRadius: 22,
+    borderBottomLeftRadius: 22,
     zIndex: 200,
     shadowColor: '#000',
-    shadowOffset: { width: -4, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 16,
+    shadowOffset: { width: -6, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
   },
   headerRtl: {
     flexDirection: 'row-reverse',
@@ -311,73 +363,76 @@ const localStyles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   headerLeftRtl: {
     flexDirection: 'row-reverse',
   },
+  headerTextGroup: {
+    flexShrink: 1,
+  },
   bookIconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   countText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
   countSuffix: {
-    fontWeight: '400',
-    opacity: 0.85,
-    fontSize: 11,
+    fontWeight: '500',
+    opacity: 0.7,
+    fontSize: 12,
   },
   closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  divider: {
-    height: 1,
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
   sliderContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    paddingHorizontal: 18,
+    marginBottom: 10,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
-  separator: {
-    height: 1,
-    marginVertical: 6,
-    marginHorizontal: 12,
+  sectionHeader: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 4,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 13,
+    marginHorizontal: 4,
+    borderRadius: 10,
   },
   actionIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
   },
   actionLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.1,
     flex: 1,
