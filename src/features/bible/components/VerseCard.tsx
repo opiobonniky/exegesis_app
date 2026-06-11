@@ -100,6 +100,7 @@ export default function VerseCard({
   const [explanationVisible, setExplanationVisible] = useState(!!explanationData?.explanation);
   const [expClosing, setExpClosing] = useState(false);
   const [expAnimReady, setExpAnimReady] = useState(false);
+  const [expAnimDone, setExpAnimDone] = useState(false);
   const expAnim = useRef(new Animated.Value(0)).current;
   const prevExplanationData = useRef(explanationData);
 
@@ -113,6 +114,7 @@ export default function VerseCard({
       expAnim.setValue(0);
       setExpClosing(false);
       setExpAnimReady(false);
+      setExpAnimDone(false);
       setExplanationVisible(true);
     } else if (!isOpen && wasOpen && explanationVisible) {
       setExpClosing(true);
@@ -122,6 +124,7 @@ export default function VerseCard({
         easing: Easing.linear,
         useNativeDriver: false,
       }).start(() => {
+        setExpAnimDone(false);
         setExpClosing(false);
         setExplanationVisible(false);
       });
@@ -632,20 +635,24 @@ export default function VerseCard({
 
             {explanationVisible && (
               <View style={{ position: 'relative' }}>
-                {/* Hidden measurer — absolutely positioned, gets true content height */}
-                {!expAnimReady && (
+                {/* Hidden measurer — always present, tracks true content height */}
+
                   <View
                     style={{ position: 'absolute', left: 0, right: 0, top: 0, opacity: 0, pointerEvents: 'none' }}
                     onLayout={e => {
                       const h = e.nativeEvent.layout.height;
-                      setExpAnimReady(true);
-                      expAnim.setValue(0);
-                      Animated.timing(expAnim, {
-                        toValue: h,
-                        duration: 1000,
-                        easing: Easing.out(Easing.ease),
-                        useNativeDriver: false,
-                      }).start();
+                      if (!expAnimReady) {
+                        setExpAnimReady(true);
+                        expAnim.setValue(0);
+                        Animated.timing(expAnim, {
+                          toValue: h,
+                          duration: 1000,
+                          easing: Easing.out(Easing.ease),
+                          useNativeDriver: false,
+                        }).start(() => setExpAnimDone(true));
+                      } else if (expAnimDone && !expClosing) {
+                        expAnim.setValue(h);
+                      }
                     }}
                   >
                     <View style={[localStyles.expContainer, { backgroundColor: `${colors.primary}08` }]}>
@@ -738,6 +745,7 @@ export default function VerseCard({
                               easing: Easing.linear,
                               useNativeDriver: false,
                             }).start(() => {
+                              setExpAnimDone(false);
                               setExplanationVisible(false);
                               setExpClosing(false);
                               onCloseExplanation();
@@ -752,14 +760,13 @@ export default function VerseCard({
                       )}
                     </View>
                   </View>
-                )}
 
                 {/* Animated display */}
                 <Animated.View
                   style={[
                     localStyles.expContainer,
                     { backgroundColor: `${colors.primary}08` },
-                    expAnimReady && { height: expAnim, overflow: 'hidden' },
+                    (!expAnimDone || expClosing) && { height: expAnim, overflow: 'hidden' },
                   ]}
                 >
                   <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
@@ -851,6 +858,7 @@ export default function VerseCard({
                           easing: Easing.linear,
                           useNativeDriver: false,
                         }).start(() => {
+                          setExpAnimDone(false);
                           setExplanationVisible(false);
                           setExpClosing(false);
                           onCloseExplanation();

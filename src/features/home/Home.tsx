@@ -125,6 +125,7 @@ export default function Home() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [expClosing, setExpClosing] = useState(false);
   const [expAnimReady, setExpAnimReady] = useState(false);
+  const [expAnimDone, setExpAnimDone] = useState(false);
   const explanationAnimRef = useRef(new Animated.Value(0));
   const expContentHeight = useRef(0);
   const [stats, setStats] = useState<Stats>({
@@ -643,21 +644,25 @@ export default function Home() {
               {/* Explanation Section */}
               {showExplanation && (
                 <View style={{ position: 'relative' }}>
-                  {/* Hidden measurer — absolutely positioned so it affects layout only on open */}
-                  {!expAnimReady && (
+                  {/* Hidden measurer — always present, tracks true content height */}
+
                     <View
                       style={{ position: 'absolute', left: 0, right: 0, top: 0, opacity: 0, pointerEvents: 'none' }}
                       onLayout={e => {
                         const h = e.nativeEvent.layout.height;
                         expContentHeight.current = h;
-                        setExpAnimReady(true);
-                        explanationAnimRef.current.setValue(0);
-                        Animated.timing(explanationAnimRef.current, {
-                          toValue: h,
-                          duration: 1000,
-                          easing: Easing.out(Easing.ease),
-                          useNativeDriver: false,
-                        }).start();
+                        if (!expAnimReady) {
+                          setExpAnimReady(true);
+                          explanationAnimRef.current.setValue(0);
+                          Animated.timing(explanationAnimRef.current, {
+                            toValue: h,
+                            duration: 1000,
+                            easing: Easing.out(Easing.ease),
+                            useNativeDriver: false,
+                          }).start(() => setExpAnimDone(true));
+                        } else if (expAnimDone && !expClosing) {
+                          explanationAnimRef.current.setValue(h);
+                        }
                       }}
                     >
                       <View style={styles.explainSection}>
@@ -699,16 +704,14 @@ export default function Home() {
                             />
                           </>
                         ) : null}
-                      </View>
                     </View>
-                  )}
+                  </View>
 
                   {/* Animated display */}
                   <Animated.View
                     style={[
                       styles.explainSection,
-                      expAnimReady && { height: explanationAnimRef.current, overflow: 'hidden' },
-                      expClosing && { overflow: 'hidden' },
+                      (!expAnimDone || expClosing) && { height: explanationAnimRef.current, overflow: 'hidden' },
                     ]}
                   >
                     <View style={[styles.explainHeader, isRtl && styles.explainHeaderRtl]}>
@@ -768,11 +771,13 @@ export default function Home() {
                         }).start(() => {
                           setExpClosing(false);
                           setShowExplanation(false);
+                          setExpAnimDone(false);
                         });
                       } else {
                         explanationAnimRef.current.setValue(0);
                         setExpClosing(false);
                         setExpAnimReady(false);
+                        setExpAnimDone(false);
                         expContentHeight.current = 0;
                         setShowExplanation(true);
                       }
