@@ -100,7 +100,7 @@ export const useBible = () => {
   const [searchResults, setSearchResults] = useState<VerseSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const [verseExplanationMap, setVerseExplanationMap] = useState<
-    Record<number, string>
+    Record<number, { explanation: string; learnMore: string }>
   >({});
   const [explainingVerse, setExplainingVerse] = useState<number | null>(null);
   const [dailyVerseRefMap, setDailyVerseRefMap] = useState<
@@ -1090,13 +1090,16 @@ lastTTSVerseNumRef.current = verse.num;
           ),
         );
 
-        const explanations: Record<number, string> = {};
+        const explanations: Record<number, { explanation: string; learnMore: string }> = {};
         results.forEach((result, idx) => {
           if (result.status === 'fulfilled' && result.value) {
             const res = result.value;
             if (res.returnCode === 200 && res.returnData) {
               const item = res.returnData;
-              explanations[item.verseNumber] = item.explanation || '';
+              explanations[item.verseNumber] = {
+                explanation: item.explanation || '',
+                learnMore: item.learnMore || '',
+              };
             }
           }
         });

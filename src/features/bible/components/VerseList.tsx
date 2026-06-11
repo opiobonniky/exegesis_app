@@ -204,8 +204,7 @@ export type VerseListProps = {
   onLongPress?: (verseNumber: number) => void;
   onDoubleTap?: (verseNumber: number) => void;
   onCloseExplanation?: (verseNumber: number) => void;
-  explanationMap?: Record<number, string>;
-  onExplainOpen?: (verseNumber: number) => void;
+  explanationMap?: Record<number, { explanation: string; learnMore: string }>;
   verseJournalPrompts?: Record<number, any[]>;
   onDailyVerse?: (verseNumber: number) => void;
   onCloseDailyVerse?: (verseNumber: number) => void;
@@ -248,7 +247,6 @@ export default function VerseList({
   onLongPress,
   onCloseExplanation,
   explanationMap,
-  onExplainOpen,
   verseJournalPrompts = {},
   navigation,
   onDailyVerse,
@@ -283,10 +281,7 @@ export default function VerseList({
     const highlightColor = highlight?.color;
     const isTargetHighlight = highlightedVerse === verseNumber;
     const isActiveAudio = activeAudioVerse === verseNumber;
-    const expText = explanationMap?.[verseNumber];
-    // Show explanation panel only when explanation text exists
-    // Explain button is always visible in the action row below the verse
-    const shouldShowExpPanel = !!expText;
+    const explanationData = explanationMap?.[verseNumber] ?? null;
     const dvData = dailyVerseRefMap?.[verseNumber];
     const shouldShowDvPanel = !!dvData;
 
@@ -319,7 +314,6 @@ export default function VerseList({
         onExplain={
           onExplain
             ? () => {
-                onExplainOpen?.(verseNumber);
                 onExplain(verseNumber);
               }
             : undefined
@@ -342,8 +336,7 @@ export default function VerseList({
               }
             : undefined
         }
-        showExplanation={shouldShowExpPanel}
-        explanationText={expText}
+        explanationData={explanationData}
         onDailyVerse={onDailyVerse ? () => onDailyVerse(verseNumber) : undefined}
         onCloseDailyVerse={onCloseDailyVerse ? () => onCloseDailyVerse(verseNumber) : undefined}
         showDailyVerse={shouldShowDvPanel}

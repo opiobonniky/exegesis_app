@@ -44,8 +44,7 @@ type VerseCardProps = {
   onDoubleTap?: () => void;
   onLongPress?: () => void;
   onCloseExplanation?: () => void;
-  showExplanation?: boolean;
-  explanationText?: string;
+  explanationData?: { explanation: string; learnMore: string } | null;
   onDailyVerse?: () => void;
   onCloseDailyVerse?: () => void;
   showDailyVerse?: boolean;
@@ -80,8 +79,7 @@ export default function VerseCard({
   onDoubleTap,
   onLongPress,
   onCloseExplanation,
-  showExplanation,
-  explanationText,
+  explanationData,
   onDailyVerse,
   onCloseDailyVerse,
   showDailyVerse,
@@ -598,52 +596,58 @@ export default function VerseCard({
               </View>
             )}
 
-            {showExplanation && (
+            {explanationData?.explanation && (
               <View
                 style={[
                   localStyles.expContainer,
-                  { backgroundColor: `${colors.primary}08`, borderColor: `${colors.primary}25` },
-                  highlightColor
-                    ? { borderColor: highlightColor }
-                    : undefined,
+                  { backgroundColor: `${colors.primary}08` },
                 ]}
               >
-                {explanationText && (                    <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
-                      <View style={[localStyles.expHeaderLeft, isRtl && localStyles.expHeaderLeftRtl]}>
-                      <Lightbulb
-                        size={14}
-                        color={colors.primary}
-                        strokeWidth={2.5}
-                      />
-                      <Text style={[localStyles.expHeaderTitle, { color: colors.primary }]}>
-                        {bc?.explanation || 'Explanation'}
-                      </Text>
-                    </View>
-                    {onCloseExplanation && (
-                      <TouchableOpacity
-                        onPress={onCloseExplanation}
-                        style={[localStyles.expCloseBtn, { backgroundColor: `${colors.primary}12` }]}
-                      >
-                        <X size={13} color={colors.primary} />
-                      </TouchableOpacity>
-                    )}
+                <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
+                  <View style={[localStyles.expHeaderLeft, isRtl && localStyles.expHeaderLeftRtl]}>
+                    <Lightbulb
+                      size={14}
+                      color={colors.primary}
+                      strokeWidth={2.5}
+                    />
+                    <Text style={[localStyles.expHeaderTitle, { color: colors.primary }]}>
+                      {bc?.explanation || 'Explanation'}
+                    </Text>
                   </View>
+                  {onCloseExplanation && (
+                    <TouchableOpacity
+                      onPress={onCloseExplanation}
+                      style={[localStyles.expCloseBtn, { backgroundColor: `${colors.primary}12` }]}
+                    >
+                      <X size={13} color={colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <Text
+                  style={[localStyles.expBodyText, { color: colors.text }]}
+                >
+                  {explanationData.explanation}
+                </Text>
+
+                {explanationData.learnMore && (
+                  <>
+                    <View style={[localStyles.expDivider, { backgroundColor: `${colors.primary}20` }]} />
+                    <Text style={[localStyles.expLearnMoreTitle, { color: colors.primary }]}>
+                      {bc?.learnMore || 'Learn More'}
+                    </Text>
+                    <ExpandableText
+                      text={explanationData.learnMore}
+                      initialLines={4}
+                      stepLines={10}
+                      expandLabel={bc?.readMore || 'Read more'}
+                      closeLabel={bc?.close || 'Close'}
+                      containerStyle={localStyles.exExpandableContainer}
+                      textStyle={localStyles.expBodyText}
+                    />
+                  </>
                 )}
 
-                {explanationText ? (
-                  <ExpandableText
-                    text={explanationText}
-                    initialLines={6}
-                    stepLines={15}
-                    expandLabel={bc?.readMore || 'Read more'}
-                    closeLabel={bc?.close || 'Close'}
-                    onClose={onCloseExplanation}
-                    containerStyle={localStyles.exExpandableContainer}
-                    textStyle={localStyles.exBodyText}
-                  />
-                ) : null}
-
-                {/* Journal Prompts */}
                 {journalPrompts.length > 0 && (
                   <View
                     style={[
@@ -768,8 +772,8 @@ const localStyles = StyleSheet.create({
   expContainer: {
     marginTop: 10,
     borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
   },
   expHeaderRow: {
     flexDirection: 'row',
@@ -800,10 +804,21 @@ const localStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  exBodyText: {
-    fontSize: 15,
-    lineHeight: 24,
+  expBodyText: {
+    fontSize: 17,
+    lineHeight: 28,
     letterSpacing: 0.2,
+  },
+  expDivider: {
+    height: 1,
+    marginVertical: 14,
+  },
+  expLearnMoreTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
   exExpandableContainer: {
     marginTop: 0,

@@ -339,7 +339,6 @@ export default function Bible() {
   // ── Guest gate state ──────────────────────────────────────────────────────
   const [gateVisible, setGateVisible] = useState(false);
   const [gateMessage, setGateMessage] = useState('');
-  const [explanationOpen, setExplanationOpen] = useState(false);
 
 
   const showGate = (msg: string) => {
@@ -469,7 +468,7 @@ export default function Bible() {
       )}
 
       {/* ── Selection Action Bar ─────────────────────────────────────────── */}
-      {selectedVerses.length > 0 && !explanationOpen && (
+      {selectedVerses.length > 0 && (
         <SelectionActionBar
           isRtl={isRtl}
           selectedCount={selectedVerses.length}
@@ -503,14 +502,11 @@ export default function Bible() {
           }
           onExplain={async () => {
             if (selectedVerses.length > 0) {
-              const found = await getverseExplanation(
+              await getverseExplanation(
                 selectedVerses,
                 currentBook,
                 currentChapter,
               );
-              if (found) {
-                setExplanationOpen(true);
-              }
             }
           }}
           onHighlight={() =>
@@ -559,7 +555,6 @@ export default function Bible() {
           }
           onClear={() => {
             clearSelection();
-            setExplanationOpen(false);
           }}
         />
       )}
@@ -625,9 +620,7 @@ export default function Bible() {
             }
             onCloseExplanation={vn => {
               clearVerseExplanationForVerse(vn);
-              setExplanationOpen(false);
             }}
-            onExplainOpen={() => setExplanationOpen(true)}
             explanationMap={verseExplanationMap}
             onDailyVerse={vn => {
               getDailyVerseRef(vn, currentBook, currentChapter);
@@ -691,9 +684,7 @@ export default function Bible() {
           }}
           onCloseExplanation={vn => {
             clearVerseExplanationForVerse(vn);
-            setExplanationOpen(false);
           }}
-          onExplainOpen={() => setExplanationOpen(true)}
           explanationMap={verseExplanationMap}
           onDailyVerse={vn => {
             getDailyVerseRef(vn, currentBook, currentChapter);
