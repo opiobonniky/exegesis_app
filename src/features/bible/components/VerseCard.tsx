@@ -33,6 +33,7 @@ type VerseCardProps = {
   fontSize: number;
   colors: any;
   styles: any;
+  showActions?: boolean;
   onPress: () => void;
   onRemoveHighlight: (verseNumber: number) => void;
   onExplain?: () => void;
@@ -67,6 +68,7 @@ export default function VerseCard({
   fontSize,
   colors,
   styles,
+  showActions,
   onPress,
   onRemoveHighlight,
   onExplain,
@@ -473,65 +475,53 @@ export default function VerseCard({
           <View style={styles.verseTextContainer}>
             {renderVerseText()}
 
-            {/* Action row: Explain + Copy + Share */}
-            <View style={[localStyles.actionRow, isRtl && localStyles.actionRowRtl]}>
-              {onExplain && (
-                <TouchableOpacity
-                  onPress={onExplain}
-                  activeOpacity={0.7}
-                  style={localStyles.actionRowBtn}
-                >
-                  <Lightbulb size={11} color={colors.primary} strokeWidth={2} />
-                  <Text
-                    style={[localStyles.actionRowText, { color: colors.primary }]}
+            {/* Action row: Explain, Daily Verse, Copy, Share — only when exactly one verse is selected */}
+            {showActions && (
+              <View style={[localStyles.actionRow, isRtl && localStyles.actionRowRtl]}>
+                {onExplain && (
+                  <TouchableOpacity
+                    onPress={onExplain}
+                    activeOpacity={0.7}
+                    style={localStyles.actionRowBtn}
                   >
-                    {bc?.explain || 'Explain'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {onDailyVerse && (
-                <TouchableOpacity
-                  onPress={onDailyVerse}
-                  activeOpacity={0.7}
-                  style={localStyles.actionRowBtn}
-                >
-                  <Sun size={11} color={colors.primary} strokeWidth={2} />
-                  <Text
-                    style={[localStyles.actionRowText, { color: colors.primary }]}
+                    <Lightbulb size={11} color={colors.primary} strokeWidth={2} />
+                    <Text
+                      style={[localStyles.actionRowText, { color: colors.primary }]}
+                    >
+                      {'Explain Verse'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {onCopy && (
+                  <TouchableOpacity
+                    onPress={onCopy}
+                    activeOpacity={0.7}
+                    style={localStyles.actionRowBtn}
                   >
-                    {bc?.dailyVerse || 'Daily Verse'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {onCopy && (
-                <TouchableOpacity
-                  onPress={onCopy}
-                  activeOpacity={0.7}
-                  style={localStyles.actionRowBtn}
-                >
-                  <Copy size={11} color={colors.primary} strokeWidth={2} />
-                  <Text
-                    style={[localStyles.actionRowText, { color: colors.primary }]}
+                    <Copy size={11} color={colors.primary} strokeWidth={2} />
+                    <Text
+                      style={[localStyles.actionRowText, { color: colors.primary }]}
+                    >
+                      {bc?.copy || 'Copy'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {onShare && (
+                  <TouchableOpacity
+                    onPress={onShare}
+                    activeOpacity={0.7}
+                    style={localStyles.actionRowBtn}
                   >
-                    {bc?.copy || 'Copy'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {onShare && (
-                <TouchableOpacity
-                  onPress={onShare}
-                  activeOpacity={0.7}
-                  style={localStyles.actionRowBtn}
-                >
-                  <Share2 size={11} color={colors.primary} strokeWidth={2} />
-                  <Text
-                    style={[localStyles.actionRowText, { color: colors.primary }]}
-                  >
-                    {bc?.share || 'Share'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                    <Share2 size={11} color={colors.primary} strokeWidth={2} />
+                    <Text
+                      style={[localStyles.actionRowText, { color: colors.primary }]}
+                    >
+                      {bc?.share || 'Share'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
 
             {showDailyVerse && dailyVerseData && (
               <View style={localStyles.dvContainer}>

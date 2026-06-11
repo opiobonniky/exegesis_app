@@ -288,6 +288,8 @@ export default function VerseList({
     const dvData = dailyVerseRefMap?.[verseNumber];
     const shouldShowDvPanel = !!dvData;
 
+    const showActions = selectedVerses.length === 1 && isSelected;
+
     return (
       <VerseCard
         verseNum={String(verseNum)}
@@ -303,6 +305,7 @@ export default function VerseList({
         fontSize={fontSize}
         colors={colors}
         styles={styles}
+        showActions={showActions}
         onPress={() => onVersePress(verseNumber)}
         onRemoveHighlight={onRemoveHighlight}
         onShare={onShare ? () => onShare(verseNumber) : undefined}
