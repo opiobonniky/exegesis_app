@@ -44,6 +44,7 @@ type VerseCardProps = {
   onDoubleTap?: () => void;
   onLongPress?: () => void;
   onCloseExplanation?: () => void;
+  onCloseStart?: () => void;
   explanationData?: { explanation: string; learnMore: string } | null;
   onDailyVerse?: () => void;
   onCloseDailyVerse?: () => void;
@@ -79,6 +80,7 @@ export default function VerseCard({
   onDoubleTap,
   onLongPress,
   onCloseExplanation,
+  onCloseStart,
   explanationData,
   onDailyVerse,
   onCloseDailyVerse,
@@ -97,6 +99,7 @@ export default function VerseCard({
   // ── Explanation roll animation ────────────────────────────────────────────
   const [explanationVisible, setExplanationVisible] = useState(!!explanationData?.explanation);
   const [expClosing, setExpClosing] = useState(false);
+  const [expAnimReady, setExpAnimReady] = useState(false);
   const expAnim = useRef(new Animated.Value(0)).current;
   const prevExplanationData = useRef(explanationData);
 
@@ -109,6 +112,7 @@ export default function VerseCard({
     if (isOpen && !wasOpen) {
       expAnim.setValue(0);
       setExpClosing(false);
+      setExpAnimReady(false);
       setExplanationVisible(true);
     } else if (!isOpen && wasOpen && explanationVisible) {
       setExpClosing(true);
@@ -627,153 +631,240 @@ export default function VerseCard({
             )}
 
             {explanationVisible && (
-              <Animated.View
-                style={[
-                  localStyles.expContainer,
-                  { backgroundColor: `${colors.primary}08` },
-                  expClosing && { height: expAnim, overflow: 'hidden' },
-                ]}
-              >
-                <View
-                  onLayout={e => {
-                    // Store content height for close animation
-                    if (!expClosing) {
-                      expAnim.setValue(e.nativeEvent.layout.height);
-                    }
-                  }}
-                >
-                  <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
-                  <View style={[localStyles.expHeaderLeft, isRtl && localStyles.expHeaderLeftRtl]}>
-                    <Lightbulb
-                      size={14}
-                      color={colors.primary}
-                      strokeWidth={2.5}
-                    />
-                    <Text style={[localStyles.expHeaderTitle, { color: colors.primary }]}>
-                      {bc?.explanation || 'Explanation'}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text
-                  style={[localStyles.expBodyText, { color: colors.text }]}
-                >
-                  {explanationData?.explanation}
-                </Text>
-
-                {explanationData?.learnMore && (
-                  <>
-                    <View style={[localStyles.expDivider, { backgroundColor: `${colors.primary}20` }]} />
-                    <Text style={[localStyles.expLearnMoreTitle, { color: colors.primary }]}>
-                      {bc?.learnMore || 'Learn More'}
-                    </Text>
-                    <ExpandableText
-                      text={explanationData.learnMore}
-                      initialLines={4}
-                      stepLines={10}
-                      expandLabel={bc?.readMore || 'Read more'}
-                      closeLabel={bc?.close || 'Close'}
-                      containerStyle={localStyles.exExpandableContainer}
-                      textStyle={localStyles.expBodyText}
-                    />
-                  </>
-                )}
-
-                {journalPrompts.length > 0 && (
+              <View style={{ position: 'relative' }}>
+                {/* Hidden measurer — absolutely positioned, gets true content height */}
+                {!expAnimReady && (
                   <View
-                    style={[
-                      localStyles.journalPromptsContainer,
-                      { borderTopColor: `${colors.primary}20` },
-                    ]}
+                    style={{ position: 'absolute', left: 0, right: 0, top: 0, opacity: 0, pointerEvents: 'none' }}
+                    onLayout={e => {
+                      const h = e.nativeEvent.layout.height;
+                      setExpAnimReady(true);
+                      expAnim.setValue(0);
+                      Animated.timing(expAnim, {
+                        toValue: h,
+                        duration: 1000,
+                        easing: Easing.out(Easing.ease),
+                        useNativeDriver: false,
+                      }).start();
+                    }}
                   >
-                    <View style={localStyles.promptsHeader}>
-                      <Text
-                        style={[
-                          localStyles.promptsTitle,
-                          { color: colors.primary },
-                        ]}
-                      >
-                        {bc?.journalPrompts || 'Journal Prompts'}
+                    <View style={[localStyles.expContainer, { backgroundColor: `${colors.primary}08` }]}>
+                      <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
+                        <View style={[localStyles.expHeaderLeft, isRtl && localStyles.expHeaderLeftRtl]}>
+                          <Lightbulb size={14} color={colors.primary} strokeWidth={2.5} />
+                          <Text style={[localStyles.expHeaderTitle, { color: colors.primary }]}>
+                            {bc?.explanation || 'Explanation'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={[localStyles.expBodyText, { color: colors.text }]}>
+                        {explanationData?.explanation}
                       </Text>
-                      {currentBook && currentChapter && (
+
+                      {explanationData?.learnMore && (
+                        <>
+                          <View style={[localStyles.expDivider, { backgroundColor: `${colors.primary}20` }]} />
+                          <Text style={[localStyles.expLearnMoreTitle, { color: colors.primary }]}>
+                            {bc?.learnMore || 'Learn More'}
+                          </Text>
+                          <ExpandableText
+                            text={explanationData.learnMore}
+                            initialLines={4}
+                            stepLines={10}
+                            expandLabel={bc?.readMore || 'Read more'}
+                            closeLabel={bc?.close || 'Close'}
+                            containerStyle={localStyles.exExpandableContainer}
+                            textStyle={localStyles.expBodyText}
+                          />
+                        </>
+                      )}
+
+                      {journalPrompts.length > 0 && (
+                        <View style={[localStyles.journalPromptsContainer, { borderTopColor: `${colors.primary}20` }]}>
+                          <View style={localStyles.promptsHeader}>
+                            <Text style={[localStyles.promptsTitle, { color: colors.primary }]}>
+                              {bc?.journalPrompts || 'Journal Prompts'}
+                            </Text>
+                            {currentBook && currentChapter && (
+                              <TouchableOpacity
+                                onPress={() => {
+                                  navigation?.navigate(route.journalEntry, {
+                                    bookName: currentBook,
+                                    chapter: currentChapter,
+                                    verseStart: verseNumber,
+                                    verseEnd: verseNumber,
+                                  });
+                                }}
+                                style={[localStyles.addPromptBtn, { backgroundColor: colors.primary }]}
+                              >
+                                <BookText size={12} color="#FFFFFF" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                          {journalPrompts.map((prompt, idx) => (
+                            <TouchableOpacity
+                              key={prompt.id || idx}
+                              style={[localStyles.promptItem, { backgroundColor: `${colors.primary}10`, borderColor: colors.primary }]}
+                              onPress={() => {
+                                if (navigation) {
+                                  navigation.navigate(route.journalEntry, {
+                                    bookName: currentBook,
+                                    chapter: currentChapter,
+                                    verseStart: verseNumber,
+                                    verseEnd: verseNumber,
+                                    promptText: prompt.prompt,
+                                  });
+                                }
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[localStyles.promptText, { color: colors.text }]}>
+                                {prompt.prompt}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+
+                      {onCloseExplanation && (
                         <TouchableOpacity
                           onPress={() => {
-                            navigation?.navigate(route.journalEntry, {
-                              bookName: currentBook,
-                              chapter: currentChapter,
-                              verseStart: verseNumber,
-                              verseEnd: verseNumber,
+                            setExpClosing(true);
+                            onCloseStart?.();
+                            Animated.timing(expAnim, {
+                              toValue: 0,
+                              duration: 1000,
+                              easing: Easing.linear,
+                              useNativeDriver: false,
+                            }).start(() => {
+                              setExplanationVisible(false);
+                              setExpClosing(false);
+                              onCloseExplanation();
                             });
                           }}
-                          style={[
-                            localStyles.addPromptBtn,
-                            { backgroundColor: colors.primary },
-                          ]}
+                          style={[localStyles.hideExpBtn, { borderColor: `${colors.primary}30` }]}
                         >
-                          <BookText size={12} color="#FFFFFF" />
+                          <Text style={[localStyles.hideExpBtnText, { color: colors.primary }]}>
+                            {bc?.hideExplanation || 'Hide Explanation'}
+                          </Text>
                         </TouchableOpacity>
                       )}
                     </View>
-                    {journalPrompts.map((prompt, idx) => (
-                      <TouchableOpacity
-                        key={prompt.id || idx}
-                        style={[
-                          localStyles.promptItem,
-                          {
-                            backgroundColor: `${colors.primary}10`,
-                            borderColor: colors.primary,
-                          },
-                        ]}
-                        onPress={() => {
-                          if (navigation) {
-                            navigation.navigate(route.journalEntry, {
-                              bookName: currentBook,
-                              chapter: currentChapter,
-                              verseStart: verseNumber,
-                              verseEnd: verseNumber,
-                              promptText: prompt.prompt,
-                            });
-                          }
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            localStyles.promptText,
-                            { color: colors.text },
-                          ]}
-                        >
-                          {prompt.prompt}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
                   </View>
                 )}
 
-                {onCloseExplanation && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setExpClosing(true);
-                      Animated.timing(expAnim, {
-                        toValue: 0,
-                        duration: 1000,
-                        easing: Easing.linear,
-                        useNativeDriver: false,
-                      }).start(() => {
-                        setExplanationVisible(false);
-                        setExpClosing(false);
-                        onCloseExplanation();
-                      });
-                    }}
-                    style={[localStyles.hideExpBtn, { borderColor: `${colors.primary}30` }]}
-                  >
-                    <Text style={[localStyles.hideExpBtnText, { color: colors.primary }]}>
-                      {bc?.hideExplanation || 'Hide Explanation'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                </View>
-              </Animated.View>
+                {/* Animated display */}
+                <Animated.View
+                  style={[
+                    localStyles.expContainer,
+                    { backgroundColor: `${colors.primary}08` },
+                    expAnimReady && { height: expAnim, overflow: 'hidden' },
+                  ]}
+                >
+                  <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
+                    <View style={[localStyles.expHeaderLeft, isRtl && localStyles.expHeaderLeftRtl]}>
+                      <Lightbulb size={14} color={colors.primary} strokeWidth={2.5} />
+                      <Text style={[localStyles.expHeaderTitle, { color: colors.primary }]}>
+                        {bc?.explanation || 'Explanation'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={[localStyles.expBodyText, { color: colors.text }]}>
+                    {explanationData?.explanation}
+                  </Text>
+
+                  {explanationData?.learnMore && (
+                    <>
+                      <View style={[localStyles.expDivider, { backgroundColor: `${colors.primary}20` }]} />
+                      <Text style={[localStyles.expLearnMoreTitle, { color: colors.primary }]}>
+                        {bc?.learnMore || 'Learn More'}
+                      </Text>
+                      <ExpandableText
+                        text={explanationData.learnMore}
+                        initialLines={4}
+                        stepLines={10}
+                        expandLabel={bc?.readMore || 'Read more'}
+                        closeLabel={bc?.close || 'Close'}
+                        containerStyle={localStyles.exExpandableContainer}
+                        textStyle={localStyles.expBodyText}
+                      />
+                    </>
+                  )}
+
+                  {journalPrompts.length > 0 && (
+                    <View style={[localStyles.journalPromptsContainer, { borderTopColor: `${colors.primary}20` }]}>
+                      <View style={localStyles.promptsHeader}>
+                        <Text style={[localStyles.promptsTitle, { color: colors.primary }]}>
+                          {bc?.journalPrompts || 'Journal Prompts'}
+                        </Text>
+                        {currentBook && currentChapter && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              navigation?.navigate(route.journalEntry, {
+                                bookName: currentBook,
+                                chapter: currentChapter,
+                                verseStart: verseNumber,
+                                verseEnd: verseNumber,
+                              });
+                            }}
+                            style={[localStyles.addPromptBtn, { backgroundColor: colors.primary }]}
+                          >
+                            <BookText size={12} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      {journalPrompts.map((prompt, idx) => (
+                        <TouchableOpacity
+                          key={prompt.id || idx}
+                          style={[localStyles.promptItem, { backgroundColor: `${colors.primary}10`, borderColor: colors.primary }]}
+                          onPress={() => {
+                            if (navigation) {
+                              navigation.navigate(route.journalEntry, {
+                                bookName: currentBook,
+                                chapter: currentChapter,
+                                verseStart: verseNumber,
+                                verseEnd: verseNumber,
+                                promptText: prompt.prompt,
+                              });
+                            }
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[localStyles.promptText, { color: colors.text }]}>
+                            {prompt.prompt}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  {onCloseExplanation && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setExpClosing(true);
+                        onCloseStart?.();
+                        Animated.timing(expAnim, {
+                          toValue: 0,
+                          duration: 1000,
+                          easing: Easing.linear,
+                          useNativeDriver: false,
+                        }).start(() => {
+                          setExplanationVisible(false);
+                          setExpClosing(false);
+                          onCloseExplanation();
+                        });
+                      }}
+                      style={[localStyles.hideExpBtn, { borderColor: `${colors.primary}30` }]}
+                    >
+                      <Text style={[localStyles.hideExpBtnText, { color: colors.primary }]}>
+                        {bc?.hideExplanation || 'Hide Explanation'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </Animated.View>
+              </View>
             )}
           </View>
           <View style={localStyles.rightColumn}>

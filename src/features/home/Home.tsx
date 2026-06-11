@@ -124,7 +124,9 @@ export default function Home() {
   // ── State ──────────────────────────────────────────────────────────────────
   const [showExplanation, setShowExplanation] = useState(false);
   const [expClosing, setExpClosing] = useState(false);
+  const [expAnimReady, setExpAnimReady] = useState(false);
   const explanationAnimRef = useRef(new Animated.Value(0));
+  const expContentHeight = useRef(0);
   const [stats, setStats] = useState<Stats>({
     chaptersRead: 0,
     highlights: 0,
@@ -640,18 +642,74 @@ export default function Home() {
 
               {/* Explanation Section */}
               {showExplanation && (
-                <Animated.View
-                  style={[
-                    styles.explainSection,
-                    expClosing && { height: explanationAnimRef.current, overflow: 'hidden' },
-                  ]}
-                >
-                  <View
-                    onLayout={e => {
-                      if (!expClosing) {
-                        explanationAnimRef.current.setValue(e.nativeEvent.layout.height);
-                      }
-                    }}
+                <View style={{ position: 'relative' }}>
+                  {/* Hidden measurer — absolutely positioned so it affects layout only on open */}
+                  {!expAnimReady && (
+                    <View
+                      style={{ position: 'absolute', left: 0, right: 0, top: 0, opacity: 0, pointerEvents: 'none' }}
+                      onLayout={e => {
+                        const h = e.nativeEvent.layout.height;
+                        expContentHeight.current = h;
+                        setExpAnimReady(true);
+                        explanationAnimRef.current.setValue(0);
+                        Animated.timing(explanationAnimRef.current, {
+                          toValue: h,
+                          duration: 1000,
+                          easing: Easing.out(Easing.ease),
+                          useNativeDriver: false,
+                        }).start();
+                      }}
+                    >
+                      <View style={styles.explainSection}>
+                        <View style={[styles.explainHeader, isRtl && styles.explainHeaderRtl]}>
+                          <View style={[styles.explainHeaderLeft, isRtl && styles.explainHeaderLeftRtl]}>
+                            <Lightbulb size={16} color={COLORS.primary} strokeWidth={2.5} />
+                            <Text style={[styles.explainTitle, { color: COLORS.primary }]}>
+                              {translation?.bible?.explanation || 'Explanation'}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.explainText}>
+                          {(isCustomDate && customDailyVerse
+                            ? customDailyVerse.explanation
+                            : dailyVerse?.explanation) ??
+                            (translation?.home?.explainIntro ||
+                              "This is one of the most famous and powerful verses in the Bible. It beautifully summarizes God's love and the plan of salvation through Jesus Christ.")}
+                        </Text>
+                        {(isCustomDate && customDailyVerse
+                          ? customDailyVerse.learnMore
+                          : dailyVerse?.learnMore) ? (
+                          <>
+                            <View style={[styles.explainDivider, { backgroundColor: `${COLORS.primary}20` }]} />
+                            <Text style={[styles.learnMoreTitle, { color: COLORS.primary }]}>
+                              {translation?.bible?.learnMore || 'Learn More'}
+                            </Text>
+                            <ExpandableText
+                              text={
+                                (isCustomDate && customDailyVerse
+                                  ? customDailyVerse.learnMore
+                                  : dailyVerse?.learnMore) ?? ''
+                              }
+                              initialLines={4}
+                              stepLines={10}
+                              expandLabel={translation?.bible?.readMore || 'Read more'}
+                              closeLabel={translation?.bible?.close || 'Close'}
+                              containerStyle={styles.learnMoreExpandable}
+                              textStyle={styles.learnMoreText}
+                            />
+                          </>
+                        ) : null}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Animated display */}
+                  <Animated.View
+                    style={[
+                      styles.explainSection,
+                      expAnimReady && { height: explanationAnimRef.current, overflow: 'hidden' },
+                      expClosing && { overflow: 'hidden' },
+                    ]}
                   >
                     <View style={[styles.explainHeader, isRtl && styles.explainHeaderRtl]}>
                       <View style={[styles.explainHeaderLeft, isRtl && styles.explainHeaderLeftRtl]}>
@@ -661,40 +719,38 @@ export default function Home() {
                         </Text>
                       </View>
                     </View>
-
-                  <Text style={styles.explainText}>
+                    <Text style={styles.explainText}>
+                      {(isCustomDate && customDailyVerse
+                        ? customDailyVerse.explanation
+                        : dailyVerse?.explanation) ??
+                        (translation?.home?.explainIntro ||
+                          "This is one of the most famous and powerful verses in the Bible. It beautifully summarizes God's love and the plan of salvation through Jesus Christ.")}
+                    </Text>
                     {(isCustomDate && customDailyVerse
-                      ? customDailyVerse.explanation
-                      : dailyVerse?.explanation) ??
-                      (translation?.home?.explainIntro ||
-                        "This is one of the most famous and powerful verses in the Bible. It beautifully summarizes God's love and the plan of salvation through Jesus Christ.")}
-                  </Text>
-
-                  {(isCustomDate && customDailyVerse
-                    ? customDailyVerse.learnMore
-                    : dailyVerse?.learnMore) ? (
-                    <>
-                      <View style={[styles.explainDivider, { backgroundColor: `${COLORS.primary}20` }]} />
-                      <Text style={[styles.learnMoreTitle, { color: COLORS.primary }]}>
-                        {translation?.bible?.learnMore || 'Learn More'}
-                      </Text>
-                      <ExpandableText
-                        text={
-                          (isCustomDate && customDailyVerse
-                            ? customDailyVerse.learnMore
-                            : dailyVerse?.learnMore) ?? ''
-                        }
-                        initialLines={4}
-                        stepLines={10}
-                        expandLabel={translation?.bible?.readMore || 'Read more'}
-                        closeLabel={translation?.bible?.close || 'Close'}
-                        containerStyle={styles.learnMoreExpandable}
-                        textStyle={styles.learnMoreText}
-                      />
-                    </>
-                  ) : null}
-                  </View>
-                </Animated.View>
+                      ? customDailyVerse.learnMore
+                      : dailyVerse?.learnMore) ? (
+                      <>
+                        <View style={[styles.explainDivider, { backgroundColor: `${COLORS.primary}20` }]} />
+                        <Text style={[styles.learnMoreTitle, { color: COLORS.primary }]}>
+                          {translation?.bible?.learnMore || 'Learn More'}
+                        </Text>
+                        <ExpandableText
+                          text={
+                            (isCustomDate && customDailyVerse
+                              ? customDailyVerse.learnMore
+                              : dailyVerse?.learnMore) ?? ''
+                          }
+                          initialLines={4}
+                          stepLines={10}
+                          expandLabel={translation?.bible?.readMore || 'Read more'}
+                          closeLabel={translation?.bible?.close || 'Close'}
+                          containerStyle={styles.learnMoreExpandable}
+                          textStyle={styles.learnMoreText}
+                        />
+                      </>
+                    ) : null}
+                  </Animated.View>
+                </View>
               )}
 
               <View style={[styles.verseActions, isRtl && styles.verseActionsRtl]}>
@@ -716,6 +772,8 @@ export default function Home() {
                       } else {
                         explanationAnimRef.current.setValue(0);
                         setExpClosing(false);
+                        setExpAnimReady(false);
+                        expContentHeight.current = 0;
                         setShowExplanation(true);
                       }
                     }}

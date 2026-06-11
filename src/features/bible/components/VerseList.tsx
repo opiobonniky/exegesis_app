@@ -318,20 +318,31 @@ export default function VerseList({
               }
             : undefined
         }
+        onCloseStart={
+          onCloseExplanation
+            ? () => {
+                const index = versesArray.findIndex(v => v.num === verseNumber);
+                if (index !== -1) {
+                  flatListRef.current?.scrollToIndex({
+                    index,
+                    animated: true,
+                    viewPosition: 0,
+                  });
+                }
+              }
+            : undefined
+        }
         onCloseExplanation={
           onCloseExplanation
             ? () => {
                 onCloseExplanation(verseNumber);
-                // Scroll the verse back into view after explanation collapses
                 const index = versesArray.findIndex(v => v.num === verseNumber);
                 if (index !== -1) {
-                  setTimeout(() => {
-                    flatListRef.current?.scrollToIndex({
-                      index,
-                      animated: true,
-                      viewPosition: 0.3,
-                    });
-                  }, 50);
+                  flatListRef.current?.scrollToIndex({
+                    index,
+                    animated: true,
+                    viewPosition: 0,
+                  });
                 }
               }
             : undefined
