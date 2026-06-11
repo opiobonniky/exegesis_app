@@ -364,7 +364,7 @@ export default function VerseList({
       <FlatList
         ref={flatListRef}
         data={versesArray}
-        extraData={[selectedVerses, activeAudioVerse]}
+        extraData={[selectedVerses, activeAudioVerse, explanationMap, dailyVerseRefMap, verseJournalPrompts]}
         renderItem={renderVerseItem}
         keyExtractor={item => String(item.num)}
         contentContainerStyle={[

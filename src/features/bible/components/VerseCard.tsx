@@ -94,7 +94,37 @@ export default function VerseCard({
   const isRtl = isRtlLanguage(language);
   const bc = translations?.bible;
 
-  // ── Subscribe to bibleTTS directly — only THIS card re-renders per word ────
+  // ── Explanation roll animation ────────────────────────────────────────────
+  const [explanationVisible, setExplanationVisible] = useState(!!explanationData?.explanation);
+  const [expClosing, setExpClosing] = useState(false);
+  const expAnim = useRef(new Animated.Value(0)).current;
+  const prevExplanationData = useRef(explanationData);
+
+  useEffect(() => {
+    const prev = prevExplanationData.current;
+    prevExplanationData.current = explanationData;
+    const isOpen = !!explanationData?.explanation;
+    const wasOpen = !!prev?.explanation;
+
+    if (isOpen && !wasOpen) {
+      expAnim.setValue(0);
+      setExpClosing(false);
+      setExplanationVisible(true);
+    } else if (!isOpen && wasOpen && explanationVisible) {
+      setExpClosing(true);
+      Animated.timing(expAnim, {
+        toValue: 0,
+        duration: 1000,
+        easing: Easing.linear,
+        useNativeDriver: false,
+      }).start(() => {
+        setExpClosing(false);
+        setExplanationVisible(false);
+      });
+    }
+  }, [explanationData, explanationVisible]);
+
+  // ── Subscribe to bibleTTS directly ────────────────────────────────────────
   //
   // KEY PERF FIX: previously `activeWordOffset` lived in useBible state and
   // sat in FlatList extraData. Every word change re-rendered ALL visible cards
@@ -596,14 +626,23 @@ export default function VerseCard({
               </View>
             )}
 
-            {explanationData?.explanation && (
-              <View
+            {explanationVisible && (
+              <Animated.View
                 style={[
                   localStyles.expContainer,
                   { backgroundColor: `${colors.primary}08` },
+                  expClosing && { height: expAnim, overflow: 'hidden' },
                 ]}
               >
-                <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
+                <View
+                  onLayout={e => {
+                    // Store content height for close animation
+                    if (!expClosing) {
+                      expAnim.setValue(e.nativeEvent.layout.height);
+                    }
+                  }}
+                >
+                  <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
                   <View style={[localStyles.expHeaderLeft, isRtl && localStyles.expHeaderLeftRtl]}>
                     <Lightbulb
                       size={14}
@@ -614,23 +653,15 @@ export default function VerseCard({
                       {bc?.explanation || 'Explanation'}
                     </Text>
                   </View>
-                  {onCloseExplanation && (
-                    <TouchableOpacity
-                      onPress={onCloseExplanation}
-                      style={[localStyles.expCloseBtn, { backgroundColor: `${colors.primary}12` }]}
-                    >
-                      <X size={13} color={colors.primary} />
-                    </TouchableOpacity>
-                  )}
                 </View>
 
                 <Text
                   style={[localStyles.expBodyText, { color: colors.text }]}
                 >
-                  {explanationData.explanation}
+                  {explanationData?.explanation}
                 </Text>
 
-                {explanationData.learnMore && (
+                {explanationData?.learnMore && (
                   <>
                     <View style={[localStyles.expDivider, { backgroundColor: `${colors.primary}20` }]} />
                     <Text style={[localStyles.expLearnMoreTitle, { color: colors.primary }]}>
@@ -718,7 +749,31 @@ export default function VerseCard({
                     ))}
                   </View>
                 )}
-              </View>
+
+                {onCloseExplanation && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setExpClosing(true);
+                      Animated.timing(expAnim, {
+                        toValue: 0,
+                        duration: 1000,
+                        easing: Easing.linear,
+                        useNativeDriver: false,
+                      }).start(() => {
+                        setExplanationVisible(false);
+                        setExpClosing(false);
+                        onCloseExplanation();
+                      });
+                    }}
+                    style={[localStyles.hideExpBtn, { borderColor: `${colors.primary}30` }]}
+                  >
+                    <Text style={[localStyles.hideExpBtnText, { color: colors.primary }]}>
+                      {bc?.hideExplanation || 'Hide Explanation'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                </View>
+              </Animated.View>
             )}
           </View>
           <View style={localStyles.rightColumn}>
@@ -797,12 +852,15 @@ const localStyles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
   },
-  expCloseBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: 'center',
+  hideExpBtn: {
+    borderTopWidth: 1,
+    paddingTop: 14,
+    marginTop: 14,
     alignItems: 'center',
+  },
+  hideExpBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   expBodyText: {
     fontSize: 17,

@@ -159,10 +159,10 @@ export const createStyles = (COLORS: any) =>
       alignItems: 'center',
     },
     verseBodyText: {
-      fontSize: FONT_SIZES.md,
-      fontWeight: '600',
+      fontSize: 17,
+      fontWeight: '500',
       color: COLORS.text,
-      lineHeight: 24,
+      lineHeight: 28,
       paddingHorizontal: SPACING.md,
       paddingTop: SPACING.xs,
       paddingBottom: SPACING.md,
@@ -284,22 +284,58 @@ export const createStyles = (COLORS: any) =>
     },
 
     explainSection: {
-      padding: SPACING.lg,
-      backgroundColor: COLORS.surface,
-      marginTop: SPACING.md,
-      borderRadius: BORDER_RADIUS.lg,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.md,
+      backgroundColor: `${COLORS.primary}08`,
+      marginTop: SPACING.sm,
+    },
+    explainHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    explainHeaderRtl: {
+      flexDirection: 'row-reverse',
+    },
+    explainHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    explainHeaderLeftRtl: {
+      flexDirection: 'row-reverse',
+    },
+    explainTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: 0.3,
     },
     explainText: {
-      fontSize: FONT_SIZES.md,
+      fontSize: 17,
+      lineHeight: 28,
       color: COLORS.text,
-      marginBottom: SPACING.sm,
+      letterSpacing: 0.2,
     },
-    explainToggleBtn: {
-      alignSelf: 'flex-start',
+    explainDivider: {
+      height: 1,
+      marginVertical: 14,
     },
-    explainToggleText: {
-      color: COLORS.primary,
-      fontWeight: '600',
+    learnMoreTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 8,
+    },
+    learnMoreExpandable: {
+      marginTop: 0,
+      marginBottom: 2,
+    },
+    learnMoreText: {
+      fontSize: 17,
+      lineHeight: 28,
+      letterSpacing: 0.2,
     },
     quickLinksCompact: {
       flexDirection: 'row',
@@ -360,16 +396,6 @@ export const createStyles = (COLORS: any) =>
       left: 0,
       right: 0,
     },
-    showMoreBtn: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingVertical: 10,
-      marginTop: 8,
-    },
-    showMoreBtnRtl: {
-      flexDirection: 'row-reverse',
-    },
     // ── Back to Today Banner ──
     backToTodayBanner: {
       flexDirection: 'row',
@@ -384,10 +410,5 @@ export const createStyles = (COLORS: any) =>
     },
     backToTodayBannerRtl: {
       flexDirection: 'row-reverse',
-    },
-    showMoreText: {
-      color: COLORS.primary,
-      fontWeight: '600',
-      marginRight: 6,
     },
   });

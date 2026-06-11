@@ -592,12 +592,13 @@ export default function Bible() {
               addReadHistory(verseNumber);
             }}
             onRemoveHighlight={removeHighlight}
-            onExplain={vn => {
+            onExplain={async vn => {
               if (isGuest) {
                 showGate('Sign in to see explanations.');
                 return;
               }
-              getverseExplanation([vn], currentBook, currentChapter);
+              const found = await getverseExplanation([vn], currentBook, currentChapter);
+              if (found) clearSelection();
             }}
             onShare={vn => shareVerses([vn])}
             onCopy={vn => copyVerses([vn])}
@@ -663,12 +664,13 @@ export default function Bible() {
             addReadHistory(verseNumber);
           }}
           onRemoveHighlight={removeHighlight}
-          onExplain={vn => {
+          onExplain={async vn => {
             if (isGuest) {
               showGate('Sign in to see explanations.');
               return;
             }
-            getverseExplanation([vn], currentBook, currentChapter);
+            const found = await getverseExplanation([vn], currentBook, currentChapter);
+            if (found) clearSelection();
           }}
           onShare={vn => shareVerses([vn])}
           onCopy={vn => copyVerses([vn])}

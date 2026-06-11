@@ -17,6 +17,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Animated,
+  Easing,
   StyleSheet,
   Share,
   Alert,
@@ -42,6 +43,7 @@ import {
   ChevronRight,
   BookOpen,
   GraduationCap,
+  Lightbulb,
   X,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -57,6 +59,7 @@ import { bibleTTS } from '../../utilits/bibleTTS';
 import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import { showToast } from '../../helpers/Toash.helper';
 import { useTranslation } from '../../hooks/useTranslation';
+import ExpandableText from '../bible/ExpandableText';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ActivityType = 'read' | 'highlight' | 'note' | 'favorite' | 'plan';
@@ -120,7 +123,8 @@ export default function Home() {
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [showExplanation, setShowExplanation] = useState(false);
-  const [showMore, setShowMore] = useState(false);
+  const [expClosing, setExpClosing] = useState(false);
+  const explanationAnimRef = useRef(new Animated.Value(0));
   const [stats, setStats] = useState<Stats>({
     chaptersRead: 0,
     highlights: 0,
@@ -636,7 +640,28 @@ export default function Home() {
 
               {/* Explanation Section */}
               {showExplanation && (
-                <View style={styles.explainSection}>
+                <Animated.View
+                  style={[
+                    styles.explainSection,
+                    expClosing && { height: explanationAnimRef.current, overflow: 'hidden' },
+                  ]}
+                >
+                  <View
+                    onLayout={e => {
+                      if (!expClosing) {
+                        explanationAnimRef.current.setValue(e.nativeEvent.layout.height);
+                      }
+                    }}
+                  >
+                    <View style={[styles.explainHeader, isRtl && styles.explainHeaderRtl]}>
+                      <View style={[styles.explainHeaderLeft, isRtl && styles.explainHeaderLeftRtl]}>
+                        <Lightbulb size={16} color={COLORS.primary} strokeWidth={2.5} />
+                        <Text style={[styles.explainTitle, { color: COLORS.primary }]}>
+                          {translation?.bible?.explanation || 'Explanation'}
+                        </Text>
+                      </View>
+                    </View>
+
                   <Text style={styles.explainText}>
                     {(isCustomDate && customDailyVerse
                       ? customDailyVerse.explanation
@@ -645,52 +670,56 @@ export default function Home() {
                         "This is one of the most famous and powerful verses in the Bible. It beautifully summarizes God's love and the plan of salvation through Jesus Christ.")}
                   </Text>
 
-                  {showMore && (
-                    <Text style={styles.explainText}>
-                      {(isCustomDate && customDailyVerse
-                        ? customDailyVerse.learnMore
-                        : dailyVerse?.learnMore) ??
-                        (translation?.home?.explainMoreFull ||
-                          translation?.home?.explainMore ||
-                          'God demonstrated His immense love by sending His only Son, Jesus Christ, to earth. Anyone who believes in Him receives forgiveness of sins and the gift of eternal life. This salvation is freely available to all people through faith alone — not by works, but by grace.')}
-                    </Text>
-                  )}
-
-                  <TouchableOpacity
-                    style={[styles.showMoreBtn, isRtl && styles.showMoreBtnRtl]}
-                    onPress={() => {
-                      if (showMore) {
-                        setShowMore(false);
-                        scrollViewRef.current?.scrollTo({
-                          y: 0,
-                          animated: true,
-                        });
-                      } else {
-                        setShowMore(true);
-                      }
-                    }}
-                  >
-                    <Text style={styles.showMoreText}>
-                      {showMore
-                        ? translation?.home?.showLess || 'Show Less ▲'
-                        : translation?.home?.showMore || 'Show More ▼'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                  {(isCustomDate && customDailyVerse
+                    ? customDailyVerse.learnMore
+                    : dailyVerse?.learnMore) ? (
+                    <>
+                      <View style={[styles.explainDivider, { backgroundColor: `${COLORS.primary}20` }]} />
+                      <Text style={[styles.learnMoreTitle, { color: COLORS.primary }]}>
+                        {translation?.bible?.learnMore || 'Learn More'}
+                      </Text>
+                      <ExpandableText
+                        text={
+                          (isCustomDate && customDailyVerse
+                            ? customDailyVerse.learnMore
+                            : dailyVerse?.learnMore) ?? ''
+                        }
+                        initialLines={4}
+                        stepLines={10}
+                        expandLabel={translation?.bible?.readMore || 'Read more'}
+                        closeLabel={translation?.bible?.close || 'Close'}
+                        containerStyle={styles.learnMoreExpandable}
+                        textStyle={styles.learnMoreText}
+                      />
+                    </>
+                  ) : null}
+                  </View>
+                </Animated.View>
               )}
 
               <View style={[styles.verseActions, isRtl && styles.verseActionsRtl]}>
-                <TouchableOpacity
-                  style={[styles.verseActionBtn, isRtl && styles.verseActionBtnRtl]}
-                  onPress={() => {
-                    const closing = showExplanation;
-                    setShowExplanation(!showExplanation);
-                    if (closing) {
-                      setShowMore(false);
-                      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                    }
-                  }}
-                >
+                  <TouchableOpacity
+                    style={[styles.verseActionBtn, isRtl && styles.verseActionBtnRtl]}
+                    onPress={() => {
+                      if (showExplanation) {
+                        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                        setExpClosing(true);
+                        Animated.timing(explanationAnimRef.current, {
+                          toValue: 0,
+                          duration: 1000,
+                          easing: Easing.linear,
+                          useNativeDriver: false,
+                        }).start(() => {
+                          setExpClosing(false);
+                          setShowExplanation(false);
+                        });
+                      } else {
+                        explanationAnimRef.current.setValue(0);
+                        setExpClosing(false);
+                        setShowExplanation(true);
+                      }
+                    }}
+                  >
                   <ChevronDown size={15} color={COLORS.primary} />
                   <Text style={styles.verseActionText}>
                     {showExplanation
