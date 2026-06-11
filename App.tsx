@@ -79,7 +79,7 @@ const App = () => {
     if (isAndroid) {
       Linking.openURL('https://play.google.com/apps/internaltest/4701501480508116942');
     } else if (isIos) {
-      Linking.openURL('https://apps.apple.com/app/idYOUR_APP_ID'); // replace with your App Store ID
+      Linking.openURL('https://testflight.apple.com/join/gppwGgRF'); // replace with your App Store ID
     }
     setIsAppUpdated(true);
   }}
