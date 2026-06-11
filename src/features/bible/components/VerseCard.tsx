@@ -117,6 +117,7 @@ export default function VerseCard({
       setExpAnimDone(false);
       setExplanationVisible(true);
     } else if (!isOpen && wasOpen && explanationVisible) {
+      onCloseStart?.();
       setExpClosing(true);
       Animated.timing(expAnim, {
         toValue: 0,

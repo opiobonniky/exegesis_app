@@ -7,6 +7,7 @@ import {
   Animated,
   StyleSheet,
   Platform,
+  Dimensions,
 } from 'react-native';
 import {
   Headphones,
@@ -143,8 +144,10 @@ export default function SelectionActionBar({
   const startVerse = sortedVerses[0] ?? 1;
   const endVerse = sortedVerses[sortedVerses.length - 1] ?? 1;
 
-  // Slide-in animation
-  const slideAnim = useRef(new Animated.Value(120)).current;
+  const screenWidth = Dimensions.get('window').width;
+
+  // Slide-in animation from the right
+  const slideAnim = useRef(new Animated.Value(screenWidth)).current;
   React.useEffect(() => {
     Animated.spring(slideAnim, {
       toValue: 0,
@@ -161,7 +164,7 @@ export default function SelectionActionBar({
     {
       key: 'listen',
       label: bc?.listen || 'Listen',
-      icon: <Headphones size={22} color={COLORS.primary} strokeWidth={2} />,
+      icon: <Headphones size={19} color={COLORS.primary} strokeWidth={2} />,
       onPress: onListen,
       isPrimary: true,
     },
@@ -169,48 +172,48 @@ export default function SelectionActionBar({
     {
       key: 'journal',
       label: bc?.journal || 'Journal',
-      icon: <BookText size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
+      icon: <BookText size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onJournal,
     },
 
     {
       key: 'explain',
       label: bc?.explain || 'Explain',
-      icon: <Lightbulb size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
+      icon: <Lightbulb size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onExplain,
     },
 
     {
       key: 'highlight',
       label: bc?.highlight || 'Highlight',
-      icon: <Edit3 size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
+      icon: <Edit3 size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onHighlight,
     },
     {
       key: 'note',
       label: bc?.note || 'Note',
       icon: (
-        <FileText size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />
+        <FileText size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />
       ),
       onPress: onNote,
     },
     {
       key: 'favorite',
       label: bc?.favorite || 'Favorite',
-      icon: <Star size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
+      icon: <Star size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onFavorite,
     },
 
     {
       key: 'share',
       label: bc?.share || 'Share',
-      icon: <Share2 size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
+      icon: <Share2 size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onShare,
     },
     {
       key: 'copy',
       label: bc?.copy || 'Copy',
-      icon: <Copy size={22} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
+      icon: <Copy size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />,
       onPress: onCopy,
     },
   ].filter((action): action is any => action !== null);
@@ -221,7 +224,7 @@ export default function SelectionActionBar({
         localStyles.container,
         {
           backgroundColor: COLORS.primary,
-          transform: [{ translateY: slideAnim }],
+          transform: [{ translateX: slideAnim }],
         },
       ]}
     >
@@ -243,7 +246,7 @@ export default function SelectionActionBar({
               { backgroundColor: 'rgba(255,255,255,0.18)' },
             ]}
           >
-            <BookOpen size={14} color={COLORS.white} strokeWidth={2.5} />
+            <BookOpen size={12} color={COLORS.white} strokeWidth={2.5} />
           </View>
           <View>
             <Text style={[localStyles.countText, { color: COLORS.white }]}>
@@ -266,7 +269,7 @@ export default function SelectionActionBar({
           ]}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <X size={16} color={COLORS.white} strokeWidth={2.5} />
+          <X size={14} color={COLORS.white} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
 
@@ -333,31 +336,30 @@ const localStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    paddingBottom: Platform.OS === 'ios' ? 22 : 12,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
     zIndex: 100,
-    // Rich shadow
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 16,
+    shadowOffset: { width: -4, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
     elevation: 12,
   },
   accentLine: {
-    height: 4,
-    width: 40,
+    height: 3,
+    width: 30,
     borderRadius: 2,
     alignSelf: 'center',
-    marginTop: 10,
+    marginTop: 8,
     marginBottom: 2,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
   headerRtl: {
     flexDirection: 'row-reverse',
@@ -365,20 +367,20 @@ const localStyles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   headerLeftRtl: {
     flexDirection: 'row-reverse',
   },
   bookIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 7,
     justifyContent: 'center',
     alignItems: 'center',
   },
   countText: {
-    fontSize: FONT_SIZES.sm,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
@@ -387,52 +389,51 @@ const localStyles = StyleSheet.create({
     opacity: 0.85,
   },
   closeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
   },
   divider: {
     height: 1,
-    marginHorizontal: 18,
-    marginBottom: 10,
+    marginHorizontal: 14,
+    marginBottom: 8,
   },
   sliderContainer: {
-    paddingHorizontal: 18,
-    marginBottom: 10,
+    paddingHorizontal: 14,
+    marginBottom: 8,
   },
   scrollView: {
     flexGrow: 0,
   },
   scrollContent: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingBottom: 4,
-    gap: 4,
+    gap: 2,
     alignItems: 'center',
   },
   verticalDivider: {
     width: 1,
-    height: 48,
-    marginHorizontal: 8,
+    height: 40,
+    marginHorizontal: 6,
     borderRadius: 1,
     alignSelf: 'center',
   },
   actionBtn: {
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    minWidth: 62,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    minWidth: 52,
   },
   iconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
     borderWidth: 1,
-    // Inner shadow effect via shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -440,7 +441,7 @@ const localStyles = StyleSheet.create({
     elevation: 2,
   },
   actionLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.1,
     textAlign: 'center',
