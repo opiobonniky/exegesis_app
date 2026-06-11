@@ -102,6 +102,7 @@ export const useBible = () => {
   const [verseExplanationMap, setVerseExplanationMap] = useState<
     Record<number, string>
   >({});
+  const [explainingVerse, setExplainingVerse] = useState<number | null>(null);
   const [dailyVerseRefMap, setDailyVerseRefMap] = useState<
     Record<number, { reflection?: string; explanation?: string; learnMore?: string }>
   >({});
@@ -1073,6 +1074,10 @@ lastTTSVerseNumRef.current = verse.num;
       try {
         if (!verseNumbers || verseNumbers.length === 0) return false;
 
+        if (verseNumbers.length === 1) {
+          setExplainingVerse(verseNumbers[0]);
+        }
+
         // Backend provides get-verse-explanation for a single verse.
         // Call it for each requested verse and combine results.
         const results = await Promise.allSettled(
@@ -1101,10 +1106,14 @@ lastTTSVerseNumRef.current = verse.num;
           setShowExplanation(true);
           return true;
         }
+        showToast('info', 'No explanation available for this verse.');
         return false;
       } catch (err) {
         console.warn('Failed to get explanation', err);
+        showToast('error', 'Failed to load explanation.');
         return false;
+      } finally {
+        setExplainingVerse(null);
       }
     },
     [],
@@ -1287,6 +1296,7 @@ lastTTSVerseNumRef.current = verse.num;
     handleVersionChange,
     getVerseTextAsync,
     getverseExplanation,
+    explainingVerse,
     clearVerseExplanationForVerse,
     dailyVerseRefMap,
     getDailyVerseRef,

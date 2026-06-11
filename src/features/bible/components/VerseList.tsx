@@ -211,6 +211,7 @@ export type VerseListProps = {
   onCloseDailyVerse?: (verseNumber: number) => void;
   dailyVerseRefMap?: Record<number, { reflection?: string; explanation?: string; learnMore?: string }>;
   navigation?: any;
+  explainingVerse?: number | null;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -253,6 +254,7 @@ export default function VerseList({
   onDailyVerse,
   onCloseDailyVerse,
   dailyVerseRefMap,
+  explainingVerse,
 }: VerseListProps) {
   if (loading) {
     return (
@@ -289,6 +291,7 @@ export default function VerseList({
     const shouldShowDvPanel = !!dvData;
 
     const showActions = selectedVerses.length === 1 && isSelected;
+    const isExplaining = explainingVerse === verseNumber;
 
     return (
       <VerseCard
@@ -306,6 +309,7 @@ export default function VerseList({
         colors={colors}
         styles={styles}
         showActions={showActions}
+        isExplaining={isExplaining}
         onPress={() => onVersePress(verseNumber)}
         onRemoveHighlight={onRemoveHighlight}
         onShare={onShare ? () => onShare(verseNumber) : undefined}

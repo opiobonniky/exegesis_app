@@ -292,6 +292,7 @@ export default function Bible() {
     dailyVerseRefMap,
     getDailyVerseRef,
     clearDailyVerseRef,
+    explainingVerse,
   } = useBible();
 
   const { language, translations } = useLanguage();
@@ -636,6 +637,7 @@ export default function Bible() {
             }}
             dailyVerseRefMap={dailyVerseRefMap}
             verseJournalPrompts={verseJournalPrompts}
+            explainingVerse={explainingVerse}
             navigation={navigation}
           />
         </View>
@@ -701,6 +703,7 @@ export default function Bible() {
           }}
           dailyVerseRefMap={dailyVerseRefMap}
           verseJournalPrompts={verseJournalPrompts}
+          explainingVerse={explainingVerse}
           navigation={navigation}
         />
       )}

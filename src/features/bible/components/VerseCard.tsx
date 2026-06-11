@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Easing,
   Pressable,
@@ -34,6 +35,7 @@ type VerseCardProps = {
   colors: any;
   styles: any;
   showActions?: boolean;
+  isExplaining?: boolean;
   onPress: () => void;
   onRemoveHighlight: (verseNumber: number) => void;
   onExplain?: () => void;
@@ -69,6 +71,7 @@ export default function VerseCard({
   colors,
   styles,
   showActions,
+  isExplaining,
   onPress,
   onRemoveHighlight,
   onExplain,
@@ -481,10 +484,15 @@ export default function VerseCard({
                 {onExplain && (
                   <TouchableOpacity
                     onPress={onExplain}
+                    disabled={isExplaining}
                     activeOpacity={0.7}
                     style={localStyles.actionRowBtn}
                   >
-                    <Lightbulb size={11} color={colors.primary} strokeWidth={2} />
+                    {isExplaining ? (
+                      <ActivityIndicator size={11} color={colors.primary} />
+                    ) : (
+                      <Lightbulb size={11} color={colors.primary} strokeWidth={2} />
+                    )}
                     <Text
                       style={[localStyles.actionRowText, { color: colors.primary }]}
                     >
