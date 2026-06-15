@@ -850,7 +850,7 @@ export default function Bible() {
         searchQuery={searchQuery}
         onSearchChange={handleSearch}
         searchResults={searchResults}
-        onSelectResult={() => goToVerse()}
+        onSelectResult={(book, chapter, verse) => goToVerse({ book, chapter, verse: verse ?? 1 })}
         loading={searchLoading}
         versionName={activeVersion.name}
         versionAbbreviation={activeVersion.abbreviation}
