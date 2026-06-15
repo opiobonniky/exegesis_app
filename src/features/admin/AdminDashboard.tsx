@@ -18,6 +18,10 @@ import {
   StatusBar,
   Platform,
   Pressable,
+  Switch,
+  Modal,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
@@ -41,6 +45,8 @@ import {
   LayoutTemplate,
   Lightbulb,
   Globe,
+  Settings,
+  ChevronDown,
 } from 'lucide-react-native';
 import { route } from '../../component/navigations/routes';
 import useAuth from '../../hooks/useAuth';
@@ -48,7 +54,10 @@ import { AppContext } from '../../common/AppContext';
 import {
   DashboardStats,
   getAdminDashboardStats,
+  getSiteSetting,
+  setSiteSetting,
 } from '../../services/adminApi';
+import { bibleApi } from '../../services/bibleApi';
 import BottomTab from '../../component/navigations/BottomTab';
 import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import { AdminTranslations, Language } from '../../component/language-translation/type';
@@ -704,9 +713,14 @@ const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [freeTranslationsOnly, setFreeTranslationsOnly] = useState(false);
+  const [defaultTranslationId, setDefaultTranslationId] = useState('Berean');
+  const [translationOptions, setTranslationOptions] = useState<{ id: string; name: string }[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('adminDashboard');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [langPickerVisible, setLangPickerVisible] = useState(false);
+  const [translationPickerVisible, setTranslationPickerVisible] = useState(false);
 
   const translateX = useRef(new Animated.Value(isRtl ? DRAWER_WIDTH : -DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -768,9 +782,57 @@ const AdminDashboard: React.FC = () => {
     }
   }, []);
 
+  const loadSettings = useCallback(async () => {
+    try {
+      const [freeVal, defaultVal] = await Promise.all([
+        getSiteSetting('freeTranslationsOnly'),
+        getSiteSetting('defaultTranslationId'),
+      ]);
+      setFreeTranslationsOnly(freeVal === 'true');
+      setDefaultTranslationId(defaultVal || 'Berean');
+    } catch (error) {
+      console.error('Failed to load site settings:', error);
+    }
+  }, []);
+
+  const loadTranslationOptions = useCallback(async () => {
+    try {
+      const list = await bibleApi.getAvailableTranslationsWithMapping();
+      setTranslationOptions(list.map((t: any) => ({ id: t.frontendId, name: t.name })));
+    } catch (error) {
+      console.error('Failed to load translations:', error);
+    }
+  }, []);
+
+  const handleToggleFreeTranslations = async (checked: boolean) => {
+    setSettingsLoading(true);
+    try {
+      await setSiteSetting('freeTranslationsOnly', String(checked));
+      setFreeTranslationsOnly(checked);
+    } catch (error) {
+      console.error('Failed to save setting:', error);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleChangeDefaultTranslation = async (id: string) => {
+    setSettingsLoading(true);
+    try {
+      await setSiteSetting('defaultTranslationId', id);
+      setDefaultTranslationId(id);
+    } catch (error) {
+      console.error('Failed to save default translation:', error);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+    loadSettings();
+    loadTranslationOptions();
+  }, [fetchStats, loadSettings, loadTranslationOptions]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -1176,12 +1238,127 @@ const AdminDashboard: React.FC = () => {
             onPress={() => setLangPickerVisible(true)}
             isRtl={isRtl}
           />
-         </View>
+          </View>
+
+        {/* ── System Settings ── */}
+        <View
+          style={[rootStyles.sectionCard, { backgroundColor: theme.surface }]}
+        >
+          <View style={[systemStyles.header, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={[systemStyles.iconWrap, { backgroundColor: `${theme.accent}18` }]}>
+              <Settings size={18} color={theme.accent} strokeWidth={2} />
+            </View>
+            <Text style={[systemStyles.title, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+              {ac?.systemSettings || 'System Settings'}
+            </Text>
+          </View>
+
+          {/* Free Translations Only */}
+          <View style={[systemStyles.row, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={systemStyles.rowText}>
+              <Text style={[systemStyles.label, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                {ac?.freeTranslationsOnly || 'Free Translations Only'}
+              </Text>
+              <Text style={[systemStyles.desc, { color: theme.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
+                {ac?.freeTranslationsDesc || 'Limit Bible readers to free translations only'}
+              </Text>
+            </View>
+            <Switch
+              value={freeTranslationsOnly}
+              onValueChange={handleToggleFreeTranslations}
+              disabled={settingsLoading}
+              trackColor={{ false: theme.border, true: theme.accent }}
+              thumbColor="#fff"
+              ios_backgroundColor={theme.border}
+            />
+          </View>
+
+          {/* Default Bible Translation */}
+          <View style={[systemStyles.row, { flexDirection: isRtl ? 'row-reverse' : 'row', borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 16, marginTop: 4 }]}>
+            <View style={systemStyles.rowText}>
+              <Text style={[systemStyles.label, { color: theme.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                {ac?.defaultTranslation || 'Default Bible Translation'}
+              </Text>
+              <Text style={[systemStyles.desc, { color: theme.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
+                {ac?.defaultTranslationDesc || 'Translation to use by default in the Bible reader'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setTranslationPickerVisible(true)}
+              disabled={settingsLoading || translationOptions.length === 0}
+              style={[
+                systemStyles.pickerBtn,
+                { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
+              ]}
+              activeOpacity={0.7}
+            >
+              <Text style={[systemStyles.pickerText, { color: theme.text }]}>
+                {defaultTranslationId}
+              </Text>
+              <ChevronDown size={14} color={theme.textSecondary} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <View style={rootStyles.bottomSpacer} />
       </ScrollView>
 
       <BottomTab activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {/* ── Translation Picker Modal ── */}
+      <Modal
+        visible={translationPickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTranslationPickerVisible(false)}
+      >
+        <View style={systemStyles.modalOverlay}>
+          <View style={[systemStyles.modalSheet, { backgroundColor: theme.surface }]}>
+            <View style={systemStyles.modalHeader}>
+              <Text style={[systemStyles.modalTitle, { color: theme.text }]}>
+                {ac?.defaultTranslation || 'Default Bible Translation'}
+              </Text>
+              <TouchableOpacity onPress={() => setTranslationPickerVisible(false)}>
+                <X size={20} color={theme.textSecondary} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={translationOptions}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    systemStyles.modalItem,
+                    { borderBottomColor: theme.border },
+                    item.id === defaultTranslationId && { backgroundColor: `${theme.accent}12` },
+                  ]}
+                  onPress={() => {
+                    handleChangeDefaultTranslation(item.id);
+                    setTranslationPickerVisible(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    systemStyles.modalItemText,
+                    { color: item.id === defaultTranslationId ? theme.accent : theme.text },
+                    item.id === defaultTranslationId && { fontWeight: '700' },
+                  ]}>
+                    {item.name}
+                  </Text>
+                  {item.id === defaultTranslationId && (
+                    <Text style={{ color: theme.accent, fontSize: 16 }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={{ padding: 40, alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={theme.accent} />
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
 
       <LanguagePickerModal
         visible={langPickerVisible}
@@ -1358,6 +1535,92 @@ const rootStyles = StyleSheet.create({
   healthTrack: { height: 10, borderRadius: 5, overflow: 'hidden' },
   healthFill: { height: '100%', borderRadius: 5 },
   bottomSpacer: { height: 34 },
+});
+
+const systemStyles = StyleSheet.create({
+  header: {
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 10,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  row: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  rowText: {
+    flex: 1,
+    marginRight: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  desc: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  pickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  pickerText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '60%',
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  modalItemText: {
+    fontSize: 14,
+    flex: 1,
+  },
 });
 
 export default AdminDashboard;

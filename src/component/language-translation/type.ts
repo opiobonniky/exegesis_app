@@ -943,6 +943,11 @@ export type AdminTranslations = {
   heyPrefix?: string;
   adminBadge?: string;
   superAdminBadge?: string;
+  systemSettings?: string;
+  freeTranslationsOnly?: string;
+  freeTranslationsDesc?: string;
+  defaultTranslation?: string;
+  defaultTranslationDesc?: string;
 
   // User management
   userManagement?: string;

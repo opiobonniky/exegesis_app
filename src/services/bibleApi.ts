@@ -13,6 +13,11 @@ export interface Translation {
   link: string | null;
 }
 
+export interface TranslationSettings {
+  freeTranslationsOnly: boolean;
+  defaultTranslationId: string;
+}
+
 export interface BookInfo {
   bookNumber: number;
   bookName: string;
@@ -489,6 +494,18 @@ export const bibleApi = {
       link: null,
       copyright: null,
     }));
+  },
+
+  getTranslationSettings: async (): Promise<TranslationSettings> => {
+    try {
+      const response = await api.get(`${TRANSLATIONS_BASE_URL}/settings`);
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+    } catch (error) {
+      console.error('Failed to fetch translation settings:', error);
+    }
+    return { freeTranslationsOnly: false, defaultTranslationId: 'Berean' };
   },
 };
 

@@ -27,7 +27,10 @@ export interface TranslationPickerModalProps {
   currentVersionId: string;
   onSelectVersion: (frontendId: string) => void;
   isDark: boolean;
+  freeTranslationsOnly?: boolean;
 }
+
+const FREE_TRANSLATION_IDS = new Set(['Berean', 'BSB', 'KJV', 'NIV', 'ESV', 'WEB', 'GW', 'ASV', 'YLT']);
 
 interface Translation {
   backendId: string;
@@ -43,6 +46,7 @@ export default function TranslationPickerModal({
   currentVersionId,
   onSelectVersion,
   isDark,
+  freeTranslationsOnly = false,
 }: TranslationPickerModalProps) {
   const { translations: lang } = useLanguage();
   const bc = lang?.bible;
@@ -101,13 +105,15 @@ export default function TranslationPickerModal({
     }
   };
 
-  const displayed = translations.filter(
-    t =>
-      query.length === 0 ||
-      t.name.toLowerCase().includes(query.toLowerCase()) ||
-      t.frontendId.toLowerCase().includes(query.toLowerCase()) ||
-      t.shortName.toLowerCase().includes(query.toLowerCase()),
-  );
+  const displayed = translations
+    .filter(t => !freeTranslationsOnly || FREE_TRANSLATION_IDS.has(t.frontendId))
+    .filter(
+      t =>
+        query.length === 0 ||
+        t.name.toLowerCase().includes(query.toLowerCase()) ||
+        t.frontendId.toLowerCase().includes(query.toLowerCase()) ||
+        t.shortName.toLowerCase().includes(query.toLowerCase()),
+    );
 
   const handleSelect = (frontendId: string) => {
     onSelectVersion(frontendId);

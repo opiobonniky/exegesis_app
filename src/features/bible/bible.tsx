@@ -45,6 +45,7 @@ import {
 } from 'lucide-react-native';
 import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import LinearGradient from 'react-native-linear-gradient';
+import { bibleApi } from '../../services/bibleApi';
 
 import {
   BibleHeader,
@@ -298,6 +299,9 @@ export default function Bible() {
   const { language, translations } = useLanguage();
   const isRtl = isRtlLanguage(language);
 
+  const [freeTranslationsOnly, setFreeTranslationsOnly] = useState(false);
+  const settingsFetchedRef = useRef(false);
+
   // ── Initialize from route params (bookName, chapter) when navigating from
   //  ReadingPlan daily screen, search results or other screens ──────────
   //  Uses empty deps because route params are snapshots — React Navigation
@@ -309,6 +313,24 @@ export default function Bible() {
       setCurrentChapter(chapter);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Load translation settings from backend ───────────────────────────
+  useEffect(() => {
+    const load = async () => {
+      if (settingsFetchedRef.current) return;
+      settingsFetchedRef.current = true;
+      try {
+        const settings = await bibleApi.getTranslationSettings();
+        setFreeTranslationsOnly(settings.freeTranslationsOnly);
+        if (settings.defaultTranslationId && settings.defaultTranslationId !== bibleVersionId) {
+          handleVersionChange(settings.defaultTranslationId);
+        }
+      } catch (e) {
+        console.error('Failed to load translation settings:', e);
+      }
+    };
+    load();
   }, []);
 
   // ── Load chapter journal prompts whenever book/chapter/auth changes ─────────
@@ -828,7 +850,7 @@ export default function Bible() {
         searchQuery={searchQuery}
         onSearchChange={handleSearch}
         searchResults={searchResults}
-        onSelectResult={goToVerse}
+        onSelectResult={() => goToVerse()}
         loading={searchLoading}
         versionName={activeVersion.name}
         versionAbbreviation={activeVersion.abbreviation}
@@ -881,6 +903,7 @@ export default function Bible() {
         currentVersionId={bibleVersionId}
         onSelectVersion={handleVersionChange}
         isDark={isDark}
+        freeTranslationsOnly={freeTranslationsOnly}
       />
 
       {/* ── Bottom Tab — navigation gated for guests ─────────────────────── */}

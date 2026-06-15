@@ -761,3 +761,25 @@ export const getAdminPlanStats = async (
   }
   return response.returnData as AdminPlanStats;
 };
+
+// ── Site settings ──────────────────────────────────────────────────────────
+
+export interface SiteSettingResponse {
+  key: string;
+  value: string;
+}
+
+export const getSiteSetting = async (key: string): Promise<string | null> => {
+  const response = await sendPostRequest<SiteSettingResponse>('admin', 'get-site-setting', { key });
+  if (response.returnCode === 200 && response.returnData) {
+    return response.returnData.value;
+  }
+  return null;
+};
+
+export const setSiteSetting = async (key: string, value: string): Promise<void> => {
+  const response = await sendPostRequest('admin', 'set-site-setting', { key, value });
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to set site setting');
+  }
+};
