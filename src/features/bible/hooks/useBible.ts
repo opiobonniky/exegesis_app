@@ -158,6 +158,7 @@ export const useBible = () => {
   // ─── Stable refs for async callbacks ───────────────────────────────────────
   const audioPlaylistRef = useRef<Array<{ num: number; text: string }>>([]);
   const audioVerseIndexRef = useRef<number>(0);
+  const audioScopeRef = useRef<'chapter' | 'selection'>('chapter');
   const afterPlayBehaviourRef = useRef<
     'stop' | 'repeat_one' | 'repeat' | 'continue'
   >('continue');
@@ -196,6 +197,9 @@ export const useBible = () => {
   useEffect(() => {
     audioVerseIndexRef.current = audioVerseIndex;
   }, [audioVerseIndex]);
+  useEffect(() => {
+    audioScopeRef.current = audioScope;
+  }, [audioScope]);
   useEffect(() => {
     afterPlayBehaviourRef.current = afterPlayBehaviour;
   }, [afterPlayBehaviour]);
@@ -415,6 +419,8 @@ useEffect(() => {
         ttsActiveRef.current = false;
         setShowAudioPlayer(false);
         setActiveAudioVerse(null);
+        setIsAudioPaused(false);
+        lastTTSVerseNumRef.current = null;
         return;
       }
 
@@ -453,7 +459,9 @@ lastTTSVerseNumRef.current = verse.num;
           [verse],
           currentBookRef.current,
           currentChapterRef.current,
-          { announceLocation: index === 0 },
+          {
+            announceLocation: index === 0 && audioScopeRef.current === 'chapter',
+          },
         );
       } catch (err) {
         console.warn('[useBible] speakVerses error:', err);
@@ -502,6 +510,15 @@ lastTTSVerseNumRef.current = verse.num;
       // For stop or end of playlist, stop playback
       else {
         ttsActiveRef.current = false;
+        setShowAudioPlayer(false);
+        setActiveAudioVerse(null);
+        setAudioPlaylist([]);
+        audioPlaylistRef.current = [];
+        setAudioVerseIndex(0);
+        audioVerseIndexRef.current = 0;
+        confirmedAudioIndexRef.current = -1;
+        setIsAudioPaused(false);
+        lastTTSVerseNumRef.current = null;
       }
     },
     [],
@@ -627,9 +644,12 @@ lastTTSVerseNumRef.current = verse.num;
           setShowAudioPlayer(false);
           setActiveAudioVerse(null);
           setAudioPlaylist([]);
-          setAudioVerseIndex(0);
           audioPlaylistRef.current = [];
+          setAudioVerseIndex(0);
           audioVerseIndexRef.current = 0;
+          confirmedAudioIndexRef.current = -1;
+          setIsAudioPaused(false);
+          lastTTSVerseNumRef.current = null;
         }
       } else {
         // No saved paused text (e.g. pause was triggered at a verse boundary

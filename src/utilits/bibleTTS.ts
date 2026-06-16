@@ -709,67 +709,60 @@ class BibleTTSManager {
     verses: Array<{ num: number; text: string }>,
     book: string,
     chapter: number,
-    opts: { announceLocation?: boolean } = {},
+    opts: { announceLocation?: boolean; announceVerseNumbers?: boolean } = {},
   ): Promise<void> {
     if (!verses.length) return;
 
     const announce = opts.announceLocation ?? verses.length === 1;
+    const readVerseNums = opts.announceVerseNumbers ?? false;
 
     let fullText: string;
-    // prefixRaw is the raw prefix string before prepareText — we clean it
-    // separately to find where the verse starts in the cleaned full string
-    // without relying on indexOf(firstWord) which can match inside the prefix
-    // (e.g. verse starting with "God" when prefix contains "God").
-    let prefixRaw: string;
+    let prefixRaw = '';
+    let verseNum: number;
 
     if (verses.length === 1) {
       const v = verses[0];
-      prefixRaw = announce
-        ? `${book}, chapter ${chapter}, verse ${v.num}. `
-        : `${v.num}. `;
-      fullText = `${prefixRaw}${v.text}`;
+      verseNum = v.num;
+      if (announce) {
+        prefixRaw = `${book}, chapter ${chapter}. `;
+        fullText = readVerseNums
+          ? `${prefixRaw}verse ${v.num}. ${v.text}`
+          : `${prefixRaw}${v.text}`;
+      } else {
+        fullText = readVerseNums
+          ? `${v.num}. ${v.text}`
+          : v.text;
+      }
     } else {
-      prefixRaw = announce
-        ? `${book}, chapter ${chapter}. verse ${verses[0].num}. `
-        : '';
-      fullText = announce
-        ? `${book}, chapter ${chapter}. ` +
-          verses
-            .map((v, i) =>
-              i === 0 ? `verse ${v.num}. ${v.text}` : `${v.num}. ${v.text}`,
-            )
-            .join(' ')
-        : verses.map(v => `${v.num}. ${v.text}`).join(' ');
+      verseNum = verses[0].num;
+      const joinedText = readVerseNums
+        ? verses.map(v => `verse ${v.num}. ${v.text}`).join(' ').replace(/\s{2,}/g, ' ').trim()
+        : verses.map(v => v.text).join(' ').replace(/\s{2,}/g, ' ').trim();
+      if (announce) {
+        prefixRaw = `${book}, chapter ${chapter}. `;
+        fullText = `${prefixRaw}${joinedText}`;
+      } else {
+        fullText = joinedText;
+      }
     }
 
+    // prefixLen is the character position in the cleaned text where the actual
+    // verse content begins (after any announcement prefix).
     const cleanedFull = this.prepareText(fullText);
+    let prefixLen = 0;
+    if (prefixRaw) {
+      const cleanedPrefix = this.prepareText(prefixRaw);
+      if (cleanedFull.startsWith(cleanedPrefix)) {
+        prefixLen = cleanedPrefix.length;
+      } else {
+        const firstWord = cleanedFull.match(/\S+/);
+        if (firstWord) {
+          const idx = cleanedFull.indexOf(firstWord[0], Math.max(0, cleanedPrefix.length - 5));
+          prefixLen = idx >= 0 ? idx : 0;
+        }
+      }
+    }
 
-    // BUG FIX: search for the first verse word starting AFTER the prefix area,
-    // not from the beginning of the string. This prevents a false match when
-    // the verse opens with a word that also appears in the prefix (e.g. "God",
-    // "Genesis", "Lord").
-    const cleanedPrefix = this.prepareText(prefixRaw);
-    const searchFrom = Math.max(0, cleanedPrefix.length - 2);
-
-    const verseOnlyRaw =
-      verses.length === 1
-        ? verses[0].text
-        : verses.map(v => `${v.num}. ${v.text}`).join(' ');
-    const cleanedVerseOnly = this.prepareText(verseOnlyRaw);
-
-    const firstVerseWord = (cleanedVerseOnly.match(/\S+/) ?? [''])[0];
-    const verseStartInFull = firstVerseWord
-      ? cleanedFull.indexOf(firstVerseWord, announce ? searchFrom : 0)
-      : 0;
-
-    const prefixLen = Math.max(
-      0,
-      verseStartInFull >= 0
-        ? verseStartInFull
-        : cleanedFull.length - cleanedVerseOnly.length,
-    );
-
-    const verseNum = verses.length === 1 ? verses[0].num : verses[0].num;
     await this.speak(fullText, prefixLen, 0, undefined, false, verseNum);
   }
 
