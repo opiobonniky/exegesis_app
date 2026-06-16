@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -134,29 +134,29 @@ export default function VerseCard({
 
   // ── Subscribe to bibleTTS directly ────────────────────────────────────────
   //
-  // KEY PERF FIX: previously `activeWordOffset` lived in useBible state and
-  // sat in FlatList extraData. Every word change re-rendered ALL visible cards
-  // (~15), congesting the JS thread and causing visible lag.
-  //
-  // Now: word offset state lives here. Only the active card subscribes.
-  // All other cards never re-render for word changes. JS thread stays free.
+  // Every card subscribes so active-state changes are synchronous with TTS
+  // engine state — no React-propagation lag during verse transitions.
+  // Non-matching cards do a single boolean check and return (very cheap).
   //
   const [activeWordOffset, setActiveWordOffset] = useState<WordSpan | null>(
     null,
   );
-  // Keep wordMap in a ref so the subscription closure always sees the latest
-  // value without being re-created on every verse change.
   const wordMapRef = useRef<WordSpan[] | null>(null);
   wordMapRef.current = wordMap;
 
+  const [isLocallyActive, setIsLocallyActive] = useState(false);
+  const locallyActiveRef = useRef(false);
+
   useEffect(() => {
-    if (!isActiveAudio) {
-      setActiveWordOffset(null);
-      return;
-    }
     const unsub = bibleTTS.subscribe(s => {
-      if (s.tier === 'idle') return;
-      if (s.currentVerseNum !== verseNumber) {
+      const nowActive = s.currentVerseNum === verseNumber && s.isPlaying;
+
+      if (nowActive !== locallyActiveRef.current) {
+        locallyActiveRef.current = nowActive;
+        setIsLocallyActive(nowActive);
+      }
+
+      if (!nowActive) {
         setActiveWordOffset(null);
         return;
       }
@@ -165,13 +165,20 @@ export default function VerseCard({
         return;
       }
       const map = wordMapRef.current;
-      if (!map) return;
-      if (s.wordIndex >= map.length) return;
-      const offset = map[s.wordIndex];
-      setActiveWordOffset(offset);
+      if (!map || s.wordIndex >= map.length) {
+        setActiveWordOffset(null);
+        return;
+      }
+      setActiveWordOffset(map[s.wordIndex]);
     });
     return unsub;
-  }, [isActiveAudio, verseNumber]);
+  }, [verseNumber]);
+
+  // Combine prop-driven (async React) and subscription-driven (sync TTS)
+  const isEffectivelyActive = useMemo(
+    () => isActiveAudio || isLocallyActive,
+    [isActiveAudio, isLocallyActive],
+  );
 
   // ── Word highlight animation ─────────────────────────────────────────────
   const wordAnim = useRef(new Animated.Value(0)).current;
@@ -200,7 +207,7 @@ export default function VerseCard({
       {
         fontSize: fontSize * 0.72,
         fontWeight: '800' as const,
-        color: isActiveAudio ? accent : isSelected ? accent : colors.accent,
+        color: isEffectivelyActive ? accent : isSelected ? accent : colors.accent,
         lineHeight,
       },
     ];
@@ -215,7 +222,7 @@ export default function VerseCard({
           {
             fontSize,
             lineHeight,
-            opacity: isActiveAudio ? 1 : 0.88,
+            opacity: isEffectivelyActive ? 1 : 0.88,
             writingDirection: 'rtl' as const,
           },
         ]}>
@@ -228,7 +235,7 @@ export default function VerseCard({
       <Text
         style={[
           styles.verseText,
-          { fontSize, lineHeight, opacity: isActiveAudio ? 1 : 0.88 },
+          { fontSize, lineHeight, opacity: isEffectivelyActive ? 1 : 0.88 },
         ]}>
         <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}{'  '}</Text>
         {children}
@@ -251,7 +258,7 @@ export default function VerseCard({
                 inputRange: [0, 1],
                 outputRange: [
                   'transparent',
-                  isActiveAudio ? 'rgba(255, 193, 7, 0.42)' : 'transparent',
+                  isEffectivelyActive ? 'rgba(255, 193, 7, 0.42)' : 'transparent',
                 ],
               }),
               transform: [
@@ -272,7 +279,7 @@ export default function VerseCard({
     );
 
     // No active word → plain render
-    if (!isActiveAudio || !activeWordOffset) {
+    if (!isEffectivelyActive || !activeWordOffset) {
       return isRtl
         ? renderRtlContent(text)
         : renderLtrContent(text);
@@ -302,7 +309,7 @@ export default function VerseCard({
                 inputRange: [0, 1],
                 outputRange: [
                   'transparent',
-                  isActiveAudio ? 'rgba(255, 193, 7, 0.42)' : 'transparent',
+                  isEffectivelyActive ? 'rgba(255, 193, 7, 0.42)' : 'transparent',
                 ],
               }),
               transform: [
@@ -330,7 +337,7 @@ export default function VerseCard({
   const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    if (isActiveAudio) {
+    if (isEffectivelyActive) {
       Animated.spring(audioScale, {
         toValue: 1.012,
         useNativeDriver: true,
@@ -383,7 +390,7 @@ export default function VerseCard({
       ]).start();
     }
     return () => pulseLoopRef.current?.stop();
-  }, [isActiveAudio]);
+  }, [isEffectivelyActive]);
 
   // ── Search-jump border (JS-driver, mirrors highlightAnim via listener) ────
   const searchBorderOpacity = useRef(new Animated.Value(0)).current;
@@ -445,7 +452,7 @@ export default function VerseCard({
             { transform: [{ scale: audioScale }] },
           ]}
         >
-          {isActiveAudio && (
+          {isEffectivelyActive && (
             <Animated.View
               pointerEvents="none"
               style={[
@@ -461,7 +468,7 @@ export default function VerseCard({
             />
           )}
 
-          {isActiveAudio && (
+          {isEffectivelyActive && (
             <Animated.View
               pointerEvents="none"
               style={[
