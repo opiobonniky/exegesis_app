@@ -609,7 +609,7 @@ export default function Bible() {
             onScroll={handleScroll}
             scrollEventThrottle={16}
             onVersePress={verseNumber => {
-              if (isGuest) return;
+              if (isGuest || showAudioPlayer) return;
               toggleVerseSelection(verseNumber);
               addReadHistory(verseNumber);
             }}
@@ -681,7 +681,7 @@ export default function Bible() {
           onScroll={handleScroll}
           scrollEventThrottle={16}
           onVersePress={verseNumber => {
-            if (isGuest) return;
+            if (isGuest || showAudioPlayer) return;
             toggleVerseSelection(verseNumber);
             addReadHistory(verseNumber);
           }}

@@ -416,6 +416,8 @@ export default function VerseCard({
   }, []);
 
   const handlePress = useCallback(() => {
+    // Don't toggle selection while TTS is actively reading this verse
+    if (isEffectivelyActive) return;
     if (tapTimerRef.current) {
       clearTimeout(tapTimerRef.current);
       tapTimerRef.current = null;
@@ -426,7 +428,7 @@ export default function VerseCard({
         onPress?.();
       }, 250);
     }
-  }, [onPress, onDoubleTap]);
+  }, [onPress, onDoubleTap, isEffectivelyActive]);
 
   const handleLongPress = useCallback(() => {
     Vibration.vibrate(10);
