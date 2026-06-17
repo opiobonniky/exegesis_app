@@ -38,7 +38,6 @@
   "createAccount": {
     "text": "Create New Account"
   },
-
   "validation": {
     "emailRequired": "Email is required",
     "invalidEmail": "Please enter a valid email",
@@ -65,7 +64,6 @@
     "tryAgainLater": "Please try again later",
     "failedResendCode": "Failed to resend code"
   },
-
   "register": {
     "title": "Register",
     "username": "Username",
@@ -127,9 +125,15 @@
     "alreadyVerified": "Already verified? Sign In"
   },
   "steps": {
-    "email": { "eyebrow": "STEP 1 OF 3" },
-    "verify": { "eyebrow": "STEP 2 OF 3" },
-    "reset": { "eyebrow": "STEP 3 OF 3" }
+    "email": {
+      "eyebrow": "STEP 1 OF 3"
+    },
+    "verify": {
+      "eyebrow": "STEP 2 OF 3"
+    },
+    "reset": {
+      "eyebrow": "STEP 3 OF 3"
+    }
   },
   "welcome": {
     "title": "Welcome",
@@ -165,9 +169,8 @@
     "users": "Users",
     "verse": "Verse",
     "devotion": "Devotion"
-  }
-  ,
-    "readingSettings": {
+  },
+  "readingSettings": {
     "title": "Reading Settings",
     "status": {
       "checking": "Checking...",
@@ -182,7 +185,9 @@
     "trySuggestions": "Try \"NIV\", \"KJV\", \"ESV\"…",
     "textSize": "Text Size",
     "previewLabel": "PREVIEW",
-    "preview": { "ref": "— John 3:16" },
+    "preview": {
+      "ref": "— John 3:16"
+    },
     "readingVoice": "Reading Voice",
     "voiceSettings": {
       "label": "Voice Settings",
@@ -318,20 +323,19 @@
       "bibleStudy": "Bible Study",
       "settings": "Settings"
     },
-      "menuItems": {
-        "continueReading": "Continue Reading",
-        "myHighlights": "My Highlights",
-        "favorites": "Favorites",
-        "myNotes": "My Notes",
-        "readingHistory": "Reading History",
-        "lightMode": "Light Mode",
-        "darkMode": "Dark Mode",
-        "notifications": "Notifications",
-        "editProfile": "Edit Profile",
-        "readingSettings": "Reading Settings"
-      ,
+    "menuItems": {
+      "continueReading": "Continue Reading",
+      "myHighlights": "My Highlights",
+      "favorites": "Favorites",
+      "myNotes": "My Notes",
+      "readingHistory": "Reading History",
+      "lightMode": "Light Mode",
+      "darkMode": "Dark Mode",
+      "notifications": "Notifications",
+      "editProfile": "Edit Profile",
+      "readingSettings": "Reading Settings",
       "language": "Language"
-      },
+    },
     "fields": {
       "email": "Email",
       "phone": "Phone",
@@ -345,8 +349,7 @@
       "confirmLabel": "Logout",
       "cancelLabel": "Cancel"
     }
-  }
-  ,
+  },
   "voiceSettings": {
     "title": "Voice & Narration",
     "loadingVoices": "Loading voices…",
@@ -385,9 +388,8 @@
     "voicePitch": "Voice Pitch",
     "reset": "Reset",
     "deviceHint": "Move the slider to override your device setting"
-  }
-  ,
-    "bible": {
+  },
+  "bible": {
     "noContent": "Select a book and chapter to start reading",
     "search": "Search",
     "translate": "Translate",
@@ -437,7 +439,7 @@
     "cancel": "Cancel",
     "done": "Done",
     "verseOfTheDay": "Verse of the Day",
-    "continueReading": "Continue Reading",
+    "continueReading": "Continue reading",
     "myNotes": "My Notes",
     "readingHistory": "Reading History",
     "language": "Language",
@@ -503,11 +505,9 @@
     "warm": "Warm",
     "cool": "Cool",
     "nature": "Nature",
-
     "planBiblePauseReflect": "Pause & Reflect",
     "planBibleQuestionsForReading": "{count} questions for this reading",
     "planBibleSingleQuestionForReading": "1 question for this reading",
-
     "noFavorites": "No favorites yet",
     "savedVerses": "{count} saved verse",
     "removeFavorite": "Remove Favorite",
@@ -543,31 +543,24 @@
     "deleteSingleConfirm": "Are you sure you want to delete \"{name}\" from your reading history?",
     "clearHistoryButton": "clear {count} items of {total} history items",
     "delete": "Delete",
-    "myNotes": "My Notes",
     "noNotes": "No notes yet",
     "noNotesSubtitle": "Add notes to verses while reading the Bible",
     "editNote": "Edit Note",
     "writeNotePlaceholder": "Write your note...",
     "save": "Save",
     "historyItemsDeleted": "{count} history items deleted",
-
-   
-    "loadingDevotional": "Loading devotional\u2026",
+    "loadingDevotional": "Loading devotional…",
     "noDevotionalToday": "No devotional available today",
     "todaysDevotion": "Today's devotion",
     "meditationDevotionText": "Meditate on this word today.\nLet it guide your thoughts and actions.",
     "meditationVerseText": "Meditate on this verse today.\nLet God's word guide your thoughts and actions.",
     "dailyDevotionalTitle": "Daily Devotional",
-
-   
-    "loadingVerseOfDay": "Loading verse of the day\u2026",
+    "loadingVerseOfDay": "Loading verse of the day…",
     "noVerseToday": "No verse available today",
     "dailyVerseTitle": "Daily Verse",
     "verseCopiedTitle": "Copied",
     "verseCopiedMessage": "Verse copied to clipboard",
-
-    
-    "loadingExplanation": "Loading explanation\u2026",
+    "loadingExplanation": "Loading explanation…",
     "somethingWentWrong": "Something went wrong",
     "tryAgain": "Try again",
     "noContentAvailable": "No content available.",
@@ -578,20 +571,11 @@
     "verseExplanationTitle": "Verse Explanation",
     "updatedLabel": "Updated",
     "addedLabel": "Added",
-
     "showLess": "Show less",
     "showMore": "Continue reading",
-    "continueReading": "Continue reading",
-
     "dailyGreetingMorning": "Good morning",
     "dailyGreetingAfternoon": "Good afternoon",
     "dailyGreetingEvening": "Good evening",
-
-    "verseOfTheDay": "Verse of the Day",
-
-    "explain": "Explain",
-    "reflection": "Reflection",
-    "learnMore": "Learn More",
     "verseLabel": "Verse"
   },
   "admin": {
@@ -730,15 +714,12 @@
     "dailyVerseModalSelectChapter": "Select Chapter",
     "dailyVerseModalSelectVerse": "Select Verse",
     "dailyVerseModalSelectVersion": "Select Bible Version",
-
     "dailyVerseConflictTitle": "Verse Already Exists",
     "dailyVerseConflictDateMsg": "A verse already exists for this date ({ref}). Update it?",
     "dailyVerseConflictRefMsg": "This verse ({ref}) already exists for another date. Update the existing one?",
     "dailyVerseConflictUpdate": "Update",
     "dailyVerseViewExisting": "View Existing",
-
     "dailyVerseVerseTextPlaceholder": "Verse text",
-
     "dvManagerTitle": "Daily Verses",
     "dvManagerAdd": "Add",
     "dvManagerSearchFilter": "Search & Filter",
@@ -957,7 +938,13 @@
     "addDevotionAdded": "Daily devotion added!",
     "addDevotionUpdated": "Daily devotion updated!",
     "addDevotionFailedAdd": "Failed to add devotion",
-    "addDevotionFailedUpdate": "Failed to update devotion"
+    "addDevotionFailedUpdate": "Failed to update devotion",
+    "newThisMonth": "New this month",
+    "userGrowth": "Growth rate",
+    "dailySignups": "Daily Signups",
+    "avgDaily": "Avg / day",
+    "thisMonth": "This month",
+    "day": "Day"
   },
   "journal": {
     "myJournal": "My Journal",
@@ -1169,7 +1156,6 @@
     "bpDone": "Done",
     "bpComplete": "Complete",
     "bpOfLabel": "of",
-
     "dailyReadingCurrentProgress": "Progress",
     "dailyReadingInProgress": "In Progress",
     "dailyReadingCompleted": "Completed",
@@ -1227,21 +1213,18 @@
     "dailyReadingChapterBibleBtn": "Open in Bible",
     "dailyReadingDayCompleteText": "Day Complete!",
     "dailyReadingDayLabel": "Day",
-
-    "loadingDevotional": "Loading devotional\u2026",
+    "loadingDevotional": "Loading devotional…",
     "noDevotionalToday": "No devotional available today",
     "todaysDevotion": "Today's devotion",
     "meditationDevotionText": "Meditate on this word today.\nLet it guide your thoughts and actions.",
     "meditationVerseText": "Meditate on this verse today.\nLet God's word guide your thoughts and actions.",
     "dailyDevotionalTitle": "Daily Devotional",
-
-    "loadingVerseOfDay": "Loading verse of the day\u2026",
+    "loadingVerseOfDay": "Loading verse of the day…",
     "noVerseToday": "No verse available today",
     "dailyVerseTitle": "Daily Verse",
     "verseCopiedTitle": "Copied",
     "verseCopiedMessage": "Verse copied to clipboard",
-
-    "loadingExplanation": "Loading explanation\u2026",
+    "loadingExplanation": "Loading explanation…",
     "somethingWentWrong": "Something went wrong",
     "tryAgain": "Try again",
     "noContentAvailable": "No content available.",
@@ -1252,10 +1235,8 @@
     "verseExplanationTitle": "Verse Explanation",
     "updatedLabel": "Updated",
     "addedLabel": "Added",
-
     "showLess": "Show less",
     "showMore": "Show More",
-
     "planDetailDays": "{count} Days",
     "planDetailCalendar": "Calendar",
     "planDetailStats": "Stats",
@@ -1325,9 +1306,9 @@
     "requiredField": "{field} is required.",
     "optional": "optional",
     "selectOption": "-- Select {field} --",
-    "view":"View",
-    "copy":"Copy",
-    "copied":"Copied",
-     "share":"Share"
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share"
   }
 }

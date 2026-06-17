@@ -923,7 +923,18 @@
     "addDevotionAdded": "ദൈനംദിന ഭക്തി ചേർത്തു!",
     "addDevotionUpdated": "ദൈനംദിന ഭക്തി അപ്ഡേറ്റ് ചെയ്തു!",
     "addDevotionFailedAdd": "ഭക്തി ചേർക്കുന്നതിൽ പരാജയം",
-    "addDevotionFailedUpdate": "ഭക്തി അപ്ഡേറ്റ് ചെയ്യുന്നതിൽ പരാജയം"
+    "addDevotionFailedUpdate": "ഭക്തി അപ്ഡേറ്റ് ചെയ്യുന്നതിൽ പരാജയം",
+    "newThisMonth": "ഈ മാസം പുതിയത്",
+    "userGrowth": "വളർച്ച നിരക്ക്",
+    "dailySignups": "ദൈനംദിന രജിസ്ട്രേഷനുകൾ",
+    "avgDaily": "ശരാശരി / ദിവസം",
+    "thisMonth": "ഈ മാസം",
+    "day": "ദിവസം",
+    "systemSettings": "സിസ്റ്റം ക്രമീകരണങ്ങൾ",
+    "freeTranslationsOnly": "സൗജന്യ വിവർത്തനങ്ങൾ മാത്രം",
+    "freeTranslationsDesc": "ബൈബിൾ വായനക്കാരെ സൗജന്യ വിവർത്തനങ്ങളിൽ മാത്രം പരിമിതപ്പെടുത്തുക",
+    "defaultTranslation": "ഡിഫോൾട്ട് ബൈബിൾ വിവർത്തനം",
+    "defaultTranslationDesc": "ബൈബിൾ റീഡറിൽ ഡിഫോൾട്ടായി ഉപയോഗിക്കുന്ന വിവർത്തനം"
   },
   "journal": {
     "myJournal": "എന്റെ ജേണൽ",

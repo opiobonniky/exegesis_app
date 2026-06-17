@@ -916,7 +916,18 @@
     "addDevotionAdded": "డైలీ డివోషన్ జోడించబడింది!",
     "addDevotionUpdated": "డైలీ డివోషన్ అప్‌డేట్ చేయబడింది!",
     "addDevotionFailedAdd": "డివోషన్ జోడించడంలో విఫలమైంది",
-    "addDevotionFailedUpdate": "డివోషన్ అప్‌డేట్ చేయడంలో విఫలమైంది"
+    "addDevotionFailedUpdate": "డివోషన్ అప్‌డేట్ చేయడంలో విఫలమైంది",
+    "newThisMonth": "ఈ నెల కొత్త",
+    "userGrowth": "వృద్ధి రేటు",
+    "dailySignups": "రోజువారీ నమోదులు",
+    "avgDaily": "సగటు / రోజు",
+    "thisMonth": "ఈ నెల",
+    "day": "రోజు",
+    "systemSettings": "సిస్టమ్ సెట్టింగ్‌లు",
+    "freeTranslationsOnly": "ఉచిత అనువాదాలు మాత్రమే",
+    "freeTranslationsDesc": "బైబిల్ పాఠకులను ఉచిత అనువాదాలకు మాత్రమే పరిమితం చేయండి",
+    "defaultTranslation": "డిఫాల్ట్ బైబిల్ అనువాదం",
+    "defaultTranslationDesc": "బైబిల్ రీడర్‌లో డిఫాల్ట్‌గా ఉపయోగించే అనువాదం"
   },
   "journal": {
     "myJournal": "నా జర్నల్",

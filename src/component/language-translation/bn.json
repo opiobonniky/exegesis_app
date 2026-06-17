@@ -918,7 +918,18 @@
     "addDevotionAdded": "দৈনিক ভক্তি যোগ!",
     "addDevotionUpdated": "দৈনিক ভক্তি আপডেট!",
     "addDevotionFailedAdd": "ভক্তি যোগ করতে ব্যর্থ",
-    "addDevotionFailedUpdate": "ভক্তি আপডেট করতে ব্যর্থ"
+    "addDevotionFailedUpdate": "ভক্তি আপডেট করতে ব্যর্থ",
+    "newThisMonth": "এই মাসে নতুন",
+    "userGrowth": "বৃদ্ধির হার",
+    "dailySignups": "দৈনিক নিবন্ধন",
+    "avgDaily": "গড় / দিন",
+    "thisMonth": "এই মাস",
+    "day": "দিন",
+    "systemSettings": "সিস্টেম সেটিংস",
+    "freeTranslationsOnly": "শুধুমাত্র বিনামূল্যের অনুবাদ",
+    "freeTranslationsDesc": "বাইবেল পাঠকদের শুধুমাত্র বিনামূল্যের অনুবাদে সীমাবদ্ধ রাখুন",
+    "defaultTranslation": "ডিফল্ট বাইবেল অনুবাদ",
+    "defaultTranslationDesc": "বাইবেল রিডারে ডিফল্ট হিসেবে ব্যবহৃত অনুবাদ"
   },
   "journal": {
     "myJournal": "আমার জার্নাল",

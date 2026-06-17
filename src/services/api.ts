@@ -107,7 +107,7 @@ export const sendPostRequest = async <T = any>(
   data: object = {},
 ): Promise<GenericResponse<T>> => {
   try {
-            const language = await AsyncStorage.getItem('@app:language') || 'es';
+            const language = await AsyncStorage.getItem('@app:language') || 'en';
 
     const response = await api.post<GenericResponse<T>>(
       `/${controller}/${request}`,

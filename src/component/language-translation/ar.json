@@ -905,7 +905,18 @@
     "addDevotionAdded": "تم إضافة التأمل اليومي!",
     "addDevotionUpdated": "تم تحديث التأمل اليومي!",
     "addDevotionFailedAdd": "فشل إضافة التأمل",
-    "addDevotionFailedUpdate": "فشل تحديث التأمل"
+    "addDevotionFailedUpdate": "فشل تحديث التأمل",
+    "newThisMonth": "الجدد هذا الشهر",
+    "userGrowth": "معدل النمو",
+    "dailySignups": "المسجلون يومياً",
+    "avgDaily": "المتوسط / يوم",
+    "thisMonth": "هذا الشهر",
+    "day": "يوم",
+    "systemSettings": "إعدادات النظام",
+    "freeTranslationsOnly": "الترجمات المجانية فقط",
+    "freeTranslationsDesc": "تقييد قراء الكتاب المقدس على الترجمات المجانية فقط",
+    "defaultTranslation": "الترجمة الافتراضية للكتاب المقدس",
+    "defaultTranslationDesc": "الترجمة التي ستستخدم افتراضياً في قارئ الكتاب المقدس"
   },
   "journal": {
     "myJournal": "مذكراتي",

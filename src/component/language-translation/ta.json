@@ -918,7 +918,18 @@
     "addDevotionAdded": "தினசரி பக்தி சேர்க்கப்பட்டது!",
     "addDevotionUpdated": "தினசரி பக்தி புதுப்பிக்கப்பட்டது!",
     "addDevotionFailedAdd": "பக்தியைச் சேர்க்க முடியவில்லை",
-    "addDevotionFailedUpdate": "பக்தியைப் புதுப்பிக்க முடியவில்லை"
+    "addDevotionFailedUpdate": "பக்தியைப் புதுப்பிக்க முடியவில்லை",
+    "newThisMonth": "இந்த மாதம் புதிய",
+    "userGrowth": "வளர்ச்சி விகிதம்",
+    "dailySignups": "தினசரி பதிவுகள்",
+    "avgDaily": "சராசரி / நாள்",
+    "thisMonth": "இந்த மாதம்",
+    "day": "நாள்",
+    "systemSettings": "கணினி அமைப்புகள்",
+    "freeTranslationsOnly": "இலவச மொழிபெயர்ப்புகள் மட்டும்",
+    "freeTranslationsDesc": "விவிலிய வாசகர்களை இலவச மொழிபெயர்ப்புகளுக்கு மட்டும் கட்டுப்படுத்தவும்",
+    "defaultTranslation": "இயல்புநிலை விவிலிய மொழிபெயர்ப்பு",
+    "defaultTranslationDesc": "விவிலிய வாசிப்பியில் இயல்புநிலையாகப் பயன்படுத்தப்படும் மொழிபெயர்ப்பு"
   },
   "journal": {
     "myJournal": "என் பத்திரிகை",

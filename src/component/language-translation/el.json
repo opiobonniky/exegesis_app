@@ -916,7 +916,18 @@
     "addDevotionAdded": "Προστέθηκε!",
     "addDevotionUpdated": "Ενημερώθηκε!",
     "addDevotionFailedAdd": "Αποτυχία",
-    "addDevotionFailedUpdate": "Αποτυχία"
+    "addDevotionFailedUpdate": "Αποτυχία",
+    "newThisMonth": "Νέοι αυτόν τον μήνα",
+    "userGrowth": "Ρυθμός ανάπτυξης",
+    "dailySignups": "Καθημερινές εγγραφές",
+    "avgDaily": "Μ.Ο. / ημέρα",
+    "thisMonth": "Αυτόν τον μήνα",
+    "day": "Ημέρα",
+    "systemSettings": "Ρυθμίσεις συστήματος",
+    "freeTranslationsOnly": "Μόνο δωρεάν μεταφράσεις",
+    "freeTranslationsDesc": "Περιορισμός των αναγνωστών της Βίβλου σε δωρεάν μεταφράσεις",
+    "defaultTranslation": "Προεπιλεγμένη μετάφραση Βίβλου",
+    "defaultTranslationDesc": "Μετάφραση που θα χρησιμοποιείται από προεπιλογή στον αναγνώστη Βίβλου"
   },
   "journal": {
     "myJournal": "Το Ημερολόγιό μου",

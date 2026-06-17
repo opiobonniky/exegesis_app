@@ -923,7 +923,18 @@
     "addDevotionAdded": "Tägliche Andacht hinzugefügt!",
     "addDevotionUpdated": "Tägliche Andacht aktualisiert!",
     "addDevotionFailedAdd": "Andacht konnte nicht hinzugefügt werden",
-    "addDevotionFailedUpdate": "Andacht konnte nicht aktualisiert werden"
+    "addDevotionFailedUpdate": "Andacht konnte nicht aktualisiert werden",
+    "newThisMonth": "Neu diesen Monat",
+    "userGrowth": "Wachstumsrate",
+    "dailySignups": "Tägliche Anmeldungen",
+    "avgDaily": "Schnitt / Tag",
+    "thisMonth": "Dieser Monat",
+    "day": "Tag",
+    "systemSettings": "Systemeinstellungen",
+    "freeTranslationsOnly": "Nur kostenlose Übersetzungen",
+    "freeTranslationsDesc": "Bibel-Leser auf kostenlose Übersetzungen beschränken",
+    "defaultTranslation": "Standard-Bibelübersetzung",
+    "defaultTranslationDesc": "Standardmäßig im Bibelleser verwendete Übersetzung"
   },
   "journal": {
     "myJournal": "Mein Tagebuch",

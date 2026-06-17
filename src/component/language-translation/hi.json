@@ -918,7 +918,18 @@
     "addDevotionAdded": "दैनिक भक्ति जोड़ी गई!",
     "addDevotionUpdated": "दैनिक भक्ति अपडेट की गई!",
     "addDevotionFailedAdd": "भक्ति जोड़ने में विफल",
-    "addDevotionFailedUpdate": "भक्ति अपडेट करने में विफल"
+    "addDevotionFailedUpdate": "भक्ति अपडेट करने में विफल",
+    "newThisMonth": "इस महीने के नए",
+    "userGrowth": "वृद्धि दर",
+    "dailySignups": "दैनिक पंजीकरण",
+    "avgDaily": "औसत / दिन",
+    "thisMonth": "इस महीने",
+    "day": "दिन",
+    "systemSettings": "सिस्टम सेटिंग्स",
+    "freeTranslationsOnly": "केवल मुफ्त अनुवाद",
+    "freeTranslationsDesc": "बाइबिल पाठकों को केवल मुफ्त अनुवादों तक सीमित रखें",
+    "defaultTranslation": "डिफ़ॉल्ट बाइबिल अनुवाद",
+    "defaultTranslationDesc": "बाइबिल रीडर में डिफ़ॉल्ट रूप से उपयोग किया जाने वाला अनुवाद"
   },
   "journal": {
     "myJournal": "मेरी जर्नल",

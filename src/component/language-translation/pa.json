@@ -918,7 +918,18 @@
     "addDevotionAdded": "ਰੋਜ਼ਾਨਾ ਭਗਤੀ ਸ਼ਾਮਲ ਕੀਤੀ ਗਈ!",
     "addDevotionUpdated": "ਰੋਜ਼ਾਨਾ ਭਗਤੀ ਅਪਡੇਟ ਕੀਤੀ ਗਈ!",
     "addDevotionFailedAdd": "ਭਗਤੀ ਸ਼ਾਮਲ ਕਰਨ ਵਿੱਚ ਫੇਲ੍ਹ",
-    "addDevotionFailedUpdate": "ਭਗਤੀ ਅਪਡੇਟ ਕਰਨ ਵਿੱਚ ਫੇਲ੍ਹ"
+    "addDevotionFailedUpdate": "ਭਗਤੀ ਅਪਡੇਟ ਕਰਨ ਵਿੱਚ ਫੇਲ੍ਹ",
+    "newThisMonth": "ਇਸ ਮਹੀਨੇ ਨਵੇਂ",
+    "userGrowth": "ਵਾਧਾ ਦਰ",
+    "dailySignups": "ਰੋਜ਼ਾਨਾ ਰਜਿਸਟ੍ਰੇਸ਼ਨ",
+    "avgDaily": "ਔਸਤ / ਦਿਨ",
+    "thisMonth": "ਇਹ ਮਹੀਨਾ",
+    "day": "ਦਿਨ",
+    "systemSettings": "ਸਿਸਟਮ ਸੈਟਿੰਗਾਂ",
+    "freeTranslationsOnly": "ਸਿਰਫ਼ ਮੁਫ਼ਤ ਅਨੁਵਾਦ",
+    "freeTranslationsDesc": "ਬਾਈਬਲ ਪਾਠਕਾਂ ਨੂੰ ਸਿਰਫ਼ ਮੁਫ਼ਤ ਅਨੁਵਾਦਾਂ ਤੱਕ ਸੀਮਤ ਕਰੋ",
+    "defaultTranslation": "ਡਿਫੌਲਟ ਬਾਈਬਲ ਅਨੁਵਾਦ",
+    "defaultTranslationDesc": "ਬਾਈਬਲ ਰੀਡਰ ਵਿੱਚ ਡਿਫੌਲਟ ਤੌਰ 'ਤੇ ਵਰਤਿਆ ਜਾਣ ਵਾਲਾ ਅਨੁਵਾਦ"
   },
   "journal": {
     "myJournal": "ਮੇਰਾ ਜਰਨਲ",

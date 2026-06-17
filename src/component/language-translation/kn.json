@@ -916,7 +916,18 @@
     "addDevotionAdded": "ದೈನಂದಿನ ಭಕ್ತಿ ಸೇರಿಸಲಾಗಿದೆ!",
     "addDevotionUpdated": "ದೈನಂದಿನ ಭಕ್ತಿ ನವೀಕರಿಸಲಾಗಿದೆ!",
     "addDevotionFailedAdd": "ಭಕ್ತಿ ಸೇರಿಸಲು ವಿಫಲವಾಗಿದೆ",
-    "addDevotionFailedUpdate": "ಭಕ್ತಿ ನವೀಕರಿಸಲು ವಿಫಲವಾಗಿದೆ"
+    "addDevotionFailedUpdate": "ಭಕ್ತಿ ನವೀಕರಿಸಲು ವಿಫಲವಾಗಿದೆ",
+    "newThisMonth": "ಈ ತಿಂಗಳ ಹೊಸ",
+    "userGrowth": "ಬೆಳವಣಿಗೆ ದರ",
+    "dailySignups": "ದೈನಂದಿನ ನೋಂದಣಿಗಳು",
+    "avgDaily": "ಸರಾಸರಿ / ದಿನ",
+    "thisMonth": "ಈ ತಿಂಗಳು",
+    "day": "ದಿನ",
+    "systemSettings": "ಸಿಸ್ಟಂ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    "freeTranslationsOnly": "ಉಚಿತ ಅನುವಾದಗಳು ಮಾತ್ರ",
+    "freeTranslationsDesc": "ಬೈಬಲ್ ಓದುಗರನ್ನು ಉಚಿತ ಅನುವಾದಗಳಿಗೆ ಮಾತ್ರ ಸೀಮಿತಗೊಳಿಸಿ",
+    "defaultTranslation": "ಡೀಫಾಲ್ಟ್ ಬೈಬಲ್ ಅನುವಾದ",
+    "defaultTranslationDesc": "ಬೈಬಲ್ ರೀಡರ್‌ನಲ್ಲಿ ಡೀಫಾಲ್ಟ್ ಆಗಿ ಬಳಸುವ ಅನುವಾದ"
   },
   "journal": {
     "myJournal": "ನನ್ನ ಜರ್ನಲ್",

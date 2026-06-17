@@ -916,7 +916,18 @@
     "addDevotionAdded": "Ежедневное размышление добавлено!",
     "addDevotionUpdated": "Ежедневное размышление обновлено!",
     "addDevotionFailedAdd": "Не удалось добавить размышление",
-    "addDevotionFailedUpdate": "Не удалось обновить размышление"
+    "addDevotionFailedUpdate": "Не удалось обновить размышление",
+    "newThisMonth": "Новые в этом месяце",
+    "userGrowth": "Темп роста",
+    "dailySignups": "Ежедневные регистрации",
+    "avgDaily": "В среднем / день",
+    "thisMonth": "Этот месяц",
+    "day": "День",
+    "systemSettings": "Настройки системы",
+    "freeTranslationsOnly": "Только бесплатные переводы",
+    "freeTranslationsDesc": "Ограничить чтение Библии только бесплатными переводами",
+    "defaultTranslation": "Перевод Библии по умолчанию",
+    "defaultTranslationDesc": "Перевод, используемый по умолчанию в программе для чтения Библии"
   },
   "journal": {
     "myJournal": "Мой дневник",

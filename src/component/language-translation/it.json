@@ -923,7 +923,18 @@
     "addDevotionAdded": "Devozione quotidiana aggiunta!",
     "addDevotionUpdated": "Devozione quotidiana aggiornata!",
     "addDevotionFailedAdd": "Impossibile aggiungere devozione",
-    "addDevotionFailedUpdate": "Impossibile aggiornare devozione"
+    "addDevotionFailedUpdate": "Impossibile aggiornare devozione",
+    "newThisMonth": "Nuovi questo mese",
+    "userGrowth": "Tasso di crescita",
+    "dailySignups": "Iscrizioni giornaliere",
+    "avgDaily": "Media / giorno",
+    "thisMonth": "Questo mese",
+    "day": "Giorno",
+    "systemSettings": "Impostazioni di sistema",
+    "freeTranslationsOnly": "Solo traduzioni gratuite",
+    "freeTranslationsDesc": "Limita i lettori della Bibbia alle sole traduzioni gratuite",
+    "defaultTranslation": "Traduzione biblica predefinita",
+    "defaultTranslationDesc": "Traduzione da utilizzare di default nel lettore biblico"
   },
   "journal": {
     "myJournal": "Il mio Diario",

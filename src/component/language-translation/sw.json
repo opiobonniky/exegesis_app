@@ -918,7 +918,18 @@
     "addDevotionAdded": "Ibada ya kila siku imeongezwa!",
     "addDevotionUpdated": "Ibada ya kila siku imesasishwa!",
     "addDevotionFailedAdd": "Imeshindwa kuongeza ibada",
-    "addDevotionFailedUpdate": "Imeshindwa kusasisha ibada"
+    "addDevotionFailedUpdate": "Imeshindwa kusasisha ibada",
+    "newThisMonth": "Wapya mwezi huu",
+    "userGrowth": "Kiwango cha ukuaji",
+    "dailySignups": "Uandikishaji wa kila siku",
+    "avgDaily": "Wastani / siku",
+    "thisMonth": "Mwezi huu",
+    "day": "Siku",
+    "systemSettings": "Mipangilio ya Mfumo",
+    "freeTranslationsOnly": "Tafsiri Zisizolipishwa Pekee",
+    "freeTranslationsDesc": "Wea wasomaji wa Biblia kwa tafsiri zisizolipishwa pekee",
+    "defaultTranslation": "Tafsiri ya Chaguo-msingi ya Biblia",
+    "defaultTranslationDesc": "Tafsiri ya kutumia kwa chaguo-msingi katika kisoma Biblia"
   },
   "journal": {
     "myJournal": "Shajara Yangu",

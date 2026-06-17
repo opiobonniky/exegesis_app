@@ -121,6 +121,7 @@ const AdminDailyVerseManager: React.FC = () => {
     setLoading(true);
     try {
       const response = await getAllDailyVerses(0, 50, filters);
+      console.log('Fetched daily verses:', response);
       setVerses((response.content as ExtendedDailyVerse[]) || []);
     } catch (error) {
       console.error('Failed to fetch daily verses:', error);

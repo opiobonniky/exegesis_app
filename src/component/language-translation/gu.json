@@ -795,7 +795,18 @@
     "addDevotionUpdate": "ભક્તિ અપડેટ કરો",
     "addDevotionFillRequired": "કૃપા કરીને શીર્ષક અને સામગ્રી ભરો",
     "addDevotionAdded": "દૈનિક ભક્તિ ઉમેરાઈ!",
-    "addDevotionUpdated": "દૈનિક ભક્તિ અપડેટ થઈ!"
+    "addDevotionUpdated": "દૈનિક ભક્તિ અપડેટ થઈ!",
+    "newThisMonth": "આ મહિને નવા",
+    "userGrowth": "વૃદ્ધિ દર",
+    "dailySignups": "દૈનિક નોંધણીઓ",
+    "avgDaily": "સરેરાશ / દિવસ",
+    "thisMonth": "આ મહિનો",
+    "day": "દિવસ",
+    "systemSettings": "સિસ્ટમ સેટિંગ્સ",
+    "freeTranslationsOnly": "માત્ર મફત અનુવાદો",
+    "freeTranslationsDesc": "બાઇબલ વાચકોને માત્ર મફત અનુવાદો સુધી મર્યાદિત કરો",
+    "defaultTranslation": "ડિફૉલ્ટ બાઇબલ અનુવાદ",
+    "defaultTranslationDesc": "બાઇબલ રીડરમાં મૂળભૂત રીતે ઉપયોગમાં લેવાતો અનુવાદ"
   },
   "journal": {
     "myJournal": "મારું જર્નલ",

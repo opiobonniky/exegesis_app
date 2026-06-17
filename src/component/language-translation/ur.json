@@ -918,7 +918,18 @@
     "addDevotionAdded": "روزانہ عبادت شامل ہو گئی!",
     "addDevotionUpdated": "روزانہ عبادت اپ ڈیٹ ہو گئی!",
     "addDevotionFailedAdd": "عبادت شامل کرنے میں ناکام",
-    "addDevotionFailedUpdate": "عبادت اپ ڈیٹ کرنے میں ناکام"
+    "addDevotionFailedUpdate": "عبادت اپ ڈیٹ کرنے میں ناکام",
+    "newThisMonth": "اس ماہ کے نئے",
+    "userGrowth": "شرح نمو",
+    "dailySignups": "یومیہ اندراج",
+    "avgDaily": "اوسط / یوم",
+    "thisMonth": "اس ماہ",
+    "day": "دن",
+    "systemSettings": "سسٹم سیٹنگز",
+    "freeTranslationsOnly": "صرف مفت تراجم",
+    "freeTranslationsDesc": "بائبل پڑھنے والوں کو صرف مفت تراجم تک محدود رکھیں",
+    "defaultTranslation": "پہلے سے طے شدہ بائبل ترجمہ",
+    "defaultTranslationDesc": "بائبل ریڈر میں بطور ڈیفالٹ استعمال ہونے والا ترجمہ"
   },
   "journal": {
     "myJournal": "میری جرنل",

@@ -76,7 +76,7 @@ const Drawer: React.FC<{ isOpen: boolean; onClose: () => void; activeItem: strin
       <Animated.View style={[drawerStyles.backdrop, { opacity: overlayOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
-      <Animated.View style={[drawerStyles.panel, { backgroundColor: theme.drawerBg, width: DRAWER_WIDTH, transform: [{ translateX }] }, isRtl ? { right: 0 } : { left: 0 }]}>
+      <Animated.View style={[drawerStyles.panel, { backgroundColor: theme.drawerBg, width: DRAWER_WIDTH, transform: [{ translateX }] }, isRtl ? { right: 0, borderTopLeftRadius: 28, borderBottomLeftRadius: 28, shadowOffset: { width: -8, height: 0 } } : { left: 0, borderTopRightRadius: 28, borderBottomRightRadius: 28, shadowOffset: { width: 8, height: 0 } }]}>
         <View style={[drawerStyles.drawerHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <View style={[drawerStyles.avatar, { backgroundColor: theme.drawerActive }]}>
             <Text style={drawerStyles.avatarText}>{initials}</Text>
@@ -129,7 +129,7 @@ const Drawer: React.FC<{ isOpen: boolean; onClose: () => void; activeItem: strin
 const drawerStyles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, zIndex: 100 },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
-  panel: { height: '100%', paddingTop: Platform.OS === 'ios' ? 54 : (StatusBar.currentHeight || 0) + 12, paddingBottom: Platform.OS === 'ios' ? 34 : 16, borderTopRightRadius: 28, borderBottomRightRadius: 28, shadowColor: '#000', shadowOffset: { width: 8, height: 0 }, shadowOpacity: 0.25, shadowRadius: 28, elevation: 20, overflow: 'hidden' },
+  panel: { height: '100%', paddingTop: Platform.OS === 'ios' ? 54 : (StatusBar.currentHeight || 0) + 12, paddingBottom: Platform.OS === 'ios' ? 34 : 16, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 28, elevation: 20, overflow: 'hidden' },
   drawerHeader: { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
   avatar: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 17, fontWeight: '700' },
@@ -309,7 +309,7 @@ const AdminDashboard: React.FC = () => {
           <Menu size={22} color={theme.text} />
         </TouchableOpacity>
         <View style={s.topBarCenter}>
-          <Text style={[s.topBarTitle, { color: theme.text }]}>Dashboard</Text>
+          <Text style={[s.topBarTitle, { color: theme.text }]}>{ac?.dashboard || 'Dashboard'}</Text>
         </View>
         <TouchableOpacity onPress={openDrawer} style={s.avatarBtn} activeOpacity={0.7}>
           <View style={[s.avatarSmall, { backgroundColor: theme.accent }]}>
@@ -440,7 +440,7 @@ const AdminDashboard: React.FC = () => {
                 {ac?.defaultTranslation || 'Default Translation'}
               </Text>
               <Text style={[s.settingsDesc, { color: theme.textMuted, textAlign: isRtl ? 'right' : 'left' }]}>
-                {defaultTranslationId}
+                {ac?.defaultTranslationDesc || 'Translation to use by default in the Bible reader'}
               </Text>
             </View>
             <TouchableOpacity

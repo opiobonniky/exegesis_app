@@ -918,7 +918,18 @@
     "addDevotionAdded": "Naidagdag ang daily devotion!",
     "addDevotionUpdated": "Na-update ang daily devotion!",
     "addDevotionFailedAdd": "Nabigong idagdag ang debosyon",
-    "addDevotionFailedUpdate": "Nabigong i-update ang debosyon"
+    "addDevotionFailedUpdate": "Nabigong i-update ang debosyon",
+    "newThisMonth": "Bago ngayong buwan",
+    "userGrowth": "Rate ng paglago",
+    "dailySignups": "Araw-araw na pag-signup",
+    "avgDaily": "Avg / araw",
+    "thisMonth": "Ngayong buwan",
+    "day": "Araw",
+    "systemSettings": "Mga Setting ng Sistema",
+    "freeTranslationsOnly": "Mga Libreng Salin Lamang",
+    "freeTranslationsDesc": "Limitahan ang mga mambabasa ng Bibliya sa mga libreng salin lamang",
+    "defaultTranslation": "Default na Salin ng Bibliya",
+    "defaultTranslationDesc": "Salin na gagamitin bilang default sa mambabasa ng Bibliya"
   },
   "journal": {
     "myJournal": "Aking Journal",
