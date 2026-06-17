@@ -5,8 +5,8 @@
     "password": "Password",
     "subtitle": "Sign in to continue your journey.",
     "button": "Log In",
-    "google": "Continue with Google",
-    "lordsbook": "Continue with Lordsbook",
+    "google": "Google",
+    "lordsbook": "LordsBook",
     "continuewith": "or continue with",
     "terms": {
       "byContinuing": "By continuing, you agree to our",

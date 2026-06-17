@@ -71,55 +71,83 @@ const Drawer: React.FC<{ isOpen: boolean; onClose: () => void; activeItem: strin
     { id: 'adminSettings', label: ac?.systemSettings || 'Settings', icon: Settings, routeKey: 'adminSettings' },
   ];
 
+  const headerHeight = Platform.OS === 'ios' ? 54 : (StatusBar.currentHeight || 0) + 12;
+
   return (
     <View style={drawerStyles.overlay} pointerEvents="box-none">
       <Animated.View style={[drawerStyles.backdrop, { opacity: overlayOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       <Animated.View style={[drawerStyles.panel, { backgroundColor: theme.drawerBg, width: DRAWER_WIDTH, transform: [{ translateX }] }, isRtl ? { right: 0, borderTopLeftRadius: 28, borderBottomLeftRadius: 28, shadowOffset: { width: -8, height: 0 } } : { left: 0, borderTopRightRadius: 28, borderBottomRightRadius: 28, shadowOffset: { width: 8, height: 0 } }]}>
-        <View style={[drawerStyles.drawerHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-          <View style={[drawerStyles.avatar, { backgroundColor: theme.drawerActive }]}>
-            <Text style={drawerStyles.avatarText}>{initials}</Text>
-          </View>
-          <View style={{ flex: 1, marginHorizontal: 12 }}>
-            <Text style={[drawerStyles.drawerName, { color: theme.drawerText, textAlign: isRtl ? 'right' : 'left' }]}>
-              {userInfo?.firstName ? `${userInfo.firstName} ${userInfo.lastName || ''}` : userInfo?.username || 'Admin'}
-            </Text>
-            <View style={{ alignSelf: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Text style={drawerStyles.roleBadge}>{ac?.superAdminBadge || 'Super Admin'}</Text>
+        <View style={{ paddingTop: headerHeight }}>
+          <View style={[drawerStyles.headerProfile, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={[drawerStyles.avatarRing]}>
+              <View style={[drawerStyles.avatar, { backgroundColor: theme.drawerActive }]}>
+                <Text style={drawerStyles.avatarText}>{initials}</Text>
+              </View>
             </View>
+            <View style={{ flex: 1, marginHorizontal: 14 }}>
+              <Text style={[drawerStyles.drawerName, { color: theme.drawerText, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={1}>
+                {userInfo?.firstName ? `${userInfo.firstName} ${userInfo.lastName || ''}` : userInfo?.username || 'Admin'}
+              </Text>
+              <View style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <View style={[drawerStyles.onlineDot]} />
+                <Text style={[drawerStyles.roleText, { color: theme.drawerMuted }]}>{ac?.superAdminBadge || 'Super Admin'}</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={onClose} style={drawerStyles.closeBtn}>
+              <X size={18} color={theme.drawerMuted} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={onClose} style={drawerStyles.closeBtn}>
-            <X size={20} color={theme.drawerMuted} />
-          </TouchableOpacity>
+
+          <View style={[drawerStyles.headerGlow, { backgroundColor: theme.drawerActive + '12' }]} />
         </View>
-        <View style={[drawerStyles.divider, { backgroundColor: theme.border }]} />
-        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 8 }}>
           <Text style={[drawerStyles.navSection, { color: theme.drawerMuted, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.navigationSection || 'NAVIGATION'}</Text>
           {items.map((item) => {
             const Icon = item.icon;
             const isActive = activeItem === item.id;
             return (
-              <TouchableOpacity key={item.id} style={[drawerStyles.navItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }, isActive && { backgroundColor: theme.drawerActiveBg }]} onPress={() => onNavigate(item.routeKey, item.id)} activeOpacity={0.7}>
-                <Icon size={20} color={isActive ? theme.drawerActive : theme.drawerMuted} strokeWidth={isActive ? 2.5 : 1.8} />
+              <TouchableOpacity
+                key={item.id}
+                style={[drawerStyles.navItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }, isActive && { backgroundColor: theme.drawerActiveBg }]}
+                onPress={() => onNavigate(item.routeKey, item.id)}
+                activeOpacity={0.65}
+              >
+                <View style={[drawerStyles.navIconWrap, { backgroundColor: isActive ? `${theme.drawerActive}18` : 'transparent' }]}>
+                  <Icon size={18} color={isActive ? theme.drawerActive : theme.drawerMuted} strokeWidth={isActive ? 2.5 : 1.8} />
+                </View>
                 <Text style={[drawerStyles.navLabel, { color: isActive ? theme.drawerText : theme.drawerMuted, fontWeight: isActive ? '700' : '500', textAlign: isRtl ? 'right' : 'left' }]}>{item.label}</Text>
-                {isActive && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.drawerActive }} />}
+                {isActive && <View style={[drawerStyles.activePill, { backgroundColor: theme.drawerActive }]} />}
               </TouchableOpacity>
             );
           })}
-          <View style={[drawerStyles.divider, { backgroundColor: theme.border, marginVertical: 16 }]} />
+
+          <View style={[drawerStyles.divider, { backgroundColor: theme.border }]} />
+
           <Text style={[drawerStyles.navSection, { color: theme.drawerMuted, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.accountSection || 'ACCOUNT'}</Text>
-          <TouchableOpacity style={[drawerStyles.navItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={onLanguagePress} activeOpacity={0.7}>
-            <Text style={{ fontSize: 22, marginHorizontal: 8 }}>{currentLanguage ? FLAGS[currentLanguage] : '🌐'}</Text>
+
+          <TouchableOpacity style={[drawerStyles.navItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={onLanguagePress} activeOpacity={0.65}>
+            <View style={[drawerStyles.navIconWrap, { backgroundColor: 'transparent' }]}>
+              <Text style={{ fontSize: 20 }}>{currentLanguage ? FLAGS[currentLanguage] : '🌐'}</Text>
+            </View>
             <Text style={[drawerStyles.navLabel, { color: theme.drawerText, textAlign: isRtl ? 'right' : 'left' }]}>{currentLanguage ? NATIVE_NAMES[currentLanguage] : 'Language'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[drawerStyles.navItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={onLogout} activeOpacity={0.7}>
-            <LogOut size={20} color="#e05555" />
+
+          <TouchableOpacity style={[drawerStyles.navItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={onLogout} activeOpacity={0.65}>
+            <View style={[drawerStyles.navIconWrap, { backgroundColor: '#e0555512' }]}>
+              <LogOut size={18} color="#e05555" />
+            </View>
             <Text style={[drawerStyles.navLabel, { color: '#e05555', textAlign: isRtl ? 'right' : 'left' }]}>{ac?.signOut || 'Sign Out'}</Text>
           </TouchableOpacity>
         </ScrollView>
+
         <View style={[drawerStyles.drawerFooter, { borderTopColor: theme.border }]}>
-          <Text style={[drawerStyles.footerText, { color: theme.drawerMuted, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.adminConsole || 'Admin Console v1.0'}</Text>
+          <View style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
+            <View style={[drawerStyles.footerDot, { backgroundColor: theme.drawerActive + '40' }]} />
+            <Text style={[drawerStyles.footerText, { color: theme.drawerMuted, textAlign: isRtl ? 'right' : 'left' }]}>{ac?.adminConsole || 'Admin Console v1.0'}</Text>
+          </View>
         </View>
       </Animated.View>
     </View>
@@ -129,18 +157,24 @@ const Drawer: React.FC<{ isOpen: boolean; onClose: () => void; activeItem: strin
 const drawerStyles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, zIndex: 100 },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
-  panel: { height: '100%', paddingTop: Platform.OS === 'ios' ? 54 : (StatusBar.currentHeight || 0) + 12, paddingBottom: Platform.OS === 'ios' ? 34 : 16, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 28, elevation: 20, overflow: 'hidden' },
-  drawerHeader: { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
-  avatar: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  drawerName: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
-  roleBadge: { color: '#fff', fontSize: 10, fontWeight: '700', backgroundColor: '#c0392b', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, letterSpacing: 0.4, overflow: 'hidden' },
+  panel: { position: 'absolute', top: 0, height: '100%', paddingBottom: Platform.OS === 'ios' ? 34 : 16, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 28, elevation: 20, overflow: 'hidden' },
+  headerProfile: { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
+  avatarRing: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(150,150,150,0.15)' },
+  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  drawerName: { fontSize: 15, fontWeight: '700', marginBottom: 0 },
+  onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#22c55e' },
+  roleText: { fontSize: 12, fontWeight: '500' },
   closeBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  divider: { height: 1, marginHorizontal: 16 },
-  navSection: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, marginHorizontal: 20, marginTop: 20, marginBottom: 8 },
-  navItem: { alignItems: 'center', paddingVertical: 13, paddingHorizontal: 20, marginHorizontal: 8, borderRadius: 12, marginBottom: 2, gap: 14 },
+  headerGlow: { height: 1, marginHorizontal: 20, marginBottom: 4, opacity: 0.4 },
+  divider: { height: 1, marginHorizontal: 20, marginVertical: 12 },
+  navSection: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, marginHorizontal: 20, marginTop: 16, marginBottom: 6 },
+  navItem: { alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, marginHorizontal: 12, borderRadius: 14, marginBottom: 1, gap: 12 },
+  navIconWrap: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   navLabel: { fontSize: 14, flex: 1 },
-  drawerFooter: { borderTopWidth: 1, paddingTop: 14, paddingHorizontal: 20, marginTop: 8 },
+  activePill: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#000' },
+  drawerFooter: { borderTopWidth: 1, paddingTop: 14, paddingHorizontal: 20, marginTop: 4 },
+  footerDot: { width: 6, height: 6, borderRadius: 3 },
   footerText: { fontSize: 11, fontWeight: '500' },
 });
 

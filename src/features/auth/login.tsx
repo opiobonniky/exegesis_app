@@ -479,55 +479,48 @@ const Login = () => {
               <View style={[s.dividerLine, { backgroundColor: C.border }]} />
             </View>
 
-            {/* ── Google Login button ────────────────────────────────────────── */}
-            <TouchableOpacity
-              style={[
-                s.googleBtn,
-                { borderColor: C.border, backgroundColor: C.surface },
-                googleLoading && { opacity: 0.7 },
-              ]}
-              onPress={handleGoogleSignIn}
-              activeOpacity={0.82}
-              disabled={googleLoading}
-            >
-              {googleLoading ? (
-                <ActivityIndicator size="small" color={C.text} />
-              ) : (
-                <>
-                  <View style={[s.googleIconContainer, isRtl && { left: undefined, right: 30 }]}>
-                    <GoogleIcon width={25} height={25} />
-                  </View>
-                  <Text                      style={[
-                      s.googleText,
-                      { color: C.text, textAlign: 'center' },
-                    ]}
-                  >
-                    {translations.login.google}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* ── Social / Alt Login row ─────────────────────────────────── */}
+            <View style={[s.socialRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <TouchableOpacity
+                style={[
+                  s.socialBtn,
+                  { borderColor: C.border, backgroundColor: C.surface },
+                  googleLoading && { opacity: 0.7 },
+                ]}
+                onPress={handleGoogleSignIn}
+                activeOpacity={0.82}
+                disabled={googleLoading}
+              >
+                {googleLoading ? (
+                  <ActivityIndicator size="small" color={C.text} />
+                ) : (
+                  <>
+                    <View style={s.socialIconWrap}>
+                      <GoogleIcon width={22} height={22} />
+                    </View>
+                    <Text style={[s.socialBtnText, { color: C.text }]} numberOfLines={1}>
+                      {translations.login.google}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
-            {/* Lordsbook Login button */}
-            <TouchableOpacity
-              style={[
-                s.lordsBtn,
-                { borderColor: C.border, backgroundColor: C.surface },
-              ]}
-              onPress={() => navigation.navigate(route.bible)}
-              activeOpacity={0.82}
-            >
-              <View style={[s.lordsIconContainer, isRtl && { left: undefined, right: 30 }]}>
-                <Image source={book} style={s.lordsIcon} resizeMode="contain" />
-              </View>
-              <Text                  style={[
-                    s.lordsText,
-                    { color: C.text, textAlign: 'center' },
-                  ]}
-                >
-                  {translations.login?.lordsbook || 'Continue with Lordsbook'}
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  s.socialBtn,
+                  { borderColor: C.border, backgroundColor: C.surface },
+                ]}
+                onPress={() => navigation.navigate(route.bible)}
+                activeOpacity={0.82}
+              >
+                <View style={s.socialIconWrap}>
+                  <Image source={book} style={s.socialIconImg} resizeMode="contain" />
+                </View>
+                <Text style={[s.socialBtnText, { color: C.text }]} numberOfLines={1}>
+                  {translations.login.lordsbook}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Terms and Conditions (moved into login container) */}
             <Text
@@ -833,97 +826,37 @@ const s = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // GOOGLE BUTTON
-  googleBtn: {
-    width: '100%',
-    height: 56,
+  // SOCIAL / ALT LOGIN BUTTONS (side by side)
+  socialRow: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  socialBtn: {
+    flex: 1,
+    height: 48,
     borderRadius: 12,
     borderWidth: 1.5,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
+    gap: 6,
+    paddingHorizontal: 6,
   },
-  googleAccountPreview: {
-    position: 'absolute',
-    left: 30,
-  },
-  googleAccountPhoto: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  googleAccountPhotoPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
+  socialIconWrap: {
+    width: 18,
+    height: 18,
     justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
   },
-  googleAccountInitials: {
-    color: '#ffffff',
+  socialIconImg: {
+    width: 18,
+    height: 18,
+  },
+  socialBtnText: {
     fontSize: 12,
-    fontWeight: '700',
-  },
-  googleAccountInfo: {
-    flex: 1,
-    marginLeft: 50,
-  },
-  googleAccountName: {
-    fontSize: 14,
     fontWeight: '600',
-  },
-  googleAccountEmail: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  switchAccountBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  switchAccountText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  googleText: {},
-  googleIconContainer: {
-    width: 20,
-    height: 20,
-    position: 'absolute',
-    left: 30,
-  },
-
-  lordsBtn: {
-    width: '100%',
-    height: 56,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  lordsIconContainer: {
-    width: 24,
-    height: 24,
-    position: 'absolute',
-    left: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  lordsText: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-
-  lordsIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 4,
+    flexShrink: 1,
   },
 
   // TERMS

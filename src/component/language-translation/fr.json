@@ -22,8 +22,8 @@
     "password": "Mot de passe",
     "subtitle": "Connectez‑vous pour continuer votre parcours.",
     "button": "Se connecter",
-    "google": "Continuer avec Google",
-    "lordsbook": "Continuer avec Lordsbook",
+    "google": "Google",
+    "lordsbook": "LordsBook",
     "continuewith": "ou continuer avec",
     "terms": {
       "byContinuing": "En continuant, vous acceptez nos",
