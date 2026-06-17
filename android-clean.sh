@@ -1,8 +1,8 @@
 #!/bin/bash
 
-echo "🛑 Stopping Gradle daemons..."
-cd android && ./gradlew --stop
-cd ..
+# echo "🛑 Stopping Gradle daemons..."
+# cd android && ./gradlew --stop
+# cd ..
 
 echo "🗑️  Wiping CMake caches..."
 rm -rf android/app/.cxx

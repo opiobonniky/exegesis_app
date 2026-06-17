@@ -15,7 +15,13 @@ export interface GenericResponse<T = any> {
 
 const getBaseURL = () => {
   if (__DEV__) {
-    return 'http://192.168.100.187:5001'; // Mac's WiFi IP - same network as phone
+    // iOS simulator: localhost works (runs on same Mac)
+    // Android emulator: 10.0.2.2 is the host loopback
+    // Physical device: use the Mac's actual LAN IP
+    if (Platform.OS === 'ios') {
+      return 'http://localhost:5001';
+    }
+    return 'http://192.168.100.187:5001';
   }
   return 'https://exegesisbackend-production.up.railway.app/';
 };
