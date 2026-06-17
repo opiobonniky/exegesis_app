@@ -61,8 +61,13 @@ export default function ProfileScreen() {
   const [showLogout, setShowLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [bottomTabVisible, setBottomTabVisible] = useState(true);
+  const isMounted = useRef(true);
   const scrollY = useRef(0);
   const tabBarAnimation = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    return () => { isMounted.current = false; };
+  }, []);
 
   const [stats, setStats] = useState({
     booksRead: 0, // optional (see below)
@@ -192,6 +197,7 @@ export default function ProfileScreen() {
 
   const handleScroll = useCallback(
     (event: any) => {
+      if (!isMounted.current) return;
       const currentOffset = event.nativeEvent.contentOffset.y;
       const direction = currentOffset > scrollY.current ? 'down' : 'up';
       const shouldShow = direction === 'up' || currentOffset <= 0;
