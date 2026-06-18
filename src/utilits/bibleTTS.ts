@@ -10,32 +10,70 @@ const STORAGE_KEYS = {
 };
 
 // ─── Narration defaults ───────────────────────────────────────────────────────
-const DEFAULT_RATE = 1;
-const DEFAULT_PITCH = 0.95;
+const DEFAULT_RATE = 0.9;   // slightly slower for natural pacing
+const DEFAULT_PITCH = 1.0;  // neutral pitch sounds less robotic
 
 const PREFERRED_VOICES: string[] =
   Platform.select({
     ios: [
-      'com.apple.voice.premium.en-GB.Daniel',
+      // iOS device enhanced (neural) voices
+      'com.apple.voice.enhanced.en-US.Samantha',
+      'com.apple.voice.enhanced.en-GB.Daniel',
+      'com.apple.voice.enhanced.en-US.Aaron',
+      'com.apple.voice.enhanced.en-AU.Karen',
+      'com.apple.voice.enhanced.en-IE.Moira',
+      'com.apple.voice.enhanced.en-ZA.Tessa',
+      'com.apple.voice.enhanced.en-IN.Ravi',
+      'com.apple.voice.enhanced.en-US.Alex',
+      'com.apple.voice.enhanced.en-GB.Serena',
       'com.apple.voice.premium.en-US.Zoe',
       'com.apple.voice.premium.en-US.Evan',
-      'com.apple.voice.enhanced.en-GB.Daniel',
-      'com.apple.voice.enhanced.en-US.Samantha',
-      'com.apple.voice.enhanced.en-US.Alex',
+      'com.apple.voice.premium.en-GB.Daniel',
+      // macOS / iOS Simulator voices (different ID format)
+      'com.apple.speech.synthesis.voice.samantha.premium',
+      'com.apple.speech.synthesis.voice.samantha',
+      'com.apple.speech.synthesis.voice.daniel.premium',
+      'com.apple.speech.synthesis.voice.daniel',
+      'com.apple.speech.synthesis.voice.aaron.premium',
+      'com.apple.speech.synthesis.voice.aaron',
+      'com.apple.speech.synthesis.voice.karen.premium',
+      'com.apple.speech.synthesis.voice.karen',
+      'com.apple.speech.synthesis.voice.moira.premium',
+      'com.apple.speech.synthesis.voice.moira',
+      'com.apple.speech.synthesis.voice.tessa.premium',
+      'com.apple.speech.synthesis.voice.tessa',
+      'com.apple.speech.synthesis.voice.alex',
     ],
     android: [
-      // Android 14+ Google TTS voices (new ID format in API 34)
+      // Google TTS network (neural) voices — most human-sounding.
       'en-us-x-iom-network',
-      'en-us-x-iom-local',
       'en-us-x-sfg-network',
-      'en-us-x-sfg-local',
       'en-us-x-tpf-network',
-      'en-us-x-tpf-local',
+      'en-us-x-wbk-network',
+      'en-us-x-tbd-network',
+      'en-us-x-cem-network',
+      'en-us-x-aqk-network',
       'en-gb-x-gbd-network',
+      'en-gb-x-gbw-network',
+      'en-gb-x-gba-network',
+      'en-au-x-aus-network',
+      'en-au-x-aum-network',
+      'en-in-x-ind-network',
+      // Google TTS local fallbacks (same voices, device-stored).
+      'en-us-x-iom-local',
+      'en-us-x-sfg-local',
+      'en-us-x-tpf-local',
+      'en-us-x-wbk-local',
+      'en-us-x-tbd-local',
       'en-gb-x-gbd-local',
-      // Samsung TTS (common on Android 14 OEM devices)
+      'en-gb-x-gbw-local',
+      'en-au-x-aus-local',
+      'en-in-x-ind-local',
+      // Samsung TTS (common on Samsung devices).
       'en-us-x-sfg#f_st_1-local',
       'en-us-x-iom#f_st_1-local',
+      'en-us-x-wbk#f_st_1-local',
+      'en-gb-x-gbd#f_st_1-local',
     ],
   }) ?? [];
 
@@ -455,19 +493,44 @@ class BibleTTSManager {
     }
 
     for (const id of PREFERRED_VOICES) {
-      const match = english.find(v => v.id === id || v.id?.includes(id));
+      const match = english.find(
+        v =>
+          v.id === id ||
+          v.id?.includes(id) ||
+          v.name?.toLowerCase().includes(id.toLowerCase()),
+      );
       if (match) return match.id;
     }
 
-    const neural = english.find(
-      v => v.id?.includes('network') || v.networkConnectionRequired,
-    );
+    // Also match by name — some engines put quality in display name
+    const byName = (keyword: string) =>
+      english.find(
+        v =>
+          v.id?.toLowerCase().includes(keyword) ||
+          v.name?.toLowerCase().includes(keyword),
+      );
+
+    const neural =
+      english.find(
+        v => v.id?.includes('network') || v.networkConnectionRequired,
+      ) ?? byName('neural');
     if (neural) return neural.id;
 
-    const quality = english.find(
-      v => v.id?.includes('premium') || v.id?.includes('enhanced'),
-    );
+    const quality =
+      english.find(
+        v =>
+          (v.id?.includes('premium') || v.name?.includes('premium')) &&
+          !v.id?.includes('?'),
+      ) ?? byName('enhanced');
     if (quality) return quality.id;
+
+    // macOS premium voices: com.apple.speech.synthesis.voice.*.premium
+    const macPremium = english.find(
+      v =>
+        v.id?.startsWith('com.apple.speech.synthesis.voice.') &&
+        v.id?.endsWith('.premium'),
+    );
+    if (macPremium) return macPremium.id;
 
     return english[0]?.id ?? null;
   }
@@ -1116,12 +1179,30 @@ class BibleTTSManager {
         id: v.id,
         name: v.name ?? v.id,
         language: v.language ?? 'en',
-        quality:
-          v.id?.includes('network') || v.networkConnectionRequired
-            ? 'neural'
-            : v.id?.includes('premium') || v.id?.includes('enhanced')
-              ? 'enhanced'
-              : 'local',
+        quality: (() => {
+          const id = v.id ?? '';
+          const name = v.name ?? '';
+          if (
+            id.includes('network') ||
+            v.networkConnectionRequired ||
+            name.toLowerCase().includes('neural')
+          )
+            return 'neural';
+          if (
+            id.includes('premium') ||
+            id.includes('enhanced') ||
+            name.toLowerCase().includes('premium') ||
+            name.toLowerCase().includes('enhanced')
+          )
+            return 'enhanced';
+          // macOS premium: com.apple.speech.synthesis.voice.*.premium
+          if (
+            id.startsWith('com.apple.speech.synthesis.voice.') &&
+            id.endsWith('.premium')
+          )
+            return 'enhanced';
+          return 'local';
+        })(),
       }));
     } catch {
       return [];
