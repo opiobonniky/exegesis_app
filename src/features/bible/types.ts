@@ -150,3 +150,16 @@ export interface HighlightPickerModalProps {
   onSelectColor: (colorId: number, color: string) => void;
   isDark: boolean;
 }
+
+export interface StrongsWordData {
+  wordOrder: number;
+  surfaceText: string;
+  strongsId: string | null;
+  lemma: string | null;
+  morphology: string | null;
+  hasData: boolean;
+}
+
+export interface VerseWordMap {
+  [verseNumber: number]: StrongsWordData[];
+}

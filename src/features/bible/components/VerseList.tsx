@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import VerseCard from './VerseCard';
 import { BORDER_RADIUS, SPACING } from '../../../constants/theme';
+import { StrongsWordData } from '../../../services/strongsService';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shimmer skeleton
@@ -211,6 +212,10 @@ export type VerseListProps = {
   dailyVerseRefMap?: Record<number, { reflection?: string; explanation?: string; learnMore?: string }>;
   navigation?: any;
   explainingVerse?: number | null;
+  /** Word-level Strong's concordance data keyed by verse number */
+  verseWordMap?: Record<number, StrongsWordData[]>;
+  /** Called when user taps a word that has Strong's data */
+  onWordPress?: (word: StrongsWordData) => void;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -253,6 +258,8 @@ export default function VerseList({
   onCloseDailyVerse,
   dailyVerseRefMap,
   explainingVerse,
+  verseWordMap,
+  onWordPress,
 }: VerseListProps) {
   if (loading) {
     return (
@@ -346,6 +353,8 @@ export default function VerseList({
         navigation={navigation}
         currentBook={currentBook}
         currentChapter={currentChapter}
+        verseWords={verseWordMap?.[verseNumber]}
+        onWordPress={onWordPress}
       />
     );
   };

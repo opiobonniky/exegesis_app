@@ -65,7 +65,7 @@ export const useBible = () => {
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
 
-  const activeVersionId = app?.bibleVersionId || 'BSB';
+  const activeVersionId = app?.bibleVersionId || 'Berean';
 
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [currentBook, setCurrentBook] = useState<string>('Genesis');

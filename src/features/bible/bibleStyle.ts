@@ -204,27 +204,18 @@ export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
 
     // Better, book-like verse layout
     verseTouchable: {
-      marginBottom: SPACING.sm,
-      borderRadius: BORDER_RADIUS.md,
-      overflow: 'hidden',
+      marginBottom: 0,
     },
     versePressed: {
       opacity: 0.98,
     },
     verseContainer: {
-      // Use cardBackground (slightly darker than surface) so cards don't look "blank white"
-      // when a verse is deselected.
-      backgroundColor: COLORS.cardBackground,
-      borderRadius: BORDER_RADIUS.md,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      overflow: 'hidden',
+      borderWidth: 0,
       position: 'relative',
     },
     verseSelected: {
-      backgroundColor: `${COLORS.primary}14`, // primary color with alpha for subtle highlight
-      borderColor: COLORS.primary,
-      borderWidth: 2, // no borderLeftWidth here
+      backgroundColor: `${COLORS.primary}14`,
+      borderWidth: 0,
     },
 
     selectedStrip: {
@@ -238,7 +229,7 @@ export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
     verseContent: {
       flexDirection: rtl ? 'row-reverse' : 'row',
       alignItems: 'flex-start',
-      paddingVertical: SPACING.sm,
+      paddingVertical: 0,
       paddingHorizontal: SPACING.sm,
       gap: SPACING.sm,
     },

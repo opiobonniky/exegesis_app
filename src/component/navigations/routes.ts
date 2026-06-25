@@ -43,4 +43,5 @@ export const route = {
   adminJournalTemplates: 'AdminJournalTemplates',
   fullVerseExplanation: 'FullVerseExplanation',
   verseResources: 'VerseResources',
+  wordStudy: 'WordStudy',
 };

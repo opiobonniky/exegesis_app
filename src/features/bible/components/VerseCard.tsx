@@ -15,6 +15,7 @@ import ExpandableText from '../../bible/ExpandableText';
 import { bibleTTS } from '../../../utilits/bibleTTS';
 import { route } from '../../../component/navigations/routes';
 import { useLanguage, isRtlLanguage, toArabicIndic } from '../../../component/language-translation/LanguageProvider';
+import { StrongsWordData } from '../../../services/strongsService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,10 @@ type VerseCardProps = {
   navigation?: any;
   currentBook?: string;
   currentChapter?: number;
+  /** Word-level Strong's Concordance data for this verse */
+  verseWords?: StrongsWordData[];
+  /** Called when user taps a word that has Strong's data */
+  onWordPress?: (word: StrongsWordData) => void;
 };
 
 export default function VerseCard({
@@ -90,6 +95,8 @@ export default function VerseCard({
   navigation,
   currentBook,
   currentChapter,
+  verseWords,
+  onWordPress,
 }: VerseCardProps) {
   const accent = colors.accent;
   const { language, translations } = useLanguage();
@@ -197,10 +204,8 @@ export default function VerseCard({
     }
   }, [activeWordOffset]);
 
-  // ── Verse text — with word highlight when a word offset is provided ────────
-  // ── RTL handling: For RTL languages (Arabic, Urdu), the verse number is
-  //    placed AFTER the text so it appears at the rightmost (start) position.
-  const renderVerseText = () => {
+  // ── Split verse text into word-level components ──────────────────────────
+  const renderVerseWords = () => {
     const lineHeight = Math.round(fontSize * 1.75);
     const numStyle = [
       styles.verseNumber,
@@ -212,10 +217,50 @@ export default function VerseCard({
       },
     ];
 
-    // For RTL, verse number comes first in source, with writingDirection 'rtl'
-    // so the verse number (LTR) renders on the rightmost side, and the Arabic
-    // text flows left from there. No whitespace between > and first child.
-    const renderRtlContent = (children: React.ReactNode) => (
+    const hasWordData = verseWords && verseWords.length > 0;
+
+    // Split text into word tokens (preserve punctuation attached to words)
+    const wordTokens = text.match(/\S+/g) || [];
+
+    const renderWords = () => {
+      if (!hasWordData) {
+        // No Strong's data — render as plain text
+        return (
+          <Text style={{ fontSize, lineHeight }}>
+            {wordTokens.map((token, i) => (
+              <Text key={i}>{token}{' '}</Text>
+            ))}
+          </Text>
+        );
+      }
+
+      // Has Strong's word data — render each word individually
+      return (
+        <Text style={{ fontSize, lineHeight, includeFontPadding: false }}>
+          {wordTokens.map((token, i) => {
+            const wordData = verseWords[i];
+            if (!wordData?.hasData) {
+              return <Text key={i}>{token}{' '}</Text>;
+            }
+
+            return (
+              <Text
+                key={i}
+                onPress={() => {
+                  wordTapHandledRef.current = true;
+                  onWordPress?.(wordData);
+                }}
+                style={ssWord.strongsWord}
+              >
+                {token}{' '}
+              </Text>
+            );
+          })}
+        </Text>
+      );
+    };
+
+    return (
       <Text
         style={[
           styles.verseText,
@@ -223,109 +268,12 @@ export default function VerseCard({
             fontSize,
             lineHeight,
             opacity: isEffectivelyActive ? 1 : 0.88,
-            writingDirection: 'rtl' as const,
+            writingDirection: isRtl ? 'rtl' as const : 'ltr' as const,
           },
-        ]}>
+        ]}
+      >
         <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}{'  '}</Text>
-        {children}
-      </Text>
-    );
-
-    const renderLtrContent = (children: React.ReactNode) => (
-      <Text
-        style={[
-          styles.verseText,
-          { fontSize, lineHeight, opacity: isEffectivelyActive ? 1 : 0.88 },
-        ]}>
-        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}{'  '}</Text>
-        {children}
-      </Text>
-    );
-
-    const renderRtlWordContent = (
-      beforeContent: string,
-      wordContent: string,
-      afterContent: string,
-    ) => (
-      <Text style={[styles.verseText, { fontSize, lineHeight, opacity: 1, writingDirection: 'rtl' as const }]}>
-        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}{'  '}</Text>
-        {beforeContent}
-        <Animated.Text
-          style={[
-            wordStyles.highlight,
-            {
-              backgroundColor: wordAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [
-                  'transparent',
-                  isEffectivelyActive ? 'rgba(255, 193, 7, 0.42)' : 'transparent',
-                ],
-              }),
-              transform: [
-                {
-                  scale: wordAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [1, 1.05],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          {wordContent}
-        </Animated.Text>
-        {afterContent}
-      </Text>
-    );
-
-    // No active word → plain render
-    if (!isEffectivelyActive || !activeWordOffset) {
-      return isRtl
-        ? renderRtlContent(text)
-        : renderLtrContent(text);
-    }
-
-    // Active word → split text into before / word / after
-    const { start, length } = activeWordOffset;
-    const safeStart = Math.max(0, Math.min(start, text.length));
-    const safeEnd = Math.max(safeStart, Math.min(start + length, text.length));
-    const before = text.slice(0, safeStart);
-    const word = text.slice(safeStart, safeEnd);
-    const after = text.slice(safeEnd);
-
-    if (isRtl) {
-      return renderRtlWordContent(before, word, after);
-    }
-
-    return (
-      <Text style={[styles.verseText, { fontSize, lineHeight, opacity: 1 }]}>
-        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}{'  '}</Text>
-        {before}
-        <Animated.Text
-          style={[
-            wordStyles.highlight,
-            {
-              backgroundColor: wordAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [
-                  'transparent',
-                  isEffectivelyActive ? 'rgba(255, 193, 7, 0.42)' : 'transparent',
-                ],
-              }),
-              transform: [
-                {
-                  scale: wordAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [1, 1.05],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          {word}
-        </Animated.Text>
-        {after}
+        {renderWords()}
       </Text>
     );
   };
@@ -406,6 +354,9 @@ export default function VerseCard({
     return () => highlightAnim.removeListener(id);
   }, [isTargetHighlight, highlightAnim]);
 
+  // ── Word-tap flag: prevent verse selection when a Strong's word was tapped
+  const wordTapHandledRef = useRef(false);
+
   // ── Double-tap detection ────────────────────────────────────────────
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -416,7 +367,10 @@ export default function VerseCard({
   }, []);
 
   const handlePress = useCallback(() => {
-    // Don't toggle selection while TTS is actively reading this verse
+    if (wordTapHandledRef.current) {
+      wordTapHandledRef.current = false;
+      return;
+    }
     if (isEffectivelyActive) return;
     if (tapTimerRef.current) {
       clearTimeout(tapTimerRef.current);
@@ -426,7 +380,7 @@ export default function VerseCard({
       tapTimerRef.current = setTimeout(() => {
         tapTimerRef.current = null;
         onPress?.();
-      }, 250);
+      }, 350);
     }
   }, [onPress, onDoubleTap, isEffectivelyActive]);
 
@@ -521,7 +475,7 @@ export default function VerseCard({
 
         <View style={styles.verseContent}>
           <View style={styles.verseTextContainer}>
-            {renderVerseText()}
+            {renderVerseWords()}
 
             {/* Action row: Explain, Daily Verse, Copy, Share — only when exactly one verse is selected */}
             {showActions && (
@@ -1151,5 +1105,15 @@ const wordStyles = StyleSheet.create({
   textDecorationStyle: 'solid',
     borderRadius: 3,
     paddingHorizontal: 1,
+  },
+});
+
+const ssWord = StyleSheet.create({
+  strongsWord: {
+    fontWeight: 'bold',
+    color: '#8B6914',
+    textDecorationLine: 'underline',
+    textDecorationStyle: 'dotted',
+    textDecorationColor: '#B8860B',
   },
 });

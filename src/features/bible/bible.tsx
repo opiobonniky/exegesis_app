@@ -43,9 +43,19 @@ import {
   Lightbulb,
   BookOpen,
 } from 'lucide-react-native';
-import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
+import {
+  useLanguage,
+  isRtlLanguage,
+} from '../../component/language-translation/LanguageProvider';
 import LinearGradient from 'react-native-linear-gradient';
 import { bibleApi } from '../../services/bibleApi';
+import {
+  getVerseWords,
+  getStrongsEntry,
+  StrongsWordData,
+  StrongsEntry,
+} from '../../services/strongsService';
+import WordStudyBottomSheet from './components/WordStudyBottomSheet';
 
 import {
   BibleHeader,
@@ -134,13 +144,6 @@ export default function Bible() {
   const [bottomTabVisible, setBottomTabVisible] = useState(true);
   const scrollY = useRef(0);
   const tabBarAnimation = useRef(new Animated.Value(1)).current;
-
-  const closeReflection = useCallback(() => {
-    if (!reflectionOpenRef.current) return;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    reflectionOpenRef.current = false;
-    setReflectionOpen(false);
-  }, []);
 
   const toggleReflection = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -302,6 +305,65 @@ export default function Bible() {
   const [freeTranslationsOnly, setFreeTranslationsOnly] = useState(false);
   const settingsFetchedRef = useRef(false);
 
+  // ── Strong's Concordance (word study) state ──────────────────────────────
+  const [verseWordMap, setVerseWordMap] = useState<
+    Record<number, StrongsWordData[]>
+  >({});
+  const [showWordStudy, setShowWordStudy] = useState(false);
+  const [selectedWord, setSelectedWord] = useState<StrongsWordData | null>(
+    null,
+  );
+  const [selectedWordEntry, setSelectedWordEntry] =
+    useState<StrongsEntry | null>(null);
+  const [wordStudyLoading, setWordStudyLoading] = useState(false);
+
+  const handleWordPress = useCallback(async (word: StrongsWordData) => {
+    setSelectedWord(word);
+    setShowWordStudy(true);
+    setWordStudyLoading(true);
+    setSelectedWordEntry(null);
+    if (word.strongsId && word.hasData) {
+      try {
+        const res = await getStrongsEntry(word.strongsId);
+        if (res?.returnData) {
+          setSelectedWordEntry(res.returnData);
+        }
+      } catch (e) {
+        console.error('Failed to fetch Strongs entry:', e);
+      }
+    }
+    setWordStudyLoading(false);
+  }, []);
+
+  // Fetch Strong's word data when chapter changes
+  const fetchVerseWords = useCallback(async () => {
+    if (!currentBook || !currentChapter) return;
+    try {
+      const res = await getVerseWords(
+        currentBook,
+        currentChapter,
+        undefined,
+        activeVersion.id,
+      );
+
+      console.log('Fetched verse words:', res?.returnData);
+
+      if (!res?.returnData) return;
+      const grouped: Record<number, StrongsWordData[]> = {};
+      for (const w of res.returnData) {
+        if (!grouped[w.verseNumber!]) grouped[w.verseNumber!] = [];
+        grouped[w.verseNumber!].push(w);
+      }
+      setVerseWordMap(grouped);
+    } catch (e) {
+      console.error('Failed to fetch verse word data:', e);
+    }
+  }, [currentBook, currentChapter, activeVersion?.id]);
+
+  useEffect(() => {
+    fetchVerseWords();
+  }, [fetchVerseWords]);
+
   // ── Initialize from route params (bookName, chapter) when navigating from
   //  ReadingPlan daily screen, search results or other screens ──────────
   //  Uses empty deps because route params are snapshots — React Navigation
@@ -323,7 +385,10 @@ export default function Bible() {
       try {
         const settings = await bibleApi.getTranslationSettings();
         setFreeTranslationsOnly(settings.freeTranslationsOnly);
-        if (settings.defaultTranslationId && settings.defaultTranslationId !== bibleVersionId) {
+        if (
+          settings.defaultTranslationId &&
+          settings.defaultTranslationId !== bibleVersionId
+        ) {
           handleVersionChange(settings.defaultTranslationId);
         }
       } catch (e) {
@@ -343,25 +408,21 @@ export default function Bible() {
     }
   }, [currentBook, currentChapter, isGuest]);
 
-  const handleVerseRefPress = useCallback(
-    (ref: VerseRef) => {
-      navigation.navigate(route.fullVerseExplanation, {
-        bookName: ref.bookName,
-        chapter: ref.chapter,
-        verseNumber: ref.verseNumber,
-      });
-    },
-    [navigation],
-  );
+
 
   const COLORS = getColors(isDark);
-  const styles = useMemo(() => createBibleStyles(isDark, isRtl), [isDark, isRtl]);
-  const rpStyles = useMemo(() => isFromReadingPlan ? useRpStyles(isRtl) : null, [isRtl, isFromReadingPlan]);
+  const styles = useMemo(
+    () => createBibleStyles(isDark, isRtl),
+    [isDark, isRtl],
+  );
+  const rpStyles = useMemo(
+    () => (isFromReadingPlan ? useRpStyles(isRtl) : null),
+    [isRtl, isFromReadingPlan],
+  );
 
   // ── Guest gate state ──────────────────────────────────────────────────────
   const [gateVisible, setGateVisible] = useState(false);
   const [gateMessage, setGateMessage] = useState('');
-
 
   const showGate = (msg: string) => {
     clearSelection();
@@ -453,7 +514,9 @@ export default function Bible() {
                 { backgroundColor: COLORS.primary },
               ]}
             >
-              <Text style={styles.addJournalBtnText}>+ {translations?.bible?.add || 'Add'}</Text>
+              <Text style={styles.addJournalBtnText}>
+                + {translations?.bible?.add || 'Add'}
+              </Text>
             </TouchableOpacity>
           </View>
           <ScrollView
@@ -610,8 +673,7 @@ export default function Bible() {
             scrollEventThrottle={16}
             onVersePress={verseNumber => {
               if (isGuest || showAudioPlayer) return;
-              toggleVerseSelection(verseNumber);
-              addReadHistory(verseNumber);
+              //make it handle the strong words when tapple to open the word study bottom sheet apply on word not the verse
             }}
             onRemoveHighlight={removeHighlight}
             onExplain={async vn => {
@@ -619,27 +681,28 @@ export default function Bible() {
                 showGate('Sign in to see explanations.');
                 return;
               }
-              const found = await getverseExplanation([vn], currentBook, currentChapter);
+              const found = await getverseExplanation(
+                [vn],
+                currentBook,
+                currentChapter,
+              );
               if (found) clearSelection();
             }}
             onShare={vn => shareVerses([vn])}
             onCopy={vn => copyVerses([vn])}
-            onDoubleTap={vn => {
-              clearSelection();
-              const verse = versesArray.find(v => v.num === vn);
-              navigation.navigate(route.verseResources, {
-                bookName: currentBook,
-                chapter: currentChapter,
-                verseNumber: vn,
-                verseText: verse ? verse.text : '',
-              });
+            onDoubleTap={verseNumber => {
+              toggleVerseSelection(verseNumber);
+              addReadHistory(verseNumber);
             }}
             onLongPress={vn =>
-              guard('Highlights are saved to your account. Sign in to use this feature.', () => {
-                setPendingVerses([vn]);
-                toggleVerseSelection(vn);
-                setShowHighlightPicker(true);
-              })
+              guard(
+                'Highlights are saved to your account. Sign in to use this feature.',
+                () => {
+                  setPendingVerses([vn]);
+                  toggleVerseSelection(vn);
+                  setShowHighlightPicker(true);
+                },
+              )
             }
             onCloseExplanation={vn => {
               clearVerseExplanationForVerse(vn);
@@ -655,6 +718,8 @@ export default function Bible() {
             verseJournalPrompts={verseJournalPrompts}
             explainingVerse={explainingVerse}
             navigation={navigation}
+            verseWordMap={verseWordMap}
+            onWordPress={handleWordPress}
           />
         </View>
       ) : (
@@ -691,20 +756,19 @@ export default function Bible() {
               showGate('Sign in to see explanations.');
               return;
             }
-            const found = await getverseExplanation([vn], currentBook, currentChapter);
+            const found = await getverseExplanation(
+              [vn],
+              currentBook,
+              currentChapter,
+            );
             if (found) clearSelection();
           }}
           onShare={vn => shareVerses([vn])}
           onCopy={vn => copyVerses([vn])}
-          onDoubleTap={vn => {
-            clearSelection();
-            const verse = versesArray.find(v => v.num === vn);
-            navigation.navigate(route.verseResources, {
-              bookName: currentBook,
-              chapter: currentChapter,
-              verseNumber: vn,
-              verseText: verse ? verse.text : '',
-            });
+          onDoubleTap={verseNumber => {
+            if (isGuest || showAudioPlayer) return;
+            toggleVerseSelection(verseNumber);
+            addReadHistory(verseNumber);
           }}
           onCloseExplanation={vn => {
             clearVerseExplanationForVerse(vn);
@@ -719,7 +783,8 @@ export default function Bible() {
           dailyVerseRefMap={dailyVerseRefMap}
           verseJournalPrompts={verseJournalPrompts}
           explainingVerse={explainingVerse}
-          navigation={navigation}
+          verseWordMap={verseWordMap}
+          onWordPress={handleWordPress}
         />
       )}
 
@@ -732,7 +797,10 @@ export default function Bible() {
             onPress={toggleReflection}
             style={[
               rpStyles.toggleButton,
-              reflectionOpen && { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
+              reflectionOpen && {
+                borderTopLeftRadius: 0,
+                borderTopRightRadius: 0,
+              },
             ]}
           >
             <View style={rpStyles.toggleLeft}>
@@ -741,10 +809,14 @@ export default function Bible() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={rpStyles.toggleTitle}>
-                  {planTitle || translations?.bible?.readingPlan || 'Reading Plan'} — {translations?.bible?.reflections || 'Reflections'}
+                  {planTitle ||
+                    translations?.bible?.readingPlan ||
+                    'Reading Plan'}{' '}
+                  — {translations?.bible?.reflections || 'Reflections'}
                 </Text>
                 <Text style={rpStyles.toggleSubtitle}>
-                  {dayTitle || `${translations?.bible?.day || 'Day'} ${routeParams.day || ''}`}
+                  {dayTitle ||
+                    `${translations?.bible?.day || 'Day'} ${routeParams.day || ''}`}
                 </Text>
               </View>
             </View>
@@ -792,7 +864,12 @@ export default function Bible() {
                         { backgroundColor: COLORS.primary + '20' },
                       ]}
                     >
-                      <Text style={[rpStyles.journalLinkText, { color: COLORS.primary }]}>
+                      <Text
+                        style={[
+                          rpStyles.journalLinkText,
+                          { color: COLORS.primary },
+                        ]}
+                      >
                         {translations?.bible?.journal || 'Journal'}
                       </Text>
                     </TouchableOpacity>
@@ -850,7 +927,9 @@ export default function Bible() {
         searchQuery={searchQuery}
         onSearchChange={handleSearch}
         searchResults={searchResults}
-        onSelectResult={(book, chapter, verse) => goToVerse({ book, chapter, verse: verse ?? 1 })}
+        onSelectResult={(book, chapter, verse) =>
+          goToVerse({ book, chapter, verse: verse ?? 1 })
+        }
         loading={searchLoading}
         versionName={activeVersion.name}
         versionAbbreviation={activeVersion.abbreviation}
@@ -894,6 +973,24 @@ export default function Bible() {
         currentBook={currentBook}
         currentChapter={currentChapter}
         isDark={isDark}
+      />
+
+      {/* ── Word Study Bottom Sheet (Strong's Concordance) ──────────────── */}
+      <WordStudyBottomSheet
+        visible={showWordStudy}
+        word={selectedWord}
+        entry={selectedWordEntry}
+        loading={wordStudyLoading}
+        isDark={isDark}
+        onClose={() => setShowWordStudy(false)}
+        onSearchAllUses={strongsId => {
+          setShowWordStudy(false);
+          navigation.navigate(route.wordStudy, { strongsId });
+        }}
+        onSaveWord={entry => {
+          // Future: persist saved word to user account
+          setShowWordStudy(false);
+        }}
       />
 
       {/* ── Translation Picker ──────────────────────────────────────────── */}
@@ -1007,7 +1104,12 @@ function VerseRefText({
   const segments = useMemo(() => parseVerseRefs(text), [text]);
 
   return (
-    <View style={[vrStyles.container, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+    <View
+      style={[
+        vrStyles.container,
+        { flexDirection: isRtl ? 'row-reverse' : 'row' },
+      ]}
+    >
       {segments.map((seg, idx) => {
         if (typeof seg === 'string') {
           return (
