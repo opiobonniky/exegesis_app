@@ -34,170 +34,11 @@ export const createStyles = (COLORS: any) =>
       fontSize: FONT_SIZES.sm,
       fontWeight: '600',
     },
-    // ── Daily Verse Card ───────────────────────────────────────────────────
-    verseCard: {
-      marginHorizontal: SPACING.lg,
-      marginTop: SPACING.lg,
-      marginBottom: SPACING.md,
-      backgroundColor: COLORS.surface,
-      borderRadius: BORDER_RADIUS.lg,
-      overflow: 'hidden',
-      // shadow
-      shadowColor: COLORS.shadowColor,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
-    },
-    verseCardHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: '#396284',
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.sm + 2,
-    },
-    verseCardHeaderRtl: {
-      flexDirection: 'row-reverse',
-    },
-    verseCardHeaderLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: SPACING.sm,
-    },
-    verseCardHeaderLeftRtl: {
-      flexDirection: 'row-reverse',
-    },
-    verseIconBox: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    verseCardTitle: {
-      fontSize: FONT_SIZES.md,
-      fontWeight: '700',
-      color: '#FFFFFF',
-    },
-    verseCardDate: {
-      fontSize: FONT_SIZES.xs,
-      color: 'rgba(255,255,255,0.75)',
-      marginTop: 1,
-    },
-    lordsBookTag: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      borderRadius: BORDER_RADIUS.round,
-      paddingHorizontal: SPACING.md,
-      paddingVertical: 5,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.3)',
-    },
-    lordsBookTagRtl: {
-      flexDirection: 'row-reverse',
-    },
-    lordsBookTagText: {
-      fontSize: FONT_SIZES.xs,
-      fontWeight: '600',
-      color: '#FFFFFF',
-    },
-    verseCardDivider: {
-      height: 1,
-      backgroundColor: COLORS.border,
-    },
-    verseLoadingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: SPACING.lg,
-      gap: SPACING.sm,
-    },
-    verseLoadingRowRtl: {
-      flexDirection: 'row-reverse',
-    },
-    verseLoadingText: {
-      fontSize: FONT_SIZES.sm,
-      color: COLORS.muted,
-    },
-    verseReferenceRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: SPACING.md,
-      paddingTop: SPACING.md,
-      paddingBottom: SPACING.xs,
-    },
-    verseReferenceRowRtl: {
-      flexDirection: 'row-reverse',
-    },
-    verseRefLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    verseRefLeftRtl: {
-      flexDirection: 'row-reverse',
-    },
-    verseRefText: {
-      fontSize: FONT_SIZES.sm,
-      fontWeight: '700',
-      color: COLORS.primary,
-    },
-    verseTranslation: {
-      fontWeight: '500',
-      color: COLORS.muted,
-    },
-    audioBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor: COLORS.cardBackground,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    verseBodyText: {
-      fontSize: 17,
-      fontWeight: '500',
-      color: COLORS.text,
-      lineHeight: 28,
-      paddingHorizontal: SPACING.md,
-      paddingTop: SPACING.xs,
-      paddingBottom: SPACING.md,
-    },
-    verseActions: {
-      flexDirection: 'row',
-      borderTopWidth: 1,
-      borderTopColor: COLORS.border,
-    },
-    verseActionsRtl: {
-      flexDirection: 'row-reverse',
-    },
-    verseActionBtn: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      paddingVertical: SPACING.sm + 2,
-    },
-    verseActionBtnRtl: {
-      flexDirection: 'row-reverse',
-    },
-    verseActionText: {
-      fontSize: FONT_SIZES.sm,
-      fontWeight: '600',
-      color: COLORS.primary,
-    },
+
 
     // ── Content Banner Rows ─────────────────────────────────────────────────
     bannersSection: {
-      marginHorizontal: SPACING.lg,
       marginBottom: SPACING.md,
-      borderRadius: BORDER_RADIUS.lg,
-      overflow: 'hidden',
       gap: 2,
     },
     bannerRow: {
@@ -209,14 +50,6 @@ export const createStyles = (COLORS: any) =>
     },
     bannerRowRtl: {
       flexDirection: 'row-reverse',
-    },
-    bannerFirst: {
-      borderTopLeftRadius: BORDER_RADIUS.lg,
-      borderTopRightRadius: BORDER_RADIUS.lg,
-    },
-    bannerLast: {
-      borderBottomLeftRadius: BORDER_RADIUS.lg,
-      borderBottomRightRadius: BORDER_RADIUS.lg,
     },
     bannerIconWrap: {
       width: 36,
@@ -283,60 +116,7 @@ export const createStyles = (COLORS: any) =>
       letterSpacing: 0.5,
     },
 
-    explainSection: {
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.md,
-      backgroundColor: `${COLORS.primary}08`,
-      marginTop: SPACING.sm,
-    },
-    explainHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 10,
-    },
-    explainHeaderRtl: {
-      flexDirection: 'row-reverse',
-    },
-    explainHeaderLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    explainHeaderLeftRtl: {
-      flexDirection: 'row-reverse',
-    },
-    explainTitle: {
-      fontSize: 15,
-      fontWeight: '700',
-      letterSpacing: 0.3,
-    },
-    explainText: {
-      fontSize: 17,
-      lineHeight: 28,
-      color: COLORS.text,
-      letterSpacing: 0.2,
-    },
-    explainDivider: {
-      height: 1,
-      marginVertical: 14,
-    },
-    learnMoreTitle: {
-      fontSize: 13,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginBottom: 8,
-    },
-    learnMoreExpandable: {
-      marginTop: 0,
-      marginBottom: 2,
-    },
-    learnMoreText: {
-      fontSize: 17,
-      lineHeight: 28,
-      letterSpacing: 0.2,
-    },
+
     quickLinksCompact: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -396,19 +176,5 @@ export const createStyles = (COLORS: any) =>
       left: 0,
       right: 0,
     },
-    // ── Back to Today Banner ──
-    backToTodayBanner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      marginHorizontal: 20,
-      marginBottom: 12,
-      paddingVertical: 10,
-      paddingHorizontal: 20,
-      borderRadius: 12,
-    },
-    backToTodayBannerRtl: {
-      flexDirection: 'row-reverse',
-    },
+
   });

@@ -11,7 +11,7 @@ import {
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { FONT_SIZES, getColors, SPACING } from '../constants/theme';
 import LinearGradient from 'react-native-linear-gradient';
-import { ChevronLeft, ChevronRight, Moon, Sun, User } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Moon, Search, Sun, User } from 'lucide-react-native';
 import exegesisLogo from '../assets/logos/exegesis_bg_rm.png';
 import { useLanguage, isRtlLanguage } from '../component/language-translation/LanguageProvider';
 import { useTranslation } from '../hooks/useTranslation';
@@ -44,6 +44,7 @@ type HomeProps = BaseProps & {
   tagline?: string;
   isDarkMode: boolean;
   onThemeToggle: () => void;
+  onSearchPress?: () => void;
   profilePhotoUrl?: string | null;
   onProfilePress: () => void;
   appName?: string;
@@ -184,6 +185,7 @@ const ActionHeader = (props: Props) => {
       tagline,
       isDarkMode,
       onThemeToggle,
+      onSearchPress,
       profilePhotoUrl,
       onProfilePress,
       appName,
@@ -201,18 +203,30 @@ const ActionHeader = (props: Props) => {
           {/* Row 1: Brand bar */}
           <View style={[styles.brandBar, isRtl && styles.brandBarRtl, { paddingTop: topInset }]}>
             <LogoLockup compact appName={appName} tagline={taglineText} />
-            <TouchableOpacity
-              onPress={onThemeToggle}
-              style={[styles.themeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : COLORS.surface }]}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              activeOpacity={0.75}
-            >
-              {isDarkMode ? (
-                <Sun size={16} color="#F0B429" />
-              ) : (
-                <Moon size={16} color={COLORS.primary} />
+            <View style={styles.brandActions}>
+              {onSearchPress && (
+                <TouchableOpacity
+                  onPress={onSearchPress}
+                  style={[styles.themeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : COLORS.surface }]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.75}
+                >
+                  <Search size={16} color={isDark ? 'rgba(255,255,255,0.7)' : COLORS.text} />
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={onThemeToggle}
+                style={[styles.themeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : COLORS.surface }]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.75}
+              >
+                {isDarkMode ? (
+                  <Sun size={16} color="#F0B429" />
+                ) : (
+                  <Moon size={16} color={COLORS.primary} />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Row 2: User profile section */}
@@ -490,6 +504,11 @@ const styles = StyleSheet.create({
   },
   brandBarRtl: {
     flexDirection: 'row-reverse',
+  },
+  brandActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   themeBtn: {
     width: 36,

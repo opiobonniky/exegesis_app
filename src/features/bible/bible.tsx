@@ -71,7 +71,6 @@ import {
 
 import {
   HighlightPickerModal,
-  SearchModal,
   DrawerMenu,
   NoteModal,
   TranslationPickerModal,
@@ -218,9 +217,6 @@ export default function Bible() {
     fontSize,
     setFontSize,
     loading,
-    searchLoading,
-    showSearchModal,
-    setShowSearchModal,
     showHighlightPicker,
     setShowHighlightPicker,
     showDrawer,
@@ -233,11 +229,6 @@ export default function Bible() {
     showAudioPlayer,
     showTranslationPicker,
     setShowTranslationPicker,
-    searchQuery,
-    searchResults,
-    handleSearch,
-    goToVerse,
-    closeSearch,
     verseExplanationMap,
     noteText,
     setNoteText,
@@ -549,11 +540,7 @@ export default function Bible() {
           clearSelection();
           setSelectionStage('book');
         }}
-        onSearchPress={() =>
-          guard('Search requires an account to save your search history.', () =>
-            setShowSearchModal(true),
-          )
-        }
+        onSearchPress={() => navigation.navigate(route.search)}
         onVersionPress={() => setShowTranslationPicker(true)}
       />
 
@@ -987,21 +974,6 @@ export default function Bible() {
           setShowHighlightPicker(false);
           highlightVerses(colorId, color, rangeStart, rangeEnd);
         }}
-      />
-
-      <SearchModal
-        visible={showSearchModal}
-        onClose={closeSearch}
-        searchQuery={searchQuery}
-        onSearchChange={handleSearch}
-        searchResults={searchResults}
-        onSelectResult={(book, chapter, verse) =>
-          goToVerse({ book, chapter, verse: verse ?? 1 })
-        }
-        loading={searchLoading}
-        versionName={activeVersion.name}
-        versionAbbreviation={activeVersion.abbreviation}
-        isDark={isDark}
       />
 
       {/* DrawerMenu — guests can only change version; nav items are gated inside */}

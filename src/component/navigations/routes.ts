@@ -44,4 +44,5 @@ export const route = {
   fullVerseExplanation: 'FullVerseExplanation',
   verseResources: 'VerseResources',
   wordStudy: 'WordStudy',
+  search: 'Search',
 };

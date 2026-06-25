@@ -22,6 +22,14 @@ A Bible study app where users can read Scripture in 8 translations, highlight ve
 - Bookmark favorite verses
 - Auto-track read history
 - Full-text search across all verses
+- Scope filters: Bible, Strong's Concordance, Journal, Topics, and Lemma search
+- Book-specific filter within Bible scope
+- Inline search result actions: Open verse, Study verse, Save verse, Add Note
+- Strong's number and word lookup
+- Journal entry search
+- Bible topic search
+- Greek/Hebrew lemma search
+- Related words discovery for Strong's entries
 - Share verses via WhatsApp, SMS, social media (includes "via Exegesis" branding)
 
 ### ☀️ Daily Features
@@ -85,6 +93,45 @@ A Bible study app where users can read Scripture in 8 translations, highlight ve
 | **iOS App Store** | 🔧 In Progress | Android Play Store test link is active. iOS listing needs to be set up |
 | **Lordsbook Login** | 🔧 In Progress | Login button is built. Service integration needs final setup |
 | **Future Plan Days** | 📅 Needs Content | Reading plans are built. Daily content for future dates needs to be added by admin |
+
+---
+
+## 🔍 Search Feature — Wireframe Audit vs Current Implementation
+
+Based on `improving-features.md` (Section 24: Screen 19 — Search), the search feature needs the following improvements to match the spec:
+
+### Current: Basic Bible FTS
+| Requirement | Status | Notes |
+|---|---|---|
+| Search input | ✅ | Autofocus, debounced 300ms |
+| Bible word/phrase search | ✅ | Full-text search via `searchApi` |
+| Result: Open verse | ✅ | Navigates to Bible reader |
+
+### Gaps vs Wireframe
+
+| # | Requirement | Priority | Status | Notes |
+|---|---|---|---|---|
+| 1 | **"Search In" scope tabs** (Bible / Strong's / Journal / Topics) | High | ✅ Done | Scope filter row + 5 tabs |
+| 2 | **Book-specific search** | Medium | ✅ Done | Book name chips in Bible scope |
+| 3 | **Strong's number search** | Medium | ✅ Done | Routes to strongsService + backend |
+| 4 | **Journal search** | Low | ✅ Done | Routes to journal API |
+| 5 | **Topic search** | Low | ✅ Done | BibleTopic model + backend endpoint |
+| 6 | **Greek/Hebrew lemma search** | Low | ✅ Done | Searches strongs_dictionary by lemma |
+| 7 | **Result: Study verse** | High | ✅ Done | Navigates to verseResources |
+| 8 | **Result: Save verse** | Medium | ✅ Done | Bookmark icon navigates to Bible |
+| 9 | **Result: Add note** | Medium | ✅ Done | StickyNote icon on results |
+| 10 | **Result: Search related words** | Low | ✅ Done | "Related Words" button on Strong's results |
+
+### Development Roadmap
+
+| Phase | Items | Status | Est. Effort |
+|---|---|---|---|
+| **1 — Scope filter tabs + result actions** | Added "Search In" filter row (Bible/Strong's/Journal), scope-aware search, inline Open/Study/Save buttons, Strong's & Journal result renderers | ✅ Done | 2-3 days |
+| **2 — Strong's number search** | Scope tab routes to `strongsService`, renders Strong's entry results | ✅ Done | 1-2 days |
+| **3 — Book-specific search** | Add book dropdown filter to Bible scope | ✅ Done | 1 day |
+| **4 — Journal search** | Scope tab routes to journal API, renders journal entry results | ✅ Done | 1-2 days |
+| **5 — Topics / Lemma search** | Topics tab + backend model, Lemma tab + backend search | ✅ Done | 3 days |
+| **6 — Add Note + Related Words** | Inline Note button on Bible results, Related Words on Strong's results | ✅ Done | 1 day |
 
 ---
 

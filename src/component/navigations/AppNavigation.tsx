@@ -379,6 +379,14 @@ const AppNavigation = () => {
             require('../../features/bible/VerseResourcesScreen').default
           }
         />
+
+        {/* ── Search ──────────────────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.search}
+          getComponent={() =>
+            require('../../features/search/SearchScreen').default
+          }
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
