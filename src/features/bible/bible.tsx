@@ -17,7 +17,9 @@ import {
   ScrollView,
   PanResponder,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   useRoute,
   useNavigation,
@@ -56,6 +58,8 @@ import {
   StrongsEntry,
 } from '../../services/strongsService';
 import WordStudyBottomSheet from './components/WordStudyBottomSheet';
+import BookSelectorScreen from './components/BookSelectorScreen';
+import ChapterSelectorScreen from './components/ChapterSelectorScreen';
 
 import {
   BibleHeader,
@@ -66,8 +70,6 @@ import {
 } from './components';
 
 import {
-  BookSelectorModal,
-  ChapterSelectorModal,
   HighlightPickerModal,
   SearchModal,
   DrawerMenu,
@@ -217,10 +219,6 @@ export default function Bible() {
     setFontSize,
     loading,
     searchLoading,
-    showBookSelector,
-    setShowBookSelector,
-    showChapterSelector,
-    setShowChapterSelector,
     showSearchModal,
     setShowSearchModal,
     showHighlightPicker,
@@ -268,8 +266,6 @@ export default function Bible() {
     activeVerseWordMap,
     modal,
     dismissModal,
-    selectChapterFromModal,
-    selectBookFromModal,
     startReadingChapter,
     handleAudioStop,
     refreshing,
@@ -364,17 +360,79 @@ export default function Bible() {
     fetchVerseWords();
   }, [fetchVerseWords]);
 
-  // ── Initialize from route params (bookName, chapter) when navigating from
-  //  ReadingPlan daily screen, search results or other screens ──────────
-  //  Uses empty deps because route params are snapshots — React Navigation
-  //  creates a new screen instance on each push.
+  // ── Entry flow: book → chapter → reader ──────────────────────────────
+  const [selectionStage, setSelectionStage] = useState<
+    'book' | 'chapter' | 'reading'
+  >('book');
+  const [initialLoading, setInitialLoading] = useState(true);
+  const hasEnteredReadingRef = useRef(false);
+  const BIBLE_POSITION_KEY = 'bible_last_position';
+
+  // On mount: check route params first, then AsyncStorage for saved position
   useEffect(() => {
-    const { bookName, chapter } = routeParams;
-    if (bookName && chapter) {
-      setCurrentBook(bookName);
-      setCurrentChapter(chapter);
-    }
+    const init = async () => {
+      const { bookName, chapter } = routeParams;
+      if (bookName && chapter) {
+        setCurrentBook(bookName);
+        setCurrentChapter(chapter);
+        setSelectionStage('reading');
+        hasEnteredReadingRef.current = true;
+      } else {
+        try {
+          const saved = await AsyncStorage.getItem(BIBLE_POSITION_KEY);
+          if (saved) {
+            const pos = JSON.parse(saved);
+            if (pos.bookName && pos.chapter) {
+              setCurrentBook(pos.bookName);
+              setCurrentChapter(pos.chapter);
+              setSelectionStage('reading');
+              hasEnteredReadingRef.current = true;
+            }
+          }
+        } catch {
+          // ignore parse errors, fall through to entry flow
+        }
+      }
+      setInitialLoading(false);
+    };
+    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist position whenever book/chapter changes (after initial load)
+  useEffect(() => {
+    if (initialLoading) return;
+    if (!currentBook || !currentChapter) return;
+    AsyncStorage.setItem(
+      BIBLE_POSITION_KEY,
+      JSON.stringify({ bookName: currentBook, chapter: currentChapter }),
+    ).catch(() => {});
+  }, [currentBook, currentChapter, initialLoading]);
+
+  const handleEntrySelectBook = useCallback(
+    (bookName: string) => {
+      setCurrentBook(bookName);
+      setCurrentChapter(1);
+      setSelectionStage('chapter');
+    },
+    [],
+  );
+
+  const handleEntrySelectChapter = useCallback(
+    (chapter: number) => {
+      setCurrentChapter(chapter);
+      setSelectionStage('reading');
+      hasEnteredReadingRef.current = true;
+    },
+    [],
+  );
+
+  const handleEntryBackFromBooks = useCallback(() => {
+    setSelectionStage('reading');
+  }, []);
+
+  const handleEntryBackToBooks = useCallback(() => {
+    setSelectionStage('book');
   }, []);
 
   // ── Load translation settings from backend ───────────────────────────
@@ -449,8 +507,33 @@ export default function Bible() {
     }, []),
   );
 
+  if (initialLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
+      {selectionStage === 'book' ? (
+        <BookSelectorScreen
+          books={books}
+          isDark={isDark}
+          onSelectBook={handleEntrySelectBook}
+          onBack={hasEnteredReadingRef.current ? handleEntryBackFromBooks : undefined}
+        />
+      ) : selectionStage === 'chapter' ? (
+        <ChapterSelectorScreen
+          bookName={currentBook}
+          maxChapters={maxChapters}
+          isDark={isDark}
+          onSelectChapter={handleEntrySelectChapter}
+          onBack={handleEntryBackToBooks}
+        />
+      ) : (
+        <>
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <BibleHeader
         book={currentBook}
@@ -462,7 +545,10 @@ export default function Bible() {
           clearSelection();
           setShowDrawer(true);
         }}
-        onBookPress={() => setShowBookSelector(true)}
+        onBookPress={() => {
+          clearSelection();
+          setSelectionStage('book');
+        }}
         onSearchPress={() =>
           guard('Search requires an account to save your search history.', () =>
             setShowSearchModal(true),
@@ -479,7 +565,7 @@ export default function Bible() {
         isAudioPlaying={showAudioPlayer}
         onPrev={() => goToChapter('prev')} // ✅ allowed
         onNext={() => goToChapter('next')} // ✅ allowed
-        onSelectChapter={() => setShowChapterSelector(true)} // ✅ allowed
+        onSelectChapter={() => setSelectionStage('chapter')} // ✅ allowed
         onAudioChapter={() =>
           guard('Audio narration requires a free account.', () => {
             if (showAudioPlayer) handleAudioStop();
@@ -889,25 +975,7 @@ export default function Bible() {
         </View>
       )}
 
-      {/* ── Modals (book/chapter selectors always open for guests) ────────── */}
-
-      <BookSelectorModal
-        visible={showBookSelector}
-        onClose={() => setShowBookSelector(false)}
-        books={books}
-        currentBook={currentBook}
-        isDark={isDark}
-        onSelectBook={book => selectBookFromModal(book)}
-      />
-
-      <ChapterSelectorModal
-        visible={showChapterSelector}
-        onClose={() => setShowChapterSelector(false)}
-        maxChapters={maxChapters}
-        currentChapter={currentChapter}
-        isDark={isDark}
-        onSelectChapter={ch => selectChapterFromModal(ch)}
-      />
+      {/* ── Modals ──────────────────────────────────────────────────────── */}
 
       <HighlightPickerModal
         visible={showHighlightPicker}
@@ -1084,6 +1152,8 @@ export default function Bible() {
         severity={modal?.severity}
         onConfirm={dismissModal}
       />
+      </>
+      )}
     </View>
   );
 }
