@@ -507,7 +507,6 @@ export default function Home() {
     <View style={styles.container}>
       <ActionHeader
         mode="home"
-        logoComponent={<BookOpen size={40} color={COLORS.primary} />}
         greeting={getGreeting(translation)}
         userName={userInfo?.lastName || 'Friend'}
         tagline={

@@ -11,7 +11,8 @@ import {
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { FONT_SIZES, getColors, SPACING } from '../constants/theme';
 import LinearGradient from 'react-native-linear-gradient';
-import { ChevronLeft, ChevronRight, Moon, Sun, User, BookOpen } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Moon, Sun, User } from 'lucide-react-native';
+import exegesisLogo from '../assets/logos/exegesis_bg_rm.png';
 import { useLanguage, isRtlLanguage } from '../component/language-translation/LanguageProvider';
 import { useTranslation } from '../hooks/useTranslation';
 import { AppContext } from '../common/AppContext';
@@ -35,21 +36,16 @@ type StandardProps = BaseProps & {
   logoComponent?: React.ReactNode;
 };
 
-/** Home header — logo + greeting row + profile/theme controls */
+/** Home header — brand bar + user profile section */
 type HomeProps = BaseProps & {
   mode: 'home';
-  greeting: string; // e.g. "Good Morning,"
-  userName: string; // e.g. "John"
-  tagline?: string; // e.g. "Your daily guidance awaits"
+  greeting: string;
+  userName: string;
+  tagline?: string;
   isDarkMode: boolean;
   onThemeToggle: () => void;
   profilePhotoUrl?: string | null;
   onProfilePress: () => void;
-  // Controls whether the greeting row (second row with name & tagline) is shown.
-  showGreeting?: boolean;
-  // Optional custom logo component to render instead of the default emblem+wordmark.
-  logoComponent?: React.ReactNode;
-  // Optional overrides for app name and tagline shown in the lockup
   appName?: string;
   taglineText?: string;
 };
@@ -64,40 +60,33 @@ const DEFAULT_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) 
 // ── Logo lockup ───────────────────────────────────────────────────────────────
 
 const LogoLockup = ({ compact = false, appName, tagline }: { compact?: boolean; appName?: string; tagline?: string }) => {
+  const app = useContext(AppContext);
+  const isDark = (app as any)?.isDark ?? false;
   const { translations, language } = useLanguage();
   const rtl = language === 'ar';
   const [translatedAppName, setTranslatedAppName] = useState('');
 
   useEffect(() => {
-    const name = appName || 'Exegesis';
+    const name: string = "Exegesis Project";
     if (language !== 'en') {
       useTranslation(name).then(setTranslatedAppName).catch(() => setTranslatedAppName(name));
     } else {
       setTranslatedAppName(name);
     }
-  }, [appName, language]);
+  }, [language]);
 
   return (
     <View style={[logo.wrap, rtl && logo.wrapRtl]}>
-      <LinearGradient
-        colors={['#6D28D9', '#4F46E5']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[logo.emblem, compact ? logo.emblemCompact : {}]}
-      >
-        <BookOpen size={compact ? 18 : 22} color="#FFFFFF" strokeWidth={2} />
-      </LinearGradient>
-
+      <Image
+        source={exegesisLogo}
+        style={compact ? logo.imageCompact : logo.image}
+        resizeMode="contain"
+      />
       <View style={logo.textBlock}>
-        <Text
-          style={[
-            logo.appNameBold,
-            compact && { fontSize: 14, lineHeight: 18 },
-          ]}
-        >
+        <Text style={[logo.appNameBold, compact && { fontSize: 16, lineHeight: 20 }, { color: isDark ? '#FFFFFF' : '#0f2744' }]}>
           {translatedAppName || appName || 'Exegesis'}
         </Text>
-        <Text style={[logo.tagline, compact && { fontSize: 10 }]}> 
+        <Text style={[logo.tagline, compact && { fontSize: 11, lineHeight: 14 }, { color: isDark ? 'rgba(255,255,255,0.5)' : '#6B7280' }]}>
           {tagline || translations.appTagline || 'Your Daily Spiritual Companion'}
         </Text>
       </View>
@@ -115,54 +104,31 @@ const logo = StyleSheet.create({
     flexDirection: 'row-reverse',
   },
   image: {
-    width: 72,
-    height: 72,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
   },
   imageCompact: {
     width: 44,
     height: 44,
-  },
-  emblem: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-  },
-  emblemCompact: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    borderRadius: 10,
   },
   textBlock: {
     justifyContent: 'center',
   },
-  appName: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: 'rgba(255,255,255,0.75)',
-    letterSpacing: 0.3,
-    lineHeight: 17,
-  },
   appNameBold: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0f2744',
     letterSpacing: 0.1,
     lineHeight: 20,
   },
   tagline: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     color: '#6B7280',
     letterSpacing: 0.3,
-    marginTop: 3,
-    lineHeight: 16,
+    marginTop: 2,
+    lineHeight: 14,
   },
 });
 
@@ -220,14 +186,10 @@ const ActionHeader = (props: Props) => {
       onThemeToggle,
       profilePhotoUrl,
       onProfilePress,
-      showGreeting = true,
-      logoComponent,
       appName,
       taglineText,
     } = props as HomeProps;
 
-    // Custom compact home header layout - profile + greeting in one row,
-    // reduced vertical footprint.
     return (
       <View style={[styles.shadowWrapper, isDark && styles.shadowWrapperDark]}>
         <StatusBar
@@ -235,48 +197,58 @@ const ActionHeader = (props: Props) => {
           translucent
           barStyle={isDark ? 'light-content' : 'dark-content'}
         />
-        <View style={[styles.container, { paddingTop: 0, backgroundColor: isDark ? undefined : COLORS.background }]}> 
-          <View style={styles.shimmerLine} />
-          <View style={[styles.homeCompactTop, isRtl && styles.homeCompactTopRtl, { paddingTop: topInset }]}> 
-            <View style={[styles.homeLeft, isRtl && styles.homeLeftRtl]}> 
-              <View style={isRtl ? { marginLeft: 8 } : { marginRight: 8 }}>{logoComponent ? logoComponent : <LogoLockup compact appName={appName} tagline={taglineText} />}</View>
-              <View>
-                {showGreeting && <Text style={[styles.greeting, { color: COLORS.textSecondary }]}>{greeting}</Text>}
-                <Text style={[styles.userName, { color: COLORS.text }]}>{userName} 👋</Text>
-              </View>
+        <View style={[styles.homeContainer, { backgroundColor: isDark ? undefined : COLORS.background }]}>
+          {/* Row 1: Brand bar */}
+          <View style={[styles.brandBar, isRtl && styles.brandBarRtl, { paddingTop: topInset }]}>
+            <LogoLockup compact appName={appName} tagline={taglineText} />
+            <TouchableOpacity
+              onPress={onThemeToggle}
+              style={[styles.themeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : COLORS.surface }]}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.75}
+            >
+              {isDarkMode ? (
+                <Sun size={16} color="#F0B429" />
+              ) : (
+                <Moon size={16} color={COLORS.primary} />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Row 2: User profile section */}
+          <TouchableOpacity
+            onPress={onProfilePress}
+            activeOpacity={0.8}
+            style={[styles.userSection, isRtl && styles.userSectionRtl]}
+          >
+            <View style={styles.userPicWrap}>
+              {profilePhotoUrl ? (
+                <Image source={{ uri: profilePhotoUrl }} style={styles.userPicImage} />
+              ) : (
+                <View style={[styles.userPicPlaceholder, { backgroundColor: COLORS.primary + '20' }]}>
+                  <User size={24} color={COLORS.primary} />
+                </View>
+              )}
             </View>
 
-            <View style={[styles.homeRight, isRtl && styles.homeRightRtl]}> 
-              <TouchableOpacity
-                style={styles.iconBtn}
-                onPress={onThemeToggle}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                activeOpacity={0.75}
-              >
-                {isDarkMode ? (
-                  <Sun size={18} color="#F0B429" />
-                ) : (
-                  <Moon size={18} color={COLORS.primary} />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.avatarBtn, { marginLeft: isRtl ? 0 : 8, marginRight: isRtl ? 8 : 0, backgroundColor: isDark ? undefined : COLORS.surface, borderColor: isDark ? undefined : COLORS.border }]}
-                onPress={onProfilePress}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                activeOpacity={0.8}
-              >
-                {profilePhotoUrl ? (
-                  <Image
-                    source={{ uri: profilePhotoUrl }}
-                    style={styles.avatarImage}
-                  />
-                ) : (
-                  <User size={20} color={isDark ? 'rgba(255,255,255,0.9)' : COLORS.text} />
-                )}
-              </TouchableOpacity>
+            <View style={[styles.userInfoWrap, isRtl && styles.userInfoWrapRtl]}>
+              <Text style={[styles.userGreeting, { color: COLORS.muted }]} numberOfLines={1}>
+                {greeting}
+              </Text>
+              <Text style={[styles.userDisplayName, { color: COLORS.text }]} numberOfLines={1}>
+                {userName}
+              </Text>
+              {!!tagline && (
+                <Text style={[styles.userTagline, { color: COLORS.muted }]} numberOfLines={1}>
+                  {tagline}
+                </Text>
+              )}
             </View>
-          </View>
-          <View style={[styles.separator, { backgroundColor: isDark ? undefined : COLORS.border }]} />
+
+            <View style={[styles.userArrow, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : COLORS.surface }]}>
+              <ChevronRight size={18} color={COLORS.muted} strokeWidth={2} />
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -301,7 +273,6 @@ const ActionHeader = (props: Props) => {
           end={{ x: 1, y: 0 }}
           style={styles.container}
         >
-          <View style={styles.shimmerLine} />
           <View style={[styles.topBar, isRtl && styles.topBarRtl, { paddingTop: topInset }]}> 
             {onPress && !hideBack ? (
               <>
@@ -352,7 +323,6 @@ const ActionHeader = (props: Props) => {
               </>
             )}
           </View>
-          <View style={styles.separator} />
           <Animated.View
             style={[
               styles.titleRow,
@@ -373,13 +343,7 @@ const ActionHeader = (props: Props) => {
         <View
           style={[styles.container, { backgroundColor: COLORS.background }]}
         >
-          <View
-            style={[
-              styles.shimmerLine,
-              { backgroundColor: COLORS.primary + '20' },
-            ]}
-          />
-           <View style={[styles.topBar, isRtl && styles.topBarRtl, { paddingTop: topInset }]}> 
+          <View style={[styles.topBar, isRtl && styles.topBarRtl, { paddingTop: topInset }]}> 
             {onPress && !hideBack ? (
               <>
                 <TouchableOpacity
@@ -457,9 +421,6 @@ const ActionHeader = (props: Props) => {
               </>
             )}
           </View>
-          <View
-            style={[styles.separator, { backgroundColor: COLORS.border }]}
-          />
           <Animated.View
             style={[
               styles.titleRow,
@@ -513,17 +474,92 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.sm,
   },
 
-  shimmerLine: {
-    position: 'absolute',
-    bottom: 0,
-    left: '10%',
-    right: '10%',
-    height: 1,
-    backgroundColor: 'rgba(240,180,41,0.18)',
-    borderRadius: 1,
+  homeContainer: {
+    width: '100%',
+    overflow: 'hidden',
+    paddingBottom: SPACING.md,
   },
 
-  // ── Shared row ────────────────────────────────────────────────────────────
+  // ── Brand bar (Row 1) ──────────────────────────────────────────────────────
+  brandBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.sm,
+  },
+  brandBarRtl: {
+    flexDirection: 'row-reverse',
+  },
+  themeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // ── User profile section (Row 2) ───────────────────────────────────────────
+  userSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    gap: 14,
+  },
+  userSectionRtl: {
+    flexDirection: 'row-reverse',
+  },
+  userPicWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  userPicImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  userPicPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userInfoWrap: {
+    flex: 1,
+  },
+  userInfoWrapRtl: {
+    alignItems: 'flex-end',
+  },
+  userGreeting: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+  userDisplayName: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginTop: 1,
+  },
+  userTagline: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 3,
+    letterSpacing: 0.2,
+  },
+  userArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // ── Shared row (Standard mode) ─────────────────────────────────────────────
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -534,42 +570,6 @@ const styles = StyleSheet.create({
   },
   topBarRtl: {
     flexDirection: 'row-reverse',
-  },
-
-  // Compact home layout
-  homeCompactTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.xs,
-  },
-  homeCompactTopRtl: {
-    flexDirection: 'row-reverse',
-  },
-
-  homeLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  homeLeftRtl: {
-    flexDirection: 'row-reverse',
-  },
-
-  homeRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  homeRightRtl: {
-    flexDirection: 'row-reverse',
-  },
-
-  separator: {
-    height: 1,
-    marginHorizontal: SPACING.lg,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginBottom: SPACING.sm,
   },
 
   // ── Standard: side slots ──────────────────────────────────────────────────
@@ -618,66 +618,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  // ── Home: controls (right side of row 1) ─────────────────────────────────
-  homeControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  iconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(240,180,41,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(240,180,41,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
 
-  // ── Home: greeting row (row 2) ────────────────────────────────────────────
-  greetingRow: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.xs,
-    paddingBottom: SPACING.xs,
-  },
-  greeting: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.65)',
-    letterSpacing: 0.3,
-  },
-  userName: {
-    fontSize: FONT_SIZES.xxl,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.4,
-    marginTop: 1,
-  },
-  tagline: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '400',
-    color: '#F0B429',
-    letterSpacing: 0.3,
-    marginTop: 4,
-    opacity: 0.85,
-  },
 });
 
 export default ActionHeader;
