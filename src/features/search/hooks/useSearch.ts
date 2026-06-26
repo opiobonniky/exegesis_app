@@ -179,6 +179,7 @@ export function useSearch() {
     error,
     loadMore,
     clearQuery,
+    searchedOnce,
     relatedWords,
     loadRelatedWords,
   };

@@ -248,7 +248,9 @@ export default function VerseCard({
                 key={i}
                 onPress={() => {
                   wordTapHandledRef.current = true;
-                  onWordPress?.(wordData);
+                  if (typeof onWordPress === 'function') {
+                    onWordPress(wordData);
+                  }
                 }}
                 style={ssWord.strongsWord}
               >
@@ -354,6 +356,55 @@ export default function VerseCard({
     return () => highlightAnim.removeListener(id);
   }, [isTargetHighlight, highlightAnim]);
 
+  // ── Selection spring animation ─────────────────────────────────────────
+  const selectedAnim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
+  const prevSelectedRef = useRef(isSelected);
+
+  useEffect(() => {
+    if (isSelected && !prevSelectedRef.current) {
+      // Became selected — spring in the strip
+      selectedAnim.setValue(0);
+      Animated.spring(selectedAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 20,
+        bounciness: 8,
+      }).start();
+    } else if (!isSelected && prevSelectedRef.current) {
+      // Became unselected — spring out
+      Animated.spring(selectedAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        speed: 24,
+        bounciness: 2,
+      }).start();
+    }
+    prevSelectedRef.current = isSelected;
+  }, [isSelected, selectedAnim]);
+
+  // ── Favorite heart fade/spring animation ──────────────────────────────
+  const favAnim = useRef(new Animated.Value(isFavorite ? 1 : 0)).current;
+  const prevFavRef = useRef(isFavorite);
+
+  useEffect(() => {
+    if (isFavorite && !prevFavRef.current) {
+      favAnim.setValue(0);
+      Animated.spring(favAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 14,
+        bounciness: 10,
+      }).start();
+    } else if (!isFavorite && prevFavRef.current) {
+      Animated.timing(favAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+    prevFavRef.current = isFavorite;
+  }, [isFavorite, favAnim]);
+
   // ── Word-tap flag: prevent verse selection when a Strong's word was tapped
   const wordTapHandledRef = useRef(false);
 
@@ -389,11 +440,10 @@ export default function VerseCard({
     onLongPress?.();
   }, [onLongPress]);
 
-  return (
-    <Pressable
+  return (      <Pressable
       style={({ pressed }) => [
         styles.verseTouchable,
-        pressed && styles.versePressed,
+        pressed && localStyles.versePressed,
       ]}
       onPress={handlePress}
       onLongPress={handleLongPress}
@@ -455,6 +505,26 @@ export default function VerseCard({
             ]}
           />
         )}
+
+        {/* Selected strip — springs in when verse is selected */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            localStyles.selectedStrip,
+            {
+              backgroundColor: isSelected ? accent : 'transparent',
+              opacity: selectedAnim,
+              transform: [
+                {
+                  scaleY: selectedAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.3, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
 
         {highlightColor && (
           <View
@@ -841,9 +911,24 @@ export default function VerseCard({
           </View>
           <View style={localStyles.rightColumn}>
             {isFavorite && (
-              <View style={styles.verseRightIcons}>
+              <Animated.View
+                style={[
+                  styles.verseRightIcons,
+                  {
+                    opacity: favAnim,
+                    transform: [
+                      {
+                        scale: favAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.5, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
                 <Heart size={20} color={colors.accent} fill={colors.accent} />
-              </View>
+              </Animated.View>
             )}
           </View>
         </View>
@@ -869,6 +954,18 @@ export default function VerseCard({
 }
 
 const localStyles = StyleSheet.create({
+  versePressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.995 }],
+  },
+  selectedStrip: {
+    position: 'absolute',
+    left: -4,
+    top: 2,
+    bottom: 2,
+    width: 5,
+    borderRadius: 3,
+  },
   fillOverlay: {
     ...StyleSheet.absoluteFillObject,
   },

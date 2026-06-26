@@ -67,6 +67,7 @@ import {
   SelectionActionBar,
   VerseList,
   AudioControlBar,
+  VerseSideMenu,
 } from './components';
 
 import {
@@ -490,6 +491,28 @@ export default function Bible() {
     callback();
   };
 
+  // ── Verse Side Menu state ─────────────────────────────────────────────────
+  const [verseMenuVisible, setVerseMenuVisible] = useState(false);
+  const [verseMenuVerse, setVerseMenuVerse] = useState<number | null>(null);
+
+  const openVerseMenu = useCallback((verseNumber: number) => {
+    setVerseMenuVerse(verseNumber);
+    setVerseMenuVisible(true);
+  }, []);
+
+  const closeVerseMenu = useCallback(() => {
+    setVerseMenuVisible(false);
+    setVerseMenuVerse(null);
+  }, []);
+
+  /** Guest action triggered from within VerseSideMenu (modal closes first, then gate) */
+  const handleVerseMenuGuestAction = useCallback(
+    (msg: string) => {
+      showGate(msg);
+    },
+    [showGate],
+  );
+
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -764,8 +787,7 @@ export default function Bible() {
             onShare={vn => shareVerses([vn])}
             onCopy={vn => copyVerses([vn])}
             onDoubleTap={verseNumber => {
-              toggleVerseSelection(verseNumber);
-              addReadHistory(verseNumber);
+              openVerseMenu(verseNumber);
             }}
             onLongPress={vn =>
               guard(
@@ -792,11 +814,11 @@ export default function Bible() {
             explainingVerse={explainingVerse}
             navigation={navigation}
             verseWordMap={verseWordMap}
-            onWordPress={handleWordPress}
-          />
-        </View>
-      ) : (
-        <VerseList
+          onWordPress={handleWordPress}
+        />
+      </View>
+    ) : (
+      <VerseList
           versesArray={versesArray}
           selectedVerses={selectedVerses}
           highlights={highlights}
@@ -839,9 +861,7 @@ export default function Bible() {
           onShare={vn => shareVerses([vn])}
           onCopy={vn => copyVerses([vn])}
           onDoubleTap={verseNumber => {
-            if (isGuest || showAudioPlayer) return;
-            toggleVerseSelection(verseNumber);
-            addReadHistory(verseNumber);
+            openVerseMenu(verseNumber);
           }}
           onCloseExplanation={vn => {
             clearVerseExplanationForVerse(vn);
@@ -1013,6 +1033,123 @@ export default function Bible() {
         currentBook={currentBook}
         currentChapter={currentChapter}
         isDark={isDark}
+      />
+
+      {/* ── Verse Side Menu ──────────────────────────────────────────────── */}
+      <VerseSideMenu
+        visible={verseMenuVisible}
+        verseNumber={verseMenuVerse ?? 0}
+        verseText={verseMenuVerse ? verses[verseMenuVerse]?.text ?? '' : ''}
+        navigation={navigation}
+        currentBook={currentBook}
+        currentChapter={currentChapter}
+        isDark={isDark}
+        isRtl={isRtl}
+        isGuest={isGuest}
+        onClose={closeVerseMenu}
+        onGuestAction={handleVerseMenuGuestAction}
+        selectedCount={selectedVerses.length}
+        selectedVerses={selectedVerses}
+        totalVerses={Object.keys(verses).length}
+        onRangeChange={(start, end) => setVerseRangeSelection(start, end)}
+        onListen={() =>
+          guard('Audio narration requires a free account.', () => {
+            const current = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+            clearSelection();
+            startReadingSelectedVerses(current);
+          })
+        }
+        onJournal={() =>
+          guard(
+            'Journal entries are saved to your account. Sign in to use this feature.',
+            () => {
+              const v = verseMenuVerse ?? Math.min(...selectedVerses, 1);
+              clearSelection();
+              navigation.navigate(route.journalEntry, {
+                bookName: currentBook,
+                chapter: currentChapter,
+                verseStart: v,
+                verseEnd: v,
+              });
+            },
+          )
+        }
+        onExplain={async () => {
+          const verses = verseMenuVerse ? [verseMenuVerse] : selectedVerses;
+          if (verses.length > 0) {
+            await getverseExplanation(verses, currentBook, currentChapter);
+          }
+        }}
+        onHighlight={() =>
+          guard(
+            'Highlights are saved to your account. Sign in to use this feature.',
+            () => {
+              const verses = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+              setPendingVerses(verses);
+              clearSelection();
+              setShowHighlightPicker(true);
+            },
+          )
+        }
+        onNote={() =>
+          guard(
+            'Notes are saved to your account. Sign in to use this feature.',
+            () => {
+              const verses = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+              setPendingVerses(verses);
+              clearSelection();
+              openNoteModal();
+            },
+          )
+        }
+        onFavorite={() =>
+          guard(
+            'Favourites are saved to your account. Sign in to use this feature.',
+            () => {
+              const verses = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+              clearSelection();
+              addFavorite(verses);
+            },
+          )
+        }
+        onShare={() =>
+          guard('Sharing requires a free account.', () => {
+            const verses = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+            clearSelection();
+            shareVerses(verses);
+          })
+        }
+        onCopy={() =>
+          guard('Copying requires a free account.', () => {
+            const verses = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+            clearSelection();
+            copyVerses(verses);
+          })
+        }
+        onOpenNoteModal={(verseNumber) => {
+          guard(
+            'Notes are saved to your account. Sign in to use this feature.',
+            () => {
+              setPendingVerses([verseNumber]);
+              openNoteModal();
+            },
+          );
+        }}
+        onOpenHighlightPicker={(verseNumber) => {
+          guard(
+            'Highlights are saved to your account. Sign in to use this feature.',
+            () => {
+              setPendingVerses([verseNumber]);
+              setShowHighlightPicker(true);
+            },
+          );
+        }}
+        onOpenWordStudy={(verseNumber) => {
+          const words = verseWordMap[verseNumber];
+          if (words && words.length > 0) {
+            handleWordPress(words[0]);
+          }
+        }}
       />
 
       {/* ── Word Study Bottom Sheet (Strong's Concordance) ──────────────── */}

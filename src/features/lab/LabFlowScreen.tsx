@@ -21,7 +21,7 @@ import {
   Share,
   Vibration,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppContext } from '../../common/AppContext';
 import {
@@ -609,46 +609,57 @@ export default function LabFlowScreen() {
   }, []);
 
   // ── Load session data on resume ────────────────────────────────────
-  useEffect(() => {
+  const loadSession = useCallback(async () => {
     if (!sessionId) return;
-    const loadSession = async () => {
-      try {
-        const res = await sendPostRequest('exegesis', sessionId, {});
-        if (res.returnCode === 200 && res.returnData) {
-          const data = res.returnData;
-          // Restore saved notes
-          if (data.lookNotes) setLookNotes(data.lookNotes);
-          if (data.learnNotes) setLearnNotes(data.learnNotes);
-          // Restore abide fields if resuming from Abide
-          if (data.abideReflection) setReflection(data.abideReflection);
-          if (data.abidePrayer) setPrayer(data.abidePrayer);
-          if (data.abideApplication) setAppText(data.abideApplication);
-          if (data.abideTags) setTags(data.abideTags);
-          if (data.isPublic !== undefined) setIsPublic(data.isPublic);
-          if (data.journalEntryId) setJournalEntryId(data.journalEntryId);          // Restore listen stage progress
-          if (data.listenDuration) setSelectedDuration(Number(data.listenDuration));
-          if (data.listenCompleted) {
-            setTimerComplete(true);
-            setTimerElapsed(Number(data.listenDuration) || selectedDuration);
-          } else if (data.listenElapsed != null && Number(data.listenElapsed) > 0) {
-            // Mid-timer — restore elapsed seconds and resume the countdown
-            setTimerElapsed(Number(data.listenElapsed));
-            setTimerRunning(true);
-          }
-          // Restore book/chapter if the current stage is beyond passage selection
-          if (data.bookName && !bookName) setBookName(data.bookName);
-          if (data.chapter && !chapter) setChapter(data.chapter.toString());
-          if (data.verseStart && !verseStart)
-            setVerseStart(data.verseStart.toString());
-          if (data.verseEnd && !verseEnd)
-            setVerseEnd(data.verseEnd?.toString() || '');
+    try {
+      const res = await sendPostRequest('exegesis', sessionId, {});
+      if (res.returnCode === 200 && res.returnData) {
+        const data = res.returnData;
+        // Restore saved notes
+        if (data.lookNotes) setLookNotes(data.lookNotes);
+        if (data.learnNotes) setLearnNotes(data.learnNotes);
+        // Restore abide fields if resuming from Abide
+        if (data.abideReflection) setReflection(data.abideReflection);
+        if (data.abidePrayer) setPrayer(data.abidePrayer);
+        if (data.abideApplication) setAppText(data.abideApplication);
+        if (data.abideTags) setTags(data.abideTags);
+        if (data.isPublic !== undefined) setIsPublic(data.isPublic);
+        if (data.journalEntryId) setJournalEntryId(data.journalEntryId);
+        // Restore listen stage progress
+        if (data.listenDuration) setSelectedDuration(Number(data.listenDuration));
+        if (data.listenCompleted) {
+          setTimerComplete(true);
+          setTimerElapsed(Number(data.listenDuration) || (prev => prev));
+        } else if (data.listenElapsed != null && Number(data.listenElapsed) > 0) {
+          // Mid-timer — restore elapsed seconds and resume the countdown
+          setTimerElapsed(Number(data.listenElapsed));
+          setTimerRunning(true);
         }
-      } catch (e) {
-        console.error('Failed to load session:', e);
+        // Restore book/chapter if the current stage is beyond passage selection
+        if (data.bookName && !bookName) setBookName(data.bookName);
+        if (data.chapter && !chapter) setChapter(data.chapter.toString());
+        if (data.verseStart && !verseStart)
+          setVerseStart(data.verseStart.toString());
+        if (data.verseEnd && !verseEnd)
+          setVerseEnd(data.verseEnd?.toString() || '');
       }
-    };
-    loadSession();
+    } catch (e) {
+      console.error('Failed to load session:', e);
+    }
   }, [sessionId]);
+
+  // Load session on mount / when sessionId changes
+  useEffect(() => {
+    loadSession();
+  }, [loadSession]);
+
+  // Reload session data when screen regains focus (e.g. after JournalEntry saves)
+  useFocusEffect(
+    useCallback(() => {
+      // Reload session to pick up journalEntryId set by JournalEntry
+      loadSession();
+    }, [loadSession]),
+  );
 
   // ── Fetch passage verses when entering any stage that needs them ─────
   useEffect(() => {

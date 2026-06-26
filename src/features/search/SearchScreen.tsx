@@ -168,6 +168,7 @@ export default function SearchScreen() {
     error,
     loadMore,
     clearQuery,
+    searchedOnce,
     relatedWords,
     loadRelatedWords,
   } = useSearch();
@@ -740,7 +741,7 @@ export default function SearchScreen() {
                   'Type at least 3 characters to search'}
               </Text>
             </View>
-          ) : hasQuery && !loading && results.length === 0 && !error ? (
+          ) : hasQuery && results.length === 0 && !error && searchedOnce ? (
             <View style={styles.center}>
               <BookOpen
                 size={48}
