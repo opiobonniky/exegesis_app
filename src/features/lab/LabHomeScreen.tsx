@@ -138,8 +138,8 @@ export default function LabHomeScreen() {
                 passageRef: activeSession.passageRef,
                 bookName: activeSession.bookName,
                 chapter: activeSession.chapter,
-                verseStart: activeSession.verseStart,
-                verseEnd: activeSession.verseEnd,
+                verseStart: activeSession.verseStart?.toString(),
+                verseEnd: activeSession.verseEnd?.toString(),
               })
             }
           >
@@ -200,35 +200,68 @@ export default function LabHomeScreen() {
           })}
         </View>
 
-        {/* ── Previous Studies ── */}
+        {/* ── Previous Studies (includes in-progress) ── */}
         {history.length > 0 && (
           <>
             <Text style={[styles.sectionTitle, { color: COLORS.text }]}>Previous Studies</Text>
-            {history.map((session: any) => (
-              <TouchableOpacity
-                key={session.id}
-                style={[styles.historyCard, { backgroundColor: COLORS.cardBackground }]}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('LabFlow', {
-                  sessionId: session.id,
-                  stage: session.currentStage,
-                  passageRef: session.passageRef,
-                  bookName: session.bookName,
-                  chapter: session.chapter,
-                })}
-              >
-                <View style={styles.historyLeft}>
-                  <CheckCircle2 size={16} color={COLORS.success} />
-                  <View style={{ marginLeft: SPACING.sm }}>
-                    <Text style={[styles.historyRef, { color: COLORS.text }]}>{session.passageRef}</Text>
-                    <Text style={[styles.historyDate, { color: COLORS.muted }]}>
-                      {new Date(session.createdOn).toLocaleDateString()}
-                    </Text>
+            {history.map((session: any) => {
+              const isActive = !session.completed;
+              const stageLabels: Record<string, string> = {
+                look: 'Observing',
+                listen: 'Listening',
+                learn: 'Learning',
+                abide: 'Reflecting',
+                completed: 'Completed',
+                abandoned: 'Abandoned',
+              };
+              const statusLabel = isActive
+                ? (stageLabels[session.currentStage] || session.currentStage)
+                : (session.currentStage === 'completed' ? 'Completed' : 'Abandoned');
+              return (
+                <TouchableOpacity
+                  key={session.id}
+                  style={[
+                    styles.historyCard,
+                    { backgroundColor: COLORS.cardBackground },
+                    isActive && { borderLeftWidth: 3, borderLeftColor: COLORS.accent },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('LabFlow', {
+                    sessionId: session.id,
+                    stage: session.currentStage,
+                    passageRef: session.passageRef,
+                    bookName: session.bookName,
+                    chapter: session.chapter?.toString(),
+                    verseStart: session.verseStart?.toString(),
+                    verseEnd: session.verseEnd?.toString(),
+                  })}
+                >
+                  <View style={styles.historyLeft}>
+                    {isActive ? (
+                      <Play size={16} color={COLORS.accent} />
+                    ) : (
+                      <CheckCircle2 size={16} color={COLORS.success} />
+                    )}
+                    <View style={{ marginLeft: SPACING.sm }}>
+                      <Text style={[styles.historyRef, { color: COLORS.text }]}>{session.passageRef}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                        <Text style={[styles.historyDate, { color: COLORS.muted }]}>
+                          {new Date(session.updatedOn || session.createdOn).toLocaleDateString()}
+                        </Text>
+                        <View style={[styles.statusBadge, {
+                          backgroundColor: isActive ? `${COLORS.accent}15` : `${COLORS.success}15`,
+                        }]}>
+                          <Text style={[styles.statusBadgeText, {
+                            color: isActive ? COLORS.accent : COLORS.success,
+                          }]}>{statusLabel}</Text>
+                        </View>
+                      </View>
+                    </View>
                   </View>
-                </View>
-                <ArrowRight size={16} color={COLORS.muted} />
-              </TouchableOpacity>
-            ))}
+                  <ArrowRight size={16} color={COLORS.muted} />
+                </TouchableOpacity>
+              );
+            })}
           </>
         )}
 
@@ -400,6 +433,17 @@ const createStyles = (COLORS: any) =>
     historyDate: {
       fontSize: FONT_SIZES.xs,
       marginTop: 1,
+    },
+
+    // Status badges
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: BORDER_RADIUS.sm,
+    },
+    statusBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
     },
 
     // Empty

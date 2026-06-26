@@ -45,6 +45,7 @@ import {
 } from '../../constants/theme';
 import ActionHeader from '../../reusable/ActionHeader';
 import { bibleTTS, DeviceVoice } from '../../utilits/bibleTTS';
+import { ttsService, TTSVoice } from '../../services/ttsService';
 import { showToast } from '../../helpers/Toash.helper';
 import { useNavigation } from '@react-navigation/native';
 
@@ -105,6 +106,13 @@ export default function VoiceSettingsScreen() {
   );
   const [deviceLoading, setDeviceLoading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // ── Edge TTS ──────────────────────────────────────────────────────────────
+  const [edgeVoices, setEdgeVoices] = useState<TTSVoice[]>([]);
+  const [edgeVoiceId, setEdgeVoiceId] = useState<string>(
+    bibleTTS.edgeVoiceId,
+  );
+  const [edgeEnabled, setEdgeEnabled] = useState<boolean>(bibleTTS.edgeEnabled);
 
   // ── Sliders ────────────────────────────────────────────────────────────────
   // `null` means "using device default — not yet customised by user"
@@ -179,9 +187,18 @@ export default function VoiceSettingsScreen() {
     };
   }, [isPlaying]);
 
-  // ── Load voices ────────────────────────────────────────────────────────────
+  // ── Load voices (device + edge) ──────────────────────────────────────────
   useEffect(() => {
     (async () => {
+      // Load Edge TTS voices
+      try {
+        const voices = await ttsService.getVoices();
+        setEdgeVoices(voices);
+      } catch {
+        setEdgeVoices([]);
+      }
+
+      // Load device TTS voices
       setDeviceLoading(true);
       try {
         const voices = await bibleTTS.getDeviceVoices();
@@ -199,26 +216,38 @@ export default function VoiceSettingsScreen() {
   }, []);
 
   // ── Derived labels ─────────────────────────────────────────────────────────
-  const currentVoice = useMemo(
+  const currentEdgeVoice = useMemo(
+    () => edgeVoices.find(v => v.voiceId === edgeVoiceId),
+    [edgeVoices, edgeVoiceId],
+  );
+
+  const currentDeviceVoice = useMemo(
     () => deviceVoices.find(v => v.id === deviceVoiceId),
     [deviceVoices, deviceVoiceId],
   );
 
+  const isUsingEdge = edgeEnabled && !!currentEdgeVoice;
+
   const voiceLabel = useMemo(() => {
     if (deviceLoading) return translation?.voiceSettings?.loadingVoices || 'Loading voices…';
+    if (isUsingEdge && currentEdgeVoice) {
+      return currentEdgeVoice.name;
+    }
     return (
-      currentVoice?.name || deviceVoiceId || translation?.voiceSettings?.selectVoice || 'Select a voice'
+      currentDeviceVoice?.name || deviceVoiceId || translation?.voiceSettings?.selectVoice || 'Select a voice'
     );
-  }, [currentVoice, deviceVoiceId, deviceLoading, translation]);
+  }, [currentEdgeVoice, currentDeviceVoice, deviceVoiceId, deviceLoading, isUsingEdge, translation]);
 
-  const voiceQuality = useMemo(() => {
-    if (!currentVoice) return null;
-    return currentVoice.quality === 'neural'
+  const voiceQuality = useMemo(() => {      if (isUsingEdge && currentEdgeVoice) {
+      return translation?.voiceSettings?.edgeNeuralLabel || 'Edge Neural';
+    }
+    if (!currentDeviceVoice) return null;
+    return currentDeviceVoice.quality === 'neural'
       ? translation?.voiceSettings?.quality?.neural || 'Neural'
-      : currentVoice.quality === 'enhanced'
+      : currentDeviceVoice.quality === 'enhanced'
         ? translation?.voiceSettings?.quality?.enhanced || 'Enhanced'
         : translation?.voiceSettings?.quality?.local || 'Local';
-  }, [currentVoice, translation]);
+  }, [currentEdgeVoice, currentDeviceVoice, isUsingEdge, translation]);
 
   const nearestRateLabel = useMemo(() => {
     const nearest = RATE_SNAPS.reduce((a, b) =>
@@ -280,12 +309,33 @@ export default function VoiceSettingsScreen() {
     if (previewActiveRef.current) await restartPreview();
   };
 
-  const applyVoice = async (id: string) => {
+  const applyEdgeVoice = async (id: string) => {
+    setEdgeVoiceId(id);
+    setEdgeEnabled(true);
+    bibleTTS.setEdgeEnabled(true);
+    await bibleTTS.setEdgeVoice(id);
+    setPickerOpen(false);
+    showToast('success', translation?.voiceSettings?.voiceUpdated || 'Voice updated');
+    if (previewActiveRef.current) await restartPreview();
+  };
+
+  const applyDeviceVoice = async (id: string) => {
     setDeviceVoiceId(id);
+    setEdgeEnabled(false);
+    bibleTTS.setEdgeEnabled(false);
     await bibleTTS.setVoice(id);
     setPickerOpen(false);
     showToast('success', translation?.voiceSettings?.voiceUpdated || 'Voice updated');
     if (previewActiveRef.current) await restartPreview();
+  };
+
+  const toggleEdgeProvider = (enable: boolean) => {
+    setEdgeEnabled(enable);
+    bibleTTS.setEdgeEnabled(enable);
+    if (enable && !edgeVoiceId && edgeVoices[0]) {
+      setEdgeVoiceId(edgeVoices[0].voiceId);
+      bibleTTS.setEdgeVoice(edgeVoices[0].voiceId);
+    }
   };
 
   const restartPreview = async () => {
@@ -390,6 +440,63 @@ export default function VoiceSettingsScreen() {
 
         {/* ── Narrator voice ──────────────────────────────────────────── */}
         <SectionLabel text={(translation?.voiceSettings?.narratorLabel || 'NARRATOR VOICE').toUpperCase()} isDark={isDark} isRtl={isRtl} />
+
+        {/* Provider toggle: Edge Neural / Device */}
+        {edgeVoices.length > 0 && (
+          <View
+            style={[
+              styles.providerRow,
+              isRtl && { flexDirection: 'row-reverse' },
+              { backgroundColor: surface, borderColor: border },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => toggleEdgeProvider(true)}
+              activeOpacity={0.7}
+              style={[
+                styles.providerChip,
+                edgeEnabled && styles.providerChipActive,
+                {
+                  backgroundColor: edgeEnabled ? gold + '18' : 'transparent',
+                  borderColor: edgeEnabled ? gold + '55' : 'transparent',
+                },
+              ]}
+            >
+              <Waves size={14} color={edgeEnabled ? gold : (isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)')} />
+              <Text
+                style={[
+                  styles.providerChipText,
+                  { color: edgeEnabled ? gold : (isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)') },
+                ]}
+              >
+                Edge Neural
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => toggleEdgeProvider(false)}
+              activeOpacity={0.7}
+              style={[
+                styles.providerChip,
+                !edgeEnabled && styles.providerChipActive,
+                {
+                  backgroundColor: !edgeEnabled ? gold + '18' : 'transparent',
+                  borderColor: !edgeEnabled ? gold + '55' : 'transparent',
+                },
+              ]}
+            >
+              <Mic2 size={14} color={!edgeEnabled ? gold : (isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)')} />
+              <Text
+                style={[
+                  styles.providerChipText,
+                  { color: !edgeEnabled ? gold : (isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)') },
+                ]}
+              >
+                Device
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <TouchableOpacity
           onPress={() => setPickerOpen(true)}
           activeOpacity={0.75}
@@ -405,7 +512,11 @@ export default function VoiceSettingsScreen() {
               { backgroundColor: goldDim, borderColor: gold + '55' },
             ]}
           >
-            <Mic2 size={18} color={gold} />
+            {isUsingEdge ? (
+              <Waves size={18} color={gold} />
+            ) : (
+              <Mic2 size={18} color={gold} />
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text
@@ -416,7 +527,7 @@ export default function VoiceSettingsScreen() {
             </Text>
             {voiceQuality && (
               <Text style={[styles.voiceTagText, { color: gold }]}>
-                {voiceQuality} · {currentVoice?.language ?? ''}
+                {voiceQuality}{isUsingEdge ? '' : (' · ' + (currentDeviceVoice?.language ?? ''))}
               </Text>
             )}
           </View>
@@ -593,51 +704,30 @@ export default function VoiceSettingsScreen() {
                   {translation?.voiceSettings?.loadingVoices || 'Loading voices…'}
                 </Text>
               </View>
-            ) : deviceVoices.length === 0 ? (
-              <Text
-                style={[
-                  styles.emptyTxt,
-                  {
-                    color: isDark
-                      ? 'rgba(255,255,255,0.38)'
-                      : 'rgba(0,0,0,0.38)',
-                  },
-                ]}
-              >
-                {translation?.voiceSettings?.noVoicesFound || 'No voices found.\nInstall a TTS language pack in device settings.'}
-              </Text>
             ) : (
               <ScrollView
                 style={{ maxHeight: 500 }}
                 showsVerticalScrollIndicator={false}
               >
-                {(['neural', 'enhanced', 'local'] as const).map(q => {
-                  const group = deviceVoices.filter(v => v.quality === q);
-                  if (!group.length) return null;
-                   const heading =
-                     q === 'neural'
-                       ? (translation?.voiceSettings?.quality?.neuralHeading || 'Neural · Requires internet')
-                       : q === 'enhanced'
-                         ? (translation?.voiceSettings?.quality?.enhancedHeading || 'Enhanced')
-                         : (translation?.voiceSettings?.quality?.localHeading || 'Local · Works offline');
-                  return (
-                    <View key={q}>
-                      <Text
-                        style={[
-                          styles.groupLbl,
-                          isRtl && styles.groupLblRtl,
-                          { color: gold },
-                        ]}
-                      >
-                        {heading}
-                      </Text>
-                      {group.slice(0, 20).map(v => {
-                        const sel = deviceVoiceId === v.id;
-                        return (
-                          <TouchableOpacity
-                            key={v.id}
-                            onPress={() => applyVoice(v.id)}
-                            activeOpacity={0.7}
+                {/* ── Edge Neural Voices ────────────────────────────────── */}
+                {edgeVoices.length > 0 && (
+                  <View>
+                    <Text
+                      style={[
+                        styles.groupLbl,
+                        isRtl && styles.groupLblRtl,
+                        { color: gold },
+                      ]}
+                    >
+                      {translation?.voiceSettings?.edgeNeuralHeading || 'Edge Neural (back-end)'}
+                    </Text>
+                    {edgeVoices.map(v => {
+                      const sel = edgeEnabled && edgeVoiceId === v.voiceId;
+                      return (
+                        <TouchableOpacity
+                          key={v.voiceId}
+                          onPress={() => applyEdgeVoice(v.voiceId)}
+                          activeOpacity={0.7}
                           style={[
                             styles.voiceRow,
                             isRtl && { flexDirection: 'row-reverse' },
@@ -650,61 +740,176 @@ export default function VoiceSettingsScreen() {
                                 : isDark
                                   ? 'rgba(255,255,255,0.07)'
                                   : 'rgba(0,0,0,0.07)',
+                              borderStyle: sel ? 'solid' : 'dashed',
                             },
                           ]}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text
-                                style={[
-                                  styles.voiceRowName,
-                                  { color: COLORS.text },
-                                ]}
-                                numberOfLines={1}
-                              >
-                                {v.name || v.id}
-                              </Text>
-                              <Text
-                                style={[
-                                  styles.voiceRowMeta,
-                                  {
-                                    color: isDark
-                                      ? 'rgba(255,255,255,0.35)'
-                                      : 'rgba(0,0,0,0.35)',
-                                  },
-                                ]}
-                              >
-                                {v.language}
-                              </Text>
-                            </View>
-                            {sel ? (
-                              <CheckCircle size={17} color={gold} />
+                        >
+                          <View style={[styles.voiceRowIcon, { backgroundColor: goldDim, borderColor: gold + '55' }]}>
+                            <Waves size={14} color={gold} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text
+                              style={[
+                                styles.voiceRowName,
+                                { color: COLORS.text },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {v.name}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.voiceRowMeta,
+                                {
+                                  color: isDark
+                                    ? 'rgba(255,255,255,0.35)'
+                                    : 'rgba(0,0,0,0.35)',
+                                },
+                              ]}
+                            >
+                              {v.category || v.voiceId.split('-').slice(0,2).join('-')}
+                            </Text>
+                          </View>
+                          {sel ? (
+                            <CheckCircle size={17} color={gold} />
+                          ) : (
+                            isRtl ? (
+                              <ChevronDown
+                                size={15}
+                                color={
+                                  isDark
+                                    ? 'rgba(255,255,255,0.22)'
+                                    : 'rgba(0,0,0,0.20)'
+                                }
+                              />
                             ) : (
-                              isRtl ? (
-                                <ChevronDown
-                                  size={15}
-                                  color={
-                                    isDark
-                                      ? 'rgba(255,255,255,0.22)'
-                                      : 'rgba(0,0,0,0.20)'
-                                  }
-                                />
+                              <ChevronRight
+                                size={15}
+                                color={
+                                  isDark
+                                    ? 'rgba(255,255,255,0.22)'
+                                    : 'rgba(0,0,0,0.20)'
+                                }
+                              />
+                            )
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                    <View style={{ height: 8 }} />
+                  </View>
+                )}
+
+                {/* ── Device voices ─────────────────────────────────────── */}
+                {deviceVoices.length === 0 ? (
+                  <Text
+                    style={[
+                      styles.emptyTxt,
+                      {
+                        color: isDark
+                          ? 'rgba(255,255,255,0.38)'
+                          : 'rgba(0,0,0,0.38)',
+                      },
+                    ]}
+                  >
+                    {translation?.voiceSettings?.noVoicesFound || 'No voices found.\nInstall a TTS language pack in device settings.'}
+                  </Text>
+                ) : (
+                  (['neural', 'enhanced', 'local'] as const).map(q => {
+                    const group = deviceVoices.filter(v => v.quality === q);
+                    if (!group.length) return null;
+                    const heading =
+                      q === 'neural'
+                        ? (translation?.voiceSettings?.quality?.neuralHeading || 'Neural · Requires internet')
+                        : q === 'enhanced'
+                          ? (translation?.voiceSettings?.quality?.enhancedHeading || 'Enhanced')
+                          : (translation?.voiceSettings?.quality?.localHeading || 'Local · Works offline');
+                    return (
+                      <View key={q}>
+                        <Text
+                          style={[
+                            styles.groupLbl,
+                            isRtl && styles.groupLblRtl,
+                            { color: gold },
+                          ]}
+                        >
+                          {heading}
+                        </Text>
+                        {group.slice(0, 20).map(v => {
+                          const sel = !edgeEnabled && deviceVoiceId === v.id;
+                          return (
+                            <TouchableOpacity
+                              key={v.id}
+                              onPress={() => applyDeviceVoice(v.id)}
+                              activeOpacity={0.7}
+                              style={[
+                                styles.voiceRow,
+                                isRtl && { flexDirection: 'row-reverse' },
+                                {
+                                  backgroundColor: sel
+                                    ? gold + '14'
+                                    : 'transparent',
+                                  borderColor: sel
+                                    ? gold + '55'
+                                    : isDark
+                                      ? 'rgba(255,255,255,0.07)'
+                                      : 'rgba(0,0,0,0.07)',
+                                },
+                              ]}
+                            >
+                              <View style={{ flex: 1 }}>
+                                <Text
+                                  style={[
+                                    styles.voiceRowName,
+                                    { color: COLORS.text },
+                                  ]}
+                                  numberOfLines={1}
+                                >
+                                  {v.name || v.id}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.voiceRowMeta,
+                                    {
+                                      color: isDark
+                                        ? 'rgba(255,255,255,0.35)'
+                                        : 'rgba(0,0,0,0.35)',
+                                    },
+                                  ]}
+                                >
+                                  {v.language}
+                                </Text>
+                              </View>
+                              {sel ? (
+                                <CheckCircle size={17} color={gold} />
                               ) : (
-                                <ChevronRight
-                                  size={15}
-                                  color={
-                                    isDark
-                                      ? 'rgba(255,255,255,0.22)'
-                                      : 'rgba(0,0,0,0.20)'
-                                  }
-                                />
-                              )
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  );
-                })}
+                                isRtl ? (
+                                  <ChevronDown
+                                    size={15}
+                                    color={
+                                      isDark
+                                        ? 'rgba(255,255,255,0.22)'
+                                        : 'rgba(0,0,0,0.20)'
+                                    }
+                                  />
+                                ) : (
+                                  <ChevronRight
+                                    size={15}
+                                    color={
+                                      isDark
+                                        ? 'rgba(255,255,255,0.22)'
+                                        : 'rgba(0,0,0,0.20)'
+                                    }
+                                  />
+                                )
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    );
+                  })
+                )}
                 <View style={{ height: 24 }} />
               </ScrollView>
             )}
@@ -967,6 +1172,33 @@ const styles = StyleSheet.create({
   waveBar: { width: 5, borderRadius: 3 },
 
   // Voice button
+  // Provider toggle
+  providerRow: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 4,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1,
+    marginBottom: SPACING.sm,
+    alignSelf: 'flex-start',
+  },
+  providerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1,
+  },
+  providerChipActive: {
+    borderWidth: 1,
+  },
+  providerChipText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '700',
+  },
+
   voiceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1076,6 +1308,15 @@ const styles = StyleSheet.create({
   },
   voiceRowName: { fontSize: FONT_SIZES.md, fontWeight: '700' },
   voiceRowMeta: { fontSize: FONT_SIZES.xs, fontWeight: '500', marginTop: 2 },
+  voiceRowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
   emptyTxt: {
     textAlign: 'center',
     paddingVertical: 28,

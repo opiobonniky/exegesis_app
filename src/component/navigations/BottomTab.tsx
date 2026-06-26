@@ -150,17 +150,12 @@ if (isUserAdmin) {
         onPress: () => navigation.navigate(route.lab),
       },
       {
-        id: 'Plan',
-        label: translations?.bottomTab?.plan || 'Plan',
+        id: 'journal',
+        label: translations?.bottomTab?.journal || 'Journal',
         icon: CalendarClockIcon,
-        onPress: () => navigation.navigate(route.readingPlan),
+        onPress: () => navigation.navigate(route.journal),
       },
-      {
-        id: 'profile',
-        label: translations?.bottomTab?.profile || 'Profile',
-        icon: LucideUserCircle,
-        onPress: () => navigation.navigate(route.profile),
-      },
+      
     ];
   }
 

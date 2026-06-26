@@ -61,6 +61,7 @@ import {
   Clock,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
+import BottomTab from '../../component/navigations/BottomTab';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -812,6 +813,7 @@ const JournalList = () => {
             ) : null
           }
         />
+        <BottomTab activeTab="Journal" setActiveTab={tab => console.log(tab)} />
       </SafeAreaView>
     </GestureHandlerRootView>
   );

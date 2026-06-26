@@ -1,12 +1,24 @@
 import Tts from 'react-native-tts';
+import Sound from 'react-native-sound';
+import RNFS from 'react-native-fs';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fromByteArray } from 'base64-js';
+import { ttsService } from '../services/ttsService';
 
-// ── Device TTS (react-native-tts) ────────────────────────────────────────────
-// The app uses device TTS exclusively. The Edge TTS backend path was removed
-// because react-native-sound has unreliable playback with the msedge-tts MP3
-// format on mobile devices. The web uses Edge TTS successfully via the
-// browser's native HTML5 Audio element, which handles the MP3 codec properly.
+// Enable playback in silence mode (iOS background audio) and route audio through
+// the speaker even when the device is in silent mode.
+Sound.setCategory('Playback');
+
+// ── TTS Architecture ─────────────────────────────────────────────────────────
+// The app supports two TTS providers:
+//   1. Device TTS (react-native-tts) — works offline, uses system voices
+//   2. Backend Edge TTS — high-quality neural voices via /tts/speak, returns
+//      MP3 audio written to a temp file and played via react-native-sound
+//
+// On init the app probes the backend /tts/status endpoint. If the backend is
+// available, Edge TTS is used first. On failure (empty audio / network error)
+// it falls back to device TTS for the remainder of the session.
 
 // ─── AsyncStorage keys ────────────────────────────────────────────────────────
 const STORAGE_KEYS = {
@@ -18,6 +30,14 @@ const STORAGE_KEYS = {
 // ─── Narration defaults ───────────────────────────────────────────────────────
 const DEFAULT_RATE = 0.9;   // slightly slower for natural pacing
 const DEFAULT_PITCH = 1.0;  // neutral pitch sounds less robotic
+
+// ─── AsyncStorage keys — Edge TTS ────────────────────────────────────────────
+const STORAGE_KEYS_EDGE = {
+  edgeVoiceId: 'tts_edge_voice_id',
+  edgeEnabled: 'tts_edge_enabled',
+};
+
+const DEFAULT_EDGE_VOICE_ID = 'en-US-EmmaNeural';
 
 const PREFERRED_VOICES: string[] =
   Platform.select({
@@ -153,6 +173,16 @@ class BibleTTSManager {
   private _pausedAbsoluteCharPos: number = -1;
   private _pausedVerseNum: number = -1;
 
+  // ── Edge TTS (backend) fields ────────────────────────────────────────────
+  private _edgeEnabled = false;
+  private _edgeVoiceId: string = DEFAULT_EDGE_VOICE_ID;
+  private _edgeSound: Sound | null = null;
+  private _edgePendingResolve: (() => void) | null = null;
+
+  // ── Prefetch fields ───────────────────────────────────────────────────────
+  private _prefetchedFile: string | null = null;
+  private _prefetchedText: string | null = null;
+
   // ── Pause / resume state ──────────────────────────────────────────────────
   //
   // BUG FIX: pause() calls Tts.stop(), which fires tts-cancel, which wipes
@@ -212,7 +242,6 @@ class BibleTTSManager {
     });
 
     // ── tts-progress ─────────────────────────────────────────────────────────
-    //
     Tts.addEventListener('tts-progress', (e: any) => {
       const utteranceId = e && typeof e === 'object' ? e.utteranceId : e;
       if (utteranceId !== undefined && this._activeUtteranceId !== null && utteranceId !== this._activeUtteranceId) {
@@ -442,6 +471,10 @@ class BibleTTSManager {
         this._pitchCustomized = true;
       }
       if (savedVoice) this.currentDeviceVoiceId = savedVoice;
+
+      // Load saved Edge TTS voice preference
+      const savedEdgeVoice = await AsyncStorage.getItem(STORAGE_KEYS_EDGE.edgeVoiceId);
+      if (savedEdgeVoice) this._edgeVoiceId = savedEdgeVoice;
     } catch (err) {
       console.warn('[BibleTTS] Failed to load saved settings:', err);
     }
@@ -480,16 +513,26 @@ class BibleTTSManager {
       }
 
       this.initialized = true;
+
+      // ── Probe backend Edge TTS availability ──────────────────────────────
+      try {
+        const enabled = await ttsService.isEnabled();
+        this._edgeEnabled = enabled;
+        if (enabled) {
+          console.log('[BibleTTS] Backend Edge TTS is available');
+        }
+      } catch {
+        this._edgeEnabled = false;
+        console.log('[BibleTTS] Backend Edge TTS not available, using device TTS');
+      }
     } catch (err) {
       console.warn('[BibleTTS] Init failed:', err);
     }
-
   }
 
   private selectBestVoice(voices: any[]): string | null {
     const english = voices.filter(v => {
       if (!v.language?.toLowerCase().startsWith('en')) return false;
-
       if (v.notInstalled === true) return false;
       return true;
     });
@@ -604,11 +647,22 @@ class BibleTTSManager {
       return Promise.resolve();
     }
 
-    // ── Device TTS (react-native-tts) ───────────────────────────────────────
-    // We always use device TTS on the app. The Edge TTS backend path via
-    // react-native-sound is unreliable (silent playback on device). Device
-    // TTS works consistently both online and offline with good voice quality.
+    this.stopRequested = false;
 
+    // ── Edge TTS (backend) ──────────────────────────────────────────────────
+    if (this._edgeEnabled) {
+      try {
+        const cleanText = alreadyClean ? text : this.prepareText(text);
+        await this._speakViaBackend(cleanText, verseNum);
+        return;
+      } catch (err) {
+        console.warn('[BibleTTS] Edge TTS failed, falling back to device TTS:', err);
+        this._edgeEnabled = false;
+        // Fall through to device TTS path below
+      }
+    }
+
+    // ── Device TTS (react-native-tts) ───────────────────────────────────────
     if (!Tts) {
       console.error('[BibleTTS] Tts module not available - cannot speak');
       return Promise.resolve();
@@ -634,7 +688,6 @@ class BibleTTSManager {
     this.state.currentVerseNum = verseNum;
 
     this._cleanPrefixCharLen = prefixLen;
-
     this._charIndexBase = -prefixLen;
     this._lastRawCharIndex = -1;
 
@@ -647,8 +700,6 @@ class BibleTTSManager {
     }
     this._cleanVerseWordSpans = spans;
 
-    // Timer fallback word data — verseWords are relative to verse start (index 0),
-    // matching _cleanVerseWordSpans[0] as the first word of the verse.
     const verseWords = clean.slice(prefixLen).match(/\S+/g) ?? [];
     this._pendingWordData = {
       prefixWords: [],
@@ -675,15 +726,6 @@ class BibleTTSManager {
       );
 
       await new Promise<void>(resolve => {
-        // ── IMPORTANT: delay setting _pendingResolve if we must stop first ─────
-        // When the previous utterance is still speaking, Tts.stop() fires
-        // tts-cancel for the OLD utterance. If _pendingResolve is already set,
-        // the cancel handler resolves the NEW promise prematurely — before the
-        // new verse has started speaking. This causes speakVerseAtIndex to run
-        // its auto-advance logic early, skipping verses and breaking sync.
-        // Fix: only set _pendingResolve after Tts.stop() completes.
-        // ──────────────────────────────────────────────────────────────────────
-
         const doSpeak = () => {
           this._pendingResolve = resolve;
           this._utteranceStarted = false;
@@ -708,8 +750,6 @@ class BibleTTSManager {
             '...',
           );
 
-          // Android 14 safety net: if the engine drops the utterance silently
-          // (no finish/cancel within 30 s) we resolve anyway so the loop moves on.
           this._clearUtteranceTimeout();
           this._utteranceTimeoutId = setTimeout(() => {
             if (this._pendingResolve === resolve) {
@@ -747,9 +787,6 @@ class BibleTTSManager {
         };
 
         if (this._isTtsSpeaking) {
-          // Resolve and nullify the old promise immediately so its auto-advance checks
-          // are executed (and fail/return early because indices have shifted).
-          // This prevents the old cancellation event from resolving the upcoming new promise.
           const oldResolve = this._pendingResolve;
           this._pendingResolve = null;
           oldResolve?.();
@@ -757,12 +794,8 @@ class BibleTTSManager {
           Tts.stop()
             .then(doSpeak)
             .catch(() => {
-              // Android 14 can throw "IllegalStateException: not speaking" here.
-              // The engine isn't speaking, so there's nothing to stop — just
-              // speak the new text directly. NEVER resolve without speaking,
-              // otherwise speakVerseAtIndex will auto-advance before audio starts.
               this._isTtsSpeaking = false;
-              this.initialized = false; // force re-init: engine state may be corrupt
+              this.initialized = false;
               doSpeak();
             });
         } else {
@@ -776,6 +809,108 @@ class BibleTTSManager {
       this._utteranceStarted = false;
       console.warn('[BibleTTS] Speak error:', err);
     }
+  }
+
+  // ── Backend Edge TTS playback (react-native-sound) ────────────────────────
+  private async _speakViaBackend(cleanText: string, verseNum: number): Promise<void> {
+    this._currentVerseNum = verseNum;
+    this.state.currentText = cleanText;
+    this.state.wordIndex = -1;
+    this.state.currentVerseNum = verseNum;
+
+    const spanRe = /\S+/g;
+    let sm: RegExpExecArray | null;
+    const spans: Array<{ start: number; end: number }> = [];
+    while ((sm = spanRe.exec(cleanText)) !== null) {
+      spans.push({ start: sm.index, end: sm.index + sm[0].length });
+    }
+    this._cleanVerseWordSpans = spans;
+    this._cleanPrefixCharLen = 0;
+
+    const verseWords = cleanText.match(/\S+/g) ?? [];
+    this._pendingWordData = { prefixWords: [], verseWords };
+
+    // ── Use prefetched file if it matches, otherwise fetch now ──────────────
+    let filePath: string;
+
+    if (this._prefetchedFile && this._prefetchedText === cleanText) {
+      filePath = this._prefetchedFile;
+      this._prefetchedFile = null;
+      this._prefetchedText = null;
+    } else {
+      // No prefetch hit — clean up stale prefetch and fetch synchronously
+      if (this._prefetchedFile) {
+        RNFS.unlink(this._prefetchedFile).catch(() => {});
+        this._prefetchedFile = null;
+        this._prefetchedText = null;
+      }
+
+      const arrayBuffer = await ttsService.speak(
+        cleanText,
+        this._edgeVoiceId || DEFAULT_EDGE_VOICE_ID,
+        this.currentRate,
+      );
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        throw new Error('Backend returned empty audio');
+      }
+      const base64 = fromByteArray(new Uint8Array(arrayBuffer));
+      filePath = `${RNFS.CachesDirectoryPath}/tts_${Date.now()}.mp3`;
+      await RNFS.writeFile(filePath, base64, 'base64');
+    }
+
+    // ── Play ────────────────────────────────────────────────────────────────
+    return new Promise<void>((resolve, reject) => {
+      if (this.stopRequested) {
+        RNFS.unlink(filePath).catch(() => {});
+        resolve();
+        return;
+      }
+
+      this._isTtsSpeaking = true;
+      this.setState({
+        isPlaying: true,
+        isPaused: false,
+        tier: 'device',
+        currentVerseNum: verseNum,
+      });
+
+      this._clearWordTimers();
+      this._startWordTimers();
+
+      const playStartTime = Date.now();
+
+      const sound = new Sound(filePath, '', (error) => {
+        if (error) {
+          console.warn('[BibleTTS] react-native-sound load error:', error);
+          this._isTtsSpeaking = false;
+          this._clearWordTimers();
+          this.state.wordIndex = -1;
+          this.setState({ isPlaying: false, isPaused: false, tier: 'idle', currentVerseNum: -1 });
+          RNFS.unlink(filePath).catch(() => {});
+          reject(new Error('Sound load failed'));
+          return;
+        }
+
+        sound.play((success) => {
+          const playDuration = Date.now() - playStartTime;
+          sound.release();
+          this._edgeSound = null;
+          this._isTtsSpeaking = false;
+          this._clearWordTimers();
+          this.state.wordIndex = -1;
+          this.setState({ isPlaying: false, isPaused: false, tier: 'idle', currentVerseNum: -1 });
+          RNFS.unlink(filePath).catch(() => {});
+
+          if (!success || (playDuration < 500 && cleanText.length > 5)) {
+            reject(new Error('Silent or failed playback (' + playDuration + 'ms)'));
+          } else {
+            resolve();
+          }
+        });
+      });
+
+      this._edgeSound = sound;
+    });
   }
 
   // ── Public narration API ──────────────────────────────────────────────────
@@ -821,8 +956,6 @@ class BibleTTSManager {
       }
     }
 
-    // prefixLen is the character position in the cleaned text where the actual
-    // verse content begins (after any announcement prefix).
     const cleanedFull = this.prepareText(fullText);
     let prefixLen = 0;
     if (prefixRaw) {
@@ -844,8 +977,6 @@ class BibleTTSManager {
   async speakVerseOfDay(text: string, reference: string): Promise<void> {
     if (!text) return;
     await this.stop();
-    // Compute prefixLen so word-highlighting begins at [text], not at the
-    // "Verse of the day / reference" announcement.
     const prefixRaw = `Verse of the day.  ${reference}.   `;
     const fullText = `${prefixRaw}${text}.   ${reference}.`;
     const cleanFull = this.prepareText(fullText);
@@ -857,8 +988,31 @@ class BibleTTSManager {
     await this.speak(fullText, prefixLen);
   }
 
-  async prefetchAudio(_text: string): Promise<void> {
-    return;
+  async prefetchAudio(text: string): Promise<void> {
+    if (!this._edgeEnabled) return;
+    const cleanText = this.prepareText(text);
+    if (this._prefetchedText === cleanText) return;
+
+    try {
+      const arrayBuffer = await ttsService.speak(
+        cleanText,
+        this._edgeVoiceId || DEFAULT_EDGE_VOICE_ID,
+        this.currentRate,
+      );
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) return;
+
+      if (this._prefetchedFile) {
+        RNFS.unlink(this._prefetchedFile).catch(() => {});
+      }
+
+      const base64 = fromByteArray(new Uint8Array(arrayBuffer));
+      const filePath = `${RNFS.CachesDirectoryPath}/tts_prefetch.mp3`;
+      await RNFS.writeFile(filePath, base64, 'base64');
+      this._prefetchedFile = filePath;
+      this._prefetchedText = cleanText;
+    } catch {
+      // silent — _speakViaBackend will fetch normally
+    }
   }
 
   // ── Playback controls ─────────────────────────────────────────────────────
@@ -867,17 +1021,32 @@ class BibleTTSManager {
 
   async pause(): Promise<void> {
     if (!this.state.isPlaying || this.state.isPaused) return;
+
+    // If using Edge TTS (react-native-sound), pause the sound directly
+    if (this._edgeSound) {
+      try {
+        this._edgeSound.pause();
+      } catch {}
+      this._clearWordTimers();
+      this._pausedWordIndex = this.state.wordIndex;
+      this._pausedText = this.state.currentText;
+      this._pausedVerseNum = this._currentVerseNum;
+      this._pauseInProgress = true;
+      this.setState({
+        isPaused: true,
+        isPlaying: false,
+        tier: 'device',
+        currentVerseNum: this._currentVerseNum,
+      });
+      this._pauseInProgress = false;
+      return;
+    }
+
     this._pausedWordIndex = this.state.wordIndex;
     this._pausedPrefixLen = this._cleanPrefixCharLen;
     this._pausedBaseWordIndex = this._baseWordIndex;
     this._pausedText = this.state.currentText;
     this._pausedVerseNum = this._currentVerseNum;
-    // Save the absolute char position from the last engine progress event.
-    // _lastRawCharIndex is the raw engine charIndex (into the full clean string).
-    // _charIndexBase = -prefixLen, so absoluteCharPos = _lastRawCharIndex - prefixLen...
-    // but we want the position in the full cleanedText, so:
-    //   absoluteCharPos = _lastRawCharIndex  (it's already an index into cleanedText)
-    // We clamp to prefixLen so we never resume inside the announcement prefix.
     this._pausedAbsoluteCharPos =
       this._lastRawCharIndex >= 0
         ? Math.max(this._cleanPrefixCharLen, this._lastRawCharIndex)
@@ -901,8 +1070,6 @@ class BibleTTSManager {
     );
     try {
       await Tts.stop();
-      // tts-cancel may have already set isPaused:true via the event handler.
-      // Either way, ensure the final state is correct before clearing the flag.
       this.setState({
         isPaused: true,
         isPlaying: false,
@@ -912,7 +1079,6 @@ class BibleTTSManager {
     } catch (err) {
       console.warn('[BibleTTS] Pause error:', err);
     } finally {
-      // Always clear the flag so future cancels are not mis-identified as pauses.
       this._pauseInProgress = false;
     }
   }
@@ -922,8 +1088,15 @@ class BibleTTSManager {
   }
 
   async resume(): Promise<void> {
-    // _pausedText is set synchronously in pause() before Tts.stop(), so it is
-    // always available even if state.isPaused has not been confirmed yet.
+    // If using Edge TTS (react-native-sound), resume the sound directly
+    if (this._edgeSound && this.state.isPaused) {
+      try {
+        this._edgeSound.play();
+      } catch {}
+      this.setState({ isPaused: false, isPlaying: true, currentVerseNum: this._currentVerseNum });
+      return;
+    }
+
     if (!this._pausedText) return;
 
     const cleanedText = this._pausedText;
@@ -943,22 +1116,11 @@ class BibleTTSManager {
     this.setState({ isPaused: false, currentVerseNum: pausedVerseNum });
 
     try {
-      // ── Strategy 1: use the raw engine char position (most accurate) ────────
-      // pausedCharPos is the last charIndex the TTS engine reported before we
-      // called stop().  It is an absolute index into cleanedText.
-      // We snap backwards to the nearest word boundary so we never start
-      // mid-word, then resume from there.
       if (pausedCharPos > prefixLen) {
-        // Find the word boundary at or before pausedCharPos.
-        // Walk backwards from pausedCharPos until we hit whitespace or the
-        // verse start, then take the next non-space character.
         let snapPos = pausedCharPos;
-        // Step back to the start of the current word if we're inside one.
         while (snapPos > prefixLen && !/\s/.test(cleanedText[snapPos - 1])) {
           snapPos--;
         }
-        // snapPos now points to the start of the word the engine was on.
-        // If we overshot to whitespace, step forward to the next word.
         while (
           snapPos < cleanedText.length &&
           /\s/.test(cleanedText[snapPos])
@@ -977,8 +1139,6 @@ class BibleTTSManager {
         );
 
         if (resumeText.length > 0) {
-          // FIX: pass pausedWordIdx as baseWordIndex so the highlight continues
-          // from the paused word, not from word 0 of the verse.
           await this.speak(
             resumeText,
             0,
@@ -991,7 +1151,6 @@ class BibleTTSManager {
         }
       }
 
-      // ── Strategy 2: use the word index from tts-progress / timer ────────────
       const spans = this._cleanVerseWordSpans;
       const verseOnlyIdx = pausedWordIdx - pausedBaseIdx;
 
@@ -1021,9 +1180,6 @@ class BibleTTSManager {
         );
 
         if (resumeText.length > 0) {
-          // FIX: pausedWordIdx is the absolute verse-word index at pause time.
-          // Passing it as baseWordIndex means tts-progress/timer indices are
-          // added on top of it → state.wordIndex stays aligned with wordMap[].
           await this.speak(
             resumeText,
             0,
@@ -1036,7 +1192,6 @@ class BibleTTSManager {
         }
       }
 
-      // ── Strategy 3: fallback — restart from verse start (skip prefix) ───────
       console.log('[BibleTTS] resume(): falling back to verse start');
       const verseText = cleanedText.slice(prefixLen).trim();
       await this.speak(
@@ -1067,6 +1222,25 @@ class BibleTTSManager {
       this._clearUtteranceTimeout();
       this._clearWordTimers();
       this.state.wordIndex = -1;
+
+      // Clean up any prefetched file
+      if (this._prefetchedFile) {
+        RNFS.unlink(this._prefetchedFile).catch(() => {});
+        this._prefetchedFile = null;
+        this._prefetchedText = null;
+      }
+
+      // Stop Edge TTS sound if playing
+      if (this._edgeSound) {
+        try {
+          this._edgeSound.stop();
+          this._edgeSound.release();
+        } catch {}
+        this._edgeSound = null;
+      }
+      const edgeResolve = this._edgePendingResolve;
+      this._edgePendingResolve = null;
+      edgeResolve?.();
 
       const resolve = this._pendingResolve;
       this._pendingResolve = null;
@@ -1140,7 +1314,27 @@ class BibleTTSManager {
       await this.setVoice(opts.deviceVoiceId);
   }
 
-  // ── Public getters (used by VoiceSettings screen) ─────────────────────────
+  // ── Edge TTS public API ──────────────────────────────────────────────────
+
+  async setEdgeVoice(voiceId: string): Promise<void> {
+    if (!voiceId) return;
+    this._edgeVoiceId = voiceId;
+    await AsyncStorage.setItem(STORAGE_KEYS_EDGE.edgeVoiceId, voiceId).catch(() => {});
+  }
+
+  setEdgeEnabled(enabled: boolean): void {
+    this._edgeEnabled = enabled;
+  }
+
+  get edgeEnabled(): boolean {
+    return this._edgeEnabled;
+  }
+
+  get edgeVoiceId(): string {
+    return this._edgeVoiceId;
+  }
+
+  // ── Public getters ────────────────────────────────────────────────────────
 
   getCurrentRate(): number {
     return this.currentRate;
@@ -1159,20 +1353,16 @@ class BibleTTSManager {
     return this._pitchCustomized;
   }
 
-  /** Clear the saved rate preference and let the device engine use its own default. */
   async resetRate(): Promise<void> {
     this._rateCustomized = false;
-    this.currentRate = DEFAULT_RATE; // in-memory sentinel only
+    this.currentRate = DEFAULT_RATE;
     await AsyncStorage.removeItem(STORAGE_KEYS.rate).catch(() => {});
-    // Don't push anything to the engine — it will revert to its own default
-    // on the next init() call (which happens on next speak()).
     this.initialized = false;
   }
 
-  /** Clear the saved pitch preference and let the device engine use its own default. */
   async resetPitch(): Promise<void> {
     this._pitchCustomized = false;
-    this.currentPitch = DEFAULT_PITCH; // in-memory sentinel only
+    this.currentPitch = DEFAULT_PITCH;
     await AsyncStorage.removeItem(STORAGE_KEYS.pitch).catch(() => {});
     this.initialized = false;
   }
@@ -1182,8 +1372,6 @@ class BibleTTSManager {
       const all = await Tts.voices();
       const english = all.filter(v => {
         if (!v.language?.toLowerCase().startsWith('en')) return false;
-        // Android 14: filter out voices that are listed but not yet downloaded.
-        // Showing them in UI and then selecting them causes silent TTS failure.
         if (v.notInstalled === true) return false;
         return true;
       });
@@ -1207,7 +1395,6 @@ class BibleTTSManager {
             name.toLowerCase().includes('enhanced')
           )
             return 'enhanced';
-          // macOS premium: com.apple.speech.synthesis.voice.*.premium
           if (
             id.startsWith('com.apple.speech.synthesis.voice.') &&
             id.endsWith('.premium')
