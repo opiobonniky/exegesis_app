@@ -17,6 +17,7 @@ import {
   Lightbulb,
   ListTodo,
   Bookmark,
+  Beaker,
 } from 'lucide-react-native';
 import {
   SPACING,
@@ -76,6 +77,8 @@ export default function BottomTab({
       [route.readingPlan]: 'Plan',
       [route.profile]: 'profile',
       [route.journal]: 'journal',
+      [route.lab]: 'lab',
+      [route.labFlow]: 'lab',
       [route.adminDashboard]: 'adminDashboard',
       [route.adminUsers]: 'adminUsers',
       [route.adminDailyVerse]: 'adminVerse',
@@ -126,7 +129,7 @@ if (isUserAdmin) {
       },
     ];
   } else {
-    // REGULAR USER TABS - simplified to 4 main items
+    // REGULAR USER TABS
     tabs = [
       {
         id: 'home',
@@ -139,6 +142,12 @@ if (isUserAdmin) {
         label: translations?.bottomTab?.bible || 'Bible',
         icon: BookOpen,
         onPress: () => navigation.navigate(route.bible),
+      },
+      {
+        id: 'lab',
+        label: translations?.bottomTab?.lab || 'Lab',
+        icon: Beaker,
+        onPress: () => navigation.navigate(route.lab),
       },
       {
         id: 'Plan',

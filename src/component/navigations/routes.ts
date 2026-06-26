@@ -45,4 +45,6 @@ export const route = {
   verseResources: 'VerseResources',
   wordStudy: 'WordStudy',
   search: 'Search',
+  lab: 'Lab',
+  labFlow: 'LabFlow',
 };

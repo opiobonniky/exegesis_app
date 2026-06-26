@@ -1,21 +1,12 @@
 import Tts from 'react-native-tts';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Sound from 'react-native-sound';
-import { api } from '../services/api';
 
-Sound.setCategory('Playback');
-
-// ── Edge TTS backend provider ─────────────────────────────────────────────────
-// Calls /tts/speak on the backend (Microsoft Edge Neural voices, free).
-// Falls back to device TTS if network is unavailable or backend is disabled.
-
-const STORAGE_KEYS_EDGE = {
-  edgeVoiceId: 'tts_edge_voice_id',
-  edgeEnabled: 'tts_edge_enabled',
-};
-
-const DEFAULT_EDGE_VOICE_ID = 'en-US-AriaNeural';
+// ── Device TTS (react-native-tts) ────────────────────────────────────────────
+// The app uses device TTS exclusively. The Edge TTS backend path was removed
+// because react-native-sound has unreliable playback with the msedge-tts MP3
+// format on mobile devices. The web uses Edge TTS successfully via the
+// browser's native HTML5 Audio element, which handles the MP3 codec properly.
 
 // ─── AsyncStorage keys ────────────────────────────────────────────────────────
 const STORAGE_KEYS = {
@@ -149,12 +140,6 @@ class BibleTTSManager {
 
   private _rateCustomized = false;
   private _pitchCustomized = false;
-
-  // ── Edge TTS (backend) fields ────────────────────────────────────────────
-  private _edgeEnabled = false;
-  private _edgeVoiceId = DEFAULT_EDGE_VOICE_ID;
-  private _edgeSound: Sound | null = null;
-  private _edgePendingResolve: (() => void) | null = null;
 
   private stopRequested = false;
   private _pendingResolve: (() => void) | null = null;
@@ -499,108 +484,7 @@ class BibleTTSManager {
       console.warn('[BibleTTS] Init failed:', err);
     }
 
-    // After device init, check if backend Edge TTS is available.
-    // If so, prefer it over device TTS for better voice quality.
-    try {
-      const savedEdgeEnabled = await AsyncStorage.getItem(STORAGE_KEYS_EDGE.edgeEnabled);
-      const savedVoiceId = await AsyncStorage.getItem(STORAGE_KEYS_EDGE.edgeVoiceId);
-      if (savedVoiceId) this._edgeVoiceId = savedVoiceId;
-
-      // Only probe if not explicitly disabled by user
-      if (savedEdgeEnabled !== 'false') {
-        const res = await api.get('/tts/status');
-        if (res.data?.returnData?.enabled === true) {
-          this._edgeEnabled = true;
-          console.log('[BibleTTS] Edge TTS backend enabled, voice:', this._edgeVoiceId);
-        }
-      }
-    } catch {
-      // Network unavailable — silently stay on device TTS
-    }
   }
-
-  // ── Edge TTS backend playback ─────────────────────────────────────────────
-  private async _speakViaBackend(text: string, verseNum = -1): Promise<void> {
-    // Stop any existing Edge audio
-    if (this._edgeSound) {
-      this._edgeSound.stop(() => this._edgeSound?.release());
-      this._edgeSound = null;
-    }
-    if (this._edgePendingResolve) {
-      this._edgePendingResolve();
-      this._edgePendingResolve = null;
-    }
-
-    this._currentVerseNum = verseNum;
-    this.setState({ isPlaying: true, isPaused: false, tier: 'device', currentVerseNum: verseNum });
-    this._startWordTimers();
-
-    return new Promise<void>(async (resolve) => {
-      this._edgePendingResolve = resolve;
-
-      try {
-        const response = await api.post(
-          '/tts/speak',
-          { text, voiceId: this._edgeVoiceId, speed: this.currentRate },
-          { responseType: 'arraybuffer', timeout: 20000 },
-        );
-
-        if (this.stopRequested) { resolve(); this._edgePendingResolve = null; return; }
-
-        // Write audio bytes to a temp file for react-native-sound
-        const RNFS = require('react-native-fs');
-        const tmpPath = `${RNFS.CachesDirectoryPath}/tts_${Date.now()}.mp3`;
-        const bytes: ArrayBuffer = response.data;
-        const base64 = require('base64-js').fromByteArray(new Uint8Array(bytes));
-        await RNFS.writeFile(tmpPath, base64, 'base64');
-
-        if (this.stopRequested) { resolve(); this._edgePendingResolve = null; return; }
-
-        const sound = new Sound(tmpPath, '', (err) => {
-          if (err || this.stopRequested) {
-            sound.release();
-            this._edgeSound = null;
-            this._edgePendingResolve = null;
-            this.setState({ isPlaying: false, isPaused: false, tier: 'idle', currentVerseNum: -1 });
-            resolve();
-            return;
-          }
-          this._edgeSound = sound;
-          sound.setSpeed(this.currentRate);
-          sound.play((success) => {
-            this._clearWordTimers();
-            sound.release();
-            this._edgeSound = null;
-            this._edgePendingResolve = null;
-            this.setState({ isPlaying: false, isPaused: false, tier: 'idle', currentVerseNum: -1 });
-            resolve();
-          });
-        });
-      } catch (err) {
-        console.warn('[BibleTTS] Edge TTS fetch failed, falling back:', err);
-        this._edgeEnabled = false; // disable for this session
-        this._edgePendingResolve = null;
-        this._clearWordTimers();
-        this.setState({ isPlaying: false, isPaused: false, tier: 'idle', currentVerseNum: -1 });
-        resolve();
-      }
-    });
-  }
-
-  /** Change the Edge TTS voice and persist the choice */
-  async setEdgeVoice(voiceId: string): Promise<void> {
-    this._edgeVoiceId = voiceId;
-    await AsyncStorage.setItem(STORAGE_KEYS_EDGE.edgeVoiceId, voiceId).catch(() => {});
-  }
-
-  /** Enable or disable the backend Edge TTS provider */
-  async setEdgeEnabled(enabled: boolean): Promise<void> {
-    this._edgeEnabled = enabled;
-    await AsyncStorage.setItem(STORAGE_KEYS_EDGE.edgeEnabled, String(enabled)).catch(() => {});
-  }
-
-  get edgeEnabled(): boolean { return this._edgeEnabled; }
-  get edgeVoiceId(): string { return this._edgeVoiceId; }
 
   private selectBestVoice(voices: any[]): string | null {
     const english = voices.filter(v => {
@@ -720,25 +604,10 @@ class BibleTTSManager {
       return Promise.resolve();
     }
 
-    // ── Edge TTS backend (Microsoft Neural voices) ───────────────────────────
-    // When enabled, bypass device TTS entirely. Timer-based word highlighting
-    // still works via _startWordTimers() called inside _speakViaBackend().
-    if (this._edgeEnabled) {
-      if (!this.initialized) await this.init();
-      const clean = alreadyClean ? text : this.prepareText(text);
-      this._baseWordIndex = baseWordIndex;
-      this._currentVerseNum = verseNum;
-      this.state.currentText = clean;
-      this.state.wordIndex = baseWordIndex > 0 ? baseWordIndex : -1;
-
-      // Build timer word data for highlighting
-      const verseText = clean.slice(prefixLen);
-      this._pendingWordData = {
-        prefixWords: [],
-        verseWords: verseText.match(/\S+/g) ?? [],
-      };
-      return this._speakViaBackend(clean, verseNum);
-    }
+    // ── Device TTS (react-native-tts) ───────────────────────────────────────
+    // We always use device TTS on the app. The Edge TTS backend path via
+    // react-native-sound is unreliable (silent playback on device). Device
+    // TTS works consistently both online and offline with good voice quality.
 
     if (!Tts) {
       console.error('[BibleTTS] Tts module not available - cannot speak');

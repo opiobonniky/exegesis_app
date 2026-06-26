@@ -387,6 +387,20 @@ const AppNavigation = () => {
             require('../../features/search/SearchScreen').default
           }
         />
+
+        {/* ── Exegesis Lab ─────────────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.lab}
+          getComponent={() =>
+            require('../../features/lab/LabHomeScreen').default
+          }
+        />
+        <Stack.Screen
+          name={route.labFlow}
+          getComponent={() =>
+            require('../../features/lab/LabFlowScreen').default
+          }
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

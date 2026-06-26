@@ -22,14 +22,15 @@ A Bible study app where users can read Scripture in 8 translations, highlight ve
 - Bookmark favorite verses
 - Auto-track read history
 - Full-text search across all verses
-- Scope filters: Bible, Strong's Concordance, Journal, Topics, and Lemma search
-- Book-specific filter within Bible scope
+- **Strong's Concordance** — tappable words in Bible reader with dotted underline; opens Word Study Bottom Sheet
+- **Word Study Bottom Sheet** — original Greek/Hebrew, transliteration, Strong's ID, short/full definition, plain English grammar, usage count, collapsible grammatical details (case/gender/number), cross-references, Search All Uses / Save Word actions
+- **Unified Search Screen** — 5 scope tabs: Bible / Strong's / Journal / Topics / Lemma
+- Book-specific search filter with OT/NT/All covenant chips + dropdown book picker
 - Inline search result actions: Open verse, Study verse, Save verse, Add Note
-- Strong's number and word lookup
+- Strong's number and word lookup with related words discovery
 - Journal entry search
-- Bible topic search
+- Bible topic search (BibleTopic backend model)
 - Greek/Hebrew lemma search
-- Related words discovery for Strong's entries
 - Share verses via WhatsApp, SMS, social media (includes "via Exegesis" branding)
 
 ### ☀️ Daily Features
