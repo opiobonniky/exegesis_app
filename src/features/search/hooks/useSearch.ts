@@ -22,6 +22,7 @@ export function useSearch() {
   const [searchedOnce, setSearchedOnce] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasSearchedRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -38,6 +39,7 @@ export function useSearch() {
     }
 
     hasSearchedRef.current = true;
+    const requestId = ++requestIdRef.current;
 
     setError(null);
     setRelatedWords([]);
@@ -47,18 +49,22 @@ export function useSearch() {
       try {
         if (scope === 'strongs') {
           const res = await searchApi.searchStrongs(trimmed, { limit: 50 });
+          if (requestId !== requestIdRef.current) return;
           setResults(res.data);
           setTotal(res.total);
         } else if (scope === 'journal') {
           const res = await searchApi.searchJournal(trimmed, { limit: 50 });
+          if (requestId !== requestIdRef.current) return;
           setResults(res.data);
           setTotal(res.total);
         } else if (scope === 'topics') {
           const res = await searchApi.searchTopics(trimmed, { limit: 50 });
+          if (requestId !== requestIdRef.current) return;
           setResults(res.data);
           setTotal(res.total);
         } else if (scope === 'lemma') {
           const res = await searchApi.searchLemma(trimmed);
+          if (requestId !== requestIdRef.current) return;
           setResults(res.data);
           setTotal(res.total);
         } else {
@@ -66,6 +72,7 @@ export function useSearch() {
             limit: 50,
             bookName,
           });
+          if (requestId !== requestIdRef.current) return;
           if (res.success) {
             setResults(res.data);
             setTotal(res.total);
@@ -76,10 +83,12 @@ export function useSearch() {
         }
         setPage(1);
       } catch (e: any) {
+        if (requestId !== requestIdRef.current) return;
         setError(e?.message || 'Search failed');
         setResults([]);
         setTotal(0);
       } finally {
+        if (requestId !== requestIdRef.current) return;
         setLoading(false);
         setSearchedOnce(true);
       }

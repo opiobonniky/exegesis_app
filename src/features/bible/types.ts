@@ -50,23 +50,6 @@ export interface ChapterNavigationProps {
   isDark: boolean;
 }
 
-export interface SelectionActionBarProps {
-  selectedCount: number;
-  selectedVerses: number[];
-  totalVerses: number;
-  onRangeChange: (start: number, end: number) => void;
-  onListen: () => void;
-  onExplain?: () => void;
-  onHighlight: () => void;
-  onNote: () => void;
-  onFavorite: () => void;
-  onShare: () => void;
-  onCopy: () => void;
-  onClear: () => void;
-  onJournal: () => void;
-  isDark: boolean;
-}
-
 export interface LoadingOverlayProps {
   visible: boolean;
   message?: string;

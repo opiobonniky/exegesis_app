@@ -64,7 +64,7 @@ import ChapterSelectorScreen from './components/ChapterSelectorScreen';
 import {
   BibleHeader,
   ChapterNavigation,
-  SelectionActionBar,
+
   VerseList,
   AudioControlBar,
   VerseSideMenu,
@@ -646,98 +646,6 @@ export default function Bible() {
             ))}
           </ScrollView>
         </View>
-      )}
-
-      {/* ── Selection Action Bar ─────────────────────────────────────────── */}
-      {selectedVerses.length > 0 && (
-        <SelectionActionBar
-          isRtl={isRtl}
-          selectedCount={selectedVerses.length}
-          selectedVerses={selectedVerses}
-          totalVerses={Object.keys(verses).length}
-          onRangeChange={(start, end) => setVerseRangeSelection(start, end)}
-          isDark={isDark}
-          onListen={() =>
-            guard('Audio narration requires a free account.', () => {
-              const current = [...selectedVerses];
-              clearSelection();
-              startReadingSelectedVerses(current);
-            })
-          }
-          onJournal={() =>
-            guard(
-              'Journal entries are saved to your account. Sign in to use this feature.',
-              () => {
-                const current = [...selectedVerses];
-                const startVerse = Math.min(...current);
-                const endVerse = Math.max(...current);
-                clearSelection();
-                navigation.navigate(route.journalEntry, {
-                  bookName: currentBook,
-                  chapter: currentChapter,
-                  verseStart: startVerse,
-                  verseEnd: current.length > 1 ? endVerse : startVerse,
-                });
-              },
-            )
-          }
-          onExplain={async () => {
-            if (selectedVerses.length > 0) {
-              await getverseExplanation(
-                selectedVerses,
-                currentBook,
-                currentChapter,
-              );
-            }
-          }}
-          onHighlight={() =>
-            guard(
-              'Highlights are saved to your account. Sign in to use this feature.',
-              () => {
-                setPendingVerses([...selectedVerses]);
-                clearSelection();
-                setShowHighlightPicker(true);
-              },
-            )
-          }
-          onNote={() =>
-            guard(
-              'Notes are saved to your account. Sign in to use this feature.',
-              () => {
-                setPendingVerses([...selectedVerses]);
-                clearSelection();
-                openNoteModal();
-              },
-            )
-          }
-          onFavorite={() =>
-            guard(
-              'Favourites are saved to your account. Sign in to use this feature.',
-              () => {
-                const current = [...selectedVerses];
-                clearSelection();
-                addFavorite(current);
-              },
-            )
-          }
-          onShare={() =>
-            guard('Sharing requires a free account.', () => {
-              const current = [...selectedVerses];
-              clearSelection();
-              shareVerses(current);
-            })
-          }
-          onCopy={() =>
-            guard('Copying requires a free account.', () => {
-              const current = [...selectedVerses];
-              clearSelection();
-              copyVerses(current);
-            })
-          }
-          onClear={() => {
-            clearSelection();
-          }}
-        />
       )}
 
       {/* ── Verses List ──────────────────────────────────────────────────── */}

@@ -7,8 +7,10 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Keyboard,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -145,9 +147,51 @@ const BOOK_NAMES = [
   'Revelation',
 ];
 
+function SearchSkeleton({ colors }: { colors: ReturnType<typeof getColors> }) {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [opacity]);
+
+  const skeletonBg = colors.cardBackground || '#E8E8E8';
+
+  return (
+    <View style={{ padding: 16, gap: 12 }}>
+      {[
+        { h: 56, w: '100%' },
+        { h: 50, w: '92%' },
+        { h: 52, w: '100%' },
+        { h: 48, w: '85%' },
+        { h: 54, w: '100%' },
+      ].map((item, i) => (
+        <View key={i} style={{ gap: 6 }}>
+          <View style={{ height: 14, width: '40%', borderRadius: 4, backgroundColor: skeletonBg, opacity }} />
+          <View
+            style={{
+              height: item.h,
+              width: item.w as any,
+              borderRadius: 8,
+              backgroundColor: skeletonBg,
+              opacity,
+            }}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function SearchScreen() {
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+  const routeParams = useRoute<any>();
   const app = React.useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
@@ -173,6 +217,18 @@ export default function SearchScreen() {
     loadRelatedWords,
   } = useSearch();
 
+  const hasQuery = query.trim().length >= 3;
+  const skeletonOpacity = useRef(new Animated.Value(0)).current;
+  const showSkeleton = loading && hasQuery && results.length === 0;
+
+  useEffect(() => {
+    Animated.timing(skeletonOpacity, {
+      toValue: showSkeleton ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [showSkeleton, skeletonOpacity]);
+
   const [covenant, setCovenant] = useState<'all' | 'ot' | 'nt'>('all');
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [initializedFromRoute, setInitializedFromRoute] = useState(false);
@@ -188,9 +244,9 @@ export default function SearchScreen() {
   }, [covenant]);
 
   useEffect(() => {
-    const strongsId = route.params?.strongsId;
-    const word = route.params?.word;
-    const scopeParam = route.params?.scope;
+    const strongsId = routeParams.params?.strongsId;
+    const word = routeParams.params?.word;
+    const scopeParam = routeParams.params?.scope;
     if (!initializedFromRoute && (strongsId || word)) {
       setInitializedFromRoute(true);
       setPrefillWord(word);
@@ -204,7 +260,7 @@ export default function SearchScreen() {
         switchScope('bible');
       }
     }
-  }, [route.params, initializedFromRoute, setQuery, switchScope]);
+  }, [routeParams.params, initializedFromRoute, setQuery, switchScope]);
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -496,8 +552,6 @@ export default function SearchScreen() {
     [scope],
   );
 
-  const hasQuery = query.trim().length >= 3;
-
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
       if (scope === 'strongs') return renderStrongsResult({ item });
@@ -712,104 +766,115 @@ export default function SearchScreen() {
         )}
       </View>
 
-      <FlatList
-        style={styles.content}
-        data={hasQuery ? results : []}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        keyboardShouldPersistTaps="handled"
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={renderFooter}
-        ListHeaderComponent={
-          <>
-            {hasQuery && total > 0 && (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalText}>
-                  {total} {translation?.search?.results || 'results'}
+      <View style={{ flex: 1 }}>
+        <FlatList
+          style={styles.content}
+          data={hasQuery ? results : []}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          keyboardShouldPersistTaps="handled"
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+          ListHeaderComponent={
+            <>
+              {hasQuery && total > 0 && (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalText}>
+                    {total} {translation?.search?.results || 'results'}
+                  </Text>
+                </View>
+              )}
+            </>
+          }
+          ListEmptyComponent={
+            query.trim().length > 0 && query.trim().length < 3 ? (
+              <View style={styles.center}>
+                <Search size={48} color={COLORS.muted} style={styles.emptyIcon} />
+                <Text style={styles.emptySubtitle}>
+                  {translation?.search?.minChars ||
+                    'Type at least 3 characters to search'}
                 </Text>
               </View>
-            )}
-          </>
-        }
-        ListEmptyComponent={
-          query.trim().length > 0 && query.trim().length < 3 ? (
-            <View style={styles.center}>
-              <Search size={48} color={COLORS.muted} style={styles.emptyIcon} />
-              <Text style={styles.emptySubtitle}>
-                {translation?.search?.minChars ||
-                  'Type at least 3 characters to search'}
-              </Text>
-            </View>
-          ) : hasQuery && results.length === 0 && !error && searchedOnce ? (
-            <View style={styles.center}>
-              <BookOpen
-                size={48}
-                color={COLORS.muted}
-                style={styles.emptyIcon}
-              />
-              <Text style={styles.emptySubtitle}>
-                {scope === 'strongs'
-                  ? `No Strong's entries found for "${query}"`
-                  : scope === 'journal'
-                    ? `No journal entries found for "${query}"`
-                    : scope === 'topics'
-                      ? `No topics found for "${query}"`
-                      : scope === 'lemma'
-                        ? `No lemmas found for "${query}"`
-                        : translation?.search?.noResults ||
-                          `No verses found for "${query}"`}
-              </Text>
-            </View>
-          ) : error ? (
-            <View style={styles.center}>
-              <Text style={styles.emptySubtitle}>{error}</Text>
-            </View>
-          ) : !hasQuery ? (
-            <View style={styles.center}>
-              <FileText
-                size={48}
-                color={COLORS.muted}
-                style={styles.emptyIcon}
-              />
-              <Text style={styles.emptyTitle}>
-                {scope === 'bible'
-                  ? translation?.search?.title || 'Search the Bible'
-                  : scope === 'strongs'
-                    ? "Search Strong's Concordance"
+            ) : hasQuery && results.length === 0 && !error && searchedOnce ? (
+              <View style={styles.center}>
+                <BookOpen
+                  size={48}
+                  color={COLORS.muted}
+                  style={styles.emptyIcon}
+                />
+                <Text style={styles.emptySubtitle}>
+                  {scope === 'strongs'
+                    ? `No Strong's entries found for "${query}"`
                     : scope === 'journal'
-                      ? 'Search Your Journal'
+                      ? `No journal entries found for "${query}"`
                       : scope === 'topics'
-                        ? 'Search Bible Topics'
-                        : 'Search Greek/Hebrew Lemmas'}
-              </Text>
-              <Text style={styles.emptySubtitle}>
-                {scope === 'bible'
-                  ? translation?.search?.subtitle ||
-                    'Find verses across all books and chapters'
-                  : scope === 'strongs'
-                    ? 'Find Greek & Hebrew word studies'
-                    : scope === 'journal'
-                      ? 'Find reflections, prayers, and notes'
-                      : scope === 'topics'
-                        ? 'Explore Bible topics and themes'
-                        : 'Search by Greek/Hebrew root word'}
-              </Text>
-              <View style={styles.suggestionsRow}>
-                {SUGGESTIONS[scope].map(s => (
-                  <TouchableOpacity
-                    key={s}
-                    style={styles.chip}
-                    onPress={() => handleSuggestion(s)}
-                  >
-                    <Text style={styles.chipText}>{s}</Text>
-                  </TouchableOpacity>
-                ))}
+                        ? `No topics found for "${query}"`
+                        : scope === 'lemma'
+                          ? `No lemmas found for "${query}"`
+                          : translation?.search?.noResults ||
+                            `No verses found for "${query}"`}
+                </Text>
               </View>
-            </View>
-          ) : null
-        }
-      />
+            ) : error ? (
+              <View style={styles.center}>
+                <Text style={styles.emptySubtitle}>{error}</Text>
+              </View>
+            ) : !hasQuery ? (
+              <View style={styles.center}>
+                <FileText
+                  size={48}
+                  color={COLORS.muted}
+                  style={styles.emptyIcon}
+                />
+                <Text style={styles.emptyTitle}>
+                  {scope === 'bible'
+                    ? translation?.search?.title || 'Search the Bible'
+                    : scope === 'strongs'
+                      ? "Search Strong's Concordance"
+                      : scope === 'journal'
+                        ? 'Search Your Journal'
+                        : scope === 'topics'
+                          ? 'Explore Bible topics and themes'
+                          : 'Search Greek/Hebrew Lemmas'}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {scope === 'bible'
+                    ? translation?.search?.subtitle ||
+                      'Find verses across all books and chapters'
+                    : scope === 'strongs'
+                      ? 'Find Greek & Hebrew word studies'
+                      : scope === 'journal'
+                        ? 'Find reflections, prayers, and notes'
+                        : scope === 'topics'
+                          ? 'Explore Bible topics and themes'
+                          : 'Search by Greek/Hebrew root word'}
+                </Text>
+                <View style={styles.suggestionsRow}>
+                  {SUGGESTIONS[scope].map(s => (
+                    <TouchableOpacity
+                      key={s}
+                      style={styles.chip}
+                      onPress={() => handleSuggestion(s)}
+                    >
+                      <Text style={styles.chipText}>{s}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ) : null
+          }
+        />
+        {/* Smooth skeleton overlay — scoped to FlatList area */}
+        {showSkeleton && (
+          <Animated.View
+            pointerEvents="box-none"
+            style={[StyleSheet.absoluteFill, { opacity: skeletonOpacity }]}
+          >
+            <SearchSkeleton colors={COLORS} />
+          </Animated.View>
+        )}
+      </View>
     </View>
   );
 }

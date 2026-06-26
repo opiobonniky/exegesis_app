@@ -869,6 +869,7 @@ export const useBible = () => {
     handleAudioStop,
     refreshing,
     onRefresh,
+    showAudioPlayer,
     activeAudioVerse,
     audioPlaylist,
     audioScope,
