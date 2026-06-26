@@ -11,7 +11,6 @@ import {
   BookOpen,
   User,
   LucideUserCircle,
-  CalendarClockIcon,
   ShieldIcon,
   BookText,
   Lightbulb,
@@ -76,6 +75,9 @@ export default function BottomTab({
       [route.favorites]: 'favorites',
       [route.readingPlan]: 'Plan',
       [route.profile]: 'profile',
+      [route.legacyLedger]: 'ledger',
+      [route.ledgerDetail]: 'ledger',
+      [route.ledgerEntry]: 'ledger',
       [route.journal]: 'journal',
       [route.lab]: 'lab',
       [route.labFlow]: 'lab',
@@ -150,10 +152,10 @@ if (isUserAdmin) {
         onPress: () => navigation.navigate(route.lab),
       },
       {
-        id: 'journal',
-        label: translations?.bottomTab?.journal || 'Journal',
-        icon: CalendarClockIcon,
-        onPress: () => navigation.navigate(route.journal),
+        id: 'ledger',
+        label: translations?.bottomTab?.ledger || 'Ledger',
+        icon: BookText,
+        onPress: () => navigation.navigate(route.legacyLedger),
       },
       
     ];

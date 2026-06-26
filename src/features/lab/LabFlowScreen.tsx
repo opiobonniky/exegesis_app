@@ -234,6 +234,7 @@ export default function LabFlowScreen() {
   const [tags, setTags] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [journalEntryId, setJournalEntryId] = useState<string | null>(null);
 
   // ── Timer logic ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -461,30 +462,56 @@ export default function LabFlowScreen() {
           lemma: w.lemma || '',
         }));
 
-      await sendPostRequest('exegesis', `${sessionId}/abide`, {
+      // Save abide progress to session before navigating
+      await sendPostRequest('exegesis', `${sessionId}/progress`, {
+        abideReflection: reflection,
+        abidePrayer: prayer,
+        abideApplication: appText,
+        abideTags: tags,
+        isPublic: isPublic,
+      });
+
+      // Navigate to JournalEntry with pre-filled data
+      navigation.navigate(route.ledgerEntry, {
         reflection,
-        prayer,
+        prayers: prayer,
         application: appText,
         tags,
         isPublic,
         strongsWords:
           strongsWords.length > 0 ? JSON.stringify(strongsWords) : undefined,
-        strongsIds: strongsWords
-          .map(s => s.strongsId)
-          .filter(Boolean)
-          .join(','),
+        bookName,
+        chapter: chapter ? parseInt(chapter, 10) : undefined,
+        verseStart: verseStart ? parseInt(verseStart, 10) : undefined,
+        verseEnd: verseEnd ? parseInt(verseEnd, 10) : undefined,
+        passageRef,
+        source: 'exegesis-lab',
+        returnTo: route.legacyLedger,
+        sessionId, // Pass session ID so JournalEntry can update it
       });
-      setCompleted(true);
-      showToast('success', 'Saved to Legacy Ledger!');
     } catch (e: any) {
-      showToast('error', e?.message || 'Failed to save');
+      showToast('error', e?.message || 'Failed to navigate');
     } finally {
       setSaving(false);
     }
-  }, [sessionId, reflection, prayer, appText, tags, isPublic, verseWords]);
+  }, [
+    sessionId,
+    reflection,
+    prayer,
+    appText,
+    tags,
+    isPublic,
+    verseWords,
+    bookName,
+    chapter,
+    verseStart,
+    verseEnd,
+    passageRef,
+    navigation,
+  ]);
 
   // ── Save progress (without advancing stage) ──────────────────────────
-  const saveCurrentProgress = useCallback(async () => {
+  const saveCurrentProgress = useCallback(async ({ silent }: { silent?: boolean } = {}) => {
     if (!sessionId) {
       showToast('error', 'No active session to save');
       return;
@@ -516,7 +543,7 @@ export default function LabFlowScreen() {
           return;
       }
       await sendPostRequest('exegesis', `${sessionId}/progress`, body);
-      showToast('success', 'Progress saved!');
+      if (!silent) showToast('success', 'Progress saved!');
     } catch (e: any) {
       showToast('error', e?.message || 'Failed to save progress');
     } finally {
@@ -597,7 +624,8 @@ export default function LabFlowScreen() {
           if (data.abidePrayer) setPrayer(data.abidePrayer);
           if (data.abideApplication) setAppText(data.abideApplication);
           if (data.abideTags) setTags(data.abideTags);
-          if (data.isPublic !== undefined) setIsPublic(data.isPublic);          // Restore listen stage progress
+          if (data.isPublic !== undefined) setIsPublic(data.isPublic);
+          if (data.journalEntryId) setJournalEntryId(data.journalEntryId);          // Restore listen stage progress
           if (data.listenDuration) setSelectedDuration(Number(data.listenDuration));
           if (data.listenCompleted) {
             setTimerComplete(true);
@@ -999,7 +1027,7 @@ export default function LabFlowScreen() {
       {/* Save Progress button */}
       <TouchableOpacity
         style={[styles.saveProgressBtn, { borderColor: COLORS.muted }]}
-        onPress={saveCurrentProgress}
+        onPress={() => saveCurrentProgress()}
         disabled={savingProgress}
         activeOpacity={0.7}
       >
@@ -2294,7 +2322,7 @@ export default function LabFlowScreen() {
         {/* Save Progress button */}
         <TouchableOpacity
           style={[styles.saveProgressBtn, { borderColor: COLORS.muted }]}
-          onPress={saveCurrentProgress}
+          onPress={() => saveCurrentProgress()}
           disabled={savingProgress}
           activeOpacity={0.7}
         >
@@ -2496,38 +2524,65 @@ export default function LabFlowScreen() {
       {/* Save Progress button */}
       <TouchableOpacity
         style={[styles.saveProgressBtn, { borderColor: COLORS.muted }]}
-        onPress={saveCurrentProgress}
-        disabled={savingProgress}
-        activeOpacity={0.7}
-      >
-        {savingProgress ? (
-          <ActivityIndicator size="small" color={COLORS.muted} />
-        ) : (
-          <>
-            <Save size={14} color={COLORS.muted} />
-            <Text style={[styles.saveProgressText, { color: COLORS.muted }]}>
-              Save Progress
-            </Text>
-          </>
-        )}
-      </TouchableOpacity>
+      onPress={() => saveCurrentProgress()}
+      disabled={savingProgress}
+      activeOpacity={0.7}
+    >
+      {savingProgress ? (
+        <ActivityIndicator size="small" color={COLORS.muted} />
+      ) : (
+        <>
+          <Save size={14} color={COLORS.muted} />
+          <Text style={[styles.saveProgressText, { color: COLORS.muted }]}>
+            Save Progress
+          </Text>
+        </>
+      )}
+    </TouchableOpacity>
 
-      {/* Save to Legacy Ledger button */}
-      <TouchableOpacity
-        style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
-        onPress={saveAbide}
-        disabled={saving}
-        activeOpacity={0.8}
-      >
-        {saving ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        ) : (
-          <>
-            <Save size={18} color="#FFFFFF" />
-            <Text style={styles.primaryBtnText}>Save to Legacy Ledger</Text>
-          </>
-        )}
-      </TouchableOpacity>
+    {/* Save to Legacy Ledger button — hidden if already saved */}
+      {journalEntryId ? (
+        <TouchableOpacity
+          style={[
+            styles.primaryBtn,
+            {
+              backgroundColor: `${COLORS.success}20`,
+              borderWidth: 1,
+              borderColor: COLORS.success,
+            },
+          ]}
+          onPress={() => navigation.navigate(route.legacyLedger)}
+          activeOpacity={0.8}
+        >
+          <CheckCircle2 size={18} color={COLORS.success} />
+          <Text
+            style={[
+              styles.primaryBtnText,
+              { color: COLORS.success },
+            ]}
+          >
+            Saved — View in Legacy Ledger
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
+          onPress={saveAbide}
+          disabled={saving}
+          activeOpacity={0.8}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <Save size={18} color="#FFFFFF" />
+              <Text style={styles.primaryBtnText}>
+                Save to Legacy Ledger
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
 
       {/* Page indicator (animated via scrollX) */}
       <View style={styles.pageIndicator}>

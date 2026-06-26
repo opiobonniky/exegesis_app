@@ -12,6 +12,8 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Alert,
+  Share,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
@@ -27,6 +29,15 @@ import {
   JournalEntry,
 } from '../../services/api';
 import { showToast } from '../../helpers/Toash.helper';
+import { exportOneJournalEntry } from '../../services/api';
+
+// atob is available in Hermes (React Native 0.70+) via the global scope
+// We declare it here since the TS lib doesn't include it
+declare const atob: (input: string) => string;
+
+/** Decode base64 → UTF-8 string. atob gives Latin-1; escape+decodeURIComponent converts to UTF-16. */
+const base64Decode = (str: string): string =>
+  decodeURIComponent(escape(atob(str)));
 import {
   ArrowLeft,
   Star,
@@ -39,6 +50,12 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  Lock,
+
+  Download,
+  Share2,
+  Hash,
+  BookText,
 } from 'lucide-react-native';
 
 const JournalDetail = () => {
@@ -186,6 +203,39 @@ const JournalDetail = () => {
               {jc?.feelingLabel || 'Feeling:'} {entry.mood}
             </Text>
           )}
+          {/* Public/Private badge */}
+          <View
+            style={[
+              styles.privacyBadge,
+              {
+                backgroundColor: entry.isPublished ? '#10B98120' : '#EF444420',
+              },
+            ]}
+          >
+            <Lock size={12} color={entry.isPublished ? '#10B981' : '#EF4444'} />
+            <Text
+              style={[
+                styles.privacyBadgeText,
+                { color: entry.isPublished ? '#10B981' : '#EF4444' },
+              ]}
+            >
+              {entry.isPublished ? 'Public' : 'Private'}
+            </Text>
+          </View>
+          {/* Source badge — 'From Exegesis Lab' */}
+          {entry.source === 'exegesis-lab' && (
+            <View
+              style={[
+                styles.sourceBadge,
+                { backgroundColor: '#3B82F620' },
+              ]}
+            >
+              <BookText size={12} color="#3B82F6" />
+              <Text style={[styles.sourceBadgeText, { color: '#3B82F6' }]}>
+                Exegesis Lab
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Title */}
@@ -260,6 +310,170 @@ const JournalDetail = () => {
             <Text style={[styles.bodyText, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>{entry.prayers}</Text>
           </View>
         )}
+
+        {/* Tags */}
+        {entry.tags && (
+          <View style={[styles.section, { backgroundColor: COLORS.surface }]}>
+            <Text style={[styles.sectionTitle, { color: COLORS.text, marginBottom: SPACING.sm }]}>Tags</Text>
+            <View style={[styles.tagRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              {entry.tags.split(',').map((tag, i) => (
+                <View
+                  key={`tag-${i}`}
+                  style={[
+                    styles.tagPill,
+                    { backgroundColor: `${COLORS.primary}15`, borderColor: `${COLORS.primary}25` },
+                  ]}
+                >
+                  <Text style={[styles.tagPillText, { color: COLORS.primary }]}>
+                    {tag.trim()}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Studied Words (from Lab) */}
+        {entry.strongsWords && (() => {
+          let words: { strongsId?: string; surfaceText?: string; lemma?: string }[] = [];
+          try {
+            const parsed = typeof entry.strongsWords === 'string' ? JSON.parse(entry.strongsWords) : entry.strongsWords;
+            if (Array.isArray(parsed)) words = parsed;
+          } catch {}
+          if (words.length === 0) return null;
+          return (
+            <View style={[styles.section, { backgroundColor: COLORS.surface }]}>
+              <View style={styles.sectionHeader}>
+                <Hash size={16} color={COLORS.primary} />
+                <Text style={[styles.sectionTitle, { color: COLORS.text, marginLeft: SPACING.xs }]}>
+                  Studied Words
+                </Text>
+              </View>
+              <View style={styles.strongsWordRow}>
+                {words.map((w, i) => (
+                  <TouchableOpacity
+                    key={`sw-${i}`}
+                    style={[
+                      styles.strongsWordChip,
+                      {
+                        backgroundColor: `${COLORS.primary}12`,
+                        borderColor: `${COLORS.primary}25`,
+                      },
+                    ]}
+                    onPress={() => {
+                      const detail = [
+                        w.surfaceText || w.strongsId,
+                        w.strongsId ? `Strong's ${w.strongsId}` : '',
+                        w.lemma ? `Lemma: ${w.lemma}` : '',
+                      ]
+                        .filter(Boolean)
+                        .join('\n');
+                      Alert.alert('Word Study', detail, [
+                        { text: 'Close', style: 'cancel' },
+                        {
+                          text: 'Study in Bible',
+                          onPress: () => {
+                            if (entry.bookName) {
+                              navigation.navigate(route.bible, {
+                                bookName: entry.bookName,
+                                chapter: entry.chapter || 1,
+                              });
+                            }
+                          },
+                        },
+                      ]);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.strongsWordText, { color: COLORS.primary }]}>
+                      {w.surfaceText || w.strongsId}
+                    </Text>
+                    {w.strongsId && (
+                      <Text style={[styles.strongsWordId, { color: COLORS.muted }]}>
+                        {w.strongsId}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* Action buttons: Download + Share */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[
+              styles.actionBtn,
+              {
+                backgroundColor: COLORS.surface,
+                borderColor: COLORS.border,
+              },
+            ]}
+            onPress={async () => {
+              try {
+                const res = await exportOneJournalEntry(entry.id, 'txt');
+                if (res.returnCode === 200 && res.returnData) {
+                  const decoded = base64Decode(res.returnData.content);
+                  await Share.share({
+                    message: decoded,
+                    title: res.returnData.filename || 'journal-entry.txt',
+                  });
+                }
+              } catch (e: any) {
+                showToast('error', e?.message || 'Failed to export entry');
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Download size={16} color={COLORS.text} />
+            <Text style={[styles.actionBtnText, { color: COLORS.text }]}>
+              Download
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.actionBtn,
+              {
+                backgroundColor: COLORS.surface,
+                borderColor: COLORS.border,
+              },
+            ]}
+            onPress={async () => {
+              try {
+                const text = [
+                  entry.title || '',
+                  '',
+                  entry.content || '',
+                  '',
+                  entry.content ? `Reflection: ${entry.content}` : '',
+                  entry.prayers ? `Prayer: ${entry.prayers}` : '',
+                  entry.application ? `Application: ${entry.application}` : '',
+                  '',
+                  entry.bookName ? `Passage: ${entry.bookName} ${entry.chapter || ''}${entry.verseNumber ? ':' + entry.verseNumber : ''}` : '',
+                  `— Saved from Exegesis Legacy Ledger`,
+                ]
+                  .filter(Boolean)
+                  .join('\n');
+                await Share.share({
+                  message: text,
+                  title: `Journal: ${entry.title || 'Entry'}`,
+                });
+              } catch (e: any) {
+                if (e?.message !== 'User did not share') {
+                  console.error('Share failed:', e);
+                }
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Share2 size={16} color={COLORS.text} />
+            <Text style={[styles.actionBtnText, { color: COLORS.text }]}>
+              Share
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={{ height: SPACING.xxl }} />
       </ScrollView>
@@ -342,6 +556,87 @@ const styles = StyleSheet.create({
   bodyText: {
     fontSize: FONT_SIZES.md,
     lineHeight: 24,
+  },
+  privacyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  privacyBadgeText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
+  },
+  sourceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  sourceBadgeText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  tagPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  tagPillText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '500',
+  },
+  strongsWordRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: SPACING.sm,
+  },
+  strongsWordChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  strongsWordText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+  },
+  strongsWordId: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '400',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+    marginTop: SPACING.md,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  actionBtnText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
   },
 });
 

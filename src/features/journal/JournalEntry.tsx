@@ -30,6 +30,7 @@ import {
   JournalEntry,
 } from '../../services/api';
 import { showToast } from '../../helpers/Toash.helper';
+import { useSessionSync } from '../../hooks/useSessionSync';
 import {
   ArrowLeft,
   Save,
@@ -37,6 +38,9 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Tag,
+  Globe,
+  Lock,
 } from 'lucide-react-native';
 
 const CATEGORIES = [
@@ -83,6 +87,9 @@ const JournalEntryScreen = () => {
 
   const entryId = routeParams?.params?.entryId;
   const isEditMode = !!entryId;
+  const { syncing, syncJournalEntry } = useSessionSync({
+    sessionId: routeParams?.params?.sessionId,
+  });
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -95,6 +102,9 @@ const JournalEntryScreen = () => {
   const [bookName, setBookName] = useState('');
   const [chapter, setChapter] = useState('');
   const [verseNumber, setVerseNumber] = useState('');
+  const [tags, setTags] = useState('');
+  const [strongsWords, setStrongsWords] = useState<string | undefined>(undefined);
+  const [isPublished, setIsPublished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -115,6 +125,17 @@ const JournalEntryScreen = () => {
           : String(params.verseStart);
         setVerseNumber(verseStr);
       }
+      // Pre-fill from Exegesis Lab
+      if (params.reflection) setContent(params.reflection);
+      if (params.prayers) setPrayers(params.prayers);
+      if (params.application) setApplication(params.application);
+      if (params.tags) setTags(params.tags);
+      if (params.strongsWords) setStrongsWords(params.strongsWords);
+      if (params.isPublic !== undefined) setIsPublished(params.isPublic);
+      if (params.passageRef && !params.title) {
+        // Auto-title from passage reference
+        setTitle(`Exegesis: ${params.passageRef}`);
+      }
     }
   }, [entryId]);
 
@@ -132,6 +153,9 @@ const JournalEntryScreen = () => {
         setGratitude(entry.gratitude || '');
         setLearnings(entry.learnings || '');
         setApplication(entry.application || '');
+        setTags(entry.tags || '');
+        setStrongsWords(entry.strongsWords || undefined);
+        if (entry.isPublished !== undefined) setIsPublished(entry.isPublished);
         setBookName(entry.bookName || '');
         if (entry.chapter) setChapter(String(entry.chapter));
         if (entry.verseNumber) setVerseNumber(String(entry.verseNumber));
@@ -165,6 +189,9 @@ const JournalEntryScreen = () => {
       if (bookName.trim()) data.bookName = bookName.trim();
       if (chapter) data.chapter = parseInt(chapter, 10);
       if (verseNumber) data.verseNumber = parseInt(verseNumber, 10);
+      if (tags.trim()) data.tags = tags.trim();
+      if (strongsWords) data.strongsWords = strongsWords;
+      if (isPublished !== undefined) data.isPublished = isPublished;
 
       let res;
       if (isEditMode) {
@@ -176,7 +203,18 @@ const JournalEntryScreen = () => {
 
       if (res.returnCode === 200) {
         showToast('success', isEditMode ? (jc?.entryUpdated || 'Entry updated') : (jc?.entrySaved || 'Entry saved'));
-        navigation.goBack();
+
+        // Sync journal entry ID back to Lab session (if applicable)
+        if (!isEditMode && res.returnData?.id) {
+          await syncJournalEntry(res.returnData.id);
+        }
+
+        const returnTo = routeParams?.params?.returnTo;
+        if (returnTo) {
+          navigation.navigate(returnTo);
+        } else {
+          navigation.goBack();
+        }
       } else {
         showToast('error', res.returnMessage || (jc?.failedToSave || 'Failed to save'));
       }
@@ -234,7 +272,7 @@ const JournalEntryScreen = () => {
         <TouchableOpacity
           style={[styles.saveButton, { backgroundColor: COLORS.primary, marginRight: isRtl ? 0 : undefined }]}
           onPress={handleSave}
-          disabled={saving}
+          disabled={saving || syncing}
         >
           <Save size={18} color="#FFFFFF" />
         </TouchableOpacity>
@@ -369,6 +407,62 @@ const JournalEntryScreen = () => {
         </View>
 
         {/* Prompt-based sections */}
+        {/* Tags */}
+        <View style={styles.inputGroup}>
+          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
+            {'Tags'}
+          </Text>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderRadius: 12,
+            backgroundColor: COLORS.surface,
+            borderColor: COLORS.border,
+            paddingHorizontal: SPACING.md,
+          }}>
+            <Tag size={16} color={COLORS.muted} style={{ marginRight: 8 }} />
+            <TextInput
+              style={[{
+                flex: 1,
+                paddingVertical: SPACING.md,
+                fontSize: FONT_SIZES.md,
+                color: COLORS.text,
+              }]}
+              value={tags}
+              onChangeText={setTags}
+              placeholder={'#faith #prayer #study'}
+              placeholderTextColor={COLORS.muted}
+              autoCapitalize="none"
+            />
+          </View>
+        </View>
+
+        {/* Privacy toggle */}
+        <View style={styles.inputGroup}>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingVertical: SPACING.sm,
+            }}
+            onPress={() => setIsPublished(!isPublished)}
+            activeOpacity={0.7}
+          >
+            {isPublished ? (
+              <Globe size={18} color={COLORS.success} />
+            ) : (
+              <Lock size={18} color={COLORS.error} />
+            )}
+            <Text style={[{ color: COLORS.text, fontSize: FONT_SIZES.sm }]}>
+              {isPublished
+                ? 'Public — anyone can read this'
+                : 'Private — only you can see this'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {renderInput(jc?.gratitudeLabel || 'Gratitude', gratitude, setGratitude, true, jc?.gratitudePlaceholder || 'What are you grateful for today?')}
         {renderInput(jc?.learningsLabel || 'Learnings', learnings, setLearnings, true, jc?.learningsPlaceholder || 'What did you learn?')}
         {renderInput(jc?.applicationLabel || 'Application', application, setApplication, true, jc?.applicationPlaceholder || 'How will you apply this?')}

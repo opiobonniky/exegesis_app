@@ -8,8 +8,8 @@ export interface SearchResult {
   chapter: number;
   verse: number;
   verse_text: string;
-  rank: number;
-  headline: string;
+  rank?: number;
+  headline?: string;
 }
 
 export interface SearchResponse {

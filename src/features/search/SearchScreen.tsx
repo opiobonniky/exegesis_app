@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -9,8 +15,17 @@ import {
   View,
   ScrollView,
 } from 'react-native';
-import { Search, X, BookOpen, BookmarkCheck, BookText, FileText, StickyNote, ChevronDown } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import {
+  Search,
+  X,
+  BookOpen,
+  BookmarkCheck,
+  BookText,
+  FileText,
+  StickyNote,
+  ChevronDown,
+} from 'lucide-react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { route } from '../../component/navigations/routes';
@@ -31,8 +46,26 @@ const SUGGESTIONS: Record<SearchScope, string[]> = {
   bible: ['love', 'faith', 'hope', 'peace', 'joy', 'grace', 'mercy', 'truth'],
   strongs: ['G26', 'G3056', 'G4102', 'G25', 'G1515', 'G5485'],
   journal: ['prayer', 'thanksgiving', 'healing', 'wisdom', 'faith', 'peace'],
-  topics: ['love', 'faith', 'salvation', 'grace', 'covenant', 'redemption', 'kingdom', 'holiness'],
-  lemma: ['anthropos', 'logos', 'agape', 'pistis', 'charis', 'doxa', 'zoe', 'soteria'],
+  topics: [
+    'love',
+    'faith',
+    'salvation',
+    'grace',
+    'covenant',
+    'redemption',
+    'kingdom',
+    'holiness',
+  ],
+  lemma: [
+    'anthropos',
+    'logos',
+    'agape',
+    'pistis',
+    'charis',
+    'doxa',
+    'zoe',
+    'soteria',
+  ],
 };
 
 const SCOPE_LABELS: Record<SearchScope, string> = {
@@ -44,24 +77,77 @@ const SCOPE_LABELS: Record<SearchScope, string> = {
 };
 
 const BOOK_NAMES = [
-  'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy',
-  'Joshua', 'Judges', 'Ruth', '1 Samuel', '2 Samuel',
-  '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles',
-  'Ezra', 'Nehemiah', 'Esther', 'Job', 'Psalms',
-  'Proverbs', 'Ecclesiastes', 'Song of Solomon', 'Isaiah',
-  'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel',
-  'Hosea', 'Joel', 'Amos', 'Obadiah', 'Jonah', 'Micah',
-  'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
-  'Matthew', 'Mark', 'Luke', 'John', 'Acts',
-  'Romans', '1 Corinthians', '2 Corinthians', 'Galatians',
-  'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians',
-  '2 Thessalonians', '1 Timothy', '2 Timothy', 'Titus', 'Philemon',
-  'Hebrews', 'James', '1 Peter', '2 Peter', '1 John', '2 John',
-  '3 John', 'Jude', 'Revelation',
+  'Genesis',
+  'Exodus',
+  'Leviticus',
+  'Numbers',
+  'Deuteronomy',
+  'Joshua',
+  'Judges',
+  'Ruth',
+  '1 Samuel',
+  '2 Samuel',
+  '1 Kings',
+  '2 Kings',
+  '1 Chronicles',
+  '2 Chronicles',
+  'Ezra',
+  'Nehemiah',
+  'Esther',
+  'Job',
+  'Psalms',
+  'Proverbs',
+  'Ecclesiastes',
+  'Song of Solomon',
+  'Isaiah',
+  'Jeremiah',
+  'Lamentations',
+  'Ezekiel',
+  'Daniel',
+  'Hosea',
+  'Joel',
+  'Amos',
+  'Obadiah',
+  'Jonah',
+  'Micah',
+  'Nahum',
+  'Habakkuk',
+  'Zephaniah',
+  'Haggai',
+  'Zechariah',
+  'Malachi',
+  'Matthew',
+  'Mark',
+  'Luke',
+  'John',
+  'Acts',
+  'Romans',
+  '1 Corinthians',
+  '2 Corinthians',
+  'Galatians',
+  'Ephesians',
+  'Philippians',
+  'Colossians',
+  '1 Thessalonians',
+  '2 Thessalonians',
+  '1 Timothy',
+  '2 Timothy',
+  'Titus',
+  'Philemon',
+  'Hebrews',
+  'James',
+  '1 Peter',
+  '2 Peter',
+  '1 John',
+  '2 John',
+  '3 John',
+  'Jude',
+  'Revelation',
 ];
 
 export default function SearchScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const app = React.useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
@@ -70,20 +156,54 @@ export default function SearchScreen() {
   const inputRef = useRef<TextInput>(null);
 
   const {
-    query, setQuery, scope, switchScope,
-    bookName, setBookFilter,
-    results, loading, total, error, loadMore, clearQuery,
-    relatedWords, loadRelatedWords,
+    query,
+    setQuery,
+    scope,
+    switchScope,
+    bookName,
+    setBookFilter,
+    results,
+    loading,
+    total,
+    error,
+    loadMore,
+    clearQuery,
+    relatedWords,
+    loadRelatedWords,
   } = useSearch();
 
   const [covenant, setCovenant] = useState<'all' | 'ot' | 'nt'>('all');
   const [showBookPicker, setShowBookPicker] = useState(false);
+  const [initializedFromRoute, setInitializedFromRoute] = useState(false);
+  const [prefillWord, setPrefillWord] = useState<string | undefined>(undefined);
+  const [prefillStrongsId, setPrefillStrongsId] = useState<string | undefined>(
+    undefined,
+  );
 
   const filteredBooks = useMemo(() => {
     if (covenant === 'ot') return BOOK_NAMES.slice(0, 39);
     if (covenant === 'nt') return BOOK_NAMES.slice(39);
     return BOOK_NAMES;
   }, [covenant]);
+
+  useEffect(() => {
+    const strongsId = route.params?.strongsId;
+    const word = route.params?.word;
+    const scopeParam = route.params?.scope;
+    if (!initializedFromRoute && (strongsId || word)) {
+      setInitializedFromRoute(true);
+      setPrefillWord(word);
+      setPrefillStrongsId(strongsId);
+      if (scopeParam === 'strongs' && strongsId) {
+        setQuery(strongsId, 'strongs');
+        switchScope('strongs');
+      } else {
+        const q = word || strongsId || '';
+        setQuery(q, 'bible');
+        switchScope('bible');
+      }
+    }
+  }, [route.params, initializedFromRoute, setQuery, switchScope]);
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -186,13 +306,17 @@ export default function SearchScreen() {
               style={[styles.actionBtn, { borderColor: COLORS.primary }]}
               onPress={() => handleSelect(item)}
             >
-              <Text style={[styles.actionBtnText, { color: COLORS.primary }]}>Open</Text>
+              <Text style={[styles.actionBtnText, { color: COLORS.primary }]}>
+                Open
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionBtn, { borderColor: COLORS.muted }]}
               onPress={() => handleStudy(item)}
             >
-              <Text style={[styles.actionBtnText, { color: COLORS.muted }]}>Study</Text>
+              <Text style={[styles.actionBtnText, { color: COLORS.muted }]}>
+                Study
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionBtn, { borderColor: COLORS.muted }]}
@@ -236,7 +360,9 @@ export default function SearchScreen() {
             style={[styles.actionBtn, { borderColor: COLORS.muted }]}
             onPress={() => handleRelatedWords(item.strongsId)}
           >
-            <Text style={[styles.actionBtnText, { color: COLORS.muted }]}>Related Words</Text>
+            <Text style={[styles.actionBtnText, { color: COLORS.muted }]}>
+              Related Words
+            </Text>
           </TouchableOpacity>
         </View>
         {relatedWords.length > 0 && (
@@ -247,7 +373,9 @@ export default function SearchScreen() {
                 style={styles.relatedWordChip}
                 onPress={() => {
                   Keyboard.dismiss();
-                  navigation.navigate(route.wordStudy, { strongsId: rw.strongsId });
+                  navigation.navigate(route.wordStudy, {
+                    strongsId: rw.strongsId,
+                  });
                 }}
               >
                 <Text style={styles.relatedWordText}>
@@ -321,8 +449,12 @@ export default function SearchScreen() {
         }}
         activeOpacity={0.7}
       >
-        <Text style={styles.lemmaWord}>{item.originalWord || item.strongsId}</Text>
-        <Text style={styles.lemmaId}>{item.strongsId} · {item.transliteration}</Text>
+        <Text style={styles.lemmaWord}>
+          {item.originalWord || item.strongsId}
+        </Text>
+        <Text style={styles.lemmaId}>
+          {item.strongsId} · {item.transliteration}
+        </Text>
         <Text style={styles.lemmaDef}>{item.shortDefinition}</Text>
       </TouchableOpacity>
     ),
@@ -341,16 +473,22 @@ export default function SearchScreen() {
     );
   }, [loading, results.length, COLORS.primary, styles, translation]);
 
-  const handleScopeSwitch = useCallback((s: SearchScope) => {
-    switchScope(s);
-    setShowBookPicker(false);
-    setCovenant('all');
-    inputRef.current?.focus();
-  }, [switchScope]);
+  const handleScopeSwitch = useCallback(
+    (s: SearchScope) => {
+      switchScope(s);
+      setShowBookPicker(false);
+      setCovenant('all');
+      inputRef.current?.focus();
+    },
+    [switchScope],
+  );
 
-  const handleInputChange = useCallback((text: string) => {
-    setQuery(text, scope);
-  }, [setQuery, scope]);
+  const handleInputChange = useCallback(
+    (text: string) => {
+      setQuery(text, scope);
+    },
+    [setQuery, scope],
+  );
 
   const keyExtractor = useCallback(
     (item: any, index: number) => `${scope}-${index}`,
@@ -367,10 +505,23 @@ export default function SearchScreen() {
       if (scope === 'lemma') return renderLemmaResult({ item });
       return renderBibleResult({ item });
     },
-    [scope, renderBibleResult, renderStrongsResult, renderJournalResult, renderTopicResult, renderLemmaResult],
+    [
+      scope,
+      renderBibleResult,
+      renderStrongsResult,
+      renderJournalResult,
+      renderTopicResult,
+      renderLemmaResult,
+    ],
   );
 
-  const scopes: SearchScope[] = ['bible', 'strongs', 'journal', 'topics', 'lemma'];
+  const scopes: SearchScope[] = [
+    'bible',
+    'strongs',
+    'journal',
+    'topics',
+    'lemma',
+  ];
 
   return (
     <View style={styles.container}>
@@ -387,9 +538,9 @@ export default function SearchScreen() {
           style={styles.input}
           placeholder={
             scope === 'bible'
-              ? (translation?.search?.placeholder || 'Search the Bible...')
+              ? translation?.search?.placeholder || 'Search the Bible...'
               : scope === 'strongs'
-                ? 'Search Strong\'s numbers or words...'
+                ? "Search Strong's numbers or words..."
                 : scope === 'journal'
                   ? 'Search your journal...'
                   : scope === 'topics'
@@ -413,7 +564,12 @@ export default function SearchScreen() {
 
       {/* ── Filter section ── */}
       <View style={styles.filterSection}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scopeRow} contentContainerStyle={{ flexDirection: 'row', gap: 6 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.scopeRow}
+          contentContainerStyle={{ flexDirection: 'row', gap: 6 }}
+        >
           {scopes.map(s => {
             const active = scope === s;
             const iconColor = active ? '#FFFFFF' : COLORS.text;
@@ -430,12 +586,16 @@ export default function SearchScreen() {
                 {s === 'bible' && <BookOpen size={14} color={iconColor} />}
                 {s === 'strongs' && <BookText size={14} color={iconColor} />}
                 {s === 'journal' && <FileText size={14} color={iconColor} />}
-                {s === 'topics' && <BookmarkCheck size={14} color={iconColor} />}
+                {s === 'topics' && (
+                  <BookmarkCheck size={14} color={iconColor} />
+                )}
                 {s === 'lemma' && <Search size={14} color={iconColor} />}
                 <Text
                   style={[
                     styles.scopeTabText,
-                    active ? styles.scopeTabTextActive : styles.scopeTabTextInactive,
+                    active
+                      ? styles.scopeTabTextActive
+                      : styles.scopeTabTextInactive,
                   ]}
                 >
                   {SCOPE_LABELS[s]}
@@ -453,15 +613,23 @@ export default function SearchScreen() {
                   key={c}
                   style={[
                     styles.covenantChip,
-                    covenant === c ? styles.covenantChipActive : styles.covenantChipInactive,
+                    covenant === c
+                      ? styles.covenantChipActive
+                      : styles.covenantChipInactive,
                   ]}
-                  onPress={() => { setCovenant(c); setBookFilter(undefined); setShowBookPicker(false); }}
+                  onPress={() => {
+                    setCovenant(c);
+                    setBookFilter(undefined);
+                    setShowBookPicker(false);
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text
                     style={[
                       styles.covenantChipText,
-                      covenant === c ? styles.covenantChipTextActive : styles.covenantChipTextInactive,
+                      covenant === c
+                        ? styles.covenantChipTextActive
+                        : styles.covenantChipTextInactive,
                     ]}
                   >
                     {c === 'all' ? 'All' : c === 'ot' ? 'OT' : 'NT'}
@@ -470,7 +638,9 @@ export default function SearchScreen() {
                     <Text
                       style={[
                         { fontSize: 10, opacity: 0.7 },
-                        covenant === c ? { color: '#FFFFFF' } : { color: COLORS.muted },
+                        covenant === c
+                          ? { color: '#FFFFFF' }
+                          : { color: COLORS.muted },
                       ]}
                     >
                       {c === 'ot' ? '39' : '27'}
@@ -498,11 +668,15 @@ export default function SearchScreen() {
                 >
                   {bookName || 'Book'}
                 </Text>
-              <ChevronDown
-                size={12}
-                color={bookName ? '#FFFFFF' : COLORS.text}
-                style={showBookPicker ? { transform: [{ rotate: '180deg' }] } : undefined}
-              />
+                <ChevronDown
+                  size={12}
+                  color={bookName ? '#FFFFFF' : COLORS.text}
+                  style={
+                    showBookPicker
+                      ? { transform: [{ rotate: '180deg' }] }
+                      : undefined
+                  }
+                />
               </TouchableOpacity>
             </View>
 
@@ -515,7 +689,10 @@ export default function SearchScreen() {
                       styles.bookPickerItem,
                       bookName === b && styles.bookPickerItemActive,
                     ]}
-                    onPress={() => { setBookFilter(b); setShowBookPicker(false); }}
+                    onPress={() => {
+                      setBookFilter(b);
+                      setShowBookPicker(false);
+                    }}
                     activeOpacity={0.6}
                   >
                     <Text
@@ -559,12 +736,17 @@ export default function SearchScreen() {
             <View style={styles.center}>
               <Search size={48} color={COLORS.muted} style={styles.emptyIcon} />
               <Text style={styles.emptySubtitle}>
-                {translation?.search?.minChars || 'Type at least 3 characters to search'}
+                {translation?.search?.minChars ||
+                  'Type at least 3 characters to search'}
               </Text>
             </View>
           ) : hasQuery && !loading && results.length === 0 && !error ? (
             <View style={styles.center}>
-              <BookOpen size={48} color={COLORS.muted} style={styles.emptyIcon} />
+              <BookOpen
+                size={48}
+                color={COLORS.muted}
+                style={styles.emptyIcon}
+              />
               <Text style={styles.emptySubtitle}>
                 {scope === 'strongs'
                   ? `No Strong's entries found for "${query}"`
@@ -574,7 +756,8 @@ export default function SearchScreen() {
                       ? `No topics found for "${query}"`
                       : scope === 'lemma'
                         ? `No lemmas found for "${query}"`
-                        : (translation?.search?.noResults || `No verses found for "${query}"`)}
+                        : translation?.search?.noResults ||
+                          `No verses found for "${query}"`}
               </Text>
             </View>
           ) : error ? (
@@ -583,12 +766,16 @@ export default function SearchScreen() {
             </View>
           ) : !hasQuery ? (
             <View style={styles.center}>
-              <FileText size={48} color={COLORS.muted} style={styles.emptyIcon} />
+              <FileText
+                size={48}
+                color={COLORS.muted}
+                style={styles.emptyIcon}
+              />
               <Text style={styles.emptyTitle}>
                 {scope === 'bible'
-                  ? (translation?.search?.title || 'Search the Bible')
+                  ? translation?.search?.title || 'Search the Bible'
                   : scope === 'strongs'
-                    ? 'Search Strong\'s Concordance'
+                    ? "Search Strong's Concordance"
                     : scope === 'journal'
                       ? 'Search Your Journal'
                       : scope === 'topics'
@@ -597,7 +784,8 @@ export default function SearchScreen() {
               </Text>
               <Text style={styles.emptySubtitle}>
                 {scope === 'bible'
-                  ? (translation?.search?.subtitle || 'Find verses across all books and chapters')
+                  ? translation?.search?.subtitle ||
+                    'Find verses across all books and chapters'
                   : scope === 'strongs'
                     ? 'Find Greek & Hebrew word studies'
                     : scope === 'journal'
@@ -608,7 +796,11 @@ export default function SearchScreen() {
               </Text>
               <View style={styles.suggestionsRow}>
                 {SUGGESTIONS[scope].map(s => (
-                  <TouchableOpacity key={s} style={styles.chip} onPress={() => handleSuggestion(s)}>
+                  <TouchableOpacity
+                    key={s}
+                    style={styles.chip}
+                    onPress={() => handleSuggestion(s)}
+                  >
                     <Text style={styles.chipText}>{s}</Text>
                   </TouchableOpacity>
                 ))}
@@ -621,7 +813,9 @@ export default function SearchScreen() {
   );
 }
 
-function splitHeadline(headline: string): { text: string; highlight: boolean }[] {
+function splitHeadline(
+  headline: string,
+): { text: string; highlight: boolean }[] {
   const parts: { text: string; highlight: boolean }[] = [];
   const regex = /<mark>(.*?)<\/mark>/g;
   let lastIndex = 0;
@@ -629,7 +823,10 @@ function splitHeadline(headline: string): { text: string; highlight: boolean }[]
 
   while ((match = regex.exec(headline)) !== null) {
     if (match.index > lastIndex) {
-      parts.push({ text: headline.slice(lastIndex, match.index), highlight: false });
+      parts.push({
+        text: headline.slice(lastIndex, match.index),
+        highlight: false,
+      });
     }
     parts.push({ text: match[1], highlight: true });
     lastIndex = regex.lastIndex;

@@ -1023,9 +1023,14 @@ export default function Bible() {
         loading={wordStudyLoading}
         isDark={isDark}
         onClose={() => setShowWordStudy(false)}
-        onSearchAllUses={strongsId => {
+        onSearchAllUses={(strongsId, word) => {
           setShowWordStudy(false);
-          navigation.navigate(route.wordStudy, { strongsId });
+          const englishWord = (word ?? strongsId ?? '').trim();
+          if (englishWord.length > 0) {
+            navigation.navigate(route.search, { word: englishWord, scope: 'bible', strongsId: strongsId || undefined });
+          } else if (strongsId) {
+            navigation.navigate(route.search, { strongsId, scope: 'strongs' });
+          }
         }}
         onSaveWord={entry => {
           // Future: persist saved word to user account

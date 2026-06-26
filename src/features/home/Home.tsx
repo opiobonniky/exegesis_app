@@ -134,7 +134,7 @@ export default function Home() {
         id: 'journal',
         label: 'Journals',
         icon: BookMarked,
-        onPress: () => navigation.navigate(route.journal),
+        onPress: () => navigation.navigate(route.legacyLedger),
       },
       {
         id: 'plan',

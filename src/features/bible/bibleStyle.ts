@@ -60,11 +60,10 @@ export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
       flexDirection: rtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: COLORS.cardBackground, // add slight transparency to blend with header
+      backgroundColor: COLORS.cardBackground,
       marginHorizontal: SPACING.lg,
-      // On iOS avoid pulling the nav pill over the header title — keep it
-      // slightly below the header so the title remains visible.
-      marginTop: Platform.OS === 'ios' ? -10:-20,
+      marginTop: SPACING.sm,
+      marginBottom: SPACING.md,
       padding: SPACING.md,
       borderRadius: BORDER_RADIUS.lg,
       shadowColor: COLORS.shadowColor,

@@ -47,4 +47,9 @@ export const route = {
   search: 'Search',
   lab: 'Lab',
   labFlow: 'LabFlow',
+
+  // Legacy Ledger (Phase 5+)
+  legacyLedger: 'LegacyLedger',
+  ledgerDetail: 'LedgerDetail',
+  ledgerEntry: 'LedgerEntry',
 };

@@ -759,6 +759,8 @@ export type BottomTabTranslations = {
   users?: string;
   verse?: string;
   devotion?: string;
+  lab?: string;
+  ledger?: string;
 };
 
 // Edit Profile translations

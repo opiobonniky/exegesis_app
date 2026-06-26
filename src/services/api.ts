@@ -148,6 +148,9 @@ export interface JournalEntry {
   application: string | null;
   isPublished: boolean;
   isFavorite: boolean;
+  strongsWords: string | null;   // JSON: [{ strongsId, surfaceText, lemma }]
+  strongsIds: string | null;     // Comma-separated: "H7225,G26,G2889"
+  source: string;                // "manual" | "exegesis-lab"
   tags: string | null;
   createdOn: string;
   updatedOn: string;
@@ -202,6 +205,7 @@ export const createJournalEntry = async (data: {
   application?: string;
   isPublished?: boolean;
   tags?: string;
+  strongsWords?: string;   // JSON: [{ strongsId, surfaceText, lemma }]
 }): Promise<GenericResponse<JournalEntry>> => {
   return sendPostRequest('journal', 'create', data);
 };
@@ -221,6 +225,7 @@ export const updateJournalEntry = async (data: {
   application?: string;
   isPublished?: boolean;
   tags?: string;
+  strongsWords?: string;   // JSON: [{ strongsId, surfaceText, lemma }]
 }): Promise<GenericResponse<JournalEntry>> => {
   return sendPostRequest('journal', 'update', data);
 };
@@ -322,6 +327,58 @@ export const getAllJournalTemplates = async (): Promise<GenericResponse<JournalT
 
 export const deleteJournalTemplate = async (id: number): Promise<GenericResponse> => {
   return sendPostRequest('journal', 'templates/delete', { id });
+};
+
+// Export & Search APIs
+export const exportAllJournalEntries = async (format: 'txt' | 'json' = 'txt'): Promise<GenericResponse<{
+  content: string;
+  filename: string;
+  mimeType: string;
+  entryCount: number;
+}>> => {
+  return sendPostRequest('journal', 'export-all', { format });
+};
+
+export const exportOneJournalEntry = async (
+  id: number,
+  format: 'txt' | 'json' = 'txt',
+): Promise<GenericResponse<{
+  content: string;
+  filename: string;
+  mimeType: string;
+}>> => {
+  return sendPostRequest('journal', 'export-one', { id, format });
+};
+
+export const getPublicJournalEntries = async (data: {
+  search?: string;
+  bookName?: string;
+  category?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<GenericResponse<{
+  entries: (JournalEntry & { user?: { id: string; firstName: string; lastName: string; username: string } })[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNext: boolean;
+}>> => {
+  return sendPostRequest('journal', 'get-public', data);
+};
+
+export const searchJournalEntriesByStrongs = async (data: {
+  strongsId: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<GenericResponse<{
+  entries: JournalEntry[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+}>> => {
+  return sendPostRequest('journal', 'search-by-strongs', data);
 };
 
 // Admin: Get all user journal entries

@@ -342,7 +342,7 @@ const AppNavigation = () => {
           }
         />
 
-        {/* ── Journal ───────────────────────────────────────────────────── */}
+        {/* ── Journal (legacy) ─────────────────────────────────────────── */}
         <Stack.Screen
           name={route.journal}
           getComponent={() =>
@@ -359,6 +359,26 @@ const AppNavigation = () => {
           name={route.journalDetail}
           getComponent={() =>
             require('../../features/journal/JournalDetail').default
+          }
+        />
+
+        {/* ── Legacy Ledger ─────────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.legacyLedger}
+          getComponent={() =>
+            require('../../features/ledger/LegacyLedgerScreen').default
+          }
+        />
+        <Stack.Screen
+          name={route.ledgerDetail}
+          getComponent={() =>
+            require('../../features/journal/JournalDetail').default
+          }
+        />
+        <Stack.Screen
+          name={route.ledgerEntry}
+          getComponent={() =>
+            require('../../features/journal/JournalEntry').default
           }
         />
         <Stack.Screen

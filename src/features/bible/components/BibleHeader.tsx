@@ -1,13 +1,16 @@
 /**
  * BibleHeader.tsx
  *
- * Clean top header — Menu | Book/Version | Search.
- * Audio chapter control lives in ChapterNavigation.
+ * Premium top header — Menu | Book/Chapter | Version | Search.
+ * Designed with depth, subtle gradients, and refined micro-interactions.
  *
- * iOS Fix: SafeAreaView (from react-native-safe-area-context) is placed
- * INSIDE the LinearGradient so the gradient fills the status-bar region
- * on both platforms without relying on manual inset calculations or
- * bibleStyle's headerGradient fixed height.
+ * Features:
+ * - Layered gradient background with subtle shadow depth
+ * - Animated press states on all interactive elements
+ * - Elegant version badge with glass-morphism effect
+ * - Improved typography hierarchy
+ * - Subtle bottom border for visual separation
+ * - Full RTL support
  */
 
 import React, { useMemo } from 'react';
@@ -18,14 +21,12 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Animated,
 } from 'react-native';
-// ✅ Use SafeAreaView from the community package, NOT react-native's built-in.
-// Wrap it INSIDE the gradient so the gradient bleeds into the status bar area.
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import { ChevronDown, Menu, Search } from 'lucide-react-native';
-import { getColors, SPACING } from '../../../constants/theme';
-import { createBibleStyles } from '../bibleStyle';
+import { Menu, Search, ChevronDown } from 'lucide-react-native';
+import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Props
@@ -49,6 +50,7 @@ export interface BibleHeaderProps {
 
 export default function BibleHeader({
   book,
+  chapter,
   version,
   isDark,
   isRtl,
@@ -58,66 +60,105 @@ export default function BibleHeader({
   onVersionPress,
 }: BibleHeaderProps) {
   const COLORS = getColors(isDark);
-  // bibleStyle is still used for bookTitleText, iconButton etc — just NOT for
-  // headerGradient / headerContent layout which we fully own here.
-  const styles = useMemo(() => createBibleStyles(isDark), [isDark]);
+
+  // Animated values for press feedback
+  const menuScale = useMemo(() => new Animated.Value(1), []);
+  const searchScale = useMemo(() => new Animated.Value(1), []);
+  const titleScale = useMemo(() => new Animated.Value(1), []);
+
+  const animatePress = (anim: Animated.Value, toValue: number) => {
+    Animated.spring(anim, {
+      toValue,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 4,
+    }).start();
+  };
 
   return (
     <>
-      {/*
-        Android : backgroundColor fills the translucent status bar with
-                  primary colour.
-        iOS     : backgroundColor is ignored — the SafeAreaView inside the
-                  gradient handles the notch / Dynamic Island inset instead.
-      */}
+      {/* Status bar */}
       <StatusBar
         translucent
         backgroundColor={COLORS.primary}
         barStyle="light-content"
       />
 
-      {/*
-        The gradient is the outermost view so its colour extends all the way
-        to the physical top of the screen (behind the status bar).
-        We do NOT give it a fixed height — let it size to its content.
-      */}
+      {/* Main gradient container */}
       <LinearGradient
-        colors={[COLORS.primary, COLORS.primary]}
+        colors={[COLORS.primary, COLORS.primaryDark || COLORS.primary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={localStyles.gradient}
       >
-        {/*
-          SafeAreaView with edges={['top']} injects the correct top padding
-          for iOS notch / Dynamic Island AND the Android status bar when
-          translucent={true} is set above.
-          We only apply the top edge so left/right/bottom are untouched.
-        */}
-        <SafeAreaView edges={['top']} style={localStyles.safeArea}>
-          {/* Fixed-height row — always visible regardless of inset */}
-          <View style={[localStyles.row, { paddingHorizontal: SPACING.lg ?? 16 }, isRtl && localStyles.rowRtl]}>
+        {/* Subtle inner glow overlay */}
+        <View style={localStyles.glowOverlay} />
 
-            {/* ── Menu ── */}
-            <TouchableOpacity style={styles.iconButton} onPress={onMenuPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Menu color={COLORS.white} size={22} strokeWidth={2} />
+        {/* Safe area inset */}
+        <SafeAreaView edges={['top']} style={localStyles.safeArea}>
+          <View
+            style={[
+              localStyles.container,
+              { paddingHorizontal: SPACING.lg },
+              isRtl && localStyles.containerRtl,
+            ]}
+          >
+            {/* ── Menu Button ───────────────────────────────────────────── */}
+            <TouchableOpacity
+              onPress={onMenuPress}
+              activeOpacity={0.8}
+              onPressIn={() => animatePress(menuScale, 0.9)}
+              onPressOut={() => animatePress(menuScale, 1)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Animated.View
+                style={[
+                  localStyles.iconButton,
+                  { transform: [{ scale: menuScale }] },
+                ]}
+              >
+                <View style={localStyles.iconButtonInner}>
+                  <Menu color={COLORS.white} size={22} strokeWidth={2.2} />
+                </View>
+              </Animated.View>
             </TouchableOpacity>
 
-            {/* ── Book title (flex: 1 so it fills remaining space) ── */}
+            {/* ── Book & Chapter Title ─────────────────────────────────── */}
             <TouchableOpacity
-              style={localStyles.titleButton}
               onPress={onBookPress}
               activeOpacity={0.75}
+              onPressIn={() => animatePress(titleScale, 0.97)}
+              onPressOut={() => animatePress(titleScale, 1)}
+              style={localStyles.titleContainer}
             >
-              <Text style={styles.bookTitleText} numberOfLines={1}>
-                {book}
-              </Text>
-              <ChevronDown
-                size={18}
-                color={COLORS.white}
-                strokeWidth={2.5}
-                style={localStyles.chevron}
-              />
+              <Animated.View
+                style={{ transform: [{ scale: titleScale }] }}
+              >
+                <View style={localStyles.titleContent}>
+                  <Text
+                    style={localStyles.bookTitle}
+                    numberOfLines={1}
+                  >
+                    {book}
+                  </Text>
+                  {chapter > 0 && (
+                    <View style={localStyles.chapterBadge}>
+                      <Text style={localStyles.chapterText}>
+                        {chapter}
+                      </Text>
+                    </View>
+                  )}
+                  <ChevronDown
+                    size={16}
+                    color={COLORS.white}
+                    strokeWidth={2.5}
+                    style={localStyles.chevron}
+                  />
+                </View>
+              </Animated.View>
             </TouchableOpacity>
 
-            {/* ── Version badge ── */}
+            {/* ── Version Badge ────────────────────────────────────────── */}
             {onVersionPress && (
               <TouchableOpacity
                 onPress={onVersionPress}
@@ -132,69 +173,161 @@ export default function BibleHeader({
               </TouchableOpacity>
             )}
 
-            {/* ── Search ── */}
-            <TouchableOpacity style={styles.iconButton} onPress={onSearchPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Search color={COLORS.white} size={22} strokeWidth={2} />
+            {/* ── Search Button ────────────────────────────────────────── */}
+            <TouchableOpacity
+              onPress={onSearchPress}
+              activeOpacity={0.8}
+              onPressIn={() => animatePress(searchScale, 0.9)}
+              onPressOut={() => animatePress(searchScale, 1)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Animated.View
+                style={[
+                  localStyles.iconButton,
+                  { transform: [{ scale: searchScale }] },
+                ]}
+              >
+                <View style={localStyles.iconButtonInner}>
+                  <Search color={COLORS.white} size={22} strokeWidth={2.2} />
+                </View>
+              </Animated.View>
             </TouchableOpacity>
-
           </View>
         </SafeAreaView>
+
+        {/* Bottom separator with subtle shadow */}
+        <View style={localStyles.bottomBorder} />
       </LinearGradient>
     </>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Local styles  — owns the header layout entirely, independent of bibleStyle
+// Local Styles
 // ─────────────────────────────────────────────────────────────────────────────
 
 const localStyles = StyleSheet.create({
-  // Gradient fills its own content — no fixed height so it always wraps the row
+  // Gradient fills screen width, height wraps content
   gradient: {
     width: '100%',
+    position: 'relative',
   },
 
-  // SafeAreaView adds the correct top inset transparently
+  // Subtle inner glow for depth
+  glowOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    pointerEvents: 'none',
+  },
+
   safeArea: {
     width: '100%',
   },
 
-  // The actual icon/title row — explicit height so it never collapses
-  row: {
-    height: Platform.OS==='ios' ? 52 : 82,
+  container: {
+    height: Platform.OS === 'ios' ? 56 : 76,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingBottom:Platform.OS==='ios'?20:20
+    gap: SPACING.sm,
+    position: 'relative',
   },
-  rowRtl: {
+  containerRtl: {
     flexDirection: 'row-reverse',
   },
 
-  // Title takes all remaining space between the side icons
-  titleButton: {
+  // ── Icon Buttons ──────────────────────────────────────────────────────
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: BORDER_RADIUS.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  iconButtonInner: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // ── Title Section ─────────────────────────────────────────────────────
+  titleContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  titleContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
-
+  bookTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+    textAlign: 'center',
+    maxWidth: 140,
+  },
+  chapterBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: BORDER_RADIUS.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  chapterText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
   chevron: {
-    marginTop: 2,
+    marginLeft: 2,
+    opacity: 0.9,
   },
 
+  // ── Version Badge ─────────────────────────────────────────────────────
   versionBadge: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   versionBadgeText: {
-    color: '#fff',
-    fontSize: 10,
+    color: '#FFFFFF',
+    fontSize: FONT_SIZES.xs,
     fontWeight: '800',
     letterSpacing: 0.8,
+  },
+
+  // ── Bottom Border ─────────────────────────────────────────────────────
+  bottomBorder: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 2,
   },
 });

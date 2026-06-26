@@ -28,7 +28,7 @@ interface WordStudyBottomSheetProps {
   loading: boolean;
   isDark: boolean;
   onClose: () => void;
-  onSearchAllUses?: (strongsId: string) => void;
+  onSearchAllUses?: (strongsId: string, word?: string) => void;
   onSaveWord?: (entry: StrongsEntry) => void;
 }
 
@@ -230,7 +230,7 @@ export default function WordStudyBottomSheet({
         <View style={ss.actionsRow}>
           {onSearchAllUses && (
             <TouchableOpacity
-              onPress={() => onSearchAllUses(entry.strongsId)}
+              onPress={() => onSearchAllUses(entry.strongsId, word?.surfaceText)}
               activeOpacity={0.7}
               style={[ss.actionBtn, { backgroundColor: COLORS.primary }]}
             >
