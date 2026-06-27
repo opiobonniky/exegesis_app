@@ -207,6 +207,7 @@ export default function VerseCard({
   // ── Split verse text into word-level components ──────────────────────────
   const renderVerseWords = () => {
     const lineHeight = Math.round(fontSize * 1.75);
+    const textColor = (styles.verseText as any)?.color;
     const numStyle = [
       styles.verseNumber,
       {
@@ -218,65 +219,64 @@ export default function VerseCard({
     ];
 
     const hasWordData = verseWords && verseWords.length > 0;
-
-    // Split text into word tokens (preserve punctuation attached to words)
     const wordTokens = text.match(/\S+/g) || [];
 
-    const renderWords = () => {
-      if (!hasWordData) {
-        // No Strong's data — render as plain text
-        return (
-          <Text style={{ fontSize, lineHeight }}>
-            {wordTokens.map((token, i) => (
-              <Text key={i}>{token}{' '}</Text>
-            ))}
-          </Text>
-        );
-      }
-
-      // Has Strong's word data — render each word individually
-      return (
-        <Text style={{ fontSize, lineHeight, includeFontPadding: false }}>
-          {wordTokens.map((token, i) => {
-            const wordData = verseWords[i];
-            if (!wordData?.hasData) {
-              return <Text key={i}>{token}{' '}</Text>;
-            }
-
-            return (
-              <Text
-                key={i}
-                onPress={() => {
-                  wordTapHandledRef.current = true;
-                  if (typeof onWordPress === 'function') {
-                    onWordPress(wordData);
-                  }
-                }}
-                style={ssWord.strongsWord}
-              >
-                {token}{' '}
-              </Text>
-            );
-          })}
+    const renderTokens = () => {
+      const elements: React.ReactNode[] = [];
+      const verseNumElement = (
+        <Text key="vnum" style={numStyle}>
+          {toArabicIndic(isRtl, verseNum)}{' '}
         </Text>
       );
+      elements.push(verseNumElement);
+
+      if (!hasWordData) {
+        wordTokens.forEach((token, i) => {
+          elements.push(
+            <Text key={i} style={{ fontSize, lineHeight, color: textColor }}>
+              {token}{' '}
+            </Text>,
+          );
+        });
+      } else {
+        wordTokens.forEach((token, i) => {
+          const wordData = verseWords[i];
+          if (!wordData?.hasData) {
+            elements.push(
+              <Text key={i} style={{ fontSize, lineHeight, color: textColor }}>
+                {token}{' '}
+              </Text>,
+            );
+          } else {
+            elements.push(
+              <Pressable
+                key={i}
+                onPress={() => onWordPress?.(wordData)}
+                style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              >
+                <Text style={[ssWord.strongsWord, { fontSize, lineHeight }]}>
+                  {token}{' '}
+                </Text>
+              </Pressable>,
+            );
+          }
+        });
+      }
+
+      return elements;
     };
 
     return (
-      <Text
-        style={[
-          styles.verseText,
-          {
-            fontSize,
-            lineHeight,
-            opacity: isEffectivelyActive ? 1 : 0.88,
-            writingDirection: isRtl ? 'rtl' as const : 'ltr' as const,
-          },
-        ]}
+      <View
+        style={{
+          flexDirection: isRtl ? 'row-reverse' as const : 'row' as const,
+          flexWrap: 'wrap',
+          alignItems: 'baseline',
+          opacity: isEffectivelyActive ? 1 : 0.88,
+        }}
       >
-        <Text style={numStyle}>{toArabicIndic(isRtl, verseNum)}{'  '}</Text>
-        {renderWords()}
-      </Text>
+        {renderTokens()}
+      </View>
     );
   };
 
@@ -405,9 +405,6 @@ export default function VerseCard({
     prevFavRef.current = isFavorite;
   }, [isFavorite, favAnim]);
 
-  // ── Word-tap flag: prevent verse selection when a Strong's word was tapped
-  const wordTapHandledRef = useRef(false);
-
   // ── Double-tap detection ────────────────────────────────────────────
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -418,10 +415,6 @@ export default function VerseCard({
   }, []);
 
   const handlePress = useCallback(() => {
-    if (wordTapHandledRef.current) {
-      wordTapHandledRef.current = false;
-      return;
-    }
     if (isEffectivelyActive) return;
     if (tapTimerRef.current) {
       clearTimeout(tapTimerRef.current);
