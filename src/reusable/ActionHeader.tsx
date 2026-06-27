@@ -38,14 +38,15 @@ type StandardProps = BaseProps & {
 /** Home header — brand bar + user profile section */
 type HomeProps = BaseProps & {
   mode: 'home';
-  greeting: string;
-  userName: string;
+  greeting?: string;
+  userName?: string;
   tagline?: string;
   isDarkMode: boolean;
   onThemeToggle: () => void;
   onSearchPress?: () => void;
   profilePhotoUrl?: string | null;
-  onProfilePress: () => void;
+  onProfilePress?: () => void;
+  hideProfile?: boolean;
   appName?: string;
   taglineText?: string;
 };
@@ -164,6 +165,7 @@ const ActionHeader = (props: Props) => {
       onSearchPress,
       profilePhotoUrl,
       onProfilePress,
+      hideProfile,
       appName,
       taglineText,
     } = props as HomeProps;
@@ -205,40 +207,42 @@ const ActionHeader = (props: Props) => {
             </View>
           </View>
 
-          {/* Row 2: User profile section */}
-          <TouchableOpacity
-            onPress={onProfilePress}
-            activeOpacity={0.8}
-            style={[styles.userSection, isRtl && styles.userSectionRtl]}
-          >
-            <View style={styles.userPicWrap}>
-              {profilePhotoUrl ? (
-                <Image source={{ uri: profilePhotoUrl }} style={styles.userPicImage} />
-              ) : (
-                <View style={[styles.userPicPlaceholder, { backgroundColor: COLORS.primary + '20' }]}>
-                  <User size={24} color={COLORS.primary} />
-                </View>
-              )}
-            </View>
+          {!hideProfile && (
+            /* Row 2: User profile section */
+            <TouchableOpacity
+              onPress={onProfilePress}
+              activeOpacity={0.8}
+              style={[styles.userSection, isRtl && styles.userSectionRtl]}
+            >
+              <View style={styles.userPicWrap}>
+                {profilePhotoUrl ? (
+                  <Image source={{ uri: profilePhotoUrl }} style={styles.userPicImage} />
+                ) : (
+                  <View style={[styles.userPicPlaceholder, { backgroundColor: COLORS.primary + '20' }]}>
+                    <User size={24} color={COLORS.primary} />
+                  </View>
+                )}
+              </View>
 
-            <View style={[styles.userInfoWrap, isRtl && styles.userInfoWrapRtl]}>
-              <Text style={[styles.userGreeting, { color: COLORS.muted }]} numberOfLines={1}>
-                {greeting}
-              </Text>
-              <Text style={[styles.userDisplayName, { color: COLORS.text }]} numberOfLines={1}>
-                {userName}
-              </Text>
-              {!!tagline && (
-                <Text style={[styles.userTagline, { color: COLORS.muted }]} numberOfLines={1}>
-                  {tagline}
+              <View style={[styles.userInfoWrap, isRtl && styles.userInfoWrapRtl]}>
+                <Text style={[styles.userGreeting, { color: COLORS.muted }]} numberOfLines={1}>
+                  {greeting}
                 </Text>
-              )}
-            </View>
+                <Text style={[styles.userDisplayName, { color: COLORS.text }]} numberOfLines={1}>
+                  {userName}
+                </Text>
+                {!!tagline && (
+                  <Text style={[styles.userTagline, { color: COLORS.muted }]} numberOfLines={1}>
+                    {tagline}
+                  </Text>
+                )}
+              </View>
 
-            <View style={[styles.userArrow, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : COLORS.surface }]}>
-              <ChevronRight size={18} color={COLORS.muted} strokeWidth={2} />
-            </View>
-          </TouchableOpacity>
+              <View style={[styles.userArrow, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : COLORS.surface }]}>
+                <ChevronRight size={18} color={COLORS.muted} strokeWidth={2} />
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );

@@ -34,7 +34,6 @@ import {
   GraduationCap,
   Sparkles,
   Play,
-  FileText,
   BookText,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -45,9 +44,9 @@ import { route } from '../../component/navigations/routes';
 import { sendPostRequest } from '../../services/api';
 import { formatWhatsAppTime } from '../../utilits/bibleUtils';
 import ActionHeader from '../../reusable/ActionHeader';
+import { ProfileCard } from './cards';
 import { createStyles } from './homeStyle';
 import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
-import { showToast } from '../../helpers/Toash.helper';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ActivityType = 'read' | 'highlight' | 'note' | 'favorite' | 'plan';
@@ -80,15 +79,6 @@ const getGreeting = (translations?: any): string => {
 
 const safeNumber = (v: any): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : 0;
-
-const getTodayLabel = (languageCode = 'en'): string => {
-  const locale = languageCode === 'en' ? 'en-US' : languageCode;
-  return new Date().toLocaleDateString(locale, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
-};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function Home() {
@@ -350,15 +340,15 @@ export default function Home() {
       <>
       <ActionHeader
         mode="home"
-        greeting={getGreeting(translation)}
-        userName={userInfo?.lastName + ' ' + userInfo?.firstName || 'Friend'}
-        tagline={
-          translation?.appTagline ||
-          'Your Practical Application Bible for Daily Guidance'
-        }
+        hideProfile
         isDarkMode={isDark}
         onThemeToggle={toggleTheme}
         onSearchPress={() => navigation.navigate(route.search)}
+      />
+
+      <ProfileCard
+        greeting={getGreeting(translation)}
+        userName={userInfo?.lastName + ' ' + userInfo?.firstName || 'Friend'}
         profilePhotoUrl={userInfo?.profilePhotoUrl}
         onProfilePress={() => navigation.navigate(route.profile)}
       />
