@@ -34,6 +34,7 @@
     "react-native-device-info": "^15.0.2",
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.30.0",
+    "react-native-haptic-feedback": "^3.0.0",
     "react-native-linear-gradient": "^2.8.3",
     "react-native-permissions": "^5.4.4",
     "react-native-reanimated": "^4.3.0",

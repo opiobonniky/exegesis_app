@@ -31,10 +31,14 @@ import {
   CheckCircle,
   BookOpen,
   GraduationCap,
+  Sparkles,
+  Play,
+  FileText,
+  BookText,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { AppContext } from '../../common/AppContext';
-import { getColors } from '../../constants/theme';
+import { getColors, SPACING } from '../../constants/theme';
 import BottomTab from '../../component/navigations/BottomTab';
 import { route } from '../../component/navigations/routes';
 import { sendPostRequest } from '../../services/api';
@@ -105,6 +109,8 @@ export default function Home() {
   const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>(
     [],
   );
+  const [activeSession, setActiveSession] = useState<any | null>(null);
+  const [recentEntry, setRecentEntry] = useState<any | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [bottomTabVisible, setBottomTabVisible] = useState(true);
 
@@ -143,10 +149,10 @@ export default function Home() {
         onPress: () => navigation.navigate(route.readingPlan),
       },
       {
-        id: 'trivial',
-        label: 'Bible Trivial',
+        id: 'trivia',
+        label: 'Bible Trivia',
         icon: Brain,
-        onPress: () => navigation.navigate(route.home),
+        onPress: () => navigation.navigate(route.trivia),
       },
       {
         id: 'study',
@@ -238,10 +244,11 @@ export default function Home() {
 
   const loadHomeStats = useCallback(async () => {
     try {
-      const [statsRes, activityRes] = await Promise.all([
+      const [statsRes, activityRes, labRes, journalRes] = await Promise.all([
         sendPostRequest('bible', 'get-home-stats', {}),
         sendPostRequest('bible', 'get-recent-activity', { limit: 10 }),
-        
+        sendPostRequest('exegesis', 'current', {}).catch(() => null),
+        sendPostRequest('journal', 'get-all', { page: 0, pageSize: 1 }).catch(() => null),
       ]);
 
       if (statsRes.returnCode === 200) {
@@ -263,6 +270,25 @@ export default function Home() {
           time: formatActivityTime(act),
         }));
         setRecentActivity(activities);
+      }
+
+      // Active Lab session
+      if (labRes?.returnCode === 200 && labRes?.returnData) {
+        const session = labRes.returnData;
+        if (!session.completed) {
+          setActiveSession(session);
+        } else {
+          setActiveSession(null);
+        }
+      } else {
+        setActiveSession(null);
+      }
+
+      // Most recent journal entry
+      if (journalRes?.returnCode === 200 && journalRes?.returnData?.entries?.length > 0) {
+        setRecentEntry(journalRes.returnData.entries[0]);
+      } else {
+        setRecentEntry(null);
       }
     } catch (e) {
       console.error('Error loading home stats:', e);
@@ -372,6 +398,161 @@ export default function Home() {
             );
           })}
         </View>
+
+        {/* ── Continue Exegesis Lab Card ── */}
+        {activeSession && !activeSession.completed && (
+          <View style={[styles.dashboardCard, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border }]}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() =>
+                navigation.navigate(route.labFlow, {
+                  sessionId: activeSession.id,
+                  stage: activeSession.currentStage,
+                  passageRef: activeSession.passageRef,
+                  bookName: activeSession.bookName,
+                  chapter: activeSession.chapter?.toString(),
+                  verseStart: activeSession.verseStart?.toString(),
+                  verseEnd: activeSession.verseEnd?.toString(),
+                })
+              }
+              style={styles.dashboardCardInner}
+            >
+              <View style={styles.dashboardCardTop}>
+                <View style={[styles.dashboardCardIcon, { backgroundColor: `${COLORS.accent}18` }, isRtl && rtlCardIcon]}>
+                  <Sparkles size={18} color={COLORS.accent} strokeWidth={2} />
+                </View>
+                <View style={styles.dashboardCardTitleGroup}>
+                  <Text style={[styles.dashboardCardTitle, { color: COLORS.text }]}>
+                    Continue Exegesis Lab
+                  </Text>
+                  <Text style={[styles.dashboardCardSubtitle, { color: COLORS.muted }]}>
+                    {activeSession.passageRef || `${activeSession.bookName} ${activeSession.chapter}`}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.dashboardCardBody}>
+                {/* Stage badges */}
+                <View style={[styles.dashboardStageRow, isRtl && styles.dashboardStageRowRtl]}>
+                  {['look', 'listen', 'learn', 'abide'].map((s, idx) => {
+                    const stageOrder = ['look', 'listen', 'learn', 'abide'];
+                    const currentIdx = stageOrder.indexOf(activeSession.currentStage);
+                    const isDone = idx < currentIdx;
+                    const isCurrent = idx === currentIdx;
+                    return (
+                      <View key={s} style={styles.dashboardStageBadge}>
+                        <View
+                          style={[
+                            styles.dashboardStageDot,
+                            {
+                              backgroundColor: isDone
+                                ? COLORS.success
+                                : isCurrent
+                                  ? COLORS.accent
+                                  : COLORS.muted,
+                            },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.dashboardStageLabel,
+                            {
+                              color: isDone
+                                ? COLORS.success
+                                : isCurrent
+                                  ? COLORS.accent
+                                  : COLORS.muted,
+                              fontWeight: isCurrent ? '700' : '500',
+                            },
+                          ]}
+                        >
+                          {s.charAt(0).toUpperCase() + s.slice(1)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+              <View style={styles.dashboardCardAction}>
+                <View style={[styles.dashboardCardBtn, { backgroundColor: COLORS.accent }]}>
+                  <Play size={14} color="#FFFFFF" fill="#FFFFFF" />
+                  <Text style={styles.dashboardCardBtnText}>Continue Study</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── Recent Journal Entry Card ── */}
+        {recentEntry && (
+          <View style={[styles.dashboardCard, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border }]}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() =>
+                navigation.navigate(route.ledgerDetail, { entryId: recentEntry.id })
+              }
+              style={styles.dashboardCardInner}
+            >
+              <View style={styles.dashboardCardTop}>
+                <View style={[styles.dashboardCardIcon, { backgroundColor: `${COLORS.primary}15` }, isRtl && rtlCardIcon]}>
+                  <BookText size={18} color={COLORS.primary} strokeWidth={2} />
+                </View>
+                <View style={styles.dashboardCardTitleGroup}>
+                  <Text style={[styles.dashboardCardTitle, { color: COLORS.text }]}>
+                    Recent Journal Entry
+                  </Text>
+                  <Text style={[styles.dashboardCardSubtitle, { color: COLORS.muted }]}>
+                    {new Date(recentEntry.createdOn).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </Text>
+                </View>
+                {/* Source badge */}
+                {recentEntry.source === 'exegesis-lab' && (
+                  <View style={[styles.dashboardBadgePill, { backgroundColor: '#3B82F620' }]}>
+                    <Text style={[styles.dashboardBadgePillText, { color: '#3B82F6' }]}>Lab</Text>
+                  </View>
+                )}
+              </View>
+              {/* Title */}
+              {recentEntry.title && (
+                <Text
+                  style={[styles.dashboardEntryTitle, { color: COLORS.text }]}
+                  numberOfLines={1}
+                >
+                  {recentEntry.title}
+                </Text>
+              )}
+              {/* Content preview */}
+              <Text
+                style={[styles.dashboardEntryPreview, { color: COLORS.textSecondary }]}
+                numberOfLines={2}
+              >
+                {recentEntry.content || ''}
+              </Text>
+              {/* Scripture reference */}
+              {recentEntry.bookName && (
+                <View style={[styles.dashboardScriptureRow, isRtl && styles.dashboardScriptureRowRtl]}>
+                  <BookOpen size={11} color={COLORS.muted} />
+                  <Text style={[styles.dashboardScriptureRef, { color: COLORS.muted }]}>
+                    {recentEntry.bookName} {recentEntry.chapter || ''}{recentEntry.verseNumber ? `:${recentEntry.verseNumber}` : ''}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.dashboardCardAction}>
+                <Text style={[styles.dashboardCardLink, { color: COLORS.primary }]}>
+                  Open Entry
+                </Text>
+                {isRtl ? (
+                  <ArrowLeft size={14} color={COLORS.primary} />
+                ) : (
+                  <ArrowRight size={14} color={COLORS.primary} />
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* ── Quick Actions ── */}
         <View style={styles.section}>
@@ -605,6 +786,9 @@ export default function Home() {
     </View>
   );
 }
+
+// ── RTL icon helper ─────────────────────────────────────────────────────────────
+const rtlCardIcon = { marginRight: 0, marginLeft: SPACING.sm };
 
 // ── Activity Styles ────────────────────────────────────────────────────────────
 const activityStyles = StyleSheet.create({

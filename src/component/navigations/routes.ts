@@ -52,4 +52,7 @@ export const route = {
   legacyLedger: 'LegacyLedger',
   ledgerDetail: 'LedgerDetail',
   ledgerEntry: 'LedgerEntry',
+
+  // Bible Trivia
+  trivia: 'Trivia',
 };

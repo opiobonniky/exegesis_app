@@ -334,8 +334,6 @@ export default function Bible() {
         activeVersion.id,
       );
 
-      console.log('Fetched verse words:', res?.returnData);
-
       if (!res?.returnData) return;
       const grouped: Record<number, StrongsWordData[]> = {};
       for (const w of res.returnData) {

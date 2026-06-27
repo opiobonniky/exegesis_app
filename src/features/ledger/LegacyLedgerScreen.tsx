@@ -66,11 +66,8 @@ import {
   PenLine,
   MessageSquareQuote,
   Clock,
-  Lock,
   BookText,
   Download,
-  Hash,
-  Filter,
   Users,
   Globe,
 } from 'lucide-react-native';
@@ -92,28 +89,7 @@ const CATEGORIES = [
   { value: 'general' },
 ];
 
-const PRIVACY_FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'private', label: 'Private' },
-  { value: 'public', label: 'Public' },
-] as const;
 
-const BOOKS_OF_BIBLE = [
-  'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy',
-  'Joshua', 'Judges', 'Ruth', '1 Samuel', '2 Samuel',
-  '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra',
-  'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs',
-  'Ecclesiastes', 'Song of Solomon', 'Isaiah', 'Jeremiah', 'Lamentations',
-  'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
-  'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk',
-  'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
-  'Matthew', 'Mark', 'Luke', 'John', 'Acts',
-  'Romans', '1 Corinthians', '2 Corinthians', 'Galatians', 'Ephesians',
-  'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians',
-  '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews',
-  'James', '1 Peter', '2 Peter', '1 John', '2 John',
-  '3 John', 'Jude', 'Revelation',
-];
 
 const getCategoryLabel = (value: string, jc: any): string => {
   const labels: Record<string, string> = {
@@ -205,7 +181,11 @@ const EmptyState = ({
   let subtitle = jc?.noEntriesSubtitle || 'Complete an Exegesis Lab session or write a journal entry.';
   let icon = <BookText size={48} color={colors.muted} />;
 
-  if (hasSearch && hasCategoryFilter) {
+  if (isDiscover && !hasSearch && !hasCategoryFilter) {
+    title = 'No community entries yet';
+    subtitle = 'Entries from other users will appear here once people start sharing.';
+    icon = <Globe size={48} color={colors.muted} />;
+  } else if (hasSearch && hasCategoryFilter) {
     title = jc?.noEntries || 'No matching entries';
     subtitle = jc?.noEntriesSubtitle || 'Try adjusting your search or clearing filters.';
     icon = <Search size={48} color={colors.muted} />;
@@ -225,7 +205,8 @@ const EmptyState = ({
         {icon}
       </View>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>{title}</Text>
-      <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>              {!hasSearch && !isDiscover && (
+      <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
+              {!hasSearch && !isDiscover && (
                 <TouchableOpacity
                   style={[styles.emptyButton, { backgroundColor: colors.primary }]}
                   onPress={onCreateNew}
@@ -443,8 +424,6 @@ const ExportModal = ({
   );
 };
 
-// ── Main component ───────────────────────────────────────────────────────────
-
 const LegacyLedgerScreen = () => {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
@@ -465,20 +444,10 @@ const LegacyLedgerScreen = () => {
   const [hasMore, setHasMore] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'my' | 'discover'>('my');
-
-  // ── Phase 3: Additional filters ───────────────────────────────────────────
-  const [privacyFilter, setPrivacyFilter] = useState<'all' | 'private' | 'public'>('all');
-  const [strongsFilter, setStrongsFilter] = useState('');
-  const [bookFilter, setBookFilter] = useState('');
-  const [showBookPicker, setShowBookPicker] = useState(false);
-  const [dateStart, setDateStart] = useState('');
-  const [dateEnd, setDateEnd] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Debounced search ──────────────────────────────────────────────────────
   const handleSearchChange = useCallback((text: string) => {
     setSearch(text);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -487,7 +456,6 @@ const LegacyLedgerScreen = () => {
     }, 400);
   }, []);
 
-  // ── Data fetching ─────────────────────────────────────────────────────────
   const fetchEntries = useCallback(
     async (pageNum = 0, refresh = false) => {
       try {
@@ -497,36 +465,21 @@ const LegacyLedgerScreen = () => {
         const payload: any = { page: pageNum, pageSize: 20 };
         if (searchDebounced) payload.search = searchDebounced;
         if (category !== 'all') payload.category = category;
-        if (bookFilter) payload.bookName = bookFilter;
 
         if (viewMode === 'discover') {
-          // Fetch public entries from all users
           const res = await getPublicJournalEntries(payload);
           if (res.returnCode === 200 && res.returnData) {
             const entriesData = res.returnData;
-            if (pageNum === 0) {
-              setEntries(entriesData.entries || []);
-            } else {
-              setEntries(prev => [...prev, ...(entriesData.entries || [])]);
-            }
+            if (pageNum === 0) setEntries(entriesData.entries || []);
+            else setEntries(prev => [...prev, ...(entriesData.entries || [])]);
             setHasMore(entriesData.hasNext || false);
           }
         } else {
-          // Fetch own entries (existing logic)
-          if (privacyFilter === 'public') payload.isPublished = true;
-          if (privacyFilter === 'private') payload.isPublished = false;
-          if (strongsFilter) payload.strongsId = strongsFilter.toUpperCase();
-          if (dateStart) payload.startDate = dateStart;
-          if (dateEnd) payload.endDate = dateEnd;
-
           const res = await getAllJournalEntries(payload);
           if (res.returnCode === 200 && res.returnData) {
             const entriesData = res.returnData;
-            if (pageNum === 0) {
-              setEntries(entriesData.entries || []);
-            } else {
-              setEntries(prev => [...prev, ...(entriesData.entries || [])]);
-            }
+            if (pageNum === 0) setEntries(entriesData.entries || []);
+            else setEntries(prev => [...prev, ...(entriesData.entries || [])]);
             setHasMore(entriesData.hasNext || false);
           }
         }
@@ -538,15 +491,13 @@ const LegacyLedgerScreen = () => {
         setRefreshing(false);
       }
     },
-    [searchDebounced, category, privacyFilter, bookFilter, strongsFilter, dateStart, dateEnd, viewMode, jc],
+    [searchDebounced, category, viewMode, jc],
   );
 
   const fetchStats = useCallback(async () => {
     try {
       const res = await getJournalStats();
-      if (res.returnCode === 200 && res.returnData) {
-        setStats(res.returnData);
-      }
+      if (res.returnCode === 200 && res.returnData) setStats(res.returnData);
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
@@ -556,9 +507,8 @@ const LegacyLedgerScreen = () => {
     setPage(0);
     fetchEntries(0);
     if (viewMode === 'my') fetchStats();
-  }, [category, searchDebounced, privacyFilter, bookFilter, strongsFilter, dateStart, dateEnd, viewMode, fetchEntries, fetchStats]);
+  }, [category, searchDebounced, viewMode, fetchEntries, fetchStats]);
 
-  // ── Actions ───────────────────────────────────────────────────────────────
   const handleRefresh = useCallback(() => {
     setPage(0);
     fetchEntries(0, true);
@@ -588,7 +538,6 @@ const LegacyLedgerScreen = () => {
     }
   }, [jc]);
 
-  // ── Delete with confirmation ──────────────────────────────────────────────
   const confirmDelete = useCallback((entry: JournalEntry) => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -638,21 +587,16 @@ const LegacyLedgerScreen = () => {
     }
   }, [jc]);
 
-  const handleEntryPress = useCallback(
-    (entry: JournalEntry) => {
-      navigation.navigate(route.ledgerDetail, { entryId: entry.id });
-    },
-    [navigation],
-  );
+  const handleEntryPress = useCallback((entry: JournalEntry) => {
+    navigation.navigate(route.ledgerDetail, { entryId: entry.id });
+  }, [navigation]);
 
   const handleCreateNew = useCallback(() => {
     navigation.navigate(route.ledgerEntry, {});
   }, [navigation]);
 
-  // ── Render helpers ────────────────────────────────────────────────────────
   const getCategoryColor = (cat: string) => CATEGORY_COLORS[cat] || CATEGORY_COLORS.general;
 
-  // ── Render entry card ─────────────────────────────────────────────────────
   const renderEntry = ({ item }: { item: JournalEntry & { user?: { id: string; firstName: string; lastName: string; username: string } } }) => {
     const moodEmoji = item.mood ? MOOD_EMOJIS[item.mood] : null;
     const isDiscover = viewMode === 'discover';
@@ -660,13 +604,7 @@ const LegacyLedgerScreen = () => {
 
     return (
       <Swipeable
-        renderRightActions={
-          isDiscover
-            ? undefined
-            : (progress, dragX) => (
-                <DeleteAction progress={progress} dragX={dragX} colors={COLORS} jc={jc} />
-              )
-        }
+        renderRightActions={isDiscover ? undefined : (progress, dragX) => <DeleteAction progress={progress} dragX={dragX} colors={COLORS} jc={jc} />}
         onSwipeableOpen={isDiscover ? undefined : () => confirmDelete(item)}
         overshootRight={false}
         rightThreshold={40}
@@ -676,7 +614,6 @@ const LegacyLedgerScreen = () => {
           onPress={() => handleEntryPress(item)}
           activeOpacity={0.7}
         >
-          {/* Top row: badges + author (discover) + favorite */}
           <View style={[styles.entryHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <View style={[styles.entryMeta, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               {!!item.category && (
@@ -687,30 +624,6 @@ const LegacyLedgerScreen = () => {
                 </View>
               )}
               {!!moodEmoji && <Text style={styles.moodEmoji}>{moodEmoji}</Text>}
-
-              {/* ── Public badge (always public in discover) ── */}
-              {!isDiscover && (
-                <View
-                  style={[
-                    styles.privacyBadge,
-                    {
-                      backgroundColor: item.isPublished ? '#10B98120' : '#EF444420',
-                    },
-                  ]}
-                >
-                  <Lock size={10} color={item.isPublished ? '#10B981' : '#EF4444'} />
-                  <Text
-                    style={[
-                      styles.privacyBadgeText,
-                      { color: item.isPublished ? '#10B981' : '#EF4444' },
-                    ]}
-                  >
-                    {item.isPublished ? 'Public' : 'Private'}
-                  </Text>
-                </View>
-              )}
-
-              {/* ── Author badge (discover mode) ── */}
               {isDiscover && author && (
                 <View style={[styles.authorBadge, { backgroundColor: '#8B5CF620' }]}>
                   <Users size={10} color="#8B5CF6" />
@@ -719,8 +632,6 @@ const LegacyLedgerScreen = () => {
                   </Text>
                 </View>
               )}
-
-              {/* ── Source badge (Exegesis Lab) ── */}
               {item.source === 'exegesis-lab' && (
                 <View style={[styles.sourceBadge, { backgroundColor: '#3B82F620' }]}>
                   <BookText size={10} color="#3B82F6" />
@@ -733,10 +644,7 @@ const LegacyLedgerScreen = () => {
                 <Star size={14} color="#F59E0B" fill="#F59E0B" style={{ marginRight: 2 }} />
               )}
               {!isDiscover && (
-                <TouchableOpacity
-                  onPress={() => handleToggleFavorite(item.id)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
+                <TouchableOpacity onPress={() => handleToggleFavorite(item.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                   {item.isFavorite ? (
                     <Star size={18} color="#F59E0B" fill="#F59E0B" />
                   ) : (
@@ -747,47 +655,29 @@ const LegacyLedgerScreen = () => {
             </View>
           </View>
 
-          {/* Title */}
           {!!item.title && (
-            <Text
-              style={[styles.entryTitle, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
-              numberOfLines={1}
-            >
+            <Text style={[styles.entryTitle, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={1}>
               {String(item.title)}
             </Text>
           )}
 
-          {/* Content preview */}
-          <Text
-            style={[styles.entryContent, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}
-            numberOfLines={3}
-          >
+          <Text style={[styles.entryContent, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={3}>
             {String(item.content ?? '')}
           </Text>
 
-          {/* Verse preview */}
           {!!item.bookName && item.chapter != null && item.verseNumber != null && (
-            <VersePreview
-              bookName={item.bookName}
-              chapter={item.chapter}
-              verseNumber={item.verseNumber}
-              colors={COLORS}
-            />
+            <VersePreview bookName={item.bookName} chapter={item.chapter} verseNumber={item.verseNumber} colors={COLORS} />
           )}
 
-          {/* Footer: scripture reference */}
           {!!item.bookName && (
             <View style={[styles.scriptureRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <BookOpen size={12} color={COLORS.muted} />
-              <Text
-                style={[styles.scriptureText, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}
-              >
+              <Text style={[styles.scriptureText, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
                 {`${String(item.bookName ?? '')} ${String(item.chapter ?? '')}:${String(item.verseNumber ?? '')}`}
               </Text>
             </View>
           )}
 
-          {/* Footer: date + chevron */}
           <View style={styles.entryFooter}>
             <View style={[styles.dateRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Clock size={12} color={COLORS.muted} />
@@ -806,7 +696,6 @@ const LegacyLedgerScreen = () => {
     );
   };
 
-  // ── Stats bar ─────────────────────────────────────────────────────────────
   const renderStats = () => {
     if (!stats) return null;
     return (
@@ -829,39 +718,14 @@ const LegacyLedgerScreen = () => {
     );
   };
 
-  const hasActiveFilters =
-    search.length > 0 ||
-    category !== 'all' ||
-    privacyFilter !== 'all' ||
-    strongsFilter !== '' ||
-    bookFilter !== '' ||
-    dateStart !== '' ||
-    dateEnd !== '';
+  const hasActiveFilters = search.length > 0 || category !== 'all';
 
-  const activeFilterCount = [
-    category !== 'all',
-    privacyFilter !== 'all',
-    strongsFilter !== '',
-    bookFilter !== '',
-    dateStart !== '',
-    dateEnd !== '',
-  ].filter(Boolean).length;
-
-  // ── Export modal overlay ─────────────────────────────────────────────────
   const renderExportModal = () => {
     if (!showExportModal) return null;
     return (
       <View style={styles.exportOverlay}>
-        <TouchableOpacity
-          style={styles.exportOverlayBg}
-          activeOpacity={1}
-          onPress={() => setShowExportModal(false)}
-        />
-        <ExportModal
-          onClose={() => setShowExportModal(false)}
-          colors={COLORS}
-          jc={jc}
-        />
+        <TouchableOpacity style={styles.exportOverlayBg} activeOpacity={1} onPress={() => setShowExportModal(false)} />
+        <ExportModal onClose={() => setShowExportModal(false)} colors={COLORS} jc={jc} />
       </View>
     );
   };
@@ -869,16 +733,10 @@ const LegacyLedgerScreen = () => {
   return (
     <GestureHandlerRootView style={[styles.container, { backgroundColor: COLORS.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         {/* ── Header ── */}
         <View style={[styles.header, { backgroundColor: COLORS.surface, borderBottomColor: COLORS.border }]}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.backButton} activeOpacity={0.7}>
             {isRtl ? <ChevronRight size={24} color={COLORS.text} /> : <ChevronLeft size={24} color={COLORS.text} />}
           </TouchableOpacity>
           <View style={styles.headerTitleGroup}>
@@ -887,94 +745,45 @@ const LegacyLedgerScreen = () => {
             </Text>
             {stats && (
               <Text style={[styles.headerSubtitle, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
-                {stats.totalEntries}{' '}
-                {stats.totalEntries === 1 ? 'entry' : 'entries'} · {stats.entriesThisWeek} this week
+                {stats.totalEntries} {stats.totalEntries === 1 ? 'entry' : 'entries'} · {stats.entriesThisWeek} this week
               </Text>
             )}
           </View>
-          {/* Bulk Export button */}
           {viewMode === 'my' && (
-            <TouchableOpacity
-              style={[styles.exportHeaderBtn, { borderColor: COLORS.border }]}
-              onPress={() => setShowExportModal(true)}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={[styles.exportHeaderBtn, { borderColor: COLORS.border }]} onPress={() => setShowExportModal(true)} activeOpacity={0.7}>
               <Download size={18} color={COLORS.primary} />
             </TouchableOpacity>
           )}
           {viewMode === 'my' && (
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: COLORS.primary }]}
-              onPress={handleCreateNew}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={[styles.addButton, { backgroundColor: COLORS.primary }]} onPress={handleCreateNew} activeOpacity={0.8}>
               <Plus size={22} color="#FFFFFF" />
             </TouchableOpacity>
           )}
         </View>
 
-        {/* ── Segment Control: My Ledger / Discover ── */}
+        {/* ── Segment Control ── */}
         <View style={[styles.segmentContainer, { backgroundColor: COLORS.surface, borderBottomColor: COLORS.border }]}>
           <TouchableOpacity
-            style={[
-              styles.segmentBtn,
-              viewMode === 'my'
-                ? { backgroundColor: COLORS.primary, borderColor: COLORS.primary }
-                : { backgroundColor: COLORS.surface, borderColor: COLORS.border },
-            ]}
+            style={[styles.segmentBtn, viewMode === 'my' ? { backgroundColor: COLORS.primary, borderColor: COLORS.primary } : { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}
             onPress={() => setViewMode('my')}
             activeOpacity={0.7}
           >
             <BookText size={14} color={viewMode === 'my' ? '#FFFFFF' : COLORS.text} />
-            <Text
-              style={[
-                styles.segmentBtnText,
-                { color: viewMode === 'my' ? '#FFFFFF' : COLORS.text },
-              ]}
-            >
-              My Ledger
-            </Text>
+            <Text style={[styles.segmentBtnText, { color: viewMode === 'my' ? '#FFFFFF' : COLORS.text }]}>My Ledger</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.segmentBtn,
-              viewMode === 'discover'
-                ? { backgroundColor: COLORS.primary, borderColor: COLORS.primary }
-                : { backgroundColor: COLORS.surface, borderColor: COLORS.border },
-            ]}
-            onPress={() => {
-              setViewMode('discover');
-              setPrivacyFilter('all');
-              setStrongsFilter('');
-              setDateStart('');
-              setDateEnd('');
-            }}
+            style={[styles.segmentBtn, viewMode === 'discover' ? { backgroundColor: COLORS.primary, borderColor: COLORS.primary } : { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}
+            onPress={() => setViewMode('discover')}
             activeOpacity={0.7}
           >
             <Globe size={14} color={viewMode === 'discover' ? '#FFFFFF' : COLORS.text} />
-            <Text
-              style={[
-                styles.segmentBtnText,
-                { color: viewMode === 'discover' ? '#FFFFFF' : COLORS.text },
-              ]}
-            >
-              Discover
-            </Text>
+            <Text style={[styles.segmentBtnText, { color: viewMode === 'discover' ? '#FFFFFF' : COLORS.text }]}>Community</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Search Bar ── */}
         <View style={styles.searchContainer}>
-          <View
-            style={[
-              styles.searchBar,
-              {
-                backgroundColor: COLORS.surface,
-                borderColor: COLORS.border,
-                flexDirection: isRtl ? 'row-reverse' : 'row',
-              },
-            ]}
-          >
+          <View style={[styles.searchBar, { backgroundColor: COLORS.surface, borderColor: COLORS.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <Search size={16} color={COLORS.muted} />
             <TextInput
               style={[styles.searchInput, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
@@ -985,13 +794,7 @@ const LegacyLedgerScreen = () => {
               returnKeyType="search"
             />
             {search.length > 0 && (
-              <TouchableOpacity
-                onPress={() => {
-                  setSearch('');
-                  setSearchDebounced('');
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
+              <TouchableOpacity onPress={() => { setSearch(''); setSearchDebounced(''); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <View style={[styles.clearButton, { backgroundColor: COLORS.muted + '30' }]}>
                   <Text style={[styles.clearButtonText, { color: COLORS.muted }]}>✕</Text>
                 </View>
@@ -999,159 +802,6 @@ const LegacyLedgerScreen = () => {
             )}
           </View>
         </View>
-
-        {/* ── Phase 3: Strong's filter input (my entries only) ── */}
-        {viewMode === 'my' && (
-          <View style={styles.strongsFilterContainer}>
-            <View
-              style={[
-                styles.strongsFilterBar,
-                {
-                  backgroundColor: COLORS.surface,
-                  borderColor: COLORS.border,
-                  flexDirection: isRtl ? 'row-reverse' : 'row',
-                },
-              ]}
-            >
-              <Hash size={14} color={COLORS.muted} />
-              <TextInput
-                style={[styles.strongsFilterInput, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
-                placeholder="Filter by Strong's word (e.g. G26, H7225)"
-                placeholderTextColor={COLORS.muted}
-                value={strongsFilter}
-                onChangeText={setStrongsFilter}
-                autoCapitalize="characters"
-                returnKeyType="search"
-              />
-              {strongsFilter.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setStrongsFilter('')}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <View style={[styles.clearButton, { backgroundColor: COLORS.muted + '30' }]}>
-                    <Text style={[styles.clearButtonText, { color: COLORS.muted }]}>✕</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* ── Advanced filters toggle ── */}
-        <TouchableOpacity
-          style={[styles.filterToggle, { borderColor: COLORS.border }]}
-          onPress={() => setShowAdvancedFilters(!showAdvancedFilters)}
-          activeOpacity={0.7}
-        >
-          <Filter size={14} color={showAdvancedFilters ? COLORS.primary : COLORS.muted} />
-          <Text
-            style={[
-              styles.filterToggleText,
-              { color: showAdvancedFilters ? COLORS.primary : COLORS.muted },
-            ]}
-          >
-            Advanced Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-          </Text>
-        </TouchableOpacity>
-
-        {/* ── Advanced filters panel ── */}
-        {showAdvancedFilters && (
-          <View style={[styles.advancedFilters, { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}>
-            {/* Privacy filter chips (my entries only) */}
-            {viewMode === 'my' && (
-              <>
-                <Text style={[styles.filterLabel, { color: COLORS.text }]}>Privacy</Text>
-                <View style={styles.filterChipRow}>
-                  {PRIVACY_FILTERS.map(f => (
-                    <TouchableOpacity
-                      key={f.value}
-                      style={[
-                        styles.filterChip,
-                        {
-                          backgroundColor: privacyFilter === f.value ? COLORS.primary : COLORS.surface,
-                          borderColor: privacyFilter === f.value ? COLORS.primary : COLORS.border,
-                        },
-                      ]}
-                      onPress={() => setPrivacyFilter(f.value)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        style={{
-                          color: privacyFilter === f.value ? '#FFFFFF' : COLORS.text,
-                          fontSize: FONT_SIZES.sm,
-                          fontWeight: '600',
-                        }}
-                      >
-                        {f.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </>
-            )}
-
-            {/* Book filter */}
-            <Text style={[styles.filterLabel, { color: COLORS.text, marginTop: SPACING.sm }]}>Book</Text>
-            <TouchableOpacity
-              style={[styles.bookPickerToggle, { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}
-              onPress={() => setShowBookPicker(!showBookPicker)}
-              activeOpacity={0.7}
-            >
-              <Text style={[{ color: bookFilter ? COLORS.text : COLORS.muted, flex: 1 }]}>
-                {bookFilter || 'All Books'}
-              </Text>
-              <ChevronRight size={14} color={COLORS.muted} />
-            </TouchableOpacity>
-            {showBookPicker && (
-              <View style={[styles.bookPickerList, { borderColor: COLORS.border }]}>
-                <TouchableOpacity
-                  style={[styles.bookPickerItem, !bookFilter && { backgroundColor: COLORS.primary + '15' }]}
-                  onPress={() => { setBookFilter(''); setShowBookPicker(false); }}
-                >
-                  <Text style={[styles.bookPickerText, { color: COLORS.text, fontWeight: !bookFilter ? '700' : '400' }]}>
-                    All Books
-                  </Text>
-                </TouchableOpacity>
-                {BOOKS_OF_BIBLE.map(book => (
-                  <TouchableOpacity
-                    key={book}
-                    style={[styles.bookPickerItem, bookFilter === book && { backgroundColor: COLORS.primary + '15' }]}
-                    onPress={() => { setBookFilter(book); setShowBookPicker(false); }}
-                  >
-                    <Text
-                      style={[
-                        styles.bookPickerText,
-                        { color: COLORS.text, fontWeight: bookFilter === book ? '700' : '400' },
-                      ]}
-                    >
-                      {book}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-
-            {/* Date range */}
-            <Text style={[styles.filterLabel, { color: COLORS.text, marginTop: SPACING.sm }]}>Date Range</Text>
-            <View style={styles.dateRangeRow}>
-              <TextInput
-                style={[styles.dateInput, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
-                placeholder="Start (2026-01-01)"
-                placeholderTextColor={COLORS.muted}
-                value={dateStart}
-                onChangeText={setDateStart}
-              />
-              <Text style={[styles.dateSeparatorText, { color: COLORS.muted }]}>to</Text>
-              <TextInput
-                style={[styles.dateInput, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
-                placeholder="End (2026-12-31)"
-                placeholderTextColor={COLORS.muted}
-                value={dateEnd}
-                onChangeText={setDateEnd}
-              />
-            </View>
-          </View>
-        )}
 
         {/* ── Category filter ── */}
         <View style={styles.categoryContainer}>
@@ -1194,6 +844,7 @@ const LegacyLedgerScreen = () => {
 
         {/* ── Entries List ── */}
         <FlatList
+          key={viewMode}
           data={entries}
           keyExtractor={item => item.id.toString()}
           renderItem={renderEntry}
@@ -1220,7 +871,7 @@ const LegacyLedgerScreen = () => {
               </View>
             ) : (
               <EmptyState
-                hasSearch={search.length > 0 || strongsFilter.length > 0}
+                hasSearch={search.length > 0}
                 currentCategory={category}
                 onCreateNew={handleCreateNew}
                 colors={COLORS}
@@ -1240,9 +891,9 @@ const LegacyLedgerScreen = () => {
 
         {/* ── Export modal ── */}
         {renderExportModal()}
-
-        <BottomTab activeTab="ledger" setActiveTab={tab => console.log(tab)} />
       </SafeAreaView>
+
+      <BottomTab activeTab="ledger" setActiveTab={tab => console.log(tab)} />
     </GestureHandlerRootView>
   );
 };  // ── Styles ───────────────────────────────────────────────────────────────────
@@ -1255,7 +906,7 @@ const styles = StyleSheet.create({
   segmentContainer: {
     flexDirection: 'row',
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.xs + 2,
     gap: SPACING.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
@@ -1314,7 +965,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  searchContainer: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.xs },
+  searchContainer: { paddingHorizontal: SPACING.md, paddingTop: SPACING.xs, paddingBottom: 0 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1328,84 +979,8 @@ const styles = StyleSheet.create({
   clearButton: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   clearButtonText: { fontSize: 12, fontWeight: '700' },
 
-  // ── Strong's Filter ──
-  strongsFilterContainer: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.xs },
-  strongsFilterBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 6,
-  },
-  strongsFilterInput: { flex: 1, fontSize: FONT_SIZES.sm, paddingVertical: Platform.OS === 'ios' ? 4 : 0 },
-
-  // ── Advanced filters toggle ──
-  filterToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.xs,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  filterToggleText: { fontSize: FONT_SIZES.xs, fontWeight: '600' },
-
-  // ── Advanced filters panel ──
-  advancedFilters: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
-    padding: SPACING.md,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  filterLabel: { fontSize: FONT_SIZES.xs, fontWeight: '700', marginBottom: 6 },
-  filterChipRow: { flexDirection: 'row', gap: 8 },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  bookPickerToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  bookPickerList: {
-    maxHeight: 200,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: 4,
-    overflow: 'hidden',
-  },
-  bookPickerItem: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(128,128,128,0.2)',
-  },
-  bookPickerText: { fontSize: FONT_SIZES.sm },
-  dateRangeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dateInput: {
-    flex: 1,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    fontSize: FONT_SIZES.sm,
-  },
-  dateSeparatorText: { fontSize: FONT_SIZES.xs },
-
   // ── Category filter ──
-  categoryContainer: { paddingVertical: SPACING.sm },
+  categoryContainer: { paddingVertical: SPACING.xs },
   categoryList: { paddingHorizontal: SPACING.md },
   categoryChip: {
     paddingHorizontal: SPACING.md,
@@ -1420,18 +995,19 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     marginHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
-    padding: SPACING.md,
-    borderRadius: 12,
+    marginBottom: SPACING.xs,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: 10,
     borderWidth: 1,
   },
   statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: FONT_SIZES.xl, fontWeight: '700' },
-  statLabel: { fontSize: FONT_SIZES.xs, marginTop: 2 },
+  statValue: { fontSize: FONT_SIZES.md, fontWeight: '700' },
+  statLabel: { fontSize: 10, marginTop: 1 },
   statDivider: { width: 1, marginVertical: 4 },
 
   // ── List ──
-  listContent: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.xl },
+  listContent: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: 120 },
   listContentEmpty: { flexGrow: 1, justifyContent: 'center' },
 
   // ── Entry card ──

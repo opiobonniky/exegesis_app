@@ -342,11 +342,11 @@ const AppNavigation = () => {
           }
         />
 
-        {/* ── Journal (legacy) ─────────────────────────────────────────── */}
+        {/* ── Journal → Legacy Ledger ──────────────────────────────────── */}
         <Stack.Screen
           name={route.journal}
           getComponent={() =>
-            require('../../features/journal/JournalList').default
+            require('../../features/ledger/LegacyLedgerScreen').default
           }
         />
         <Stack.Screen
@@ -419,6 +419,14 @@ const AppNavigation = () => {
           name={route.labFlow}
           getComponent={() =>
             require('../../features/lab/LabFlowScreen').default
+          }
+        />
+
+        {/* ── Bible Trivia ───────────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.trivia}
+          getComponent={() =>
+            require('../../features/trivia/TriviaScreen').default
           }
         />
       </Stack.Navigator>

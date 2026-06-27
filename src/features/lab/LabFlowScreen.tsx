@@ -2730,7 +2730,7 @@ export default function LabFlowScreen() {
 
       <TouchableOpacity
         style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
-        onPress={() => navigation.navigate(route.journal)}
+        onPress={() => navigation.navigate(route.legacyLedger)}
         activeOpacity={0.8}
       >
         <BookMarked size={18} color="#FFFFFF" />

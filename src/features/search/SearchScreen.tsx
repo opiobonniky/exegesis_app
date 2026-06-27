@@ -448,7 +448,7 @@ export default function SearchScreen() {
         style={styles.journalResultItem}
         onPress={() => {
           Keyboard.dismiss();
-          navigation.navigate(route.journalDetail, { id: item.id });
+          navigation.navigate(route.ledgerDetail, { id: item.id });
         }}
         activeOpacity={0.7}
       >

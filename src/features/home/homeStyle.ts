@@ -168,6 +168,121 @@ export const createStyles = (COLORS: any) =>
       fontWeight: '500',
       marginTop: 2,
     },
+    // ── Dashboard Cards (Lab + Recent Entry) ────────────────────────────
+    dashboardCard: {
+      marginHorizontal: SPACING.lg,
+      marginBottom: SPACING.md,
+      borderRadius: BORDER_RADIUS.lg,
+      borderWidth: 1,
+      overflow: 'hidden',
+    },
+    dashboardCardInner: {
+      padding: SPACING.md,
+    },
+    dashboardCardTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: SPACING.sm,
+    },
+    dashboardCardIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: SPACING.sm,
+    },
+    dashboardCardTitleGroup: {
+      flex: 1,
+    },
+    dashboardCardTitle: {
+      fontSize: FONT_SIZES.md,
+      fontWeight: '700',
+    },
+    dashboardCardSubtitle: {
+      fontSize: FONT_SIZES.xs,
+      marginTop: 1,
+    },
+    dashboardCardBody: {
+      marginBottom: SPACING.sm,
+    },
+    dashboardStageRow: {
+      flexDirection: 'row',
+      gap: SPACING.sm,
+      alignItems: 'center',
+    },
+    dashboardStageRowRtl: {
+      flexDirection: 'row-reverse',
+    },
+    dashboardStageBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+    },
+    dashboardStageDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    dashboardStageLabel: {
+      fontSize: 10,
+      letterSpacing: 0.3,
+      textTransform: 'uppercase',
+    },
+    dashboardCardAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    dashboardCardBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: 8,
+      borderRadius: BORDER_RADIUS.round,
+    },
+    dashboardCardBtnText: {
+      color: '#FFFFFF',
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '700',
+    },
+    dashboardBadgePill: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 10,
+      marginLeft: SPACING.sm,
+    },
+    dashboardBadgePillText: {
+      fontSize: 9,
+      fontWeight: '700',
+    },
+    dashboardEntryTitle: {
+      fontSize: FONT_SIZES.md,
+      fontWeight: '600',
+      marginBottom: 2,
+    },
+    dashboardEntryPreview: {
+      fontSize: FONT_SIZES.sm,
+      lineHeight: 19,
+      marginBottom: SPACING.xs,
+    },
+    dashboardScriptureRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginBottom: SPACING.xs,
+    },
+    dashboardScriptureRowRtl: {
+      flexDirection: 'row-reverse',
+    },
+    dashboardScriptureRef: {
+      fontSize: FONT_SIZES.xs,
+    },
+    dashboardCardLink: {
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '600',
+    },
 
     // ── Bottom Tab ─────────────────────────────────────────────────────────
     bottomTabWrapper: {
