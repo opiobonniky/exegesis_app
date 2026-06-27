@@ -17,6 +17,9 @@ import {
   ChevronUp,
   Search,
   Bookmark,
+  ScrollText,
+  Hash,
+  Languages,
 } from 'lucide-react-native';
 import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
 import { StrongsWordData, StrongsEntry } from '../../../services/strongsService';
@@ -63,7 +66,9 @@ export default function WordStudyBottomSheet({
     if (loading) {
       return (
         <View style={ss.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <View style={[ss.loadingSpinnerWrap, { backgroundColor: `${COLORS.primary}12` }]}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
           <Text style={[ss.loadingText, { color: COLORS.textSecondary }]}>
             Loading word study...
           </Text>
@@ -73,19 +78,32 @@ export default function WordStudyBottomSheet({
 
     if (!entry) {
       return word ? (
-        <View style={ss.noDataContainer}>
-          <BookOpen size={32} color={COLORS.textSecondary} />
-          <Text style={[ss.noDataTitle, { color: COLORS.text }]}>
-            {word.surfaceText}
+        <View style={ss.emptyContainer}>
+          <View style={[ss.emptyIconWrap, { backgroundColor: `${COLORS.accent}15` }]}>
+            <BookOpen size={28} color={COLORS.accent} />
+          </View>
+          <View style={[ss.emptyWordCard, { backgroundColor: COLORS.background, borderColor: COLORS.border }]}>
+            <Text style={[ss.emptyWordText, { color: COLORS.text }]}>
+              {word.surfaceText}
+            </Text>
+          </View>
+          <Text style={[ss.emptyTitle, { color: COLORS.text }]}>
+            No Data Available
           </Text>
-          <Text style={[ss.noDataText, { color: COLORS.textSecondary }]}>
-            No Strong's concordance data available for this word.
+          <Text style={[ss.emptySubtext, { color: COLORS.textSecondary }]}>
+            Strong's concordance data hasn't been loaded for this word yet.{'\n'}Try a different word or check back later.
           </Text>
         </View>
       ) : (
-        <View style={ss.noDataContainer}>
-          <Text style={[ss.noDataText, { color: COLORS.textSecondary }]}>
-            Select a word to study.
+        <View style={ss.emptyContainer}>
+          <View style={[ss.emptyIconWrap, { backgroundColor: `${COLORS.primary}12` }]}>
+            <BookOpen size={28} color={COLORS.primary} />
+          </View>
+          <Text style={[ss.emptyTitle, { color: COLORS.text }]}>
+            No Word Selected
+          </Text>
+          <Text style={[ss.emptySubtext, { color: COLORS.textSecondary }]}>
+            Tap any highlighted Strong's word in the verse to study it.
           </Text>
         </View>
       );
@@ -96,78 +114,103 @@ export default function WordStudyBottomSheet({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={ss.scrollContent}
       >
-        {/* Original word header */}
-        <View style={ss.originalWordSection}>
-          <Text style={[ss.originalWord, { color: COLORS.text }]}>
-            {entry.originalWord || entry.transliteration || entry.strongsId}
+        {/* Surface word card — the word the user tapped */}
+        <View style={[ss.surfaceWordCard, { backgroundColor: `${COLORS.primary}08`, borderColor: `${COLORS.primary}20` }]}>
+          <Text style={[ss.surfaceWordLabel, { color: COLORS.textSecondary }]}>
+            You tapped
           </Text>
-          {entry.transliteration && (
-            <Text style={[ss.transliteration, { color: COLORS.textSecondary }]}>
-              {entry.transliteration}
+          <Text style={[ss.surfaceWordText, { color: COLORS.text }]}>
+            {word?.surfaceText}
+          </Text>
+        </View>
+
+        {/* Original word hero */}
+        <View style={[ss.heroCard, { backgroundColor: `${COLORS.primary}06`, borderColor: `${COLORS.primary}15` }]}>
+          <View style={[ss.heroAccentBar, { backgroundColor: COLORS.primary }]} />
+          <View style={ss.heroContent}>
+            <Text style={[ss.heroOriginal, { color: COLORS.text }]}>
+              {entry.originalWord || entry.transliteration || entry.strongsId}
             </Text>
-          )}
-          <View style={[ss.strongsIdBadge, { backgroundColor: `${COLORS.primary}15` }]}>
-            <Text style={[ss.strongsIdText, { color: COLORS.primary }]}>
-              Strong's {entry.strongsId}
-            </Text>
+            {entry.transliteration && (
+              <Text style={[ss.heroTransliteration, { color: COLORS.textSecondary }]}>
+                {entry.transliteration}
+              </Text>
+            )}
+            <View style={[ss.heroBadge, { backgroundColor: `${COLORS.primary}15` }]}>
+              <Hash size={11} color={COLORS.primary} strokeWidth={2.5} />
+              <Text style={[ss.heroBadgeText, { color: COLORS.primary }]}>
+                Strong's {entry.strongsId}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Short Definition */}
-        <View style={[ss.section, { borderBottomColor: COLORS.border }]}>
-          <Text style={[ss.sectionLabel, { color: COLORS.textSecondary }]}>
-            Short Definition
-          </Text>
+        {/* Short Definition card */}
+        <View style={[ss.infoCard, { backgroundColor: COLORS.background, borderColor: COLORS.border }]}>
+          <View style={ss.infoCardHeader}>
+            <ScrollText size={14} color={COLORS.textSecondary} strokeWidth={2} />
+            <Text style={[ss.infoCardLabel, { color: COLORS.textSecondary }]}>
+              Short Definition
+            </Text>
+          </View>
           <Text style={[ss.definition, { color: COLORS.text }]}>
             {entry.shortDefinition}
           </Text>
         </View>
 
-        {/* Plain English Grammar */}
-        <View style={[ss.section, { borderBottomColor: COLORS.border }]}>
-          <Text style={[ss.sectionLabel, { color: COLORS.textSecondary }]}>
-            Plain English Grammar
-          </Text>
+        {/* Plain English Grammar card */}
+        <View style={[ss.infoCard, { backgroundColor: COLORS.background, borderColor: COLORS.border }]}>
+          <View style={ss.infoCardHeader}>
+            <Languages size={14} color={COLORS.textSecondary} strokeWidth={2} />
+            <Text style={[ss.infoCardLabel, { color: COLORS.textSecondary }]}>
+              Plain English Grammar
+            </Text>
+          </View>
           <Text style={[ss.grammarText, { color: COLORS.text }]}>
             This is a <Text style={{ fontWeight: '700' }}>{entry.partOfSpeech || 'word'}</Text> in {entry.language === 'hebrew' ? 'Hebrew' : 'Greek'}.
           </Text>
         </View>
 
-        {/* Usage */}
+        {/* Usage card */}
         {entry.usageCount != null && (
-          <View style={[ss.section, { borderBottomColor: COLORS.border }]}>
-            <Text style={[ss.sectionLabel, { color: COLORS.textSecondary }]}>
-              Usage
-            </Text>
+          <View style={[ss.infoCard, { backgroundColor: COLORS.background, borderColor: COLORS.border }]}>
+            <View style={ss.infoCardHeader}>
+              <BookOpen size={14} color={COLORS.textSecondary} strokeWidth={2} />
+              <Text style={[ss.infoCardLabel, { color: COLORS.textSecondary }]}>
+                Usage
+              </Text>
+            </View>
             <Text style={[ss.grammarText, { color: COLORS.text }]}>
-              Appears {entry.usageCount} times in the {entry.language === 'hebrew' ? 'Old' : 'New'} Testament.
+              Appears <Text style={{ fontWeight: '700' }}>{entry.usageCount}</Text> times in the {entry.language === 'hebrew' ? 'Old' : 'New'} Testament.
             </Text>
           </View>
         )}
 
         {/* See More section (collapsible) */}
         {(entry.fullDefinition || hasGrammaticalDetails || crossRefs.length > 0) && (
-          <TouchableOpacity
-            onPress={() => setExpanded(!expanded)}
-            activeOpacity={0.7}
-            style={[ss.expandSection, { borderBottomColor: COLORS.border }]}
-          >
-            <View style={ss.expandHeader}>
-              <Text style={[ss.sectionLabel, { color: COLORS.textSecondary }]}>
-                {expanded ? 'Hide Details' : 'See More'}
-              </Text>
-              {expanded ? (
-                <ChevronUp size={16} color={COLORS.textSecondary} />
-              ) : (
-                <ChevronDown size={16} color={COLORS.textSecondary} />
-              )}
-            </View>
+          <View style={[ss.expandCard, { backgroundColor: COLORS.background, borderColor: COLORS.border }]}>
+            <TouchableOpacity
+              onPress={() => setExpanded(!expanded)}
+              activeOpacity={0.7}
+              style={ss.expandTouchable}
+            >
+              <View style={ss.expandHeader}>
+                <Text style={[ss.expandLabel, { color: COLORS.textSecondary }]}>
+                  {expanded ? 'Hide Details' : 'See More'}
+                </Text>
+                {expanded ? (
+                  <ChevronUp size={18} color={COLORS.textSecondary} strokeWidth={2.5} />
+                ) : (
+                  <ChevronDown size={18} color={COLORS.textSecondary} strokeWidth={2.5} />
+                )}
+              </View>
+            </TouchableOpacity>
 
             {expanded && (
-              <View style={{ marginTop: SPACING.md }}>
+              <View style={ss.expandBody}>
                 {/* Full Definition */}
                 {entry.fullDefinition && (
-                  <View style={{ marginBottom: SPACING.md }}>
+                  <View style={ss.expandSection}>
                     <Text style={[ss.detailLabel, { color: COLORS.textSecondary }]}>
                       Full Definition
                     </Text>
@@ -179,28 +222,32 @@ export default function WordStudyBottomSheet({
 
                 {/* Grammatical Details */}
                 {hasGrammaticalDetails && (
-                  <View style={{ marginBottom: SPACING.md }}>
+                  <View style={ss.expandSection}>
                     <Text style={[ss.detailLabel, { color: COLORS.textSecondary }]}>
                       Grammatical Details
                     </Text>
-                    <View style={ss.grammarGrid}>
-                      <Text style={[ss.grammarCell, { color: COLORS.text }]}>
-                        Part of Speech: <Text style={{ fontWeight: '700' }}>{entry.partOfSpeech || '—'}</Text>
-                      </Text>
+                    <View style={[ss.grammarCard, { backgroundColor: `${COLORS.primary}06`, borderColor: `${COLORS.primary}12` }]}>
+                      <View style={ss.grammarRow}>
+                        <Text style={[ss.grammarKey, { color: COLORS.textSecondary }]}>Part of Speech</Text>
+                        <Text style={[ss.grammarValue, { color: COLORS.text }]}>{entry.partOfSpeech || '—'}</Text>
+                      </View>
                       {entry.grammaticalCase && (
-                        <Text style={[ss.grammarCell, { color: COLORS.text }]}>
-                          Case: <Text style={{ fontWeight: '700' }}>{entry.grammaticalCase}</Text>
-                        </Text>
+                        <View style={[ss.grammarRow, ss.grammarRowBorder, { borderTopColor: `${COLORS.primary}10` }]}>
+                          <Text style={[ss.grammarKey, { color: COLORS.textSecondary }]}>Case</Text>
+                          <Text style={[ss.grammarValue, { color: COLORS.text }]}>{entry.grammaticalCase}</Text>
+                        </View>
                       )}
                       {entry.gender && (
-                        <Text style={[ss.grammarCell, { color: COLORS.text }]}>
-                          Gender: <Text style={{ fontWeight: '700' }}>{entry.gender}</Text>
-                        </Text>
+                        <View style={[ss.grammarRow, ss.grammarRowBorder, { borderTopColor: `${COLORS.primary}10` }]}>
+                          <Text style={[ss.grammarKey, { color: COLORS.textSecondary }]}>Gender</Text>
+                          <Text style={[ss.grammarValue, { color: COLORS.text }]}>{entry.gender}</Text>
+                        </View>
                       )}
                       {entry.number && (
-                        <Text style={[ss.grammarCell, { color: COLORS.text }]}>
-                          Number: <Text style={{ fontWeight: '700' }}>{entry.number}</Text>
-                        </Text>
+                        <View style={[ss.grammarRow, ss.grammarRowBorder, { borderTopColor: `${COLORS.primary}10` }]}>
+                          <Text style={[ss.grammarKey, { color: COLORS.textSecondary }]}>Number</Text>
+                          <Text style={[ss.grammarValue, { color: COLORS.text }]}>{entry.number}</Text>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -208,13 +255,18 @@ export default function WordStudyBottomSheet({
 
                 {/* Cross References */}
                 {crossRefs.length > 0 && (
-                  <View>
+                  <View style={ss.expandSection}>
                     <Text style={[ss.detailLabel, { color: COLORS.textSecondary }]}>
                       Cross References
                     </Text>
                     <View style={ss.crossRefsList}>
                       {crossRefs.map((ref, i) => (
-                        <TouchableOpacity key={i} activeOpacity={0.7} style={[ss.crossRefChip, { backgroundColor: `${COLORS.primary}10`, borderColor: COLORS.primary }]}>
+                        <TouchableOpacity
+                          key={i}
+                          activeOpacity={0.7}
+                          style={[ss.crossRefChip, { backgroundColor: `${COLORS.primary}10`, borderColor: `${COLORS.primary}25` }]}
+                        >
+                          <BookOpen size={11} color={COLORS.primary} strokeWidth={2.5} />
                           <Text style={[ss.crossRefText, { color: COLORS.primary }]}>{ref}</Text>
                         </TouchableOpacity>
                       ))}
@@ -223,7 +275,7 @@ export default function WordStudyBottomSheet({
                 )}
               </View>
             )}
-          </TouchableOpacity>
+          </View>
         )}
 
         {/* Action buttons */}
@@ -231,20 +283,21 @@ export default function WordStudyBottomSheet({
           {onSearchAllUses && (
             <TouchableOpacity
               onPress={() => onSearchAllUses(entry.strongsId, word?.surfaceText)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
               style={[ss.actionBtn, { backgroundColor: COLORS.primary }]}
             >
-              <Search size={14} color="#FFFFFF" />
+              <Search size={15} color="#FFFFFF" strokeWidth={2.5} />
               <Text style={ss.actionBtnText}>Search All Uses</Text>
+              <Text style={ss.actionBtnSubtext}>in Bible</Text>
             </TouchableOpacity>
           )}
           {onSaveWord && (
             <TouchableOpacity
               onPress={() => onSaveWord(entry)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
               style={[ss.actionBtn, { backgroundColor: COLORS.accent }]}
             >
-              <Bookmark size={14} color="#FFFFFF" />
+              <Bookmark size={15} color="#FFFFFF" strokeWidth={2.5} />
               <Text style={ss.actionBtnText}>Save Word</Text>
             </TouchableOpacity>
           )}
@@ -271,8 +324,8 @@ export default function WordStudyBottomSheet({
             ss.sheet,
             {
               backgroundColor: COLORS.cardBackground,
-              borderTopLeftRadius: BORDER_RADIUS.xl,
-              borderTopRightRadius: BORDER_RADIUS.xl,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
             },
           ]}
         >
@@ -284,13 +337,19 @@ export default function WordStudyBottomSheet({
                   Word Study
                 </Text>
                 {word?.surfaceText && (
-                  <Text style={[ss.headerWord, { color: COLORS.primary }]}>
-                    Studying: "{word.surfaceText}"
+                  <Text style={[ss.headerSubtitle, { color: COLORS.textSecondary }]}>
+                    Studying “{word.surfaceText}”
                   </Text>
                 )}
               </View>
-              <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
-                <X size={20} color={COLORS.textSecondary} />
+              <TouchableOpacity
+                onPress={onClose}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <View style={[ss.closeBtn, { backgroundColor: `${COLORS.textSecondary}15` }]}>
+                  <X size={16} color={COLORS.textSecondary} strokeWidth={2.5} />
+                </View>
               </TouchableOpacity>
             </View>
             {renderContent()}
@@ -308,28 +367,26 @@ const ss = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {
     flex: 1,
-    maxHeight: '92%',
-    minHeight: '60%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    minHeight: '55%',
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
   },
   handle: {
     width: 40,
-    height: 4,
-    borderRadius: 2,
+    height: 5,
+    borderRadius: 3,
     alignSelf: 'center',
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 10,
+    marginBottom: 6,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
   },
@@ -341,84 +398,155 @@ const ss = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontWeight: '700',
   },
-  headerWord: {
+  headerSubtitle: {
     fontSize: FONT_SIZES.sm,
-    fontWeight: '600',
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollContent: {
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.xl * 1.5,
+    paddingTop: SPACING.xs,
   },
+  // ── Loading ──────────────────────────────────────────────
   loadingContainer: {
-    padding: SPACING.xl * 2,
+    paddingVertical: SPACING.xl * 3,
     alignItems: 'center',
-    gap: SPACING.md,
+    gap: SPACING.lg,
+  },
+  loadingSpinnerWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
     fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
   },
-  noDataContainer: {
-    padding: SPACING.xl * 2,
+  // ── Empty / No Data ──────────────────────────────────────
+  emptyContainer: {
+    paddingVertical: SPACING.xl * 2.5,
     alignItems: 'center',
-    gap: SPACING.sm,
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.xl,
   },
-  noDataTitle: {
+  emptyIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xs,
+  },
+  emptyWordCard: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    marginBottom: SPACING.xs,
+  },
+  emptyWordText: {
     fontSize: FONT_SIZES.lg,
     fontWeight: '700',
+    fontStyle: 'italic',
   },
-  noDataText: {
+  emptyTitle: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '700',
+  },
+  emptySubtext: {
     fontSize: FONT_SIZES.sm,
     textAlign: 'center',
     lineHeight: 20,
   },
+  // ── Surface word card ─────────────────────────────────────
   surfaceWordCard: {
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    padding: SPACING.md,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
-  },
-  surfaceWord: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '700',
-    fontStyle: 'italic',
-  },
-  originalWordSection: {
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-    gap: 6,
-    paddingTop: SPACING.sm,
-  },
-  originalWord: {
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  transliteration: {
-    fontSize: FONT_SIZES.md,
-    fontStyle: 'italic',
-    color: '#8B6914',
-  },
-  strongsIdBadge: {
+    gap: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    paddingVertical: 4,
-    borderRadius: BORDER_RADIUS.round,
+    paddingVertical: SPACING.sm,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: SPACING.md,
   },
-  strongsIdText: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  section: {
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-  },
-  sectionLabel: {
+  surfaceWordLabel: {
     fontSize: FONT_SIZES.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 6,
+  },
+  surfaceWordText: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '700',
+    fontStyle: 'italic',
+  },
+  // ── Hero card ─────────────────────────────────────────────
+  heroCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: SPACING.lg,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  heroAccentBar: {
+    width: 5,
+  },
+  heroContent: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    gap: 8,
+  },
+  heroOriginal: {
+    fontSize: 30,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  heroTransliteration: {
+    fontSize: FONT_SIZES.md,
+    fontStyle: 'italic',
+  },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 5,
+    borderRadius: BORDER_RADIUS.round,
+    marginTop: 2,
+  },
+  heroBadgeText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  // ── Info cards ────────────────────────────────────────────
+  infoCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  infoCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  infoCardLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   definition: {
     fontSize: 17,
@@ -429,69 +557,68 @@ const ss = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     lineHeight: 22,
   },
-  expandSection: {
+  // ── Expand / collapse ──────────────────────────────────────
+  expandCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: SPACING.sm,
+    overflow: 'hidden',
+  },
+  expandTouchable: {
+    paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
   },
   expandHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  fullDefinition: {
+  expandLabel: {
     fontSize: FONT_SIZES.sm,
-    lineHeight: 22,
-    marginTop: 8,
+    fontWeight: '600',
   },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    marginTop: SPACING.xl,
-    marginBottom: SPACING.lg,
+  expandBody: {
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.md,
+    gap: SPACING.md,
   },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  expandSection: {
     gap: 6,
-    paddingVertical: 14,
-    borderRadius: BORDER_RADIUS.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  actionBtnText: {
+  // ── Grammar details — table-style card ─────────────────────
+  grammarCard: {
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  grammarRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 10,
+  },
+  grammarRowBorder: {
+    borderTopWidth: 1,
+  },
+  grammarKey: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
+  },
+  grammarValue: {
     fontSize: FONT_SIZES.sm,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
-  detailLabel: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  detailText: {
-    fontSize: FONT_SIZES.sm,
-    lineHeight: 22,
-  },
-  grammarGrid: {
-    gap: 4,
-  },
-  grammarCell: {
-    fontSize: FONT_SIZES.sm,
-    lineHeight: 22,
-  },
+  // ── Cross references ───────────────────────────────────────
   crossRefsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.xs,
   },
   crossRefChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: SPACING.md,
     paddingVertical: 6,
     borderRadius: BORDER_RADIUS.round,
@@ -500,5 +627,46 @@ const ss = StyleSheet.create({
   crossRefText: {
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
+  },
+  // ── Action buttons ─────────────────────────────────────────
+  actionsRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  actionBtnText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  actionBtnSubtext: {
+    fontSize: 10,
+    fontWeight: '400',
+    color: 'rgba(255,255,255,0.65)',
+  },
+  detailLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailText: {
+    fontSize: FONT_SIZES.sm,
+    lineHeight: 22,
   },
 });

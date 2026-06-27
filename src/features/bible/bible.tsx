@@ -521,18 +521,10 @@ export default function Bible() {
     }, []),
   );
 
-  if (initialLoading) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       {selectionStage === 'book' ? (
-        <BookSelectorScreen
+        initialLoading ? null : <BookSelectorScreen
           books={books}
           isDark={isDark}
           onSelectBook={handleEntrySelectBook}
@@ -1279,6 +1271,61 @@ const vrStyles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 });
+
+function BibleSkeleton({ isDark }: { isDark: boolean }) {
+  const c = getColors(isDark);
+  const mutedBg = isDark ? '#2A2A2A' : '#E5E5E5';
+
+  const skeletonLine = (h: number, w: string | number, style?: any) => (
+    <View
+      style={[{ height: h, width: w as any, borderRadius: 6, backgroundColor: mutedBg, opacity: 0.5 }, style]}
+    />
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: c.background, paddingTop: 50 }}>
+      {/* Header skeleton */}
+      <View style={{ paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {skeletonLine(32, 32, { borderRadius: 8 })}
+          <View style={{ gap: 4 }}>
+            {skeletonLine(14, 120)}
+            {skeletonLine(10, 80)}
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {skeletonLine(32, 32, { borderRadius: 8 })}
+          {skeletonLine(32, 32, { borderRadius: 8 })}
+        </View>
+      </View>
+
+      {/* Chapter nav skeleton */}
+      <View style={{ paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        {skeletonLine(28, 28, { borderRadius: 14 })}
+        <View style={{ alignItems: 'center', gap: 3 }}>
+          {skeletonLine(12, 100)}
+          {skeletonLine(9, 60)}
+        </View>
+        {skeletonLine(28, 28, { borderRadius: 14 })}
+      </View>
+
+      {/* Verse cards skeleton */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 20 }}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <View key={i} style={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {skeletonLine(18, 24, { borderRadius: 4 })}
+              <View style={{ flex: 1, gap: 6 }}>
+                {skeletonLine(14, '95%')}
+                {skeletonLine(14, '75%')}
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 function useRpStyles(isRtl: boolean) {
   return StyleSheet.create({

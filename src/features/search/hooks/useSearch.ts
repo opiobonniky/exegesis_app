@@ -175,9 +175,69 @@ export function useSearch() {
     setRelatedWords([]);
   }, []);
 
+  const searchImmediate = useCallback((q: string, currentScope?: SearchScope) => {
+    const activeScope = currentScope ?? scope;
+    setQueryState(q);
+    setScopeState(activeScope);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const trimmed = q.trim();
+    if (trimmed.length < 3) return;
+    const requestId = ++requestIdRef.current;
+    setError(null);
+    setRelatedWords([]);
+    setLoading(true);
+    const doSearch = async () => {
+      try {
+        if (activeScope === 'strongs') {
+          const res = await searchApi.searchStrongs(trimmed, { limit: 50 });
+          if (requestId !== requestIdRef.current) return;
+          setResults(res.data);
+          setTotal(res.total);
+        } else if (activeScope === 'journal') {
+          const res = await searchApi.searchJournal(trimmed, { limit: 50 });
+          if (requestId !== requestIdRef.current) return;
+          setResults(res.data);
+          setTotal(res.total);
+        } else if (activeScope === 'topics') {
+          const res = await searchApi.searchTopics(trimmed, { limit: 50 });
+          if (requestId !== requestIdRef.current) return;
+          setResults(res.data);
+          setTotal(res.total);
+        } else if (activeScope === 'lemma') {
+          const res = await searchApi.searchLemma(trimmed);
+          if (requestId !== requestIdRef.current) return;
+          setResults(res.data);
+          setTotal(res.total);
+        } else {
+          const res = await searchApi.search(trimmed, { limit: 50 });
+          if (requestId !== requestIdRef.current) return;
+          if (res.success) {
+            setResults(res.data);
+            setTotal(res.total);
+          } else {
+            setResults([]);
+            setTotal(0);
+          }
+        }
+        setPage(1);
+      } catch (e: any) {
+        if (requestId !== requestIdRef.current) return;
+        setError(e?.message || 'Search failed');
+        setResults([]);
+        setTotal(0);
+      } finally {
+        if (requestId !== requestIdRef.current) return;
+        setLoading(false);
+        setSearchedOnce(true);
+      }
+    };
+    doSearch();
+  }, [scope]);
+
   return {
     query,
     setQuery: search,
+    searchImmediate,
     scope,
     switchScope,
     bookName,

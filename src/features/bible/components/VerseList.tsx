@@ -9,7 +9,7 @@
  *     in sync. Verse-level glow + scroll give reliable visual feedback.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import {
   Animated,
   FlatList,
@@ -22,67 +22,35 @@ import { BORDER_RADIUS, SPACING } from '../../../constants/theme';
 import { StrongsWordData } from '../../../services/strongsService';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shimmer skeleton
+// Static skeleton (no Animated — avoids RN 0.76+ frozen JSI node crash)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ShimmerBar({
+function SkeletonBar({
   width,
   height = 12,
-  shimmerX,
-  containerWidth,
   style,
 }: {
   width: string | number;
   height?: number;
-  shimmerX: Animated.Value;
-  containerWidth: number;
   style?: object;
 }) {
   return (
     <View
       style={[
-        shimmerStyles.barBase,
-        { width, height, borderRadius: height / 2 },
+        {
+          width,
+          height,
+          borderRadius: height / 2,
+          backgroundColor: 'rgba(150,150,150,0.15)',
+          opacity: 0.5,
+        },
         style,
       ]}
-    >
-      <Animated.View
-        style={[
-          shimmerStyles.shimmerHighlight,
-          {
-            width: containerWidth * 0.55,
-            transform: [{ translateX: shimmerX }],
-          },
-        ]}
-      />
-    </View>
+    />
   );
 }
 
-const shimmerStyles = StyleSheet.create({
-  barBase: {
-    overflow: 'hidden',
-    backgroundColor: 'rgba(150,150,150,0.13)',
-  },
-  shimmerHighlight: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255,255,255,0.28)',
-    borderRadius: 99,
-  },
-});
-
-function SkeletonCard({
-  shimmerX,
-  lineWidths,
-  colors,
-}: {
-  shimmerX: Animated.Value;
-  lineWidths: string[];
-  colors: any;
-}) {
-  const CONTAINER_WIDTH = 340;
+function SkeletonCard({ lineWidths, colors }: { lineWidths: string[]; colors: any }) {
   return (
     <View
       style={[
@@ -90,20 +58,12 @@ function SkeletonCard({
         { backgroundColor: colors.cardBackground, borderColor: colors.border },
       ]}
     >
-      <ShimmerBar
-        width={32}
-        height={10}
-        shimmerX={shimmerX}
-        containerWidth={CONTAINER_WIDTH}
-        style={{ marginBottom: 10 }}
-      />
+      <SkeletonBar width={32} height={10} style={{ marginBottom: 10 }} />
       {lineWidths.map((w, i) => (
-        <ShimmerBar
+        <SkeletonBar
           key={i}
           width={w}
           height={11}
-          shimmerX={shimmerX}
-          containerWidth={CONTAINER_WIDTH}
           style={{ marginBottom: i < lineWidths.length - 1 ? 8 : 0 }}
         />
       ))}
@@ -132,29 +92,10 @@ const SKELETON_CONFIGS: string[][] = [
 ];
 
 function SkeletonLoader({ colors }: { colors: any }) {
-  const shimmerX = useRef(new Animated.Value(-200)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(shimmerX, {
-        toValue: 400,
-        duration: 1200,
-        useNativeDriver: true,
-      }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, []);
-
   return (
     <View style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm }}>
       {SKELETON_CONFIGS.map((lines, i) => (
-        <SkeletonCard
-          key={i}
-          shimmerX={shimmerX}
-          lineWidths={lines}
-          colors={colors}
-        />
+        <SkeletonCard key={i} lineWidths={lines} colors={colors} />
       ))}
     </View>
   );

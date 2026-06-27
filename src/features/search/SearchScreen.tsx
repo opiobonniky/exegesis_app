@@ -148,19 +148,6 @@ const BOOK_NAMES = [
 ];
 
 function SearchSkeleton({ colors }: { colors: ReturnType<typeof getColors> }) {
-  const opacity = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [opacity]);
-
   const skeletonBg = colors.cardBackground || '#E8E8E8';
 
   return (
@@ -173,14 +160,14 @@ function SearchSkeleton({ colors }: { colors: ReturnType<typeof getColors> }) {
         { h: 54, w: '100%' },
       ].map((item, i) => (
         <View key={i} style={{ gap: 6 }}>
-          <View style={{ height: 14, width: '40%', borderRadius: 4, backgroundColor: skeletonBg, opacity }} />
+          <View style={{ height: 14, width: '40%', borderRadius: 4, backgroundColor: skeletonBg, opacity: 0.5 }} />
           <View
             style={{
               height: item.h,
               width: item.w as any,
               borderRadius: 8,
               backgroundColor: skeletonBg,
-              opacity,
+              opacity: 0.5,
             }}
           />
         </View>
@@ -202,6 +189,7 @@ export default function SearchScreen() {
   const {
     query,
     setQuery,
+    searchImmediate,
     scope,
     switchScope,
     bookName,
@@ -236,6 +224,7 @@ export default function SearchScreen() {
   const [prefillStrongsId, setPrefillStrongsId] = useState<string | undefined>(
     undefined,
   );
+  const [searchContext, setSearchContext] = useState<string | null>(null);
 
   const filteredBooks = useMemo(() => {
     if (covenant === 'ot') return BOOK_NAMES.slice(0, 39);
@@ -252,15 +241,20 @@ export default function SearchScreen() {
       setPrefillWord(word);
       setPrefillStrongsId(strongsId);
       if (scopeParam === 'strongs' && strongsId) {
-        setQuery(strongsId, 'strongs');
+        setSearchContext(null);
+        searchImmediate(strongsId, 'strongs');
         switchScope('strongs');
+      } else if (scopeParam === 'bible' && word) {
+        setSearchContext(`All uses of “${word}”`);
+        searchImmediate(word, 'bible');
+        switchScope('bible');
       } else {
         const q = word || strongsId || '';
-        setQuery(q, 'bible');
+        searchImmediate(q, 'bible');
         switchScope('bible');
       }
     }
-  }, [routeParams.params, initializedFromRoute, setQuery, switchScope]);
+  }, [routeParams.params, initializedFromRoute, searchImmediate, switchScope]);
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -316,6 +310,7 @@ export default function SearchScreen() {
 
   const handleSuggestion = useCallback(
     (suggestion: string) => {
+      setSearchContext(null);
       setQuery(suggestion, scope);
       inputRef.current?.focus();
     },
@@ -532,6 +527,7 @@ export default function SearchScreen() {
 
   const handleScopeSwitch = useCallback(
     (s: SearchScope) => {
+      setSearchContext(null);
       switchScope(s);
       setShowBookPicker(false);
       setCovenant('all');
@@ -542,6 +538,7 @@ export default function SearchScreen() {
 
   const handleInputChange = useCallback(
     (text: string) => {
+      setSearchContext(null);
       setQuery(text, scope);
     },
     [setQuery, scope],
@@ -778,6 +775,13 @@ export default function SearchScreen() {
           ListFooterComponent={renderFooter}
           ListHeaderComponent={
             <>
+              {searchContext && (
+                <View style={[styles.totalRow, { borderBottomWidth: 0, paddingBottom: 4 }]}>
+                  <Text style={[styles.totalText, { fontWeight: '600', fontSize: 13 }]}>
+                    {searchContext}
+                  </Text>
+                </View>
+              )}
               {hasQuery && total > 0 && (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalText}>
