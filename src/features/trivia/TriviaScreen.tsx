@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback, useContext, useRef } from 'react';
+import React, { useEffect, useMemo, useCallback, useContext, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Play, RotateCcw, PartyPopper, BookOpen, BookMarked } from 'lucide-react-native';
+import { Play, RotateCcw, PartyPopper, BookOpen, BookMarked, Zap } from 'lucide-react-native';
 import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
@@ -17,6 +17,7 @@ import { route } from '../../component/navigations/routes';
 import { useTrivia } from './hooks/useTrivia';
 import TriviaQuestionCard from './components/TriviaQuestionCard';
 import TriviaResultCard from './components/TriviaResultCard';
+import ConfettiOverlay from './components/ConfettiOverlay';
 
 export default function TriviaScreen() {
   const navigation = useNavigation<any>();
@@ -38,6 +39,7 @@ export default function TriviaScreen() {
     error,
     difficulty,
     totalCount,
+    streak,
     fetchQuestion,
     answer,
     nextQuestion,
@@ -97,6 +99,21 @@ export default function TriviaScreen() {
     });
   }, [navigation]);
 
+  // Confetti state — show on streak >= 3
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevStreakRef = useRef(0);
+
+  // Trigger confetti when streak reaches 3+ for the first time in a streak
+  useEffect(() => {
+    if (streak >= 3 && prevStreakRef.current < 3 && phase === 'answered' && result?.isCorrect) {
+      setShowConfetti(true);
+    }
+    prevStreakRef.current = streak;
+  }, [streak, phase, result]);
+
+  // Stable callback for confetti finish — prevents effect re-runs
+  const handleConfettiFinish = useCallback(() => setShowConfetti(false), []);
+
   const scoreBadge = score.total > 0 ? (
     <View style={[styles.headerScoreBadge, { backgroundColor: `${COLORS.accent}18` }]}>
       <Text style={[styles.headerScoreText, { color: COLORS.accent }]}>
@@ -114,6 +131,12 @@ export default function TriviaScreen() {
         subtitle={difficulty ? `${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} questions` : undefined}
         onPress={() => navigation.goBack()}
         rightComponent={scoreBadge}
+      />
+
+      {/* Confetti celebration overlay */}
+      <ConfettiOverlay
+        visible={showConfetti}
+        onFinish={handleConfettiFinish}
       />
 
       <ScrollView
@@ -271,6 +294,18 @@ export default function TriviaScreen() {
               onSelect={() => {}}
               onReferencePress={handleReferencePress}
             />
+            {/* Streak badge — show when on a streak */}
+            {streak >= 2 && (
+              <View style={[styles.streakBadge, isRtl && { flexDirection: 'row-reverse' }]}>
+                <Zap size={16} color={streak >= 3 ? COLORS.warning : COLORS.accent} fill={streak >= 3 ? COLORS.warning : 'transparent'} />
+                <Text style={[styles.streakText, {
+                  color: streak >= 3 ? COLORS.warning : COLORS.accent,
+                }]}>
+                  {streak} in a row{streak >= 3 ? ' 🔥' : ''}
+                </Text>
+              </View>
+            )}
+
             <TriviaResultCard result={result} isRtl={isRtl} isDark={isDark} />
 
             <TouchableOpacity
@@ -514,6 +549,24 @@ const createStyles = (COLORS: any) =>
     nextBtnText: {
       color: '#FFFFFF',
       fontSize: FONT_SIZES.md,
+      fontWeight: '800',
+    },
+
+    // ── Streak badge ──
+    streakBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      marginBottom: SPACING.sm,
+      paddingVertical: SPACING.sm,
+      paddingHorizontal: SPACING.md,
+      borderRadius: BORDER_RADIUS.round,
+      backgroundColor: `${COLORS.accent}10`,
+      alignSelf: 'center',
+    },
+    streakText: {
+      fontSize: FONT_SIZES.sm,
       fontWeight: '800',
     },
 

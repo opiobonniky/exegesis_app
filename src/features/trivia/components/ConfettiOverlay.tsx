@@ -39,10 +39,13 @@ export default function ConfettiOverlay({ visible, onFinish }: Props) {
     }
   }
 
+  // Store onFinish in a ref so the effect doesn't depend on it
+  const onFinishRef = useRef(onFinish);
+  onFinishRef.current = onFinish;
+
   useEffect(() => {
     if (!visible) {
       finishedCount.current = 0;
-      // Reset particles
       particles.current.forEach(p => {
         p.opacity.setValue(0);
       });
@@ -97,14 +100,14 @@ export default function ConfettiOverlay({ visible, onFinish }: Props) {
     Animated.stagger(40, anims).start(() => {
       finishedCount.current += 1;
       if (finishedCount.current >= PARTICLE_COUNT) {
-        onFinish?.();
+        onFinishRef.current?.();
       }
     });
 
     return () => {
       anims.forEach(a => a.stop());
     };
-  }, [visible, onFinish]);
+  }, [visible]);
 
   if (!visible) return null;
 

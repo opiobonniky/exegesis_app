@@ -53,15 +53,11 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 //  │          ios safe area padding                           │
 //  └─────────────────────────────────────────────────────────┘  ← wrapper bottom
 //
-// The pill is centered vertically across [NOTCH_RISE + NOTCH_DIP].
-// All inactive icons + labels sit inside BAR_CONTENT_H, vertically centered.
+// A notch is carved into the bar top at the active pill position.
+// Accent color shows through the notch behind the pill.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NOTCH_RISE      = 18;   // px pill protrudes ABOVE bar surface
-const NOTCH_DIP       = 10;   // px notch dips BELOW bar surface
-const NOTCH_TOTAL     = NOTCH_RISE + NOTCH_DIP; // total notch excursion
-const NOTCH_WIDTH     = 56;   // horizontal width of cutout
-const NOTCH_RADIUS    = 12;   // corner radius of cutout
 const PILL_SIZE       = 44;   // diameter of floating pill
 const BAR_CONTENT_H   = 56;   // bar height containing icon + label + ios pad
 const IOS_PAD         = Platform.OS === 'ios' ? 16 : 0;
@@ -86,51 +82,36 @@ function TabBarBackground({
   barColor: string;
   width: number;
 }) {
-  const animX = useRef(new Animated.Value(activeIndex)).current;
-  const [cx, setCx] = useState(() => {
+  const svgH = BAR_CONTENT_H + IOS_PAD;
+  const nd   = 48;                  // how far the notch dips into the bar
+  const nw   = PILL_SIZE + 8;       // notch width (slightly wider than pill)
+  const nr   = 16;                  // notch corner radius
+
+  // Compute notch center directly — no animation, snaps instantly.
+  // The pill handles the smooth slide via useNativeDriver.
+  const cx = useMemo(() => {
     const tw = width / tabCount;
     return tw * activeIndex + tw / 2;
-  });
+  }, [width, tabCount, activeIndex]);
 
-  useEffect(() => {
-    Animated.spring(animX, {
-      toValue: activeIndex,
-      useNativeDriver: false,
-      tension: 60,
-      friction: 10,
-    }).start();
-  }, [activeIndex]);
+  const x1 = cx - nw / 2;
+  const x2 = cx + nw / 2;
 
-  useEffect(() => {
-    const tw = width / tabCount;
-    const id = animX.addListener(({ value }) => setCx(tw * value + tw / 2));
-    return () => animX.removeListener(id);
-  }, [width, tabCount]);
-
-  // SVG coordinate system: (0,0) = bar top-left corner
-  // notch dips DOWN by NOTCH_DIP from top edge
-  const svgH = BAR_CONTENT_H + IOS_PAD;
-  const nd   = NOTCH_DIP;
-  const nw   = NOTCH_WIDTH;
-  const nr   = NOTCH_RADIUS;
-  const x1   = cx - nw / 2;
-  const x2   = cx + nw / 2;
-
-  const path = [
+  const barPath = useMemo(() => [
     `M 0 0`,
     `L ${x1 - nr} 0`,
-    `Q ${x1} 0 ${x1} ${nr}`,          // top-left corner of notch
+    `Q ${x1} 0 ${x1} ${nr}`,
     `L ${x1} ${nd - nr}`,
-    `Q ${x1} ${nd} ${x1 + nr} ${nd}`, // bottom-left corner of notch
+    `Q ${x1} ${nd} ${x1 + nr} ${nd}`,
     `L ${x2 - nr} ${nd}`,
-    `Q ${x2} ${nd} ${x2} ${nd - nr}`, // bottom-right corner of notch
+    `Q ${x2} ${nd} ${x2} ${nd - nr}`,
     `L ${x2} ${nr}`,
-    `Q ${x2} 0 ${x2 + nr} 0`,         // top-right corner of notch
+    `Q ${x2} 0 ${x2 + nr} 0`,
     `L ${width} 0`,
     `L ${width} ${svgH}`,
     `L 0 ${svgH}`,
     `Z`,
-  ].join(' ');
+  ].join(' '), [x1, x2, nd, nr, width, svgH]);
 
   return (
     <Svg
@@ -139,24 +120,25 @@ function TabBarBackground({
       style={[StyleSheet.absoluteFill, { top: NOTCH_RISE }]}
       pointerEvents="none"
     >
-      <Path d={path} fill={barColor} />
+      <Path d={barPath} fill={barColor} />
     </Svg>
   );
 }
 
 // ── Floating pill ─────────────────────────────────────────────────────────────
-// Pill vertical center = NOTCH_RISE - NOTCH_DIP/2
-// i.e. it straddles the bar top edge: rises NOTCH_RISE above, dips NOTCH_DIP/2 below
+// Pill sits at the bar surface (Y=NOTCH_RISE), inside the accent notch.
 function NotchPill({
   activeIndex,
   tabCount,
   color,
+  iconColor,
   width,
   icon: Icon,
 }: {
   activeIndex: number;
   tabCount: number;
   color: string;
+  iconColor: string;
   width: number;
   icon: any;
 }) {
@@ -202,7 +184,7 @@ function NotchPill({
         },
       ]}
     >
-      <Icon size={ICON_SIZE} color="#FFF" strokeWidth={2.5} />
+      <Icon size={ICON_SIZE} color={iconColor} strokeWidth={2.5} />
     </Animated.View>
   );
 }
@@ -267,7 +249,9 @@ export default function BottomTab({
 
   const activeIndex = Math.max(0, tabs.findIndex(t => t.id === activeTab));
   const ActiveIcon  = tabs[activeIndex]?.icon ?? Home;
-  const barColor    = app.isDark ? COLORS.cardBackground : '#FFFFFF';
+  const barColor    = COLORS.primary;
+  const pillBg      = COLORS.surface;
+  const inactiveTint = app.isDark ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.65)';
 
   return (
     // NOTE: Home.tsx already wraps this in position:absolute bottom:0
@@ -289,7 +273,8 @@ export default function BottomTab({
       <NotchPill
         activeIndex={activeIndex}
         tabCount={tabs.length}
-        color={COLORS.primary}
+        color={pillBg}
+        iconColor={app.isDark ? '#FFFFFF' : COLORS.primary}
         width={barWidth}
         icon={ActiveIcon}
       />
@@ -297,8 +282,6 @@ export default function BottomTab({
       {/* ── Touch row ─────────────────────────────────────────────────────────
           Starts at y = NOTCH_RISE (bar surface).
           Height = BAR_CONTENT_H (all icons + labels + ios pad live here).
-          Tabs are centred inside this zone — the notch dips only NOTCH_DIP (10px)
-          which is small enough not to push icons down noticeably.
       ─────────────────────────────────────────────────────────────────────── */}
       <View
         style={[
@@ -333,7 +316,7 @@ export default function BottomTab({
               */}
               <View style={styles.iconSlot}>
                 {!isActive && (
-                  <Icon size={ICON_SIZE} color={COLORS.muted} strokeWidth={2} />
+                  <Icon size={ICON_SIZE} color={inactiveTint} strokeWidth={2} />
                 )}
               </View>
 
@@ -341,7 +324,7 @@ export default function BottomTab({
                 <Text
                   style={[
                     styles.label,
-                    { color: COLORS.muted },
+                    { color: inactiveTint },
                   ]}
                   numberOfLines={1}
                 >

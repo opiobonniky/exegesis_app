@@ -5,11 +5,10 @@ import {
   View,
   Platform,
   StyleSheet,
-  Animated,
   Image,
 } from 'react-native';
-import React, { useContext, useEffect, useRef, useState } from 'react';
-import { FONT_SIZES, getColors, SPACING } from '../constants/theme';
+import React, { useContext, useEffect, useState } from 'react';
+import { getColors, SPACING } from '../constants/theme';
 import LinearGradient from 'react-native-linear-gradient';
 import { ChevronLeft, ChevronRight, Moon, Search, Sun, User } from 'lucide-react-native';
 import exegesisLogo from '../assets/logos/exegesis_bg_rm.png';
@@ -137,29 +136,6 @@ const logo = StyleSheet.create({
 
 const ActionHeader = (props: Props) => {
   const app = useContext(AppContext);
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(10)).current;
-
-  const titleKey =
-    props.mode === 'home' ? props.userName : (props as StandardProps).title;
-
-  useEffect(() => {
-    fadeAnim.setValue(0);
-    slideAnim.setValue(10);
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 320,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 280,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [titleKey]);
 
   const { translations, language } = useLanguage();
   const isRtl = isRtlLanguage(language);
@@ -312,8 +288,15 @@ const ActionHeader = (props: Props) => {
                     )}
                   </View>
                 </TouchableOpacity>
-                <View style={{ paddingTop: 6 }}>
-                  {stdLogo ? stdLogo : <LogoLockup compact />}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Image
+                    source={exegesisLogo}
+                    style={{ width: 44, height: 44, borderRadius: 10 }}
+                    resizeMode="contain"
+                  />
+                  <Text style={{ fontSize: 20, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3 }} numberOfLines={1}>
+                    {title}
+                  </Text>
                 </View>
                 {rightComponent ? (
                   <View style={[styles.sideSlot, { alignItems: isRtl ? 'flex-start' : 'flex-end' }]}>
@@ -325,8 +308,15 @@ const ActionHeader = (props: Props) => {
               </>
             ) : (
               <>
-                <View style={{ paddingTop: 6 }}>
-                  {stdLogo ? stdLogo : <LogoLockup compact />}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Image
+                    source={exegesisLogo}
+                    style={{ width: 44, height: 44, borderRadius: 10 }}
+                    resizeMode="contain"
+                  />
+                  <Text style={{ fontSize: 20, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3 }} numberOfLines={1}>
+                    {title}
+                  </Text>
                 </View>
                 <View style={{ flex: 1 }} />
                 {rightComponent && (
@@ -337,21 +327,6 @@ const ActionHeader = (props: Props) => {
               </>
             )}
           </View>
-          <Animated.View
-            style={[
-              styles.titleRow,
-              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-            ]}
-          >
-            <Text style={styles.title} numberOfLines={1}>
-              {title}
-            </Text>
-            {!!subtitle && (
-              <Text style={styles.subtitle} numberOfLines={1}>
-                {subtitle}
-              </Text>
-            )}
-          </Animated.View>
         </LinearGradient>
       ) : (
         <View
@@ -390,8 +365,15 @@ const ActionHeader = (props: Props) => {
                     )}
                   </View>
                 </TouchableOpacity>
-                <View style={{ paddingTop: 10 }}>
-                  {stdLogo ? stdLogo : <LogoLockup compact />}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Image
+                    source={exegesisLogo}
+                    style={{ width: 44, height: 44, borderRadius: 10 }}
+                    resizeMode="contain"
+                  />
+                  <Text style={{ fontSize: 20, fontWeight: '800', color: COLORS.text, letterSpacing: -0.3 }} numberOfLines={1}>
+                    {title}
+                  </Text>
                 </View>
                 {rightComponent ? (
                   <View style={[styles.sideSlot, { alignItems: isRtl ? 'flex-start' : 'flex-end' }]}>
@@ -413,9 +395,16 @@ const ActionHeader = (props: Props) => {
               </>
             ) : (
               <>
-                 <View style={{ paddingTop: 6 }}>
-                   <LogoLockup compact />
-                 </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Image
+                    source={exegesisLogo}
+                    style={{ width: 44, height: 44, borderRadius: 10 }}
+                    resizeMode="contain"
+                  />
+                  <Text style={{ fontSize: 20, fontWeight: '800', color: COLORS.text, letterSpacing: -0.3 }} numberOfLines={1}>
+                    {title}
+                  </Text>
+                </View>
                 <View style={{ flex: 1 }} />
                 {rightComponent && (
                   <View style={[styles.sideSlot, { alignItems: isRtl ? 'flex-start' : 'flex-end' }]}>
@@ -435,27 +424,6 @@ const ActionHeader = (props: Props) => {
               </>
             )}
           </View>
-          <Animated.View
-            style={[
-              styles.titleRow,
-              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-            ]}
-          >
-            <Text
-              style={[styles.title, { color: COLORS.text }]}
-              numberOfLines={1}
-            >
-              {title}
-            </Text>
-            {!!subtitle && (
-              <Text
-                style={[styles.subtitle, { color: COLORS.textSecondary }]}
-                numberOfLines={1}
-              >
-                {subtitle}
-              </Text>
-            )}
-          </Animated.View>
         </View>
       )}
     </View>
@@ -617,26 +585,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // ── Standard: title row ───────────────────────────────────────────────────
-  titleRow: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.xs,
-  },
-  title: {
-    fontSize: FONT_SIZES.xl,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    marginTop: 2,
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 0.2,
-  },
-
 
 });
 

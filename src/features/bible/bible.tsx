@@ -64,10 +64,10 @@ import ChapterSelectorScreen from './components/ChapterSelectorScreen';
 import {
   BibleHeader,
   ChapterNavigation,
-
   VerseList,
   AudioControlBar,
   VerseSideMenu,
+  SkeletonLoader,
 } from './components';
 
 import {
@@ -521,8 +521,39 @@ export default function Bible() {
 
   return (
     <View style={styles.container}>
-      {selectionStage === 'book' ? (
-        initialLoading ? null : <BookSelectorScreen
+      {initialLoading ? (
+        <>
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <BibleHeader
+        book={currentBook}
+        chapter={currentChapter}
+        version={activeVersion}
+        isDark={isDark}
+        isRtl={isRtl}
+        onMenuPress={() => {}}
+        onBookPress={() => {}}
+        onSearchPress={() => {}}
+        onVersionPress={() => {}}
+      />
+
+      {/* ── Chapter Navigation ───────────────────────────────────────────── */}
+      <ChapterNavigation
+        currentChapter={currentChapter}
+        maxChapters={maxChapters}
+        isDark={isDark}
+        isAudioPlaying={false}
+        onPrev={() => {}}
+        onNext={() => {}}
+        onSelectChapter={() => {}}
+        onAudioChapter={() => {}}
+      />
+
+      <View style={{ flex: 1 }}>
+        <SkeletonLoader colors={COLORS} />
+      </View>
+        </>
+      ) : selectionStage === 'book' ? (
+        <BookSelectorScreen
           books={books}
           isDark={isDark}
           onSelectBook={handleEntrySelectBook}
@@ -563,9 +594,9 @@ export default function Bible() {
         maxChapters={maxChapters}
         isDark={isDark}
         isAudioPlaying={showAudioPlayer}
-        onPrev={() => goToChapter('prev')} // ✅ allowed
-        onNext={() => goToChapter('next')} // ✅ allowed
-        onSelectChapter={() => setSelectionStage('chapter')} // ✅ allowed
+        onPrev={() => goToChapter('prev')}
+        onNext={() => goToChapter('next')}
+        onSelectChapter={() => setSelectionStage('chapter')}
         onAudioChapter={() =>
           guard('Audio narration requires a free account.', () => {
             if (showAudioPlayer) handleAudioStop();
@@ -1083,38 +1114,6 @@ export default function Bible() {
         freeTranslationsOnly={freeTranslationsOnly}
       />
 
-      {/* ── Bottom Tab — navigation gated for guests ─────────────────────── */}
-      {!isFromReadingPlan && (
-        <Animated.View
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            transform: [
-              {
-                translateY: tabBarAnimation.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [100, 0],
-                }),
-              },
-            ],
-            opacity: tabBarAnimation,
-          }}
-        >
-          <BottomTab
-            activeTab="bible"
-            setActiveTab={() => {}}
-            isGuest={isGuest}
-            onGuestTabPress={() =>
-              showGate(
-                'login or create a free account to access Home, Favourites, Plans and your Profile.',
-              )
-            }
-          />
-        </Animated.View>
-      )}
-
       {/* ── Guest banner (auto nudge + gated action trigger) ────────────── */}
       <GuestBanner
         triggered={gateVisible}
@@ -1166,6 +1165,39 @@ export default function Bible() {
       />
       </>
       )}
+
+      {/* ── Bottom Tab — navigation gated for guests ─────────────────────── */}
+      {!isFromReadingPlan && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            transform: [
+              {
+                translateY: tabBarAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [100, 0],
+                }),
+              },
+            ],
+            opacity: tabBarAnimation,
+          }}
+        >
+          <BottomTab
+            activeTab="bible"
+            setActiveTab={() => {}}
+            isGuest={isGuest}
+            onGuestTabPress={() =>
+              showGate(
+                'login or create a free account to access Home, Favourites, Plans and your Profile.',
+              )
+            }
+          />
+        </Animated.View>
+      )}
+
     </View>
   );
 }

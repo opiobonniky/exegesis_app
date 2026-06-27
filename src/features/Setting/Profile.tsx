@@ -90,11 +90,12 @@ export default function ProfileScreen() {
   });
   const [langModalOpen, setLangModalOpen] = useState(false);
 
-  if (!app || !app.userInfo) return null;
-
-  const { userInfo, isDark, toggleTheme, logout } = app;
-  const user = userInfo as any;
+  const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
+  const userInfo = app?.userInfo ?? null;
+  const toggleTheme = app?.toggleTheme ?? (() => {});
+  const logout = app?.logout ?? (async () => {});
+  const user = userInfo as any;
   const { translations, setLanguage, language, t } = useLanguage();
   const isRtl = isRtlLanguage(language);
 
@@ -307,11 +308,17 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
+      {!app || !userInfo ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.accent} />
+        </View>
+      ) : (
+      <>
       <ActionHeader
         title={t('profile.title') || (translations?.profile?.title) || 'Profile Informations'}
         onPress={() => navigation.goBack()}
       />
-   
+    
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -608,6 +615,8 @@ export default function ProfileScreen() {
         severity={modal.severity}
         onConfirm={() => setModal({ ...modal, status: false })}
       />
+      </>
+      )}
 
       <Animated.View
         style={{

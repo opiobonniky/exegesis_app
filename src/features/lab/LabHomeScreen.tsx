@@ -103,14 +103,6 @@ export default function LabHomeScreen() {
     abide: 'Apply and journal',
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.accent} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <ActionHeader
@@ -118,6 +110,11 @@ export default function LabHomeScreen() {
         title="Exegesis Lab"
       />
 
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.accent} />
+        </View>
+      ) : (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -278,6 +275,7 @@ export default function LabHomeScreen() {
           </View>
         )}
       </ScrollView>
+      )}
 
       <BottomTab activeTab="lab" setActiveTab={() => {}} />
     </View>

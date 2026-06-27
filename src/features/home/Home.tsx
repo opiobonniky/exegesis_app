@@ -12,6 +12,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  ActivityIndicator,
   Animated,
   StyleSheet,
 } from 'react-native';
@@ -339,10 +340,14 @@ export default function Home() {
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (!app || !userInfo) return null;
-
   return (
     <View style={styles.container}>
+      {!app || !userInfo ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
+          <ActivityIndicator size="large" color={COLORS.accent} />
+        </View>
+      ) : (
+      <>
       <ActionHeader
         mode="home"
         greeting={getGreeting(translation)}
@@ -761,8 +766,8 @@ export default function Home() {
           )}
         </View>
       </ScrollView>
-
-
+      </>
+      )}
 
       {/* ── Bottom Tab ── */}
       <Animated.View

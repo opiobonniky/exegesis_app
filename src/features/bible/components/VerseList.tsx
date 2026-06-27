@@ -11,6 +11,7 @@
 
 import React from 'react';
 import {
+  ActivityIndicator,
   Animated,
   FlatList,
   RefreshControl,
@@ -91,7 +92,7 @@ const SKELETON_CONFIGS: string[][] = [
   ['76%', '90%'],
 ];
 
-function SkeletonLoader({ colors }: { colors: any }) {
+export function SkeletonLoader({ colors }: { colors: any }) {
   return (
     <View style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm }}>
       {SKELETON_CONFIGS.map((lines, i) => (
@@ -202,14 +203,6 @@ export default function VerseList({
   verseWordMap,
   onWordPress,
 }: VerseListProps) {
-  if (loading) {
-    return (
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-        <SkeletonLoader colors={colors} />
-      </Animated.View>
-    );
-  }
-
   const renderVerseItem = ({
     item,
   }: {
@@ -311,35 +304,44 @@ export default function VerseList({
   ) : undefined;
 
   return (
-    <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-      <FlatList
-        ref={flatListRef}
-        data={versesArray}
-        extraData={[selectedVerses, activeAudioVerse, explanationMap, dailyVerseRefMap, verseJournalPrompts]}
-        renderItem={renderVerseItem}
-        keyExtractor={item => String(item.num)}
-        contentContainerStyle={[
-          styles.scrollContent,
-          versesArray.length === 0 && { flex: 1 },
-        ]}
-        refreshControl={refreshControl}
-        showsVerticalScrollIndicator={false}
-        initialNumToRender={15}
-        maxToRenderPerBatch={10}
-        windowSize={21}
-        removeClippedSubviews={false}
-        onScroll={onScroll}
-        scrollEventThrottle={scrollEventThrottle}
-        onScrollToIndexFailed={info => {
-          setTimeout(() => {
-            flatListRef.current?.scrollToIndex({
-              index: info.index,
-              animated: true,
-              viewPosition: 0.4,
-            });
-          }, 500);
-        }}
-      />
-    </Animated.View>
+    <View style={{ flex: 1 }}>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <FlatList
+          ref={flatListRef}
+          data={versesArray}
+          extraData={[selectedVerses, activeAudioVerse, explanationMap, dailyVerseRefMap, verseJournalPrompts]}
+          renderItem={renderVerseItem}
+          keyExtractor={item => String(item.num)}
+          contentContainerStyle={[
+            styles.scrollContent,
+            versesArray.length === 0 && { flex: 1 },
+          ]}
+          refreshControl={refreshControl}
+          ListEmptyComponent={
+            loading ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 100 }}>
+                <ActivityIndicator size="large" color={colors.accent} />
+              </View>
+            ) : null
+          }
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={21}
+          removeClippedSubviews={false}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
+          onScrollToIndexFailed={info => {
+            setTimeout(() => {
+              flatListRef.current?.scrollToIndex({
+                index: info.index,
+                animated: true,
+                viewPosition: 0.4,
+              });
+            }, 500);
+          }}
+        />
+      </Animated.View>
+    </View>
   );
 }
