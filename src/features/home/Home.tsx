@@ -169,12 +169,6 @@ export default function Home() {
         icon: HelpCircle,
         onPress: () => navigation.navigate(route.home),
       },
-      {
-        id: 'community',
-        label: 'Community Feeds',
-        icon: History,
-        onPress: () => navigation.navigate(route.home),
-      },
     ],
     [navigation, translation],
   );
@@ -386,7 +380,7 @@ export default function Home() {
                 ]}
               >
                 <View style={styles.bannerIconWrap}>
-                  <Icon size={22} color="#FFFFFF" strokeWidth={1.8} />
+                  <Icon size={16} color="#FFFFFF" strokeWidth={2} />
                 </View>
                 <Text style={styles.bannerLabel}>{btn.label}</Text>
               </TouchableOpacity>
