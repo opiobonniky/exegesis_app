@@ -5,16 +5,14 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
   StyleSheet,
-  Dimensions,
   Platform,
   StatusBar,
 } from 'react-native';
 import { Search, X, BookOpen, ChevronRight, ChevronLeft } from 'lucide-react-native';
 import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Book {
   name: string;
@@ -28,6 +26,7 @@ interface BookSelectorScreenProps {
   isDark: boolean;
   onSelectBook: (bookName: string) => void;
   onBack?: () => void;
+  loading?: boolean;
 }
 
 export default function BookSelectorScreen({
@@ -35,6 +34,7 @@ export default function BookSelectorScreen({
   isDark,
   onSelectBook,
   onBack,
+  loading = false,
 }: BookSelectorScreenProps) {
   const { translations } = useLanguage();
   const bc = translations?.bible;
@@ -148,7 +148,12 @@ export default function BookSelectorScreen({
         contentContainerStyle={s.listContent}
         keyboardShouldPersistTaps="handled"
       >
-        {displayed.length === 0 ? (
+        {loading ? (
+          <View style={s.loadingWrap}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={[s.loadingText, { color: COLORS.muted }]}>Loading books...</Text>
+          </View>
+        ) : displayed.length === 0 ? (
           <View style={s.emptyWrap}>
             <Text style={[s.emptyText, { color: COLORS.muted }]}>
               {bc?.noBooksFound || 'No books found'} "{query}"
@@ -204,11 +209,11 @@ export default function BookSelectorScreen({
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 56 : 24,
+    paddingTop: Platform.OS === 'ios' ? 18 : 10,
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: SPACING.md,
+    paddingTop: SPACING.xs,
     paddingBottom: SPACING.sm,
   },
   headerTop: {
@@ -333,6 +338,15 @@ const s = StyleSheet.create({
   emptyWrap: {
     paddingVertical: 60,
     alignItems: 'center',
+  },
+  loadingWrap: {
+    paddingVertical: 56,
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  loadingText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
   },
   emptyText: {
     fontSize: FONT_SIZES.md,

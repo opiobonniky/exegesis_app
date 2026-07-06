@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -140,14 +140,14 @@ export default function ChapterSelectorScreen({
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 56 : 24,
+    paddingTop: Platform.OS === 'ios' ? 18 : 10,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: H_PAD,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.lg,
+    paddingTop: SPACING.xs,
+    paddingBottom: SPACING.md,
     gap: 12,
   },
   backBtn: {

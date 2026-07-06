@@ -11,13 +11,10 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
   Alert,
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
-  Modal,
   Animated,
   Dimensions,
   Share,
@@ -34,77 +31,31 @@ import {
 } from '../../constants/theme';
 import { route } from '../../component/navigations/routes';
 import { sendPostRequest } from '../../services/api';
+import { ttsService } from '../../services/ttsService';
 import ActionHeader from '../../reusable/ActionHeader';
 import { showToast } from '../../helpers/Toash.helper';
-import {
-  Eye,
-  Ear,
-  Brain,
-  Heart,
-  ChevronLeft,
-  ChevronRight,
-  BookOpen,
-  Hash,
-  Globe,
-  BookText,
-  Play,
-  Pause,
-  CheckCircle2,
-  Sparkles,
-  FileText,
-  BookMarked,
-  MessageSquareQuote,
-  Tag,
-  Lock,
-  Save,
-  Download,
-  RotateCcw,
-} from 'lucide-react-native';
 import BookSelectorScreen from '../bible/components/BookSelectorScreen';
 import ChapterSelectorScreen from '../bible/components/ChapterSelectorScreen';
-import { bibleApi } from '../../services/bibleApi';
 import {
-  getVerseWords,
-  getStrongsEntry,
   StrongsWordData,
-  StrongsEntry,
 } from '../../services/strongsService';
-import {
-  getVerseResources,
-  VerseResourceData,
-} from '../../services/verseResourcesApi';
-import { BookPrologue, getBookPrologue } from '../../services/bookProloguesApi';
 import { bibleTTS } from '../../utilits/bibleTTS';
+import StrongsWordModal from './components/StrongsWordModal';
+import PassageSelectionStep from './components/PassageSelectionStep';
+import LookStage from './components/LookStage';
+import ListenStage from './components/ListenStage';
+import LearnStage from './components/LearnStage';
+import AbideStage from './components/AbideStage';
+import CompletedStage from './components/CompletedStage';
+import { useStrongsWordModal } from './hooks/useStrongsWordModal';
+import { LOOK_PROMPTS, STAGE_ORDER } from './constants';
+import { PassageSubStage } from './types';
+import { useLabBooks } from './hooks/useLabBooks';
+import { useLabPassageData } from './hooks/useLabPassageData';
+import { useLabLookStrongs } from './hooks/useLabLookStrongs';
+import { useLabLearnData } from './hooks/useLabLearnData';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// ── Types ────────────────────────────────────────────────────────────────────
-interface BookItem {
-  name: string;
-  chapters: number;
-  verses: number;
-  testament: 'Old' | 'New';
-}
-
-// ── Constants ────────────────────────────────────────────────────────────────
-const STAGE_ORDER = ['look', 'listen', 'learn', 'abide'] as const;
-
-const LISTEN_OPTIONS = [
-  { label: '1 min', value: 60 },
-  { label: '3 min', value: 180 },
-  { label: '5 min', value: 300 },
-  { label: '10 min', value: 600 },
-  { label: '15 min', value: 900 },
-];
-
-const LOOK_PROMPTS = [
-  'What specific words or phrases stand out to you in this passage?',
-  'Who is speaking? Who is listening or being addressed?',
-  'What commands, promises, warnings, or truths do you see?',
-  'What is repeated in this passage?',
-  'What contrasts do you notice (light/darkness, before/after, etc.)?',
-  'What questions does this passage raise in your mind?',
-];
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function LabFlowScreen() {
@@ -115,6 +66,8 @@ export default function LabFlowScreen() {
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
+  const translationId = app?.bibleVersionId || 'Berean';
+  const { books, booksLoading } = useLabBooks(translationId);
   const hasInitialPassage = Boolean(
     routeParams.bookName && routeParams.chapter && routeParams.verseStart,
   );
@@ -166,38 +119,29 @@ export default function LabFlowScreen() {
   );
 
   // ── Book/chapter selection flow ─────────────────────────────────────────
-  const [subStage, setSubStage] = useState<'book' | 'chapter' | 'verse'>(
+  const [subStage, setSubStage] = useState<PassageSubStage>(
     routeParams.bookName && routeParams.chapter
       ? 'verse'
       : routeParams.bookName
         ? 'chapter'
         : 'book',
   );
-  const [books, setBooks] = useState<BookItem[]>([]);
-  const [booksLoading, setBooksLoading] = useState(true);
   const [maxChapters, setMaxChapters] = useState(0);
-
-  // Fetch books on mount
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const translationId = app?.bibleVersionId || 'Berean';
-        const data = await bibleApi.getBooksWithMaxChapters(translationId);
-        const mapped: BookItem[] = data.map(b => ({
-          name: b.bookName,
-          chapters: b.chaptersCount,
-          verses: b.totalVerses,
-          testament: b.testament as 'Old' | 'New',
-        }));
-        setBooks(mapped);
-      } catch (e) {
-        console.error('Failed to fetch books:', e);
-      } finally {
-        setBooksLoading(false);
-      }
-    };
-    fetchBooks();
-  }, [app?.bibleVersionId]);
+  const {
+    availableVerses,
+    availableVersesLoading,
+    passageVerses,
+    passageVersesLoading,
+    setAvailableVerses,
+    setPassageVerses,
+  } = useLabPassageData({
+    translationId,
+    bookName,
+    chapter,
+    verseStart,
+    verseEnd,
+    stage,
+  });
 
   useEffect(() => {
     if (!bookName || books.length === 0) return;
@@ -255,17 +199,13 @@ export default function LabFlowScreen() {
     routeParams.sessionId,
     routeParams.verseEnd,
     routeParams.verseStart,
+    setAvailableVerses,
+    setPassageVerses,
   ]);
 
   // ── Look stage ────────────────────────────────────────────────────────────
   const [lookNotes, setLookNotes] = useState('');
   const [currentPromptIdx, setCurrentPromptIdx] = useState(0);
-  const [passageVerses, setPassageVerses] = useState<
-    { verseNumber: number; text: string }[]
-  >([]);
-  const [passageVersesLoading, setPassageVersesLoading] = useState(false);
-  const [availableVerses, setAvailableVerses] = useState<number[]>([]);
-  const [availableVersesLoading, setAvailableVersesLoading] = useState(false);
 
   // ── Listen stage ──────────────────────────────────────────────────────────
   const [selectedDuration, setSelectedDuration] = useState<number>(180);
@@ -274,6 +214,7 @@ export default function LabFlowScreen() {
   const [timerElapsed, setTimerElapsed] = useState(0);
   const [timerComplete, setTimerComplete] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerPendingRef = useRef(false);
   const animatedValue = useRef(new Animated.Value(1)).current;
 
   // ── Learn stage ───────────────────────────────────────────────────────────
@@ -282,16 +223,29 @@ export default function LabFlowScreen() {
     'exegesis' | 'language' | 'history' | 'prologue'
   >(routeParams.learnTab || 'exegesis');
   const [verseWords, setVerseWords] = useState<StrongsWordData[]>([]);
-  const [verseResources, setVerseResources] =
-    useState<VerseResourceData | null>(null);
-  const [bookPrologue, setBookPrologue] = useState<BookPrologue | null>(null);
-  const [learnDataLoading, setLearnDataLoading] = useState(false);
-  const [selectedStrongsWord, setSelectedStrongsWord] =
-    useState<StrongsWordData | null>(null);
-  const [selectedStrongsEntry, setSelectedStrongsEntry] =
-    useState<StrongsEntry | null>(null);
-  const [strongsEntryLoading, setStrongsEntryLoading] = useState(false);
-  const [showStrongsModal, setShowStrongsModal] = useState(false);
+  const {
+    learnDataLoading,
+    verseResources,
+    setVerseResources,
+    bookPrologue,
+    setBookPrologue,
+  } = useLabLearnData({
+    stage,
+    bookName,
+    chapter,
+    verseStart,
+    translationId,
+    setVerseWords,
+  });
+  const {
+    selectedWord: selectedStrongsWord,
+    selectedEntry: selectedStrongsEntry,
+    loading: strongsEntryLoading,
+    visible: showStrongsModal,
+    openWord: handleStrongsWordPress,
+    close: closeStrongsModal,
+    clearSelection: clearStrongsSelection,
+  } = useStrongsWordModal();
 
   // ── TTS audio state ──────────────────────────────────────────────────────
   const [isTtsPlaying, setIsTtsPlaying] = useState(false);
@@ -303,6 +257,15 @@ export default function LabFlowScreen() {
     const unsub = bibleTTS.subscribe(state => {
       setIsTtsPlaying(state.isPlaying);
       setIsTtsPaused(state.isPaused);
+      if (state.isPlaying || state.isPaused) {
+        setAudioStarting(false);
+      }
+      if (state.isPlaying && timerPendingRef.current) {
+        timerPendingRef.current = false;
+        setTimerRunning(true);
+        setTimerPaused(false);
+        setTimerElapsed(0);
+      }
     });
     return unsub;
   }, []);
@@ -337,6 +300,25 @@ export default function LabFlowScreen() {
     };
   }, [timerRunning, timerPaused, selectedDuration]);
 
+  const audioRestartingRef = useRef(false);
+
+  // Loop passage audio while timer runs
+  useEffect(() => {
+    if (!isTtsPlaying && !isTtsPaused && timerRunning && !timerComplete && passageVerses.length > 0 && !audioRestartingRef.current) {
+      audioRestartingRef.current = true;
+      speakPassageWithPreferredVoice()
+        .catch(() => {})
+        .finally(() => { audioRestartingRef.current = false; });
+    }
+  }, [isTtsPlaying, isTtsPaused, timerRunning, timerComplete, passageVerses.length, speakPassageWithPreferredVoice]);
+
+  // Stop audio when timer completes
+  useEffect(() => {
+    if (timerComplete && isTtsPlaying) {
+      bibleTTS.stop().catch(() => {});
+    }
+  }, [timerComplete, isTtsPlaying]);
+
   // Animated circle pulse
   useEffect(() => {
     if (timerRunning && !timerPaused) {
@@ -358,14 +340,6 @@ export default function LabFlowScreen() {
       return () => pulse.stop();
     }
   }, [animatedValue, timerRunning, timerPaused]);
-
-  const remaining = selectedDuration - timerElapsed;
-  const minutes = Math.floor(remaining / 60);
-  const seconds = remaining % 60;
-  const progress = selectedDuration > 0 ? timerElapsed / selectedDuration : 0;
-
-  const formatTimeStr = (m: number, s: number) =>
-    `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
   // ── Sync pageIndex → stage (when swiping) ─────────────────────────────
   useEffect(() => {
@@ -450,7 +424,7 @@ export default function LabFlowScreen() {
       setAvailableVerses([]);
       setSubStage('chapter');
     },
-    [books],
+    [books, setAvailableVerses, setPassageVerses],
   );
 
   const handleSelectChapter = useCallback((ch: number) => {
@@ -460,7 +434,7 @@ export default function LabFlowScreen() {
     setPassageVerses([]);
     setAvailableVerses([]);
     setSubStage('verse');
-  }, []);
+  }, [setAvailableVerses, setPassageVerses]);
 
   const handleSelectVerse = useCallback(
     (verseNumber: number) => {
@@ -537,7 +511,12 @@ export default function LabFlowScreen() {
         setVerseEnd('');
       }
     },
-    [],
+    [
+      setAvailableVerses,
+      setBookPrologue,
+      setPassageVerses,
+      setVerseResources,
+    ],
   );
 
   // ── API calls ────────────────────────────────────────────────────────────
@@ -761,44 +740,21 @@ export default function LabFlowScreen() {
   ]);
 
   // ── TTS passage playback for Listen stage ─────────────────────────────
-  const speakPassageWithDeviceVoice = useCallback(async () => {
+  const speakPassageWithPreferredVoice = useCallback(async () => {
     if (!passageVerses.length) return;
-    const wasEdgeEnabled = bibleTTS.edgeEnabled;
     const verses = passageVerses.map(v => ({
       num: v.verseNumber,
       text: v.text,
     }));
 
-    try {
-      // Lab listen should never be silent because of a flaky network voice path.
-      bibleTTS.setEdgeEnabled(false);
-      await bibleTTS.stop();
-      await bibleTTS.speakVerses(verses, bookName, parseInt(chapter, 10), {
-        announceLocation: true,
-        announceVerseNumbers: passageVerses.length <= 5,
-      });
-    } finally {
-      bibleTTS.setEdgeEnabled(wasEdgeEnabled);
-    }
+    await bibleTTS.init();
+    bibleTTS.setEdgeEnabled(await ttsService.isEnabled());
+    await bibleTTS.stop();
+    await bibleTTS.speakVerses(verses, bookName, parseInt(chapter, 10), {
+      announceLocation: true,
+      announceVerseNumbers: passageVerses.length <= 5,
+    });
   }, [bookName, chapter, passageVerses]);
-
-  const handlePlayPassageAudio = useCallback(async () => {
-    if (!passageVerses.length) return;
-    setAudioStarting(true);
-    try {
-      if (isTtsPlaying && isTtsPaused) {
-        await bibleTTS.resume();
-      } else if (isTtsPlaying) {
-        await bibleTTS.pause();
-      } else {
-        await speakPassageWithDeviceVoice();
-      }
-    } catch (error: any) {
-      showToast('error', error?.message || 'Audio could not start');
-    } finally {
-      setAudioStarting(false);
-    }
-  }, [passageVerses.length, isTtsPlaying, isTtsPaused, speakPassageWithDeviceVoice]);
 
   const handleReplayPassageAudio = useCallback(async () => {
     if (!passageVerses.length) {
@@ -810,38 +766,49 @@ export default function LabFlowScreen() {
     try {
       setTimerRunning(false);
       setTimerPaused(false);
-      await speakPassageWithDeviceVoice();
+      await speakPassageWithPreferredVoice();
     } catch (error: any) {
       showToast('error', error?.message || 'Audio could not start');
     } finally {
       setAudioStarting(false);
     }
-  }, [passageVerses.length, speakPassageWithDeviceVoice]);
+  }, [passageVerses.length, speakPassageWithPreferredVoice]);
+
+  const handleBeginListenTimer = useCallback(() => {
+    if (passageVerses.length > 0 && !isTtsPlaying) {
+      setAudioStarting(true);
+      timerPendingRef.current = true;
+      speakPassageWithPreferredVoice()
+        .catch((error: any) => {
+          showToast('error', error?.message || 'Audio could not start');
+        })
+        .finally(() => setAudioStarting(false));
+    }
+  }, [isTtsPlaying, passageVerses.length, speakPassageWithPreferredVoice]);
+
+  const handleToggleListenTimer = useCallback(() => {
+    if (timerRunning && !timerPaused) {
+      setTimerPaused(true);
+      bibleTTS.pause().catch(() => {});
+    } else if (timerPaused) {
+      setTimerPaused(false);
+      bibleTTS.resume().catch(() => {});
+    }
+  }, [timerPaused, timerRunning]);
+
+  const handleResetListenTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimerRunning(false);
+    setTimerPaused(false);
+    setTimerElapsed(0);
+    bibleTTS.stop().catch(() => {});
+  }, []);
 
   // Cleanup TTS when leaving the screen
   useEffect(() => {
     return () => {
       bibleTTS.stop().catch(() => {});
     };
-  }, []);
-
-  // ── Strong's word press handler ────────────────────────────────────────
-  const handleStrongsWordPress = useCallback(async (word: StrongsWordData) => {
-    setSelectedStrongsWord(word);
-    setShowStrongsModal(true);
-    setStrongsEntryLoading(true);
-    setSelectedStrongsEntry(null);
-    if (word.strongsId && word.hasData) {
-      try {
-        const res = await getStrongsEntry(word.strongsId);
-        if (res?.returnData) {
-          setSelectedStrongsEntry(res.returnData);
-        }
-      } catch (e) {
-        console.error('Failed to fetch Strongs entry:', e);
-      }
-    }
-    setStrongsEntryLoading(false);
   }, []);
 
   // ── Load session data on resume ────────────────────────────────────
@@ -904,157 +871,15 @@ export default function LabFlowScreen() {
     }, [loadSession]),
   );
 
-  // ── Fetch chapter verse numbers for explicit verse selection ───────────
-  useEffect(() => {
-    if (!bookName || !chapter || stage !== 'passage') return;
-    const fetchAvailableVerses = async () => {
-      setAvailableVersesLoading(true);
-      try {
-        const translationId = app?.bibleVersionId || 'Berean';
-        const chapterData = await bibleApi.getVerses(
-          translationId,
-          bookName,
-          parseInt(chapter, 10),
-        );
-        setAvailableVerses(
-          chapterData?.verses?.map(v => v.verseNumber).filter(Boolean) || [],
-        );
-      } catch (e) {
-        console.error('Failed to fetch selectable verses:', e);
-        setAvailableVerses([]);
-      } finally {
-        setAvailableVersesLoading(false);
-      }
-    };
-    fetchAvailableVerses();
-  }, [app?.bibleVersionId, bookName, chapter, stage]);
-
-  // ── Fetch passage verses when entering any stage that needs them ─────
-  useEffect(() => {
-    if (!bookName || !chapter) return;
-    if (!verseStart) return;
-    const fetchPassage = async () => {
-      setPassageVersesLoading(true);
-      try {
-        const translationId = app?.bibleVersionId || 'Berean';
-        const ch = parseInt(chapter, 10);
-        const vs = parseInt(verseStart || '1', 10);
-        const ve = verseEnd
-          ? parseInt(verseEnd, 10)
-          : verseStart
-            ? vs
-            : 0;
-        const chapterData = await bibleApi.getVerses(
-          translationId,
-          bookName,
-          ch,
-        );
-        if (chapterData?.verses?.length) {
-          const filtered = chapterData.verses.filter(v => {
-            if (ve > vs) return v.verseNumber >= vs && v.verseNumber <= ve;
-            return v.verseNumber >= vs;
-          });
-          setPassageVerses(filtered);
-        }
-      } catch (e) {
-        console.error('Failed to fetch passage verses:', e);
-      } finally {
-        setPassageVersesLoading(false);
-      }
-    };
-    fetchPassage();
-  }, [
+  useLabLookStrongs({
+    stage,
     bookName,
     chapter,
     verseStart,
     verseEnd,
-    app?.bibleVersionId,
-  ]);
-
-  // ── Fetch Strong's words for Look highlights ───────────────────────────
-  useEffect(() => {
-    if (stage !== 'look' || !bookName || !chapter || !verseStart) return;
-    const fetchLookStrongsWords = async () => {
-      try {
-        const translationId = app?.bibleVersionId || 'Berean';
-        const ch = parseInt(chapter, 10);
-        const start = parseInt(verseStart, 10);
-        const end = verseEnd ? parseInt(verseEnd, 10) : start;
-        const verseNumbers = Array.from(
-          { length: Math.max(1, end - start + 1) },
-          (_, i) => start + i,
-        );
-        const results = await Promise.allSettled(
-          verseNumbers.map(verseNumber =>
-            getVerseWords(bookName, ch, verseNumber, translationId),
-          ),
-        );
-        const words = results.flatMap((result, index) => {
-          if (result.status !== 'fulfilled') return [];
-          return (result.value?.returnData || []).map(word => ({
-            ...word,
-            verseNumber: word.verseNumber || verseNumbers[index],
-          }));
-        });
-        setVerseWords(words);
-      } catch (e) {
-        console.error('Failed to fetch Look Strong words:', e);
-      }
-    };
-    fetchLookStrongsWords();
-  }, [app?.bibleVersionId, bookName, chapter, stage, verseEnd, verseStart]);
-
-  // ── Fetch Learn stage data when entering the Learn stage ──────────────
-  useEffect(() => {
-    if (stage !== 'learn' || !bookName || !chapter) return;
-    const fetchLearnData = async () => {
-      setLearnDataLoading(true);
-      const ch = parseInt(chapter, 10);
-      const vs = parseInt(verseStart || '1', 10);
-      try {
-        const translationId = app?.bibleVersionId || 'Berean';
-        const [wordsRes, resourcesRes, prologueRes] = await Promise.allSettled([
-          getVerseWords(bookName, ch, vs, translationId),
-          getVerseResources(bookName, ch, vs),
-          getBookPrologue(bookName),
-        ]);
-        if (wordsRes.status === 'fulfilled' && wordsRes.value?.returnData) {
-          setVerseWords(wordsRes.value.returnData);
-        }
-        if (
-          resourcesRes.status === 'fulfilled' &&
-          resourcesRes.value?.returnData
-        ) {
-          setVerseResources(resourcesRes.value.returnData);
-        }
-        if (prologueRes.status === 'fulfilled') {
-          setBookPrologue(prologueRes.value);
-        }
-        // If verseStart > 1, also try fetching words for verse 1 for more context
-        if (
-          vs > 1 &&
-          wordsRes.status === 'fulfilled' &&
-          (!wordsRes.value?.returnData ||
-            wordsRes.value.returnData.length === 0)
-        ) {
-          const fallbackRes = await getVerseWords(
-            bookName,
-            ch,
-            undefined,
-            translationId,
-          );
-          if (fallbackRes?.returnData) {
-            setVerseWords(fallbackRes.returnData);
-          }
-        }
-      } catch (e) {
-        console.error('Failed to fetch Learn data:', e);
-      } finally {
-        setLearnDataLoading(false);
-      }
-    };
-    fetchLearnData();
-  }, [stage, bookName, chapter, verseStart, app?.bibleVersionId]);
+    translationId,
+    setVerseWords,
+  });
 
   // ── Animated page wrapper for crossfade + slide ──────────────────────
   const renderPage = useCallback(
@@ -1193,1992 +1018,155 @@ export default function LabFlowScreen() {
 
   // ── Render verse range input (after book+chapter selected) ────────────────
   const renderVerseInput = () => (
-    <View style={styles.stageContainer}>
-      <View style={styles.passageHeader}>
-        <BookOpen size={24} color={COLORS.accent} />
-        <Text style={[styles.passageTitle, { color: COLORS.text }]}>
-          Choose Your Passage
-        </Text>
-        <Text style={[styles.passageSubtitle, { color: COLORS.textSecondary }]}>
-          Select the Scripture you want to study through the 4-step journey.
-        </Text>
-      </View>
-
-      {/* Selected book + chapter badge */}
-      <TouchableOpacity
-        style={[
-          styles.selectedBadge,
-          {
-            backgroundColor: COLORS.cardBackground,
-            borderColor: COLORS.border,
-          },
-        ]}
-        onPress={handleBackToBooks}
-        activeOpacity={0.7}
-      >
-        <BookOpen size={16} color={COLORS.primary} />
-        <Text style={[styles.selectedBadgeText, { color: COLORS.text }]}>
-          {bookName} {chapter}
-        </Text>
-        <ChevronRight size={14} color={COLORS.muted} />
-      </TouchableOpacity>
-
-      <View style={styles.inputRow}>
-        <View style={[styles.inputGroup, { flex: 1 }]}> 
-          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
-            Verse (start)
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: COLORS.surface,
-                borderColor: COLORS.border,
-                color: COLORS.text,
-              },
-            ]}
-            placeholder="16"
-            placeholderTextColor={COLORS.muted}
-            value={verseStart}
-            onChangeText={setVerseStart}
-            keyboardType="number-pad"
-          />
-        </View>
-        <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
-            Verse (end)
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: COLORS.surface,
-                borderColor: COLORS.border,
-                color: COLORS.text,
-              },
-            ]}
-            placeholder="21"
-            placeholderTextColor={COLORS.muted}
-            value={verseEnd}
-            onChangeText={setVerseEnd}
-            keyboardType="number-pad"
-          />
-        </View>
-      </View>
-
-      <Text style={[styles.textareaLabel, { color: COLORS.textSecondary }]}> 
-        Select verse or range
-      </Text>
-      {availableVersesLoading ? (
-        <View style={styles.verseGridLoading}>
-          <ActivityIndicator size="small" color={COLORS.accent} />
-        </View>
-      ) : availableVerses.length > 0 ? (
-        <View style={styles.verseGrid}>
-          {availableVerses.map(verseNumber => {
-            const selected = isVerseSelected(verseNumber);
-            return (
-              <TouchableOpacity
-                key={verseNumber}
-                style={[
-                  styles.verseChip,
-                  {
-                    backgroundColor: selected ? COLORS.accent : COLORS.surface,
-                    borderColor: selected ? COLORS.accent : COLORS.border,
-                  },
-                ]}
-                onPress={() => handleSelectVerse(verseNumber)}
-                activeOpacity={0.75}
-              >
-                <Text
-                  style={[
-                    styles.verseChipText,
-                    { color: selected ? '#FFFFFF' : COLORS.text },
-                  ]}
-                >
-                  {verseNumber}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      ) : (
-        <Text style={[styles.verseHelperText, { color: COLORS.muted }]}> 
-          Verse options will appear after the chapter loads.
-        </Text>
-      )}
-
-      <Text style={[styles.verseHelperText, { color: COLORS.muted }]}> 
-        Tap once for a single verse. Tap a later verse to select a range.
-      </Text>
-
-      <TouchableOpacity
-        style={[
-          styles.primaryBtn,
-          {
-            backgroundColor: COLORS.accent,
-            opacity: loading || !verseStart ? 0.6 : 1,
-          },
-        ]}
-        onPress={startSession}
-        disabled={loading || !verseStart}
-        activeOpacity={0.8}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        ) : (
-          <>
-            <Sparkles size={18} color="#FFFFFF" />
-            <Text style={styles.primaryBtnText}>Begin Study</Text>
-          </>
-        )}
-      </TouchableOpacity>
-    </View>
+    <PassageSelectionStep
+      colors={COLORS}
+      bookName={bookName}
+      chapter={chapter}
+      verseStart={verseStart}
+      verseEnd={verseEnd}
+      loading={loading}
+      availableVerses={availableVerses}
+      availableVersesLoading={availableVersesLoading}
+      onBackToBooks={handleBackToBooks}
+      onVerseStartChange={setVerseStart}
+      onVerseEndChange={setVerseEnd}
+      onSelectVerse={handleSelectVerse}
+      isVerseSelected={isVerseSelected}
+      onBeginStudy={startSession}
+    />
   );
 
   // ── Render Look stage ────────────────────────────────────────────────────
   const renderLook = () => (
-    <View style={styles.stageContainer}>
-      <View style={styles.stageHeader}>
-        <View
-          style={[styles.stageBadge, { backgroundColor: `${COLORS.accent}20` }]}
-        >
-          <Eye size={20} color={COLORS.accent} />
-        </View>
-        <Text style={[styles.stageLabel, { color: COLORS.accent }]}>
-          Step 1 of 4
-        </Text>
-        <Text style={[styles.stageTitle, { color: COLORS.text }]}>Look</Text>
-        <Text style={[styles.stageSubtitle, { color: COLORS.textSecondary }]}>
-          What does the text say?
-        </Text>
-        {passageRef && (
-          <View
-            style={[
-              styles.passageChip,
-              { backgroundColor: `${COLORS.primary}15` },
-            ]}
-          >
-            <BookOpen size={12} color={COLORS.primary} />
-            <Text style={[styles.passageChipText, { color: COLORS.primary }]}>
-              {passageRef}
-            </Text>
-          </View>
-        )}
-        {renderChangePassageActions()}
-      </View>
-
-      {/* Guided prompt */}
-      <View
-        style={[
-          styles.promptCard,
-          {
-            backgroundColor: COLORS.cardBackground,
-            borderLeftColor: COLORS.accent,
-          },
-        ]}
-      >
-        <MessageSquareQuote size={16} color={COLORS.accent} />
-        <Text style={[styles.promptText, { color: COLORS.text }]}>
-          {LOOK_PROMPTS[currentPromptIdx]}
-        </Text>
-        <View style={styles.promptNav}>
-          <TouchableOpacity
-            onPress={() => setCurrentPromptIdx(p => Math.max(0, p - 1))}
-            disabled={currentPromptIdx === 0}
-          >
-            <ChevronLeft
-              size={18}
-              color={currentPromptIdx === 0 ? COLORS.muted : COLORS.accent}
-            />
-          </TouchableOpacity>
-          <Text style={[styles.promptCounter, { color: COLORS.muted }]}>
-            {currentPromptIdx + 1} / {LOOK_PROMPTS.length}
-          </Text>
-          <TouchableOpacity
-            onPress={() =>
-              setCurrentPromptIdx(p => Math.min(LOOK_PROMPTS.length - 1, p + 1))
-            }
-            disabled={currentPromptIdx === LOOK_PROMPTS.length - 1}
-          >
-            <ChevronRight
-              size={18}
-              color={
-                currentPromptIdx === LOOK_PROMPTS.length - 1
-                  ? COLORS.muted
-                  : COLORS.accent
-              }
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Passage text */}
-      {passageVersesLoading ? (
-        <View style={{ paddingVertical: SPACING.md, alignItems: 'center' }}>
-          <ActivityIndicator size="small" color={COLORS.accent} />
-        </View>
-      ) : passageVerses.length > 0 ? (
-        <View
-          style={[
-            styles.passageTextCard,
-            {
-              backgroundColor: COLORS.surface,
-              borderColor: COLORS.border,
-              borderLeftColor: COLORS.primary,
-            },
-          ]}
-        >
-          <View
-            style={[
-              styles.passageTextHeader,
-              { borderBottomColor: COLORS.border },
-            ]}
-          >
-            <BookOpen size={14} color={COLORS.primary} />
-            <Text style={[styles.passageTextLabel, { color: COLORS.primary }]}>
-              {passageRef || `${bookName} ${chapter}`}
-            </Text>
-          </View>
-          {passageVerses.map(v => (
-            <View key={v.verseNumber} style={styles.passageVerseRow}>
-              <Text style={[styles.passageVerseNum, { color: COLORS.muted }]}> 
-                {v.verseNumber}
-              </Text>
-              {renderHighlightedVerseText(v)}
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {/* Notes */}
-      <Text style={[styles.textareaLabel, { color: COLORS.textSecondary }]}>
-        Your Observations
-      </Text>
-      <TextInput
-        style={[
-          styles.textarea,
-          {
-            backgroundColor: COLORS.surface,
-            borderColor: COLORS.border,
-            color: COLORS.text,
-          },
-        ]}
-        placeholder="Write what you observe in this passage..."
-        placeholderTextColor={COLORS.muted}
-        value={lookNotes}
-        onChangeText={setLookNotes}
-        multiline
-        textAlignVertical="top"
-      />
-
-      {/* Save Progress button */}
-      <TouchableOpacity
-        style={[styles.saveProgressBtn, { borderColor: COLORS.muted }]}
-        onPress={() => saveCurrentProgress()}
-        disabled={savingProgress}
-        activeOpacity={0.7}
-      >
-        {savingProgress ? (
-          <ActivityIndicator size="small" color={COLORS.muted} />
-        ) : (
-          <>
-            <Save size={14} color={COLORS.muted} />
-            <Text style={[styles.saveProgressText, { color: COLORS.muted }]}>
-              Save Progress
-            </Text>
-          </>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
-        onPress={saveLook}
-        disabled={saving}
-        activeOpacity={0.8}
-      >
-        {saving ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        ) : (
-          <Text style={styles.primaryBtnText}>Continue to Listen</Text>
-        )}
-      </TouchableOpacity>
-
-      {/* Page indicator (animated via scrollX) */}
-      <View style={styles.pageIndicator}>
-        {STAGE_ORDER.map((s, idx) => {
-          const dotOpacity = scrollX.interpolate({
-            inputRange: [
-              (idx - 1) * SCREEN_WIDTH,
-              idx * SCREEN_WIDTH,
-              (idx + 1) * SCREEN_WIDTH,
-            ],
-            outputRange: [0.3, 1, 0.3],
-            extrapolate: 'clamp',
-          });
-          const dotScale = scrollX.interpolate({
-            inputRange: [
-              (idx - 1) * SCREEN_WIDTH,
-              idx * SCREEN_WIDTH,
-              (idx + 1) * SCREEN_WIDTH,
-            ],
-            outputRange: [1, 1.3, 1],
-            extrapolate: 'clamp',
-          });
-          return (
-            <Animated.View
-              key={s}
-              style={[
-                styles.pageDot,
-                {
-                  backgroundColor:
-                    idx === pageIndex ? COLORS.accent : COLORS.muted,
-                  opacity: dotOpacity,
-                  transform: [{ scale: dotScale }],
-                  width: idx === pageIndex ? 20 : 8,
-                },
-              ]}
-            />
-          );
-        })}
-      </View>
-    </View>
+    <LookStage
+      styles={styles}
+      colors={COLORS}
+      prompts={LOOK_PROMPTS}
+      currentPromptIdx={currentPromptIdx}
+      setCurrentPromptIdx={setCurrentPromptIdx}
+      passageRef={passageRef}
+      bookName={bookName}
+      chapter={chapter}
+      passageVerses={passageVerses}
+      passageVersesLoading={passageVersesLoading}
+      lookNotes={lookNotes}
+      setLookNotes={setLookNotes}
+      saving={saving}
+      savingProgress={savingProgress}
+      pageIndex={pageIndex}
+      stageOrder={STAGE_ORDER}
+      scrollX={scrollX}
+      screenWidth={SCREEN_WIDTH}
+      onSaveProgress={() => saveCurrentProgress()}
+      onContinue={saveLook}
+      renderChangePassageActions={renderChangePassageActions}
+      renderHighlightedVerseText={renderHighlightedVerseText}
+    />
   );
 
   // ── Render Listen stage ──────────────────────────────────────────────────
   const renderListen = () => (
-    <View style={styles.stageContainer}>
-      <View style={styles.stageHeader}>
-        <View
-          style={[styles.stageBadge, { backgroundColor: `${COLORS.accent}20` }]}
-        >
-          <Ear size={20} color={COLORS.accent} />
-        </View>
-        <Text style={[styles.stageLabel, { color: COLORS.accent }]}>
-          Step 2 of 4
-        </Text>
-        <Text style={[styles.stageTitle, { color: COLORS.text }]}>Listen</Text>
-        <Text style={[styles.stageSubtitle, { color: COLORS.textSecondary }]}>
-          Be still and dwell in the Word
-        </Text>
-        {passageRef && (
-          <View
-            style={[
-              styles.passageChip,
-              { backgroundColor: `${COLORS.primary}15` },
-            ]}
-          >
-            <BookOpen size={12} color={COLORS.primary} />
-            <Text style={[styles.passageChipText, { color: COLORS.primary }]}>
-              {passageRef}
-            </Text>
-          </View>
-        )}
-        {renderChangePassageActions()}
-      </View>
-
-      {!timerComplete ? (
-        <>
-          {/* Duration picker (before timer starts) */}
-          {!timerRunning && !timerPaused && (
-            <>
-              <Text
-                style={[styles.textareaLabel, { color: COLORS.textSecondary }]}
-              >
-                How long would you like to dwell in the Word?
-              </Text>
-              <View style={styles.durationRow}>
-                {LISTEN_OPTIONS.map(opt => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[
-                      styles.durationChip,
-                      selectedDuration === opt.value
-                        ? {
-                            backgroundColor: COLORS.accent,
-                            borderColor: COLORS.accent,
-                          }
-                        : {
-                            backgroundColor: COLORS.surface,
-                            borderColor: COLORS.border,
-                          },
-                    ]}
-                    onPress={() => setSelectedDuration(opt.value)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.durationChipText,
-                        {
-                          color:
-                            selectedDuration === opt.value
-                              ? '#FFFFFF'
-                              : COLORS.text,
-                        },
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Play passage audio */}
-              {passageVerses.length > 0 && (
-                <TouchableOpacity
-                  style={[
-                    styles.secondaryBtn,
-                    { borderColor: COLORS.accent, marginBottom: SPACING.md },
-                  ]}
-                  onPress={handlePlayPassageAudio}
-                  disabled={audioStarting}
-                  activeOpacity={0.7}
-                >
-                  {audioStarting ? (
-                    <ActivityIndicator size="small" color={COLORS.accent} />
-                  ) : isTtsPlaying && !isTtsPaused ? (
-                    <Pause size={16} color={COLORS.accent} />
-                  ) : (
-                    <Play size={16} color={COLORS.accent} />
-                  )}
-                  <Text
-                    style={[styles.secondaryBtnText, { color: COLORS.accent }]}
-                  >
-                    {audioStarting
-                      ? 'Starting Audio...'
-                      : isTtsPlaying && isTtsPaused
-                      ? 'Resume Passage'
-                      : isTtsPlaying
-                        ? 'Pause Passage'
-                        : 'Play Passage Audio'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
-                onPress={async () => {
-                  if (passageVerses.length > 0 && !isTtsPlaying) {
-                    setAudioStarting(true);
-                    speakPassageWithDeviceVoice()
-                      .catch((error: any) => {
-                        showToast('error', error?.message || 'Audio could not start');
-                      })
-                      .finally(() => setAudioStarting(false));
-                  }
-                  setTimerRunning(true);
-                  setTimerPaused(false);
-                  setTimerElapsed(0);
-                }}
-                disabled={audioStarting}
-                activeOpacity={0.8}
-              >
-                {audioStarting ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Play size={18} color="#FFFFFF" />
-                )}
-                <Text style={styles.primaryBtnText}>
-                  {audioStarting ? 'Preparing Audio...' : 'Begin '}
-                  {LISTEN_OPTIONS.find(o => o.value === selectedDuration)
-                    ?.label || ''}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* Timer UI */}
-          {(timerRunning || timerPaused) && (
-            <View style={styles.timerContainer}>
-              {/* Swipe indicator — lock while timer runs, unlock when paused */}
-              <View style={styles.swipeHintRow}>
-                {timerRunning && !timerPaused ? (
-                  <>
-                    <Lock
-                      size={12}
-                      color={COLORS.muted}
-                      style={{ opacity: 0.5 }}
-                    />
-                    <Text
-                      style={[styles.swipeHintText, { color: COLORS.muted }]}
-                    >
-                      Focus mode — swipe locked while timer runs
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <ChevronLeft
-                      size={12}
-                      color={COLORS.muted}
-                      style={{ opacity: 0.4 }}
-                    />
-                    <Text
-                      style={[styles.swipeHintText, { color: COLORS.muted }]}
-                    >
-                      Swipe to explore other stages
-                    </Text>
-                    <ChevronRight
-                      size={12}
-                      color={COLORS.muted}
-                      style={{ opacity: 0.4 }}
-                    />
-                  </>
-                )}
-              </View>
-
-              {/* Circular progress */}
-              <Animated.View
-                style={[
-                  styles.circleOuter,
-                  {
-                    borderColor: COLORS.accent,
-                    opacity: animatedValue,
-                    transform: [{ scale: animatedValue }],
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.circleInner,
-                    { backgroundColor: COLORS.cardBackground },
-                  ]}
-                >
-                  <Text style={[styles.timerText, { color: COLORS.text }]}>
-                    {formatTimeStr(minutes, seconds)}
-                  </Text>
-                  <Text style={[styles.timerLabel, { color: COLORS.muted }]}>
-                    remaining
-                  </Text>
-
-                  {/* Progress bar */}
-                  <View
-                    style={[
-                      styles.progressBarBg,
-                      { backgroundColor: COLORS.border },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${progress * 100}%`,
-                          backgroundColor: COLORS.accent,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              </Animated.View>
-
-              {/* Controls */}
-              <View style={styles.timerControls}>
-                <TouchableOpacity
-                  style={[
-                    styles.timerBtn,
-                    {
-                      backgroundColor: COLORS.surface,
-                      borderColor: COLORS.border,
-                    },
-                  ]}
-                  onPress={() => {
-                    if (timerRunning && !timerPaused) {
-                      setTimerPaused(true);
-                      bibleTTS.pause().catch(() => {});
-                    } else if (timerPaused) {
-                      setTimerPaused(false);
-                      bibleTTS.resume().catch(() => {});
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  {timerPaused || !timerRunning ? (
-                    <Play size={24} color={COLORS.accent} />
-                  ) : (
-                    <Pause size={24} color={COLORS.accent} />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.timerBtnSmall,
-                    {
-                      backgroundColor: COLORS.surface,
-                      borderColor: COLORS.border,
-                    },
-                  ]}
-                  onPress={() => {
-                    if (timerRef.current) clearInterval(timerRef.current);
-                    setTimerRunning(false);
-                    setTimerPaused(false);
-                    setTimerElapsed(0);
-                    bibleTTS.stop().catch(() => {});
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[styles.timerBtnSmallText, { color: COLORS.error }]}
-                  >
-                    Reset
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </>
-      ) : (
-        /* Amen state — timer complete */
-        <View style={styles.amenContainer}>
-          <View
-            style={[
-              styles.amenCircle,
-              { backgroundColor: `${COLORS.accent}20` },
-            ]}
-          >
-            <CheckCircle2 size={48} color={COLORS.accent} />
-          </View>
-          <Text style={[styles.amenText, { color: COLORS.text }]}>Amen</Text>
-          <Text style={[styles.amenSubtext, { color: COLORS.textSecondary }]}> 
-            You have dwelled in the Word for{' '}
-            {formatTimeStr(
-              Math.floor(selectedDuration / 60),
-              selectedDuration % 60,
-            )}
-            .
-          </Text>
-
-          {passageVerses.length > 0 && (
-            <TouchableOpacity
-              style={[
-                styles.secondaryBtn,
-                { borderColor: COLORS.accent, marginBottom: SPACING.sm },
-              ]}
-              onPress={handleReplayPassageAudio}
-              disabled={audioStarting}
-              activeOpacity={0.7}
-            >
-              {audioStarting ? (
-                <ActivityIndicator size="small" color={COLORS.accent} />
-              ) : (
-                <RotateCcw size={16} color={COLORS.accent} />
-              )}
-              <Text style={[styles.secondaryBtnText, { color: COLORS.accent }]}> 
-                {audioStarting ? 'Starting Audio...' : 'Replay Passage'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
-            onPress={saveListen}
-            disabled={saving}
-            activeOpacity={0.8}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Brain size={18} color="#FFFFFF" />
-                <Text style={styles.primaryBtnText}>Continue to Learn</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Page indicator (animated via scrollX) */}
-      <View style={styles.pageIndicator}>
-        {STAGE_ORDER.map((s, idx) => {
-          const dotOpacity = scrollX.interpolate({
-            inputRange: [
-              (idx - 1) * SCREEN_WIDTH,
-              idx * SCREEN_WIDTH,
-              (idx + 1) * SCREEN_WIDTH,
-            ],
-            outputRange: [0.3, 1, 0.3],
-            extrapolate: 'clamp',
-          });
-          const dotScale = scrollX.interpolate({
-            inputRange: [
-              (idx - 1) * SCREEN_WIDTH,
-              idx * SCREEN_WIDTH,
-              (idx + 1) * SCREEN_WIDTH,
-            ],
-            outputRange: [1, 1.3, 1],
-            extrapolate: 'clamp',
-          });
-          return (
-            <Animated.View
-              key={s}
-              style={[
-                styles.pageDot,
-                {
-                  backgroundColor:
-                    idx === pageIndex ? COLORS.accent : COLORS.muted,
-                  opacity: dotOpacity,
-                  transform: [{ scale: dotScale }],
-                  width: idx === pageIndex ? 20 : 8,
-                },
-              ]}
-            />
-          );
-        })}
-      </View>
-    </View>
+    <ListenStage
+      styles={styles}
+      colors={COLORS}
+      passageRef={passageRef}
+      passageVersesCount={passageVerses.length}
+      selectedDuration={selectedDuration}
+      setSelectedDuration={setSelectedDuration}
+      timerRunning={timerRunning}
+      timerPaused={timerPaused}
+      timerElapsed={timerElapsed}
+      timerComplete={timerComplete}
+      animatedValue={animatedValue}
+      audioStarting={audioStarting}
+      isTtsPlaying={isTtsPlaying}
+      isTtsPaused={isTtsPaused}
+      saving={saving}
+      pageIndex={pageIndex}
+      stageOrder={STAGE_ORDER}
+      scrollX={scrollX}
+      screenWidth={SCREEN_WIDTH}
+      renderChangePassageActions={renderChangePassageActions}
+      onBeginTimer={handleBeginListenTimer}
+      onToggleTimer={handleToggleListenTimer}
+      onResetTimer={handleResetListenTimer}
+      onReplayPassageAudio={handleReplayPassageAudio}
+      onContinue={saveListen}
+    />
   );
 
   // ── Render Learn stage ───────────────────────────────────────────────────
-  const renderLearn = () => {
-    const tabs: { id: typeof learnTab; label: string; icon: any }[] = [
-      { id: 'exegesis', label: 'Exegesis Notes', icon: BookText },
-      { id: 'language', label: 'Original Language', icon: Hash },
-      { id: 'history', label: 'Historical Context', icon: Globe },
-      { id: 'prologue', label: 'Book Prologue', icon: BookOpen },
-    ];
-
-    const resources = verseResources;
-    const hasResources =
-      resources &&
-      ((resources.commentaries?.length ?? 0) > 0 ||
-        (resources.crossReferences?.length ?? 0) > 0 ||
-        (resources.wordStudies?.length ?? 0) > 0 ||
-        (resources.dictionaryTerms?.length ?? 0) > 0 ||
-        (resources.relatedTopics?.length ?? 0) > 0);
-
-    const renderExegesisNotes = () => (
-      <View>
-        {/* Guiding questions — always shown */}
-        <View
-          style={[
-            styles.promptCard,
-            {
-              backgroundColor: COLORS.cardBackground,
-              borderLeftColor: COLORS.accent,
-              marginBottom: SPACING.md,
-            },
-          ]}
-        >
-          <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}>
-            Guiding Questions
-          </Text>
-          <Text
-            style={[
-              styles.learnText,
-              { color: COLORS.textSecondary, marginTop: SPACING.xs },
-            ]}
-          >
-            Consider the central truth this passage communicates. What is the
-            author's main point? How does this passage fit into the broader
-            biblical narrative?
-          </Text>
-          <Text
-            style={[
-              styles.learnText,
-              { color: COLORS.textSecondary, marginTop: SPACING.sm },
-            ]}
-          >
-            What does this passage reveal about God, humanity, salvation, or the
-            Christian life? How does it point to Christ?
-          </Text>
-          <Text
-            style={[
-              styles.learnText,
-              { color: COLORS.textSecondary, marginTop: SPACING.sm },
-            ]}
-          >
-            How should this truth change how you think, believe, or live today?
-          </Text>
-        </View>
-
-        {/* Commentaries from Verse Resources */}
-        {resources?.commentaries && resources.commentaries.length > 0 && (
-          <>
-            <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}>
-              Commentaries
-            </Text>
-            {resources.commentaries.map((c, i) => (
-              <View
-                key={`comm-${i}`}
-                style={[
-                  styles.resourceCard,
-                  {
-                    backgroundColor: COLORS.surface,
-                    borderColor: COLORS.border,
-                    borderLeftColor: COLORS.primary,
-                  },
-                ]}
-              >
-                <Text
-                  style={[styles.resourceCardAuthor, { color: COLORS.primary }]}
-                >
-                  {c.author}
-                </Text>
-                <Text
-                  style={[styles.resourceCardLabel, { color: COLORS.muted }]}
-                >
-                  {c.title}
-                </Text>
-                <View
-                  style={[styles.divider, { backgroundColor: COLORS.border }]}
-                />
-                <Text style={[styles.resourceCardText, { color: COLORS.text }]}>
-                  {c.text}
-                </Text>
-              </View>
-            ))}
-          </>
-        )}
-
-        {/* Cross References */}
-        {resources?.crossReferences && resources.crossReferences.length > 0 && (
-          <>
-            <Text
-              style={[
-                styles.learnSectionTitle,
-                { color: COLORS.text, marginTop: SPACING.md },
-              ]}
-            >
-              Cross References
-            </Text>
-            {resources.crossReferences.map((ref, i) => (
-              <View
-                key={`xref-${i}`}
-                style={[
-                  styles.resourceCard,
-                  {
-                    backgroundColor: COLORS.surface,
-                    borderColor: COLORS.border,
-                    borderLeftColor: COLORS.accent,
-                  },
-                ]}
-              >
-                <Text
-                  style={[styles.resourceCardRef, { color: COLORS.accent }]}
-                >
-                  {ref.ref}
-                </Text>
-                <Text
-                  style={[
-                    styles.resourceCardText,
-                    { color: COLORS.textSecondary },
-                  ]}
-                >
-                  {ref.text}
-                </Text>
-              </View>
-            ))}
-          </>
-        )}
-
-        {/* Empty state */}
-        {!hasResources && !learnDataLoading && (
-          <Text
-            style={[
-              styles.learnText,
-              {
-                color: COLORS.muted,
-                fontStyle: 'italic',
-                textAlign: 'center',
-                paddingVertical: SPACING.lg,
-              },
-            ]}
-          >
-            No commentary or cross-reference data available for this passage
-            yet. Use the guiding questions above to aid your study.
-          </Text>
-        )}
-      </View>
-    );
-
-    const renderOriginalLanguage = () => {
-      if (selectedStrongsWord) {
-        return (
-          <View>
-            <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                marginBottom: SPACING.md,
-              }}
-              onPress={() => {
-                setSelectedStrongsWord(null);
-                setSelectedStrongsEntry(null);
-              }}
-              activeOpacity={0.7}
-            >
-              <ChevronLeft size={16} color={COLORS.accent} />
-              <Text
-                style={[
-                  styles.learnText,
-                  { color: COLORS.accent, fontWeight: '600' },
-                ]}
-              >
-                Back to all words
-              </Text>
-            </TouchableOpacity>
-
-            <View
-              style={[
-                styles.resourceCard,
-                {
-                  backgroundColor: COLORS.surface,
-                  borderColor: COLORS.border,
-                  borderLeftColor: COLORS.accent,
-                },
-              ]}
-            >
-              <Text style={[styles.strongsDetailWord, { color: COLORS.text }]}>
-                {selectedStrongsWord.surfaceText}
-              </Text>
-              {selectedStrongsWord.strongsId && (
-                <Text
-                  style={[
-                    styles.strongsDetailStrongs,
-                    { color: COLORS.accent },
-                  ]}
-                >
-                  Strong's {selectedStrongsWord.strongsId}
-                </Text>
-              )}
-              {selectedStrongsWord.lemma && (
-                <Text
-                  style={[
-                    styles.strongsDetailLemma,
-                    { color: COLORS.textSecondary },
-                  ]}
-                >
-                  Lemma: {selectedStrongsWord.lemma}
-                </Text>
-              )}
-              {selectedStrongsWord.morphology && (
-                <Text
-                  style={[
-                    styles.strongsDetailMorph,
-                    { color: COLORS.textSecondary },
-                  ]}
-                >
-                  Morphology: {selectedStrongsWord.morphology}
-                </Text>
-              )}
-              <View
-                style={[styles.divider, { backgroundColor: COLORS.border }]}
-              />
-              {strongsEntryLoading ? (
-                <ActivityIndicator size="small" color={COLORS.accent} />
-              ) : selectedStrongsEntry ? (
-                <>
-                  <Text
-                    style={[styles.strongsDetailDef, { color: COLORS.text }]}
-                  >
-                    {selectedStrongsEntry.shortDefinition}
-                  </Text>
-                  {selectedStrongsEntry.transliteration && (
-                    <Text
-                      style={[
-                        styles.strongsDetailTranslit,
-                        { color: COLORS.textSecondary },
-                      ]}
-                    >
-                      Transliteration: {selectedStrongsEntry.transliteration}
-                    </Text>
-                  )}
-                  {selectedStrongsEntry.originalWord && (
-                    <Text
-                      style={[
-                        styles.strongsDetailOriginal,
-                        { color: COLORS.textSecondary },
-                      ]}
-                    >
-                      Original: {selectedStrongsEntry.originalWord} (
-                      {selectedStrongsEntry.language})
-                    </Text>
-                  )}
-                  {selectedStrongsEntry.partOfSpeech && (
-                    <Text
-                      style={[styles.strongsDetailPos, { color: COLORS.muted }]}
-                    >
-                      {selectedStrongsEntry.partOfSpeech}
-                      {selectedStrongsEntry.grammaticalCase
-                        ? ` | Case: ${selectedStrongsEntry.grammaticalCase}`
-                        : ''}
-                      {selectedStrongsEntry.gender
-                        ? ` | Gender: ${selectedStrongsEntry.gender}`
-                        : ''}
-                      {selectedStrongsEntry.number
-                        ? ` | Number: ${selectedStrongsEntry.number}`
-                        : ''}
-                    </Text>
-                  )}
-                  {selectedStrongsEntry.usageCount !== null && (
-                    <Text
-                      style={[
-                        styles.strongsDetailUsage,
-                        { color: COLORS.muted },
-                      ]}
-                    >
-                      Used {selectedStrongsEntry.usageCount} times
-                    </Text>
-                  )}
-                </>
-              ) : selectedStrongsWord.strongsId ? (
-                <Text
-                  style={[styles.strongsDetailEmpty, { color: COLORS.muted }]}
-                >
-                  No detailed entry found.
-                </Text>
-              ) : (
-                <Text
-                  style={[styles.strongsDetailEmpty, { color: COLORS.muted }]}
-                >
-                  No Strong's data for this word.
-                </Text>
-              )}
-            </View>
-          </View>
-        );
+  const renderLearn = () => (
+    <LearnStage
+      styles={styles}
+      colors={COLORS}
+      passageRef={passageRef}
+      bookName={bookName}
+      chapter={chapter}
+      learnTab={learnTab}
+      setLearnTab={setLearnTab}
+      learnNotes={learnNotes}
+      setLearnNotes={setLearnNotes}
+      learnDataLoading={learnDataLoading}
+      verseResources={verseResources}
+      bookPrologue={bookPrologue}
+      verseWords={verseWords}
+      selectedStrongsWord={selectedStrongsWord}
+      selectedStrongsEntry={selectedStrongsEntry}
+      strongsEntryLoading={strongsEntryLoading}
+      saving={saving}
+      savingProgress={savingProgress}
+      pageIndex={pageIndex}
+      stageOrder={STAGE_ORDER}
+      scrollX={scrollX}
+      screenWidth={SCREEN_WIDTH}
+      tabRowRef={tabRowRef}
+      tabPositions={tabPositions}
+      showLeftChevron={showLeftChevron}
+      showRightChevron={showRightChevron}
+      onTabScroll={setTabScrollX}
+      onTabContentWidthChange={setTabContentWidth}
+      onTabContainerWidthChange={setTabContainerWidth}
+      onOpenBibleReader={() =>
+        navigation.navigate(route.bible, {
+          bookName,
+          chapter: parseInt(chapter, 10),
+        })
       }
-
-      if (learnDataLoading) {
-        return (
-          <View style={{ paddingVertical: SPACING.xl, alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={COLORS.accent} />
-            <Text
-              style={[
-                styles.learnText,
-                { color: COLORS.muted, marginTop: SPACING.sm },
-              ]}
-            >
-              Loading word data...
-            </Text>
-          </View>
-        );
-      }
-
-      if (verseWords.length === 0) {
-        return (
-          <View>
-            <Text style={[styles.learnText, { color: COLORS.textSecondary }]}>
-              No Strong's word data available for this verse in the current
-              translation. Try opening the Bible Reader to see word-level
-              details with dotted underlines.
-            </Text>
-            <View style={styles.divider} />
-            <TouchableOpacity
-              style={[styles.secondaryBtn, { borderColor: COLORS.primary }]}
-              onPress={() =>
-                navigation.navigate(route.bible, {
-                  bookName,
-                  chapter: parseInt(chapter, 10),
-                })
-              }
-              activeOpacity={0.7}
-            >
-              <Hash size={16} color={COLORS.primary} />
-              <Text
-                style={[styles.secondaryBtnText, { color: COLORS.primary }]}
-              >
-                Open Bible Reader
-              </Text>
-            </TouchableOpacity>
-          </View>
-        );
-      }
-
-      return (
-        <View>
-          <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}>
-            Words in this Passage
-          </Text>
-          <Text
-            style={[
-              styles.learnText,
-              { color: COLORS.textSecondary, marginBottom: SPACING.md },
-            ]}
-          >
-            Tap any word to see its Strong's Concordance entry.
-          </Text>
-          {verseWords.map((word, i) => (
-            <TouchableOpacity
-              key={`vw-${i}`}
-              style={[
-                styles.wordRow,
-                { backgroundColor: COLORS.surface, borderColor: COLORS.border },
-              ]}
-              onPress={() => handleStrongsWordPress(word)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  styles.wordIndex,
-                  { backgroundColor: `${COLORS.accent}15` },
-                ]}
-              >
-                <Text style={[styles.wordIndexText, { color: COLORS.accent }]}>
-                  {word.verseNumber || i + 1}
-                </Text>
-              </View>
-              <View style={styles.wordContent}>
-                <Text style={[styles.wordSurfaceText, { color: COLORS.text }]}>
-                  {word.surfaceText}
-                </Text>
-                <View style={styles.wordMeta}>
-                  {word.strongsId && (
-                    <View
-                      style={[
-                        styles.wordBadge,
-                        { backgroundColor: `${COLORS.accent}12` },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.wordBadgeText, { color: COLORS.accent }]}
-                      >
-                        H{word.strongsId.replace(/^H/, '').replace(/^G/, 'G')}
-                      </Text>
-                    </View>
-                  )}
-                  {word.lemma && (
-                    <Text style={[styles.wordLemma, { color: COLORS.muted }]}>
-                      {word.lemma}
-                    </Text>
-                  )}
-                  {word.morphology && (
-                    <Text
-                      style={[styles.wordMorph, { color: COLORS.muted }]}
-                      numberOfLines={1}
-                    >
-                      {word.morphology}
-                    </Text>
-                  )}
-                </View>
-              </View>
-              <ChevronRight size={14} color={COLORS.muted} />
-            </TouchableOpacity>
-          ))}
-        </View>
-      );
-    };
-
-    const renderHistoricalContext = () => (
-      <View>
-        {/* Dictionary / Cultural Terms */}
-        {resources?.dictionaryTerms && resources.dictionaryTerms.length > 0 ? (
-          <>
-            <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}>
-              Key Terms & Cultural Background
-            </Text>
-            {resources.dictionaryTerms.map((d, i) => (
-              <View
-                key={`dict-${i}`}
-                style={[
-                  styles.resourceCard,
-                  {
-                    backgroundColor: COLORS.surface,
-                    borderColor: COLORS.border,
-                    borderLeftColor: COLORS.success,
-                  },
-                ]}
-              >
-                <Text
-                  style={[styles.resourceCardTitle, { color: COLORS.text }]}
-                >
-                  {d.term}
-                </Text>
-                {d.pronunciation && (
-                  <Text
-                    style={[
-                      styles.resourceCardLabel,
-                      { color: COLORS.muted, fontStyle: 'italic' },
-                    ]}
-                  >
-                    /{d.pronunciation}/
-                  </Text>
-                )}
-                <View
-                  style={[
-                    styles.dividerThin,
-                    { backgroundColor: COLORS.border },
-                  ]}
-                />
-                <Text
-                  style={[styles.resourceCardDef, { color: COLORS.success }]}
-                >
-                  {d.definition}
-                </Text>
-                <Text
-                  style={[
-                    styles.resourceCardText,
-                    { color: COLORS.textSecondary, marginTop: SPACING.xs },
-                  ]}
-                >
-                  {d.description}
-                </Text>
-              </View>
-            ))}
-          </>
-        ) : (
-          <Text style={[styles.learnText, { color: COLORS.textSecondary }]}>
-            Understanding the historical and cultural setting helps you grasp
-            what the passage meant to its original audience.
-          </Text>
-        )}
-
-        {/* Word Studies from Verse Resources */}
-        {resources?.wordStudies && resources.wordStudies.length > 0 && (
-          <>
-            <Text
-              style={[
-                styles.learnSectionTitle,
-                { color: COLORS.text, marginTop: SPACING.lg },
-              ]}
-            >
-              Word Studies
-            </Text>
-            {resources.wordStudies.map((ws, i) => (
-              <View
-                key={`ws-${i}`}
-                style={[
-                  styles.resourceCard,
-                  {
-                    backgroundColor: COLORS.surface,
-                    borderColor: COLORS.border,
-                    borderLeftColor: COLORS.accent,
-                  },
-                ]}
-              >
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'baseline',
-                    gap: 6,
-                    marginBottom: 4,
-                  }}
-                >
-                  <Text
-                    style={[styles.resourceCardTitle, { color: COLORS.text }]}
-                  >
-                    {ws.word}
-                  </Text>
-                  <Text
-                    style={[styles.resourceCardLabel, { color: COLORS.muted }]}
-                  >
-                    ({ws.transliteration})
-                  </Text>
-                  {ws.strongs && (
-                    <Text
-                      style={[
-                        styles.strongsBadgeSmall,
-                        {
-                          backgroundColor: `${COLORS.accent}15`,
-                          color: COLORS.accent,
-                        },
-                      ]}
-                    >
-                      {ws.strongs}
-                    </Text>
-                  )}
-                </View>
-                <Text
-                  style={[
-                    styles.resourceCardText,
-                    { color: COLORS.textSecondary },
-                  ]}
-                >
-                  {ws.meaning}
-                </Text>
-              </View>
-            ))}
-          </>
-        )}
-
-        {/* Author & Audience */}
-        <View
-          style={[
-            styles.resourceCard,
-            {
-              backgroundColor: COLORS.cardBackground,
-              borderColor: COLORS.border,
-              borderLeftColor: COLORS.primary,
-              marginTop: SPACING.md,
-            },
-          ]}
-        >
-          <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}>
-            Author & Audience
-          </Text>
-          <Text
-            style={[
-              styles.learnText,
-              { color: COLORS.textSecondary, marginTop: SPACING.xs },
-            ]}
-          >
-            Who wrote this book? To whom was it written? What was the occasion
-            or purpose? These details shape how we understand the message.
-          </Text>
-        </View>
-
-        {/* Empty state */}
-        {(!resources?.dictionaryTerms ||
-          resources.dictionaryTerms.length === 0) &&
-          (!resources?.wordStudies || resources.wordStudies.length === 0) &&
-          !learnDataLoading && (
-            <Text
-              style={[
-                styles.learnText,
-                {
-                  color: COLORS.muted,
-                  fontStyle: 'italic',
-                  textAlign: 'center',
-                  paddingVertical: SPACING.lg,
-                },
-              ]}
-            >
-              No historical context data available for this passage yet.
-            </Text>
-          )}
-      </View>
-    );
-
-    const renderBookPrologue = () => {
-      const themes = Array.isArray(bookPrologue?.mainThemes)
-        ? bookPrologue.mainThemes
-        : [];
-      return (
-      <View>
-        <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}> 
-          About {bookName}
-        </Text>
-        <Text style={[styles.learnText, { color: COLORS.textSecondary }]}> 
-          {bookPrologue?.summary || 'Learn about the book\'s author, audience, date, purpose, and key themes. This background helps you read with greater understanding.'}
-        </Text>
-
-        {bookPrologue ? (
-          <>
-            <View style={styles.divider} />
-            {[
-              ['Author', bookPrologue.author],
-              ['Audience', bookPrologue.audience],
-              ['Date Written', bookPrologue.dateWritten],
-              ['Location', bookPrologue.locationWritten],
-              ['Purpose', bookPrologue.purpose],
-              ['Key Theme', bookPrologue.keyTheme],
-            ].map(([label, value]) => value ? (
-              <View
-                key={label}
-                style={[
-                  styles.resourceCard,
-                  {
-                    backgroundColor: COLORS.cardBackground,
-                    borderColor: COLORS.border,
-                    borderLeftColor: COLORS.primary,
-                    marginBottom: SPACING.sm,
-                  },
-                ]}
-              >
-                <Text style={[styles.resourceCardTitle, { color: COLORS.text }]}>{label}</Text>
-                <Text style={[styles.resourceCardText, { color: COLORS.textSecondary }]}>{value}</Text>
-              </View>
-            ) : null)}
-
-            {themes.length > 0 && (
-              <>
-                <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}>Main Themes</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {themes.map((theme, i) => (
-                    <View
-                      key={`theme-${i}`}
-                      style={[
-                        styles.topicPill,
-                        {
-                          backgroundColor: `${COLORS.primary}10`,
-                          borderColor: `${COLORS.primary}25`,
-                        },
-                      ]}
-                    >
-                      <Text style={[styles.topicPillText, { color: COLORS.primary }]}>{theme}</Text>
-                    </View>
-                  ))}
-                </View>
-              </>
-            )}
-
-            {bookPrologue.christConnection ? (
-              <View style={styles.divider} />
-            ) : null}
-            {bookPrologue.christConnection ? (
-              <View
-                style={[
-                  styles.resourceCard,
-                  {
-                    backgroundColor: COLORS.surface,
-                    borderColor: COLORS.border,
-                    borderLeftColor: COLORS.accent,
-                    marginBottom: SPACING.sm,
-                  },
-                ]}
-              >
-                <Text style={[styles.resourceCardTitle, { color: COLORS.text }]}>Christ-Centered Connection</Text>
-                <Text style={[styles.resourceCardText, { color: COLORS.textSecondary }]}>{bookPrologue.christConnection}</Text>
-              </View>
-            ) : null}
-          </>
-        ) : !learnDataLoading ? (
-          <Text style={[styles.learnText, { color: COLORS.muted, marginTop: SPACING.md }]}>No book prologue has been added for {bookName} yet.</Text>
-        ) : null}
-
-        {/* Related Topics from Verse Resources */}
-        {resources?.relatedTopics && resources.relatedTopics.length > 0 && (
-          <>
-            <View style={styles.divider} />
-            <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}>
-              Related Themes
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {resources.relatedTopics.map((t, i) => (
-                <View
-                  key={`topic-${i}`}
-                  style={[
-                    styles.topicPill,
-                    {
-                      backgroundColor: `${COLORS.primary}10`,
-                      borderColor: `${COLORS.primary}25`,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[styles.topicPillText, { color: COLORS.primary }]}
-                  >
-                    {t.name}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        {/* Word Studies */}
-        {resources?.wordStudies && resources.wordStudies.length > 0 && (
-          <>
-            <View style={styles.divider} />
-            <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}>
-              Key Words in {bookName}
-            </Text>
-            {resources.wordStudies.slice(0, 3).map((ws, i) => (
-              <View
-                key={`ws-pl-${i}`}
-                style={[
-                  styles.resourceCard,
-                  {
-                    backgroundColor: COLORS.surface,
-                    borderColor: COLORS.border,
-                    borderLeftColor: COLORS.accent,
-                    marginBottom: SPACING.sm,
-                  },
-                ]}
-              >
-                <Text
-                  style={[styles.resourceCardTitle, { color: COLORS.text }]}
-                >
-                  {ws.word}
-                </Text>
-                <Text
-                  style={[
-                    styles.resourceCardText,
-                    { color: COLORS.textSecondary },
-                  ]}
-                >
-                  {ws.meaning}
-                </Text>
-              </View>
-            ))}
-          </>
-        )}
-
-        <View style={styles.divider} />
-        <TouchableOpacity
-          style={[styles.secondaryBtn, { borderColor: COLORS.primary }]}
-          onPress={() =>
-            navigation.navigate(route.bible, {
-              bookName,
-              chapter: parseInt(chapter, 10),
-            })
-          }
-          activeOpacity={0.7}
-        >
-          <BookOpen size={16} color={COLORS.primary} />
-          <Text style={[styles.secondaryBtnText, { color: COLORS.primary }]}>
-            Open {bookName} in Bible Reader
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-    };
-
-    const renderTabContent = () => {
-      switch (learnTab) {
-        case 'exegesis':
-          return renderExegesisNotes();
-        case 'language':
-          return renderOriginalLanguage();
-        case 'history':
-          return renderHistoricalContext();
-        case 'prologue':
-          return renderBookPrologue();
-        default:
-          return null;
-      }
-    };
-
-    return (
-      <View style={styles.stageContainer}>
-        <View style={styles.stageHeader}>
-          <View
-            style={[
-              styles.stageBadge,
-              { backgroundColor: `${COLORS.accent}20` },
-            ]}
-          >
-            <Brain size={20} color={COLORS.accent} />
-          </View>
-          <Text style={[styles.stageLabel, { color: COLORS.accent }]}>
-            Step 3 of 4
-          </Text>
-          <Text style={[styles.stageTitle, { color: COLORS.text }]}>Learn</Text>
-          <Text style={[styles.stageSubtitle, { color: COLORS.textSecondary }]}>
-            Seek to understand the Word
-          </Text>
-          {passageRef && (
-            <View
-              style={[
-                styles.passageChip,
-                { backgroundColor: `${COLORS.primary}15` },
-              ]}
-            >
-              <BookOpen size={12} color={COLORS.primary} />
-              <Text style={[styles.passageChipText, { color: COLORS.primary }]}>
-                {passageRef}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Tabs — horizontal scroll with programmatic auto-scroll to active tab */}
-        <View style={styles.tabRowWrapper}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            nestedScrollEnabled
-            ref={tabRowRef}
-            style={styles.tabRow}
-            scrollEventThrottle={16}
-            onScroll={(e) => setTabScrollX(e.nativeEvent.contentOffset.x)}
-            onContentSizeChange={(w) => setTabContentWidth(w)}
-            onLayout={(e) => setTabContainerWidth(e.nativeEvent.layout.width)}
-          >
-            {tabs.map(tab => {
-              const Icon = tab.icon;
-              const active = learnTab === tab.id;
-              return (
-                <TouchableOpacity
-                  key={tab.id}
-                  style={[
-                    styles.tab,
-                    active
-                      ? { backgroundColor: COLORS.accent, borderColor: COLORS.accent }
-                      : {
-                          backgroundColor: COLORS.surface,
-                          borderColor: COLORS.border,
-                        },
-                  ]}
-                  onPress={() => setLearnTab(tab.id)}
-                  onLayout={(e) => {
-                    // Store the tab's x-position within the ScrollView content
-                    tabPositions.current[tab.id] = e.nativeEvent.layout.x;
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Icon size={14} color={active ? '#FFFFFF' : COLORS.muted} />
-                  <Text
-                    style={[
-                      styles.tabText,
-                      { color: active ? '#FFFFFF' : COLORS.text },
-                      active && styles.tabTextActive,
-                    ]}
-                  >
-                    {tab.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Overflow chevron indicators */}
-          {showLeftChevron && (
-            <View style={[styles.tabChevron, styles.tabChevronLeft, { backgroundColor: `${COLORS.background}E0` }]}>
-              <ChevronLeft size={14} color={COLORS.accent} />
-            </View>
-          )}
-          {showRightChevron && (
-            <View style={[styles.tabChevron, styles.tabChevronRight, { backgroundColor: `${COLORS.background}E0` }]}>
-              <ChevronRight size={14} color={COLORS.accent} />
-            </View>
-          )}
-        </View>
-
-        {/* Loading indicator */}
-        {learnDataLoading && (
-          <View style={{ paddingVertical: SPACING.lg, alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={COLORS.accent} />
-            <Text
-              style={[
-                styles.learnText,
-                {
-                  color: COLORS.muted,
-                  marginTop: SPACING.sm,
-                  fontSize: FONT_SIZES.xs,
-                },
-              ]}
-            >
-              Loading study resources...
-            </Text>
-          </View>
-        )}
-
-        {/* Tab content */}
-        {!learnDataLoading && (
-          <View
-            style={[
-              styles.learnContent,
-              { backgroundColor: COLORS.cardBackground },
-            ]}
-          >
-            {renderTabContent()}
-          </View>
-        )}
-
-        {/* Notes */}
-        <Text style={[styles.textareaLabel, { color: COLORS.textSecondary }]}>
-          Study Notes
-        </Text>
-        <TextInput
-          style={[
-            styles.textarea,
-            {
-              backgroundColor: COLORS.surface,
-              borderColor: COLORS.border,
-              color: COLORS.text,
-            },
-          ]}
-          placeholder="Write what you have learned..."
-          placeholderTextColor={COLORS.muted}
-          value={learnNotes}
-          onChangeText={setLearnNotes}
-          multiline
-          textAlignVertical="top"
-        />
-
-        {/* Save Progress button */}
-        <TouchableOpacity
-          style={[styles.saveProgressBtn, { borderColor: COLORS.muted }]}
-          onPress={() => saveCurrentProgress()}
-          disabled={savingProgress}
-          activeOpacity={0.7}
-        >
-          {savingProgress ? (
-            <ActivityIndicator size="small" color={COLORS.muted} />
-          ) : (
-            <>
-              <Save size={14} color={COLORS.muted} />
-              <Text style={[styles.saveProgressText, { color: COLORS.muted }]}>
-                Save Progress
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
-          onPress={saveLearn}
-          disabled={saving}
-          activeOpacity={0.8}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.primaryBtnText}>Continue to Abide</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Page indicator (animated via scrollX) */}
-        <View style={styles.pageIndicator}>
-          {STAGE_ORDER.map((s, idx) => {
-            const dotOpacity = scrollX.interpolate({
-              inputRange: [
-                (idx - 1) * SCREEN_WIDTH,
-                idx * SCREEN_WIDTH,
-                (idx + 1) * SCREEN_WIDTH,
-              ],
-              outputRange: [0.3, 1, 0.3],
-              extrapolate: 'clamp',
-            });
-            const dotScale = scrollX.interpolate({
-              inputRange: [
-                (idx - 1) * SCREEN_WIDTH,
-                idx * SCREEN_WIDTH,
-                (idx + 1) * SCREEN_WIDTH,
-              ],
-              outputRange: [1, 1.3, 1],
-              extrapolate: 'clamp',
-            });
-            return (
-              <Animated.View
-                key={s}
-                style={[
-                  styles.pageDot,
-                  {
-                    backgroundColor:
-                      idx === pageIndex ? COLORS.accent : COLORS.muted,
-                    opacity: dotOpacity,
-                    transform: [{ scale: dotScale }],
-                    width: idx === pageIndex ? 20 : 8,
-                  },
-                ]}
-              />
-            );
-          })}
-        </View>
-      </View>
-    );
-  };
+      onStrongsWordPress={handleStrongsWordPress}
+      onClearStrongsSelection={clearStrongsSelection}
+      onSaveProgress={saveCurrentProgress}
+      onContinue={saveLearn}
+    />
+  );
 
   // ── Render Abide stage ───────────────────────────────────────────────────
   const renderAbide = () => (
-    <View style={styles.stageContainer}>
-      <View style={styles.stageHeader}>
-        <View
-          style={[styles.stageBadge, { backgroundColor: `${COLORS.accent}20` }]}
-        >
-          <Heart size={20} color={COLORS.accent} />
-        </View>
-        <Text style={[styles.stageLabel, { color: COLORS.accent }]}>
-          Step 4 of 4
-        </Text>
-        <Text style={[styles.stageTitle, { color: COLORS.text }]}>Abide</Text>
-        <Text style={[styles.stageSubtitle, { color: COLORS.textSecondary }]}>
-          Record what the Lord has shown you
-        </Text>
-        {passageRef && (
-          <View
-            style={[
-              styles.passageChip,
-              { backgroundColor: `${COLORS.primary}15` },
-            ]}
-          >
-            <BookOpen size={12} color={COLORS.primary} />
-            <Text style={[styles.passageChipText, { color: COLORS.primary }]}>
-              {passageRef}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Reflection */}
-      <Text style={[styles.textareaLabel, { color: COLORS.textSecondary }]}>
-        <FileText size={14} color={COLORS.textSecondary} /> My Reflection
-      </Text>
-      <TextInput
-        style={[
-          styles.textareaLarge,
-          {
-            backgroundColor: COLORS.surface,
-            borderColor: COLORS.border,
-            color: COLORS.text,
-          },
-        ]}
-        placeholder="What has God shown you through this passage?"
-        placeholderTextColor={COLORS.muted}
-        value={reflection}
-        onChangeText={setReflection}
-        multiline
-        textAlignVertical="top"
-      />
-
-      {/* Prayer */}
-      <Text style={[styles.textareaLabel, { color: COLORS.textSecondary }]}>
-        <Heart size={14} color={COLORS.textSecondary} /> My Prayer
-      </Text>
-      <TextInput
-        style={[
-          styles.textareaLarge,
-          {
-            backgroundColor: COLORS.surface,
-            borderColor: COLORS.border,
-            color: COLORS.text,
-          },
-        ]}
-        placeholder="Write your prayer response..."
-        placeholderTextColor={COLORS.muted}
-        value={prayer}
-        onChangeText={setPrayer}
-        multiline
-        textAlignVertical="top"
-      />
-
-      {/* Application */}
-      <Text style={[styles.textareaLabel, { color: COLORS.textSecondary }]}>
-        <BookMarked size={14} color={COLORS.textSecondary} /> Practical Step
-      </Text>
-      <TextInput
-        style={[
-          styles.textarea,
-          {
-            backgroundColor: COLORS.surface,
-            borderColor: COLORS.border,
-            color: COLORS.text,
-          },
-        ]}
-        placeholder="What will you do in response to God's Word?"
-        placeholderTextColor={COLORS.muted}
-        value={appText}
-        onChangeText={setAppText}
-        multiline
-        textAlignVertical="top"
-      />
-
-      {/* Tags */}
-      <Text style={[styles.textareaLabel, { color: COLORS.textSecondary }]}>
-        <Tag size={14} color={COLORS.textSecondary} /> Tags
-      </Text>
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: COLORS.surface,
-            borderColor: COLORS.border,
-            color: COLORS.text,
-          },
-        ]}
-        placeholder="#John #Believe #EternalLife"
-        placeholderTextColor={COLORS.muted}
-        value={tags}
-        onChangeText={setTags}
-        autoCapitalize="none"
-      />
-
-      {/* Privacy toggle */}
-      <TouchableOpacity
-        style={[styles.privacyRow, { backgroundColor: COLORS.cardBackground }]}
-        onPress={() => setIsPublic(!isPublic)}
-        activeOpacity={0.7}
-      >
-        <Lock size={16} color={isPublic ? COLORS.warning : COLORS.success} />
-        <Text style={[styles.privacyText, { color: COLORS.text }]}>
-          {isPublic
-            ? 'Public — anyone can read this'
-            : 'Private — only you can see this'}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Save Progress button */}
-      <TouchableOpacity
-        style={[styles.saveProgressBtn, { borderColor: COLORS.muted }]}
-      onPress={() => saveCurrentProgress()}
-      disabled={savingProgress}
-      activeOpacity={0.7}
-    >
-      {savingProgress ? (
-        <ActivityIndicator size="small" color={COLORS.muted} />
-      ) : (
-        <>
-          <Save size={14} color={COLORS.muted} />
-          <Text style={[styles.saveProgressText, { color: COLORS.muted }]}>
-            Save Progress
-          </Text>
-        </>
-      )}
-    </TouchableOpacity>
-
-    {/* Save to Legacy Ledger button — hidden if already saved */}
-      {journalEntryId ? (
-        <TouchableOpacity
-          style={[
-            styles.primaryBtn,
-            {
-              backgroundColor: `${COLORS.success}20`,
-              borderWidth: 1,
-              borderColor: COLORS.success,
-            },
-          ]}
-          onPress={() => navigation.navigate(route.legacyLedger)}
-          activeOpacity={0.8}
-        >
-          <CheckCircle2 size={18} color={COLORS.success} />
-          <Text
-            style={[
-              styles.primaryBtnText,
-              { color: COLORS.success },
-            ]}
-          >
-            Saved — View in Legacy Ledger
-          </Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
-          onPress={saveAbide}
-          disabled={saving}
-          activeOpacity={0.8}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <>
-              <Save size={18} color="#FFFFFF" />
-              <Text style={styles.primaryBtnText}>
-                Save to Legacy Ledger
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-      )}
-
-      {/* Page indicator (animated via scrollX) */}
-      <View style={styles.pageIndicator}>
-        {STAGE_ORDER.map((s, idx) => {
-          const dotOpacity = scrollX.interpolate({
-            inputRange: [
-              (idx - 1) * SCREEN_WIDTH,
-              idx * SCREEN_WIDTH,
-              (idx + 1) * SCREEN_WIDTH,
-            ],
-            outputRange: [0.3, 1, 0.3],
-            extrapolate: 'clamp',
-          });
-          const dotScale = scrollX.interpolate({
-            inputRange: [
-              (idx - 1) * SCREEN_WIDTH,
-              idx * SCREEN_WIDTH,
-              (idx + 1) * SCREEN_WIDTH,
-            ],
-            outputRange: [1, 1.3, 1],
-            extrapolate: 'clamp',
-          });
-          return (
-            <Animated.View
-              key={s}
-              style={[
-                styles.pageDot,
-                {
-                  backgroundColor:
-                    idx === pageIndex ? COLORS.accent : COLORS.muted,
-                  opacity: dotOpacity,
-                  transform: [{ scale: dotScale }],
-                  width: idx === pageIndex ? 20 : 8,
-                },
-              ]}
-            />
-          );
-        })}
-      </View>
-    </View>
+    <AbideStage
+      styles={styles}
+      colors={COLORS}
+      passageRef={passageRef}
+      reflection={reflection}
+      setReflection={setReflection}
+      prayer={prayer}
+      setPrayer={setPrayer}
+      appText={appText}
+      setAppText={setAppText}
+      tags={tags}
+      setTags={setTags}
+      isPublic={isPublic}
+      setIsPublic={setIsPublic}
+      saving={saving}
+      savingProgress={savingProgress}
+      journalEntryId={journalEntryId}
+      pageIndex={pageIndex}
+      stageOrder={STAGE_ORDER}
+      scrollX={scrollX}
+      screenWidth={SCREEN_WIDTH}
+      onSaveProgress={() => saveCurrentProgress()}
+      onSaveAbide={saveAbide}
+      onViewLegacyLedger={() => navigation.navigate(route.legacyLedger)}
+    />
   );
 
   // ── Handle download / share entry ─────────────────────────────────────
@@ -3255,241 +1243,40 @@ export default function LabFlowScreen() {
   ]);
 
   // ── Render Completed state ────────────────────────────────────────────────
+  const handleStartNewStudy = useCallback(() => {
+    setStage('passage');
+    setSubStage('book');
+    setSessionId(null);
+    setBookName('');
+    setChapter('');
+    setVerseStart('');
+    setVerseEnd('');
+    setLookNotes('');
+    setLearnNotes('');
+    setReflection('');
+    setPrayer('');
+    setAppText('');
+    setTags('');
+    setVerseWords([]);
+    setPassageVerses([]);
+    setTimerComplete(false);
+    setTimerElapsed(0);
+    setCompleted(false);
+  }, [
+    setStage, setSubStage, setSessionId, setBookName, setChapter,
+    setVerseStart, setVerseEnd, setLookNotes, setLearnNotes,
+    setReflection, setPrayer, setAppText, setTags, setVerseWords,
+    setPassageVerses, setTimerComplete, setTimerElapsed, setCompleted,
+  ]);
+
   const renderCompleted = () => (
-    <View style={[styles.stageContainer, styles.completedContainer]}>
-      <View
-        style={[
-          styles.completedIcon,
-          { backgroundColor: `${COLORS.success}20` },
-        ]}
-      >
-        <CheckCircle2 size={64} color={COLORS.success} />
-      </View>
-      <Text style={[styles.completedTitle, { color: COLORS.text }]}>
-        Study Complete!
-      </Text>
-      <Text style={[styles.completedSubtitle, { color: COLORS.textSecondary }]}>
-        Your exegesis has been saved to the Legacy Ledger. You can view it in
-        your journal.
-      </Text>
-
-      <TouchableOpacity
-        style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
-        onPress={() => navigation.navigate(route.legacyLedger)}
-        activeOpacity={0.8}
-      >
-        <BookMarked size={18} color="#FFFFFF" />
-        <Text style={styles.primaryBtnText}>Open Legacy Ledger</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.secondaryBtn, { borderColor: COLORS.primary }]}
-        onPress={handleDownloadEntry}
-        activeOpacity={0.7}
-      >
-        <Download size={16} color={COLORS.primary} />
-        <Text style={[styles.secondaryBtnText, { color: COLORS.primary }]}>
-          Download Entry
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[
-          styles.secondaryBtn,
-          { borderColor: COLORS.primary, marginTop: SPACING.md },
-        ]}
-        onPress={() => {
-          setStage('passage');
-          setSubStage('book');
-          setSessionId(null);
-          setBookName('');
-          setChapter('');
-          setVerseStart('');
-          setVerseEnd('');
-          setLookNotes('');
-          setLearnNotes('');
-          setReflection('');
-          setPrayer('');
-          setAppText('');
-          setTags('');
-          setVerseWords([]);
-          setPassageVerses([]);
-          setTimerComplete(false);
-          setTimerElapsed(0);
-          setCompleted(false);
-        }}
-        activeOpacity={0.7}
-      >
-        <Sparkles size={16} color={COLORS.primary} />
-        <Text style={[styles.secondaryBtnText, { color: COLORS.primary }]}>
-          Start Another Study
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderStrongsModal = () => (
-    <Modal
-      visible={showStrongsModal && !!selectedStrongsWord}
-      transparent
-      animationType="slide"
-      onRequestClose={() => setShowStrongsModal(false)}
-    >
-      <View style={styles.modalBackdrop}>
-        <View
-          style={[
-            styles.strongsModalCard,
-            { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border },
-          ]}
-        >
-          <View style={styles.strongsModalHeader}>
-            <View style={styles.strongsModalTitleWrap}>
-              <Text style={[styles.strongsModalWord, { color: COLORS.text }]}> 
-                {selectedStrongsWord?.surfaceText}
-              </Text>
-              {selectedStrongsWord?.strongsId && (
-                <Text style={[styles.strongsModalId, { color: COLORS.accent }]}> 
-                  Strong's {selectedStrongsWord.strongsId}
-                </Text>
-              )}
-            </View>
-            <TouchableOpacity
-              style={[styles.strongsModalClose, { backgroundColor: COLORS.surface }]}
-              onPress={() => setShowStrongsModal(false)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.strongsModalCloseText, { color: COLORS.text }]}> 
-                Close
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {selectedStrongsWord?.lemma && (
-              <View style={styles.strongsInfoRow}>
-                <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Lemma</Text>
-                <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                  {selectedStrongsWord.lemma}
-                </Text>
-              </View>
-            )}
-            {selectedStrongsWord?.morphology && (
-              <View style={styles.strongsInfoRow}>
-                <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Morphology</Text>
-                <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                  {selectedStrongsWord.morphology}
-                </Text>
-              </View>
-            )}
-            {selectedStrongsWord?.verseNumber && (
-              <View style={styles.strongsInfoRow}>
-                <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Reference</Text>
-                <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                  {bookName} {chapter}:{selectedStrongsWord.verseNumber}
-                </Text>
-              </View>
-            )}
-
-            <View style={[styles.divider, { backgroundColor: COLORS.border }]} />
-
-            {strongsEntryLoading ? (
-              <View style={styles.strongsModalLoading}>
-                <ActivityIndicator size="small" color={COLORS.accent} />
-                <Text style={[styles.strongsInfoValue, { color: COLORS.muted }]}> 
-                  Loading word details...
-                </Text>
-              </View>
-            ) : selectedStrongsEntry ? (
-              <>
-                <Text style={[styles.strongsModalDefinition, { color: COLORS.text }]}> 
-                  {selectedStrongsEntry.shortDefinition}
-                </Text>
-                {selectedStrongsEntry.fullDefinition && (
-                  <Text style={[styles.strongsModalFullDefinition, { color: COLORS.textSecondary }]}> 
-                    {selectedStrongsEntry.fullDefinition}
-                  </Text>
-                )}
-
-                {selectedStrongsEntry.originalWord && (
-                  <View style={styles.strongsInfoRow}>
-                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Original</Text>
-                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                      {selectedStrongsEntry.originalWord}
-                    </Text>
-                  </View>
-                )}
-                {selectedStrongsEntry.transliteration && (
-                  <View style={styles.strongsInfoRow}>
-                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Transliteration</Text>
-                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                      {selectedStrongsEntry.transliteration}
-                    </Text>
-                  </View>
-                )}
-                <View style={styles.strongsInfoRow}>
-                  <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Language</Text>
-                  <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                    {selectedStrongsEntry.language}
-                  </Text>
-                </View>
-                {selectedStrongsEntry.partOfSpeech && (
-                  <View style={styles.strongsInfoRow}>
-                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Part of Speech</Text>
-                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                      {selectedStrongsEntry.partOfSpeech}
-                    </Text>
-                  </View>
-                )}
-                {selectedStrongsEntry.grammaticalCase && (
-                  <View style={styles.strongsInfoRow}>
-                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Case</Text>
-                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                      {selectedStrongsEntry.grammaticalCase}
-                    </Text>
-                  </View>
-                )}
-                {selectedStrongsEntry.gender && (
-                  <View style={styles.strongsInfoRow}>
-                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Gender</Text>
-                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                      {selectedStrongsEntry.gender}
-                    </Text>
-                  </View>
-                )}
-                {selectedStrongsEntry.number && (
-                  <View style={styles.strongsInfoRow}>
-                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Number</Text>
-                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                      {selectedStrongsEntry.number}
-                    </Text>
-                  </View>
-                )}
-                {selectedStrongsEntry.usageCount !== null && (
-                  <View style={styles.strongsInfoRow}>
-                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Usage</Text>
-                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                      Used {selectedStrongsEntry.usageCount} times
-                    </Text>
-                  </View>
-                )}
-                {selectedStrongsEntry.crossReferences && (
-                  <View style={styles.strongsInfoRow}>
-                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Cross References</Text>
-                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
-                      {selectedStrongsEntry.crossReferences}
-                    </Text>
-                  </View>
-                )}
-              </>
-            ) : (
-              <Text style={[styles.strongsModalFullDefinition, { color: COLORS.muted }]}> 
-                No detailed dictionary entry found for this word.
-              </Text>
-            )}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+    <CompletedStage
+      styles={styles}
+      colors={COLORS}
+      onViewLegacyLedger={() => navigation.navigate(route.legacyLedger)}
+      onDownloadEntry={handleDownloadEntry}
+      onStartNewStudy={handleStartNewStudy}
+    />
   );
 
   // ── Main render ──────────────────────────────────────────────────────────
@@ -3507,19 +1294,13 @@ export default function LabFlowScreen() {
       <SafeAreaView
         style={[styles.container, { backgroundColor: COLORS.background }]}
       >
-        {booksLoading ? (
-          <View
-            style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-          >
-            <ActivityIndicator size="large" color={COLORS.accent} />
-          </View>
-        ) : (
-          <BookSelectorScreen
-            books={books}
-            isDark={isDark}
-            onSelectBook={handleSelectBook}
-          />
-        )}
+        <BookSelectorScreen
+          books={books}
+          isDark={isDark}
+          loading={booksLoading}
+          onSelectBook={handleSelectBook}
+          onBack={() => navigation.goBack()}
+        />
       </SafeAreaView>
     );
   }
@@ -3743,7 +1524,16 @@ export default function LabFlowScreen() {
         </Animated.ScrollView>
       )}
 
-      {renderStrongsModal()}
+      <StrongsWordModal
+        visible={showStrongsModal}
+        word={selectedStrongsWord}
+        entry={selectedStrongsEntry}
+        loading={strongsEntryLoading}
+        bookName={bookName}
+        chapter={chapter}
+        colors={COLORS}
+        onClose={closeStrongsModal}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -4017,76 +1807,6 @@ const createStyles = (COLORS: any) =>
       borderWidth: 1,
       borderRadius: BORDER_RADIUS.sm,
       paddingHorizontal: 2,
-    },
-
-    // Strong's modal
-    modalBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.55)',
-      justifyContent: 'flex-end',
-    },
-    strongsModalCard: {
-      maxHeight: '82%',
-      borderTopLeftRadius: BORDER_RADIUS.xl,
-      borderTopRightRadius: BORDER_RADIUS.xl,
-      borderWidth: 1,
-      padding: SPACING.lg,
-    },
-    strongsModalHeader: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      gap: SPACING.md,
-      marginBottom: SPACING.md,
-    },
-    strongsModalTitleWrap: { flex: 1 },
-    strongsModalWord: {
-      fontSize: FONT_SIZES.xxl,
-      fontWeight: '800',
-      letterSpacing: -0.3,
-    },
-    strongsModalId: {
-      fontSize: FONT_SIZES.sm,
-      fontWeight: '700',
-      marginTop: 2,
-    },
-    strongsModalClose: {
-      borderRadius: BORDER_RADIUS.round,
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.xs + 2,
-    },
-    strongsModalCloseText: {
-      fontSize: FONT_SIZES.xs,
-      fontWeight: '700',
-    },
-    strongsModalLoading: {
-      alignItems: 'center',
-      paddingVertical: SPACING.lg,
-      gap: SPACING.sm,
-    },
-    strongsModalDefinition: {
-      fontSize: FONT_SIZES.lg,
-      fontWeight: '700',
-      lineHeight: 26,
-      marginBottom: SPACING.sm,
-    },
-    strongsModalFullDefinition: {
-      fontSize: FONT_SIZES.md,
-      lineHeight: 24,
-      marginBottom: SPACING.md,
-    },
-    strongsInfoRow: { marginBottom: SPACING.md },
-    strongsInfoLabel: {
-      fontSize: FONT_SIZES.xs,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 0.7,
-      marginBottom: 4,
-    },
-    strongsInfoValue: {
-      fontSize: FONT_SIZES.md,
-      lineHeight: 22,
-      fontWeight: '500',
     },
 
     // Listen stage - timer
