@@ -25,7 +25,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import { Menu, Search, ChevronDown } from 'lucide-react-native';
+import { Menu, ScrollText, Search, ChevronDown } from 'lucide-react-native';
 import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,6 +42,7 @@ export interface BibleHeaderProps {
   onBookPress: () => void;
   onSearchPress: () => void;
   onVersionPress?: () => void;
+  onStudyToolsPress?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ export default function BibleHeader({
   onBookPress,
   onSearchPress,
   onVersionPress,
+  onStudyToolsPress,
 }: BibleHeaderProps) {
   const COLORS = getColors(isDark);
 
@@ -65,6 +67,7 @@ export default function BibleHeader({
   const menuScale = useMemo(() => new Animated.Value(1), []);
   const searchScale = useMemo(() => new Animated.Value(1), []);
   const titleScale = useMemo(() => new Animated.Value(1), []);
+  const studyToolsScale = useMemo(() => new Animated.Value(1), []);
 
   const animatePress = (anim: Animated.Value, toValue: number) => {
     Animated.spring(anim, {
@@ -170,6 +173,28 @@ export default function BibleHeader({
                     {version.abbreviation}
                   </Text>
                 </View>
+              </TouchableOpacity>
+            )}
+
+            {/* ── Study Tools Button ────────────────────────────────────── */}
+            {onStudyToolsPress && (
+              <TouchableOpacity
+                onPress={onStudyToolsPress}
+                activeOpacity={0.8}
+                onPressIn={() => animatePress(studyToolsScale, 0.9)}
+                onPressOut={() => animatePress(studyToolsScale, 1)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Animated.View
+                  style={[
+                    localStyles.iconButton,
+                    { transform: [{ scale: studyToolsScale }] },
+                  ]}
+                >
+                  <View style={localStyles.iconButtonInner}>
+                    <ScrollText color={COLORS.white} size={22} strokeWidth={2.2} />
+                  </View>
+                </Animated.View>
               </TouchableOpacity>
             )}
 

@@ -158,6 +158,7 @@ export type VerseListProps = {
   verseWordMap?: Record<number, StrongsWordData[]>;
   /** Called when user taps a word that has Strong's data */
   onWordPress?: (word: StrongsWordData) => void;
+  studyToolHighlights?: Record<number, { label: string; color: string }>;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,6 +203,7 @@ export default function VerseList({
   explainingVerse,
   verseWordMap,
   onWordPress,
+  studyToolHighlights = {},
 }: VerseListProps) {
   const renderVerseItem = ({
     item,
@@ -228,6 +230,7 @@ export default function VerseList({
 
     const showActions = selectedVerses.length === 1 && isSelected;
     const isExplaining = explainingVerse === verseNumber;
+    const studyToolHighlight = studyToolHighlights[verseNumber] ?? null;
 
     return (
       <VerseCard
@@ -287,6 +290,7 @@ export default function VerseList({
         navigation={navigation}
         currentBook={currentBook}
         currentChapter={currentChapter}
+        studyToolHighlight={studyToolHighlight}
         verseWords={verseWordMap?.[verseNumber]}
         onWordPress={onWordPress}
       />

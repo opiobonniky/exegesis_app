@@ -4317,6 +4317,8 @@ PODS:
     - RNFBApp
     - SocketRocket
     - Yoga
+  - RNFS (2.20.0):
+    - React-Core
   - RNGestureHandler (2.32.0):
     - boost
     - DoubleConversion
@@ -4381,6 +4383,34 @@ PODS:
   - RNNotifee/NotifeeCore (9.1.8):
     - React-Core
   - RNPermissions (5.6.0):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
+  - RNReactNativeHapticFeedback (3.0.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -4859,10 +4889,12 @@ DEPENDENCIES:
   - "RNFBAuth (from `../node_modules/@react-native-firebase/auth`)"
   - "RNFBFirestore (from `../node_modules/@react-native-firebase/firestore`)"
   - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
+  - RNFS (from `../node_modules/react-native-fs`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - "RNGoogleSignin (from `../node_modules/@react-native-google-signin/google-signin`)"
   - "RNNotifee (from `../node_modules/@notifee/react-native`)"
   - RNPermissions (from `../node_modules/react-native-permissions`)
+  - RNReactNativeHapticFeedback (from `../node_modules/react-native-haptic-feedback`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSound (from `../node_modules/react-native-sound`)
@@ -5088,6 +5120,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-firebase/firestore"
   RNFBMessaging:
     :path: "../node_modules/@react-native-firebase/messaging"
+  RNFS:
+    :path: "../node_modules/react-native-fs"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNGoogleSignin:
@@ -5096,6 +5130,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@notifee/react-native"
   RNPermissions:
     :path: "../node_modules/react-native-permissions"
+  RNReactNativeHapticFeedback:
+    :path: "../node_modules/react-native-haptic-feedback"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -5232,10 +5268,12 @@ SPEC CHECKSUMS:
   RNFBAuth: 5064d34eb8f13ea66483f2a74f84b9db4c5e66da
   RNFBFirestore: a0a67df6d10c3ad9d74b1e6a66544937d3562221
   RNFBMessaging: a3d54b4c2cc9f3ab55e1d89b728ba42b8bd54a4a
+  RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNGestureHandler: b1945d01546a1b823cd95b61291b243f83007c79
   RNGoogleSignin: 32eac25be182674a2838c8bf6908c0296fe3bb5d
   RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
   RNPermissions: 76ea944dca68dfe720be6901bf405725e7fe0123
+  RNReactNativeHapticFeedback: 8f6dc89cf13406a754487d8f8bd6df4d6feb789b
   RNReanimated: 256489c591f96e42aa80460de7169e1d0ff633dc
   RNScreens: cfb11dc33b79eac5e09a10b25e1ad0c2499d5b8b
   RNSound: 80f864773ff8f670fc8f052a3e478cec201d9b43

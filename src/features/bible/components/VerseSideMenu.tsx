@@ -9,23 +9,24 @@ import {
   Platform,
 } from 'react-native';
 import {
-  Headphones,
-  Lightbulb,
-  Edit3,
-  FileText,
-  Star,
-  Share2,
-  Copy,
-  X,
+  BookMarked,
   BookOpen,
   BookText,
-  Sparkles,
+  Copy,
+  Edit3,
+  FileText,
   Hash,
+  Headphones,
+  HelpCircle,
+  Lightbulb,
   Link2,
   Repeat2,
-  Sun,
-  HelpCircle,
   Search,
+  Share2,
+  Sparkles,
+  Star,
+  Sun,
+  X,
 } from 'lucide-react-native';
 import {
   getColors,
@@ -91,6 +92,7 @@ export interface VerseSideMenuProps {
   onOpenNoteModal?: (verseNumber: number) => void;
   onOpenHighlightPicker?: (verseNumber: number) => void;
   onOpenWordStudy?: (verseNumber: number) => void;
+  onOpenStudyTools?: (selectedVerses: number[]) => void;
 }
 
 function ActionButton({
@@ -195,6 +197,7 @@ export default function VerseSideMenu({
   onOpenNoteModal,
   onOpenHighlightPicker,
   onOpenWordStudy,
+  onOpenStudyTools,
 }: VerseSideMenuProps) {
   const COLORS = getColors(isDark);
   const { translations } = useLanguage();
@@ -251,13 +254,14 @@ export default function VerseSideMenu({
 
   const handleStudy = useCallback(() => {
     guard('Study this verse requires a free account.', () => {
+      const verses = sortedVerses.length > 0 ? sortedVerses : [verseNumber];
       navigation?.navigate('LabFlow', {
         bookName: currentBook, chapter: currentChapter,
-        verseStart: verseNumber, verseEnd: verseNumber,
+        verseStart: verses[0], verseEnd: verses[verses.length - 1],
       });
       dismiss();
     });
-  }, [guard, navigation, currentBook, currentChapter, verseNumber, dismiss]);
+  }, [guard, navigation, currentBook, currentChapter, sortedVerses, verseNumber, dismiss]);
 
   const handleStrongs = useCallback(() => {
     guard("Strong's Concordance requires a free account.", () => {
@@ -295,6 +299,12 @@ export default function VerseSideMenu({
     });
   }, [guard, navigation, currentBook, currentChapter, verseNumber, dismiss]);
 
+  const handleOpenStudyTools = useCallback(() => {
+    const verses = sortedVerses.length > 0 ? sortedVerses : [verseNumber];
+    onOpenStudyTools?.(verses);
+    dismiss();
+  }, [onOpenStudyTools, sortedVerses, verseNumber, dismiss]);
+
   const handleTrivia = useCallback(() => {
     dismiss();
   }, [dismiss]);
@@ -317,7 +327,7 @@ export default function VerseSideMenu({
     },
     {
       key: 'study',
-      label: 'Study This Verse',
+      label: sortedVerses.length > 1 ? 'Open Selection in Lab' : 'Open Verse in Lab',
       icon: <Sparkles size={16} color={COLORS.primary} strokeWidth={2} />,
       onPress: handleStudy,
       section: 'primary',
@@ -383,6 +393,13 @@ export default function VerseSideMenu({
       label: 'Devotional on This Verse',
       icon: <Sun size={16} color={COLORS.textSecondary} strokeWidth={2} />,
       onPress: handleDevotional,
+      section: 'discover',
+    },
+    {
+      key: 'studytools',
+      label: sortedVerses.length > 1 ? 'Study Tools for Selection' : 'Study Tools for Verse',
+      icon: <BookMarked size={16} color={COLORS.textSecondary} strokeWidth={2} />,
+      onPress: handleOpenStudyTools,
       section: 'discover',
     },
     {

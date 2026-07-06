@@ -16,6 +16,8 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  KeyboardAvoidingView,
+  Modal,
   Animated,
   Dimensions,
   Share,
@@ -56,6 +58,7 @@ import {
   Lock,
   Save,
   Download,
+  RotateCcw,
 } from 'lucide-react-native';
 import BookSelectorScreen from '../bible/components/BookSelectorScreen';
 import ChapterSelectorScreen from '../bible/components/ChapterSelectorScreen';
@@ -70,6 +73,7 @@ import {
   getVerseResources,
   VerseResourceData,
 } from '../../services/verseResourcesApi';
+import { BookPrologue, getBookPrologue } from '../../services/bookProloguesApi';
 import { bibleTTS } from '../../utilits/bibleTTS';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -105,11 +109,21 @@ const LOOK_PROMPTS = [
 // ── Component ────────────────────────────────────────────────────────────────
 export default function LabFlowScreen() {
   const navigation = useNavigation<any>();
-  const routeParams = useRoute<any>().params || {};
+  const navRoute = useRoute<any>();
+  const routeParams = navRoute.params || {};
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
+  const hasInitialPassage = Boolean(
+    routeParams.bookName && routeParams.chapter && routeParams.verseStart,
+  );
+
+  const requestedInitialStage = routeParams.stage || 'passage';
+  const initialStage =
+    requestedInitialStage !== 'passage' && !hasInitialPassage
+      ? 'passage'
+      : requestedInitialStage;
 
   // ── Swipeable carousel ──────────────────────────────────────────────────
   const carouselRef = useRef<ScrollView>(null);
@@ -125,7 +139,6 @@ export default function LabFlowScreen() {
   const showRightChevron = isTabScrollable && tabScrollX < tabContentWidth - tabContainerWidth - 10;
   const showLeftChevron = isTabScrollable && tabScrollX > 10;
   const [pageIndex, setPageIndex] = useState(() => {
-    const initialStage = routeParams.stage || 'passage';
     const idx = STAGE_ORDER.indexOf(
       initialStage as (typeof STAGE_ORDER)[number],
     );
@@ -136,7 +149,7 @@ export default function LabFlowScreen() {
   const [sessionId, setSessionId] = useState<string | null>(
     routeParams.sessionId || null,
   );
-  const [stage, setStage] = useState<string>(routeParams.stage || 'passage');
+  const [stage, setStage] = useState<string>(initialStage);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingProgress, setSavingProgress] = useState(false);
@@ -154,7 +167,11 @@ export default function LabFlowScreen() {
 
   // ── Book/chapter selection flow ─────────────────────────────────────────
   const [subStage, setSubStage] = useState<'book' | 'chapter' | 'verse'>(
-    routeParams.bookName ? 'verse' : 'book',
+    routeParams.bookName && routeParams.chapter
+      ? 'verse'
+      : routeParams.bookName
+        ? 'chapter'
+        : 'book',
   );
   const [books, setBooks] = useState<BookItem[]>([]);
   const [booksLoading, setBooksLoading] = useState(true);
@@ -182,6 +199,64 @@ export default function LabFlowScreen() {
     fetchBooks();
   }, [app?.bibleVersionId]);
 
+  useEffect(() => {
+    if (!bookName || books.length === 0) return;
+    const found = books.find(b => b.name === bookName);
+    if (found) setMaxChapters(found.chapters);
+  }, [bookName, books]);
+
+  useEffect(() => {
+    if (routeParams.sessionId) return;
+
+    if (!routeParams.bookName) {
+      setStage('passage');
+      setPageIndex(0);
+      setSubStage('book');
+      setBookName('');
+      setChapter('');
+      setVerseStart('');
+      setVerseEnd('');
+      setPassageVerses([]);
+      setAvailableVerses([]);
+      return;
+    }
+
+    setBookName(routeParams.bookName);
+
+    if (!routeParams.chapter) {
+      setStage('passage');
+      setPageIndex(0);
+      setSubStage('chapter');
+      setChapter('');
+      setVerseStart('');
+      setVerseEnd('');
+      setPassageVerses([]);
+      setAvailableVerses([]);
+      return;
+    }
+
+    setChapter(routeParams.chapter.toString());
+
+    if (!routeParams.verseStart) {
+      setStage('passage');
+      setPageIndex(0);
+      setSubStage('verse');
+      setVerseStart('');
+      setVerseEnd('');
+      setPassageVerses([]);
+      return;
+    }
+
+    setVerseStart(routeParams.verseStart.toString());
+    setVerseEnd(routeParams.verseEnd?.toString() || '');
+  }, [
+    routeParams.bookName,
+    routeParams.chapter,
+    routeParams.sessionId,
+    routeParams.verseEnd,
+    routeParams.verseStart,
+  ]);
+
   // ── Look stage ────────────────────────────────────────────────────────────
   const [lookNotes, setLookNotes] = useState('');
   const [currentPromptIdx, setCurrentPromptIdx] = useState(0);
@@ -189,6 +264,8 @@ export default function LabFlowScreen() {
     { verseNumber: number; text: string }[]
   >([]);
   const [passageVersesLoading, setPassageVersesLoading] = useState(false);
+  const [availableVerses, setAvailableVerses] = useState<number[]>([]);
+  const [availableVersesLoading, setAvailableVersesLoading] = useState(false);
 
   // ── Listen stage ──────────────────────────────────────────────────────────
   const [selectedDuration, setSelectedDuration] = useState<number>(180);
@@ -203,20 +280,23 @@ export default function LabFlowScreen() {
   const [learnNotes, setLearnNotes] = useState('');
   const [learnTab, setLearnTab] = useState<
     'exegesis' | 'language' | 'history' | 'prologue'
-  >('exegesis');
+  >(routeParams.learnTab || 'exegesis');
   const [verseWords, setVerseWords] = useState<StrongsWordData[]>([]);
   const [verseResources, setVerseResources] =
     useState<VerseResourceData | null>(null);
+  const [bookPrologue, setBookPrologue] = useState<BookPrologue | null>(null);
   const [learnDataLoading, setLearnDataLoading] = useState(false);
   const [selectedStrongsWord, setSelectedStrongsWord] =
     useState<StrongsWordData | null>(null);
   const [selectedStrongsEntry, setSelectedStrongsEntry] =
     useState<StrongsEntry | null>(null);
   const [strongsEntryLoading, setStrongsEntryLoading] = useState(false);
+  const [showStrongsModal, setShowStrongsModal] = useState(false);
 
   // ── TTS audio state ──────────────────────────────────────────────────────
   const [isTtsPlaying, setIsTtsPlaying] = useState(false);
   const [isTtsPaused, setIsTtsPaused] = useState(false);
+  const [audioStarting, setAudioStarting] = useState(false);
 
   // Subscribe to bibleTTS state changes
   useEffect(() => {
@@ -277,7 +357,7 @@ export default function LabFlowScreen() {
       pulse.start();
       return () => pulse.stop();
     }
-  }, [timerRunning, timerPaused]);
+  }, [animatedValue, timerRunning, timerPaused]);
 
   const remaining = selectedDuration - timerElapsed;
   const minutes = Math.floor(remaining / 60);
@@ -289,11 +369,12 @@ export default function LabFlowScreen() {
 
   // ── Sync pageIndex → stage (when swiping) ─────────────────────────────
   useEffect(() => {
+    if (stage === 'passage') return;
     const newStage = STAGE_ORDER[pageIndex];
     if (newStage && newStage !== stage) {
       setStage(newStage);
     }
-  }, [pageIndex]);
+  }, [pageIndex, stage]);
 
   // ── Stop TTS when swiping away from Listen ─────────────────────────────
   const prevPageRef = useRef(pageIndex);
@@ -315,6 +396,7 @@ export default function LabFlowScreen() {
   const goToStage = useCallback((newStage: string, animated = true) => {
     const idx = STAGE_ORDER.indexOf(newStage as (typeof STAGE_ORDER)[number]);
     if (idx < 0) return;
+    setStage(newStage);
     setPageIndex(idx);
     carouselRef.current?.scrollTo({ x: idx * SCREEN_WIDTH, animated });
   }, []);
@@ -339,7 +421,7 @@ export default function LabFlowScreen() {
       });
       return () => cancelAnimationFrame(raf);
     }
-  }, []); // empty deps — runs once on mount
+  }, [pageIndex]);
 
   // ── Show resume toast when navigating back to an in-progress study ──
   useEffect(() => {
@@ -353,7 +435,7 @@ export default function LabFlowScreen() {
       const label = stageLabelMap[routeParams.stage] || routeParams.stage;
       showToast('info', `Resumed at ${label} stage`);
     }
-  }, []); // empty deps — runs once on mount
+  }, [routeParams.sessionId, routeParams.stage]);
 
   // ── Book/chapter selection handlers ─────────────────────────────────────
   const handleSelectBook = useCallback(
@@ -364,6 +446,8 @@ export default function LabFlowScreen() {
       setChapter('');
       setVerseStart('');
       setVerseEnd('');
+      setPassageVerses([]);
+      setAvailableVerses([]);
       setSubStage('chapter');
     },
     [books],
@@ -371,12 +455,90 @@ export default function LabFlowScreen() {
 
   const handleSelectChapter = useCallback((ch: number) => {
     setChapter(String(ch));
+    setVerseStart('');
+    setVerseEnd('');
+    setPassageVerses([]);
+    setAvailableVerses([]);
     setSubStage('verse');
   }, []);
+
+  const handleSelectVerse = useCallback(
+    (verseNumber: number) => {
+      const currentStart = verseStart ? Number(verseStart) : undefined;
+      const currentEnd = verseEnd ? Number(verseEnd) : undefined;
+
+      if (!currentStart || currentEnd) {
+        setVerseStart(String(verseNumber));
+        setVerseEnd('');
+        return;
+      }
+
+      if (verseNumber <= currentStart) {
+        setVerseStart(String(verseNumber));
+        setVerseEnd('');
+        return;
+      }
+
+      setVerseEnd(String(verseNumber));
+    },
+    [verseEnd, verseStart],
+  );
+
+  const isVerseSelected = useCallback(
+    (verseNumber: number) => {
+      const currentStart = verseStart ? Number(verseStart) : undefined;
+      const currentEnd = verseEnd ? Number(verseEnd) : currentStart;
+      return Boolean(
+        currentStart &&
+          currentEnd &&
+          verseNumber >= currentStart &&
+          verseNumber <= currentEnd,
+      );
+    },
+    [verseEnd, verseStart],
+  );
 
   const handleBackToBooks = useCallback(() => {
     setSubStage('book');
   }, []);
+
+  const handleChangePassage = useCallback(
+    (nextSubStage: 'book' | 'chapter' | 'verse') => {
+      bibleTTS.stop().catch(() => {});
+      setStage('passage');
+      setPageIndex(0);
+      setSubStage(nextSubStage);
+      setSessionId(null);
+      setPassageRef('');
+      setPassageVerses([]);
+      setVerseWords([]);
+      setVerseResources(null);
+      setBookPrologue(null);
+      setLookNotes('');
+      setLearnNotes('');
+      setTimerRunning(false);
+      setTimerPaused(false);
+      setTimerElapsed(0);
+      setTimerComplete(false);
+
+      if (nextSubStage === 'book') {
+        setBookName('');
+        setChapter('');
+        setVerseStart('');
+        setVerseEnd('');
+        setAvailableVerses([]);
+      } else if (nextSubStage === 'chapter') {
+        setChapter('');
+        setVerseStart('');
+        setVerseEnd('');
+        setAvailableVerses([]);
+      } else {
+        setVerseStart('');
+        setVerseEnd('');
+      }
+    },
+    [],
+  );
 
   // ── API calls ────────────────────────────────────────────────────────────
   const startSession = useCallback(async () => {
@@ -384,13 +546,43 @@ export default function LabFlowScreen() {
       showToast('error', 'Please select a book and chapter');
       return;
     }
+
+    if (!verseStart) {
+      showToast('error', 'Please select a starting verse');
+      return;
+    }
+
+    const parsedVerseStart = verseStart ? Number(verseStart) : undefined;
+    const parsedVerseEnd = verseEnd ? Number(verseEnd) : parsedVerseStart;
+    const invalidVerseStart =
+      parsedVerseStart !== undefined &&
+      (!Number.isInteger(parsedVerseStart) || parsedVerseStart < 1);
+    const invalidVerseEnd =
+      parsedVerseEnd !== undefined &&
+      (!Number.isInteger(parsedVerseEnd) || parsedVerseEnd < 1);
+
+    if (invalidVerseStart || invalidVerseEnd) {
+      showToast('error', 'Please enter valid verse numbers');
+      return;
+    }
+
+    if (verseEnd && !verseStart) {
+      showToast('error', 'Please enter a starting verse');
+      return;
+    }
+
+    if (parsedVerseStart && parsedVerseEnd && parsedVerseEnd < parsedVerseStart) {
+      showToast('error', 'Verse end must be after verse start');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await sendPostRequest('exegesis', 'start', {
         bookName,
         chapter: parseInt(chapter, 10),
-        verseStart: verseStart ? parseInt(verseStart, 10) : undefined,
-        verseEnd: verseEnd ? parseInt(verseEnd, 10) : undefined,
+        verseStart: parsedVerseStart,
+        verseEnd: parsedVerseEnd,
       });
       if (res.returnCode === 200 && res.returnData) {
         setSessionId(res.returnData.id);
@@ -405,15 +597,19 @@ export default function LabFlowScreen() {
   }, [bookName, chapter, verseStart, verseEnd, goToStage]);
 
   const saveLook = useCallback(async () => {
-    if (!sessionId) return;
     setSaving(true);
     try {
+      if (!sessionId) {
+        goToStage('listen');
+        return;
+      }
       await sendPostRequest('exegesis', `${sessionId}/look`, {
         notes: lookNotes,
       });
       goToStage('listen');
     } catch (e: any) {
       showToast('error', e?.message || 'Failed to save');
+      goToStage('listen');
     } finally {
       setSaving(false);
     }
@@ -554,6 +750,7 @@ export default function LabFlowScreen() {
     stage,
     lookNotes,
     selectedDuration,
+    timerElapsed,
     timerComplete,
     learnNotes,
     reflection,
@@ -564,24 +761,62 @@ export default function LabFlowScreen() {
   ]);
 
   // ── TTS passage playback for Listen stage ─────────────────────────────
-  const handlePlayPassageAudio = useCallback(async () => {
+  const speakPassageWithDeviceVoice = useCallback(async () => {
     if (!passageVerses.length) return;
-    if (isTtsPlaying && isTtsPaused) {
-      await bibleTTS.resume();
-    } else if (isTtsPlaying) {
-      await bibleTTS.pause();
-    } else {
+    const wasEdgeEnabled = bibleTTS.edgeEnabled;
+    const verses = passageVerses.map(v => ({
+      num: v.verseNumber,
+      text: v.text,
+    }));
+
+    try {
+      // Lab listen should never be silent because of a flaky network voice path.
+      bibleTTS.setEdgeEnabled(false);
       await bibleTTS.stop();
-      const verses = passageVerses.map(v => ({
-        num: v.verseNumber,
-        text: v.text,
-      }));
       await bibleTTS.speakVerses(verses, bookName, parseInt(chapter, 10), {
         announceLocation: true,
         announceVerseNumbers: passageVerses.length <= 5,
       });
+    } finally {
+      bibleTTS.setEdgeEnabled(wasEdgeEnabled);
     }
-  }, [passageVerses, bookName, chapter, isTtsPlaying, isTtsPaused]);
+  }, [bookName, chapter, passageVerses]);
+
+  const handlePlayPassageAudio = useCallback(async () => {
+    if (!passageVerses.length) return;
+    setAudioStarting(true);
+    try {
+      if (isTtsPlaying && isTtsPaused) {
+        await bibleTTS.resume();
+      } else if (isTtsPlaying) {
+        await bibleTTS.pause();
+      } else {
+        await speakPassageWithDeviceVoice();
+      }
+    } catch (error: any) {
+      showToast('error', error?.message || 'Audio could not start');
+    } finally {
+      setAudioStarting(false);
+    }
+  }, [passageVerses.length, isTtsPlaying, isTtsPaused, speakPassageWithDeviceVoice]);
+
+  const handleReplayPassageAudio = useCallback(async () => {
+    if (!passageVerses.length) {
+      showToast('error', 'No passage selected to replay');
+      return;
+    }
+
+    setAudioStarting(true);
+    try {
+      setTimerRunning(false);
+      setTimerPaused(false);
+      await speakPassageWithDeviceVoice();
+    } catch (error: any) {
+      showToast('error', error?.message || 'Audio could not start');
+    } finally {
+      setAudioStarting(false);
+    }
+  }, [passageVerses.length, speakPassageWithDeviceVoice]);
 
   // Cleanup TTS when leaving the screen
   useEffect(() => {
@@ -593,6 +828,7 @@ export default function LabFlowScreen() {
   // ── Strong's word press handler ────────────────────────────────────────
   const handleStrongsWordPress = useCallback(async (word: StrongsWordData) => {
     setSelectedStrongsWord(word);
+    setShowStrongsModal(true);
     setStrongsEntryLoading(true);
     setSelectedStrongsEntry(null);
     if (word.strongsId && word.hasData) {
@@ -629,7 +865,7 @@ export default function LabFlowScreen() {
         if (data.listenDuration) setSelectedDuration(Number(data.listenDuration));
         if (data.listenCompleted) {
           setTimerComplete(true);
-          setTimerElapsed(Number(data.listenDuration) || (prev => prev));
+          setTimerElapsed(Number(data.listenDuration) || selectedDuration);
         } else if (data.listenElapsed != null && Number(data.listenElapsed) > 0) {
           // Mid-timer — restore elapsed seconds and resume the countdown
           setTimerElapsed(Number(data.listenElapsed));
@@ -646,7 +882,14 @@ export default function LabFlowScreen() {
     } catch (e) {
       console.error('Failed to load session:', e);
     }
-  }, [sessionId]);
+  }, [
+    bookName,
+    chapter,
+    selectedDuration,
+    sessionId,
+    verseEnd,
+    verseStart,
+  ]);
 
   // Load session on mount / when sessionId changes
   useEffect(() => {
@@ -661,17 +904,46 @@ export default function LabFlowScreen() {
     }, [loadSession]),
   );
 
+  // ── Fetch chapter verse numbers for explicit verse selection ───────────
+  useEffect(() => {
+    if (!bookName || !chapter || stage !== 'passage') return;
+    const fetchAvailableVerses = async () => {
+      setAvailableVersesLoading(true);
+      try {
+        const translationId = app?.bibleVersionId || 'Berean';
+        const chapterData = await bibleApi.getVerses(
+          translationId,
+          bookName,
+          parseInt(chapter, 10),
+        );
+        setAvailableVerses(
+          chapterData?.verses?.map(v => v.verseNumber).filter(Boolean) || [],
+        );
+      } catch (e) {
+        console.error('Failed to fetch selectable verses:', e);
+        setAvailableVerses([]);
+      } finally {
+        setAvailableVersesLoading(false);
+      }
+    };
+    fetchAvailableVerses();
+  }, [app?.bibleVersionId, bookName, chapter, stage]);
+
   // ── Fetch passage verses when entering any stage that needs them ─────
   useEffect(() => {
     if (!bookName || !chapter) return;
-    if (passageVerses.length > 0) return; // already fetched
+    if (!verseStart) return;
     const fetchPassage = async () => {
       setPassageVersesLoading(true);
       try {
         const translationId = app?.bibleVersionId || 'Berean';
         const ch = parseInt(chapter, 10);
         const vs = parseInt(verseStart || '1', 10);
-        const ve = parseInt(verseEnd || '0', 10);
+        const ve = verseEnd
+          ? parseInt(verseEnd, 10)
+          : verseStart
+            ? vs
+            : 0;
         const chapterData = await bibleApi.getVerses(
           translationId,
           bookName,
@@ -697,8 +969,40 @@ export default function LabFlowScreen() {
     verseStart,
     verseEnd,
     app?.bibleVersionId,
-    passageVerses.length,
   ]);
+
+  // ── Fetch Strong's words for Look highlights ───────────────────────────
+  useEffect(() => {
+    if (stage !== 'look' || !bookName || !chapter || !verseStart) return;
+    const fetchLookStrongsWords = async () => {
+      try {
+        const translationId = app?.bibleVersionId || 'Berean';
+        const ch = parseInt(chapter, 10);
+        const start = parseInt(verseStart, 10);
+        const end = verseEnd ? parseInt(verseEnd, 10) : start;
+        const verseNumbers = Array.from(
+          { length: Math.max(1, end - start + 1) },
+          (_, i) => start + i,
+        );
+        const results = await Promise.allSettled(
+          verseNumbers.map(verseNumber =>
+            getVerseWords(bookName, ch, verseNumber, translationId),
+          ),
+        );
+        const words = results.flatMap((result, index) => {
+          if (result.status !== 'fulfilled') return [];
+          return (result.value?.returnData || []).map(word => ({
+            ...word,
+            verseNumber: word.verseNumber || verseNumbers[index],
+          }));
+        });
+        setVerseWords(words);
+      } catch (e) {
+        console.error('Failed to fetch Look Strong words:', e);
+      }
+    };
+    fetchLookStrongsWords();
+  }, [app?.bibleVersionId, bookName, chapter, stage, verseEnd, verseStart]);
 
   // ── Fetch Learn stage data when entering the Learn stage ──────────────
   useEffect(() => {
@@ -709,9 +1013,10 @@ export default function LabFlowScreen() {
       const vs = parseInt(verseStart || '1', 10);
       try {
         const translationId = app?.bibleVersionId || 'Berean';
-        const [wordsRes, resourcesRes] = await Promise.allSettled([
+        const [wordsRes, resourcesRes, prologueRes] = await Promise.allSettled([
           getVerseWords(bookName, ch, vs, translationId),
           getVerseResources(bookName, ch, vs),
+          getBookPrologue(bookName),
         ]);
         if (wordsRes.status === 'fulfilled' && wordsRes.value?.returnData) {
           setVerseWords(wordsRes.value.returnData);
@@ -721,6 +1026,9 @@ export default function LabFlowScreen() {
           resourcesRes.value?.returnData
         ) {
           setVerseResources(resourcesRes.value.returnData);
+        }
+        if (prologueRes.status === 'fulfilled') {
+          setBookPrologue(prologueRes.value);
         }
         // If verseStart > 1, also try fetching words for verse 1 for more context
         if (
@@ -802,6 +1110,87 @@ export default function LabFlowScreen() {
     [scrollX],
   );
 
+  const normalizeWord = useCallback((word: string) => {
+    return word.toLowerCase().replace(/[^a-z0-9']/g, '');
+  }, []);
+
+  const renderChangePassageActions = () => (
+    <View style={styles.changePassageRow}>
+      {([
+        { label: 'Book', value: 'book' },
+        { label: 'Chapter', value: 'chapter' },
+        { label: 'Verses', value: 'verse' },
+      ] as const).map(action => (
+        <TouchableOpacity
+          key={action.value}
+          style={[
+            styles.changePassageBtn,
+            { backgroundColor: COLORS.surface, borderColor: COLORS.border },
+          ]}
+          onPress={() => handleChangePassage(action.value)}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.changePassageText, { color: COLORS.primary }]}> 
+            Change {action.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderHighlightedVerseText = (
+    verse: { verseNumber: number; text: string },
+  ) => {
+    const wordsForVerse = verseWords.filter(
+      word => word.verseNumber === verse.verseNumber && word.strongsId,
+    );
+    const wordMap = wordsForVerse.reduce<Record<string, StrongsWordData>>(
+      (acc, word) => {
+        const key = normalizeWord(word.surfaceText || '');
+        if (key && !acc[key]) acc[key] = word;
+        return acc;
+      },
+      {},
+    );
+    const parts = verse.text.match(/[A-Za-z0-9'’]+|[^A-Za-z0-9'’]+/g) || [verse.text];
+
+    return (
+      <View style={styles.passageVerseTextWrap}>
+        {parts.map((part, index) => {
+          const strongWord = wordMap[normalizeWord(part)];
+          if (!strongWord) {
+            return (
+              <Text key={`${part}-${index}`} style={[styles.passageVerseText, { color: COLORS.text }]}> 
+                {part}
+              </Text>
+            );
+          }
+
+          return (
+            <TouchableOpacity
+              key={`${part}-${index}`}
+              onPress={() => handleStrongsWordPress(strongWord)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.passageStrongWord,
+                  {
+                    color: COLORS.primary,
+                    backgroundColor: `${COLORS.primary}18`,
+                    borderColor: `${COLORS.primary}35`,
+                  },
+                ]}
+              >
+                {part}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
   // ── Render verse range input (after book+chapter selected) ────────────────
   const renderVerseInput = () => (
     <View style={styles.stageContainer}>
@@ -835,7 +1224,7 @@ export default function LabFlowScreen() {
       </TouchableOpacity>
 
       <View style={styles.inputRow}>
-        <View style={[styles.inputGroup, { flex: 1 }]}>
+        <View style={[styles.inputGroup, { flex: 1 }]}> 
           <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
             Verse (start)
           </Text>
@@ -877,13 +1266,62 @@ export default function LabFlowScreen() {
         </View>
       </View>
 
+      <Text style={[styles.textareaLabel, { color: COLORS.textSecondary }]}> 
+        Select verse or range
+      </Text>
+      {availableVersesLoading ? (
+        <View style={styles.verseGridLoading}>
+          <ActivityIndicator size="small" color={COLORS.accent} />
+        </View>
+      ) : availableVerses.length > 0 ? (
+        <View style={styles.verseGrid}>
+          {availableVerses.map(verseNumber => {
+            const selected = isVerseSelected(verseNumber);
+            return (
+              <TouchableOpacity
+                key={verseNumber}
+                style={[
+                  styles.verseChip,
+                  {
+                    backgroundColor: selected ? COLORS.accent : COLORS.surface,
+                    borderColor: selected ? COLORS.accent : COLORS.border,
+                  },
+                ]}
+                onPress={() => handleSelectVerse(verseNumber)}
+                activeOpacity={0.75}
+              >
+                <Text
+                  style={[
+                    styles.verseChipText,
+                    { color: selected ? '#FFFFFF' : COLORS.text },
+                  ]}
+                >
+                  {verseNumber}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ) : (
+        <Text style={[styles.verseHelperText, { color: COLORS.muted }]}> 
+          Verse options will appear after the chapter loads.
+        </Text>
+      )}
+
+      <Text style={[styles.verseHelperText, { color: COLORS.muted }]}> 
+        Tap once for a single verse. Tap a later verse to select a range.
+      </Text>
+
       <TouchableOpacity
         style={[
           styles.primaryBtn,
-          { backgroundColor: COLORS.accent, opacity: loading ? 0.6 : 1 },
+          {
+            backgroundColor: COLORS.accent,
+            opacity: loading || !verseStart ? 0.6 : 1,
+          },
         ]}
         onPress={startSession}
-        disabled={loading}
+        disabled={loading || !verseStart}
         activeOpacity={0.8}
       >
         {loading ? (
@@ -927,6 +1365,7 @@ export default function LabFlowScreen() {
             </Text>
           </View>
         )}
+        {renderChangePassageActions()}
       </View>
 
       {/* Guided prompt */}
@@ -1003,12 +1442,10 @@ export default function LabFlowScreen() {
           </View>
           {passageVerses.map(v => (
             <View key={v.verseNumber} style={styles.passageVerseRow}>
-              <Text style={[styles.passageVerseNum, { color: COLORS.muted }]}>
+              <Text style={[styles.passageVerseNum, { color: COLORS.muted }]}> 
                 {v.verseNumber}
               </Text>
-              <Text style={[styles.passageVerseText, { color: COLORS.text }]}>
-                {v.text}
-              </Text>
+              {renderHighlightedVerseText(v)}
             </View>
           ))}
         </View>
@@ -1137,6 +1574,7 @@ export default function LabFlowScreen() {
             </Text>
           </View>
         )}
+        {renderChangePassageActions()}
       </View>
 
       {!timerComplete ? (
@@ -1193,9 +1631,12 @@ export default function LabFlowScreen() {
                     { borderColor: COLORS.accent, marginBottom: SPACING.md },
                   ]}
                   onPress={handlePlayPassageAudio}
+                  disabled={audioStarting}
                   activeOpacity={0.7}
                 >
-                  {isTtsPlaying && !isTtsPaused ? (
+                  {audioStarting ? (
+                    <ActivityIndicator size="small" color={COLORS.accent} />
+                  ) : isTtsPlaying && !isTtsPaused ? (
                     <Pause size={16} color={COLORS.accent} />
                   ) : (
                     <Play size={16} color={COLORS.accent} />
@@ -1203,7 +1644,9 @@ export default function LabFlowScreen() {
                   <Text
                     style={[styles.secondaryBtnText, { color: COLORS.accent }]}
                   >
-                    {isTtsPlaying && isTtsPaused
+                    {audioStarting
+                      ? 'Starting Audio...'
+                      : isTtsPlaying && isTtsPaused
                       ? 'Resume Passage'
                       : isTtsPlaying
                         ? 'Pause Passage'
@@ -1215,28 +1658,28 @@ export default function LabFlowScreen() {
               <TouchableOpacity
                 style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
                 onPress={async () => {
-                  // Start reading passage when timer begins
                   if (passageVerses.length > 0 && !isTtsPlaying) {
-                    await bibleTTS.stop();
-                    const verses = passageVerses.map(v => ({
-                      num: v.verseNumber,
-                      text: v.text,
-                    }));
-                    bibleTTS
-                      .speakVerses(verses, bookName, parseInt(chapter, 10), {
-                        announceLocation: true,
-                        announceVerseNumbers: passageVerses.length <= 5,
+                    setAudioStarting(true);
+                    speakPassageWithDeviceVoice()
+                      .catch((error: any) => {
+                        showToast('error', error?.message || 'Audio could not start');
                       })
-                      .catch(() => {});
+                      .finally(() => setAudioStarting(false));
                   }
                   setTimerRunning(true);
+                  setTimerPaused(false);
                   setTimerElapsed(0);
                 }}
+                disabled={audioStarting}
                 activeOpacity={0.8}
               >
-                <Play size={18} color="#FFFFFF" />
+                {audioStarting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Play size={18} color="#FFFFFF" />
+                )}
                 <Text style={styles.primaryBtnText}>
-                  Begin{' '}
+                  {audioStarting ? 'Preparing Audio...' : 'Begin '}
                   {LISTEN_OPTIONS.find(o => o.value === selectedDuration)
                     ?.label || ''}
                 </Text>
@@ -1340,8 +1783,10 @@ export default function LabFlowScreen() {
                   onPress={() => {
                     if (timerRunning && !timerPaused) {
                       setTimerPaused(true);
+                      bibleTTS.pause().catch(() => {});
                     } else if (timerPaused) {
                       setTimerPaused(false);
+                      bibleTTS.resume().catch(() => {});
                     }
                   }}
                   activeOpacity={0.7}
@@ -1365,6 +1810,7 @@ export default function LabFlowScreen() {
                     setTimerRunning(false);
                     setTimerPaused(false);
                     setTimerElapsed(0);
+                    bibleTTS.stop().catch(() => {});
                   }}
                   activeOpacity={0.7}
                 >
@@ -1390,7 +1836,7 @@ export default function LabFlowScreen() {
             <CheckCircle2 size={48} color={COLORS.accent} />
           </View>
           <Text style={[styles.amenText, { color: COLORS.text }]}>Amen</Text>
-          <Text style={[styles.amenSubtext, { color: COLORS.textSecondary }]}>
+          <Text style={[styles.amenSubtext, { color: COLORS.textSecondary }]}> 
             You have dwelled in the Word for{' '}
             {formatTimeStr(
               Math.floor(selectedDuration / 60),
@@ -1398,6 +1844,27 @@ export default function LabFlowScreen() {
             )}
             .
           </Text>
+
+          {passageVerses.length > 0 && (
+            <TouchableOpacity
+              style={[
+                styles.secondaryBtn,
+                { borderColor: COLORS.accent, marginBottom: SPACING.sm },
+              ]}
+              onPress={handleReplayPassageAudio}
+              disabled={audioStarting}
+              activeOpacity={0.7}
+            >
+              {audioStarting ? (
+                <ActivityIndicator size="small" color={COLORS.accent} />
+              ) : (
+                <RotateCcw size={16} color={COLORS.accent} />
+              )}
+              <Text style={[styles.secondaryBtnText, { color: COLORS.accent }]}> 
+                {audioStarting ? 'Starting Audio...' : 'Replay Passage'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: COLORS.accent }]}
@@ -2070,15 +2537,92 @@ export default function LabFlowScreen() {
       </View>
     );
 
-    const renderBookPrologue = () => (
+    const renderBookPrologue = () => {
+      const themes = Array.isArray(bookPrologue?.mainThemes)
+        ? bookPrologue.mainThemes
+        : [];
+      return (
       <View>
-        <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}>
+        <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}> 
           About {bookName}
         </Text>
-        <Text style={[styles.learnText, { color: COLORS.textSecondary }]}>
-          Learn about the book's author, audience, date, purpose, and key
-          themes. This background helps you read with greater understanding.
+        <Text style={[styles.learnText, { color: COLORS.textSecondary }]}> 
+          {bookPrologue?.summary || 'Learn about the book\'s author, audience, date, purpose, and key themes. This background helps you read with greater understanding.'}
         </Text>
+
+        {bookPrologue ? (
+          <>
+            <View style={styles.divider} />
+            {[
+              ['Author', bookPrologue.author],
+              ['Audience', bookPrologue.audience],
+              ['Date Written', bookPrologue.dateWritten],
+              ['Location', bookPrologue.locationWritten],
+              ['Purpose', bookPrologue.purpose],
+              ['Key Theme', bookPrologue.keyTheme],
+            ].map(([label, value]) => value ? (
+              <View
+                key={label}
+                style={[
+                  styles.resourceCard,
+                  {
+                    backgroundColor: COLORS.cardBackground,
+                    borderColor: COLORS.border,
+                    borderLeftColor: COLORS.primary,
+                    marginBottom: SPACING.sm,
+                  },
+                ]}
+              >
+                <Text style={[styles.resourceCardTitle, { color: COLORS.text }]}>{label}</Text>
+                <Text style={[styles.resourceCardText, { color: COLORS.textSecondary }]}>{value}</Text>
+              </View>
+            ) : null)}
+
+            {themes.length > 0 && (
+              <>
+                <Text style={[styles.learnSectionTitle, { color: COLORS.text }]}>Main Themes</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {themes.map((theme, i) => (
+                    <View
+                      key={`theme-${i}`}
+                      style={[
+                        styles.topicPill,
+                        {
+                          backgroundColor: `${COLORS.primary}10`,
+                          borderColor: `${COLORS.primary}25`,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.topicPillText, { color: COLORS.primary }]}>{theme}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {bookPrologue.christConnection ? (
+              <View style={styles.divider} />
+            ) : null}
+            {bookPrologue.christConnection ? (
+              <View
+                style={[
+                  styles.resourceCard,
+                  {
+                    backgroundColor: COLORS.surface,
+                    borderColor: COLORS.border,
+                    borderLeftColor: COLORS.accent,
+                    marginBottom: SPACING.sm,
+                  },
+                ]}
+              >
+                <Text style={[styles.resourceCardTitle, { color: COLORS.text }]}>Christ-Centered Connection</Text>
+                <Text style={[styles.resourceCardText, { color: COLORS.textSecondary }]}>{bookPrologue.christConnection}</Text>
+              </View>
+            ) : null}
+          </>
+        ) : !learnDataLoading ? (
+          <Text style={[styles.learnText, { color: COLORS.muted, marginTop: SPACING.md }]}>No book prologue has been added for {bookName} yet.</Text>
+        ) : null}
 
         {/* Related Topics from Verse Resources */}
         {resources?.relatedTopics && resources.relatedTopics.length > 0 && (
@@ -2166,6 +2710,7 @@ export default function LabFlowScreen() {
         </TouchableOpacity>
       </View>
     );
+    };
 
     const renderTabContent = () => {
       switch (learnTab) {
@@ -2783,6 +3328,170 @@ export default function LabFlowScreen() {
     </View>
   );
 
+  const renderStrongsModal = () => (
+    <Modal
+      visible={showStrongsModal && !!selectedStrongsWord}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowStrongsModal(false)}
+    >
+      <View style={styles.modalBackdrop}>
+        <View
+          style={[
+            styles.strongsModalCard,
+            { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border },
+          ]}
+        >
+          <View style={styles.strongsModalHeader}>
+            <View style={styles.strongsModalTitleWrap}>
+              <Text style={[styles.strongsModalWord, { color: COLORS.text }]}> 
+                {selectedStrongsWord?.surfaceText}
+              </Text>
+              {selectedStrongsWord?.strongsId && (
+                <Text style={[styles.strongsModalId, { color: COLORS.accent }]}> 
+                  Strong's {selectedStrongsWord.strongsId}
+                </Text>
+              )}
+            </View>
+            <TouchableOpacity
+              style={[styles.strongsModalClose, { backgroundColor: COLORS.surface }]}
+              onPress={() => setShowStrongsModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.strongsModalCloseText, { color: COLORS.text }]}> 
+                Close
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {selectedStrongsWord?.lemma && (
+              <View style={styles.strongsInfoRow}>
+                <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Lemma</Text>
+                <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                  {selectedStrongsWord.lemma}
+                </Text>
+              </View>
+            )}
+            {selectedStrongsWord?.morphology && (
+              <View style={styles.strongsInfoRow}>
+                <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Morphology</Text>
+                <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                  {selectedStrongsWord.morphology}
+                </Text>
+              </View>
+            )}
+            {selectedStrongsWord?.verseNumber && (
+              <View style={styles.strongsInfoRow}>
+                <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Reference</Text>
+                <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                  {bookName} {chapter}:{selectedStrongsWord.verseNumber}
+                </Text>
+              </View>
+            )}
+
+            <View style={[styles.divider, { backgroundColor: COLORS.border }]} />
+
+            {strongsEntryLoading ? (
+              <View style={styles.strongsModalLoading}>
+                <ActivityIndicator size="small" color={COLORS.accent} />
+                <Text style={[styles.strongsInfoValue, { color: COLORS.muted }]}> 
+                  Loading word details...
+                </Text>
+              </View>
+            ) : selectedStrongsEntry ? (
+              <>
+                <Text style={[styles.strongsModalDefinition, { color: COLORS.text }]}> 
+                  {selectedStrongsEntry.shortDefinition}
+                </Text>
+                {selectedStrongsEntry.fullDefinition && (
+                  <Text style={[styles.strongsModalFullDefinition, { color: COLORS.textSecondary }]}> 
+                    {selectedStrongsEntry.fullDefinition}
+                  </Text>
+                )}
+
+                {selectedStrongsEntry.originalWord && (
+                  <View style={styles.strongsInfoRow}>
+                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Original</Text>
+                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                      {selectedStrongsEntry.originalWord}
+                    </Text>
+                  </View>
+                )}
+                {selectedStrongsEntry.transliteration && (
+                  <View style={styles.strongsInfoRow}>
+                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Transliteration</Text>
+                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                      {selectedStrongsEntry.transliteration}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.strongsInfoRow}>
+                  <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Language</Text>
+                  <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                    {selectedStrongsEntry.language}
+                  </Text>
+                </View>
+                {selectedStrongsEntry.partOfSpeech && (
+                  <View style={styles.strongsInfoRow}>
+                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Part of Speech</Text>
+                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                      {selectedStrongsEntry.partOfSpeech}
+                    </Text>
+                  </View>
+                )}
+                {selectedStrongsEntry.grammaticalCase && (
+                  <View style={styles.strongsInfoRow}>
+                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Case</Text>
+                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                      {selectedStrongsEntry.grammaticalCase}
+                    </Text>
+                  </View>
+                )}
+                {selectedStrongsEntry.gender && (
+                  <View style={styles.strongsInfoRow}>
+                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Gender</Text>
+                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                      {selectedStrongsEntry.gender}
+                    </Text>
+                  </View>
+                )}
+                {selectedStrongsEntry.number && (
+                  <View style={styles.strongsInfoRow}>
+                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Number</Text>
+                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                      {selectedStrongsEntry.number}
+                    </Text>
+                  </View>
+                )}
+                {selectedStrongsEntry.usageCount !== null && (
+                  <View style={styles.strongsInfoRow}>
+                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Usage</Text>
+                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                      Used {selectedStrongsEntry.usageCount} times
+                    </Text>
+                  </View>
+                )}
+                {selectedStrongsEntry.crossReferences && (
+                  <View style={styles.strongsInfoRow}>
+                    <Text style={[styles.strongsInfoLabel, { color: COLORS.muted }]}>Cross References</Text>
+                    <Text style={[styles.strongsInfoValue, { color: COLORS.text }]}> 
+                      {selectedStrongsEntry.crossReferences}
+                    </Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <Text style={[styles.strongsModalFullDefinition, { color: COLORS.muted }]}> 
+                No detailed dictionary entry found for this word.
+              </Text>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
   // ── Main render ──────────────────────────────────────────────────────────
   const stageTitleMap: Record<string, string> = {
     passage: 'Select Passage',
@@ -2832,7 +3541,11 @@ export default function LabFlowScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: COLORS.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: COLORS.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+    >
       <ActionHeader
         mode="standard"
         title={`Exegesis Lab — ${stageTitleMap[stage] || ''}`}
@@ -2942,6 +3655,7 @@ export default function LabFlowScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           {renderVerseInput()}
         </ScrollView>
@@ -2954,6 +3668,7 @@ export default function LabFlowScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           {renderCompleted()}
         </ScrollView>
@@ -2991,6 +3706,7 @@ export default function LabFlowScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           >
             {renderPage(0, renderLook())}
           </ScrollView>
@@ -3000,6 +3716,7 @@ export default function LabFlowScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           >
             {renderPage(1, renderListen())}
           </ScrollView>
@@ -3009,6 +3726,7 @@ export default function LabFlowScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           >
             {renderPage(2, renderLearn())}
           </ScrollView>
@@ -3018,12 +3736,15 @@ export default function LabFlowScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           >
             {renderPage(3, renderAbide())}
           </ScrollView>
         </Animated.ScrollView>
       )}
-    </View>
+
+      {renderStrongsModal()}
+    </KeyboardAvoidingView>
   );
 }
 
@@ -3101,6 +3822,23 @@ const createStyles = (COLORS: any) =>
       marginTop: SPACING.md,
     },
     passageChipText: { fontSize: FONT_SIZES.sm, fontWeight: '700' },
+    changePassageRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: SPACING.sm,
+      marginTop: SPACING.md,
+    },
+    changePassageBtn: {
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.round,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.xs + 2,
+    },
+    changePassageText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+    },
 
     // Inputs
     inputGroup: { marginBottom: SPACING.md },
@@ -3119,6 +3857,34 @@ const createStyles = (COLORS: any) =>
       fontSize: FONT_SIZES.md,
     },
     inputRow: { flexDirection: 'row', gap: SPACING.sm },
+    verseGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: SPACING.sm,
+      marginBottom: SPACING.sm,
+    },
+    verseGridLoading: {
+      alignItems: 'center',
+      paddingVertical: SPACING.md,
+    },
+    verseChip: {
+      minWidth: 42,
+      height: 42,
+      borderRadius: BORDER_RADIUS.md,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: SPACING.sm,
+    },
+    verseChipText: {
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '700',
+    },
+    verseHelperText: {
+      fontSize: FONT_SIZES.xs,
+      lineHeight: 18,
+      marginBottom: SPACING.sm,
+    },
     textarea: {
       height: 120,
       borderWidth: 1,
@@ -3237,7 +4003,91 @@ const createStyles = (COLORS: any) =>
       textAlign: 'right',
       lineHeight: 22,
     },
-    passageVerseText: { fontSize: FONT_SIZES.md, lineHeight: 24, flex: 1 },
+    passageVerseTextWrap: {
+      flex: 1,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'baseline',
+    },
+    passageVerseText: { fontSize: FONT_SIZES.md, lineHeight: 24 },
+    passageStrongWord: {
+      fontSize: FONT_SIZES.md,
+      lineHeight: 24,
+      fontWeight: '700',
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.sm,
+      paddingHorizontal: 2,
+    },
+
+    // Strong's modal
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      justifyContent: 'flex-end',
+    },
+    strongsModalCard: {
+      maxHeight: '82%',
+      borderTopLeftRadius: BORDER_RADIUS.xl,
+      borderTopRightRadius: BORDER_RADIUS.xl,
+      borderWidth: 1,
+      padding: SPACING.lg,
+    },
+    strongsModalHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: SPACING.md,
+      marginBottom: SPACING.md,
+    },
+    strongsModalTitleWrap: { flex: 1 },
+    strongsModalWord: {
+      fontSize: FONT_SIZES.xxl,
+      fontWeight: '800',
+      letterSpacing: -0.3,
+    },
+    strongsModalId: {
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '700',
+      marginTop: 2,
+    },
+    strongsModalClose: {
+      borderRadius: BORDER_RADIUS.round,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.xs + 2,
+    },
+    strongsModalCloseText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+    },
+    strongsModalLoading: {
+      alignItems: 'center',
+      paddingVertical: SPACING.lg,
+      gap: SPACING.sm,
+    },
+    strongsModalDefinition: {
+      fontSize: FONT_SIZES.lg,
+      fontWeight: '700',
+      lineHeight: 26,
+      marginBottom: SPACING.sm,
+    },
+    strongsModalFullDefinition: {
+      fontSize: FONT_SIZES.md,
+      lineHeight: 24,
+      marginBottom: SPACING.md,
+    },
+    strongsInfoRow: { marginBottom: SPACING.md },
+    strongsInfoLabel: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.7,
+      marginBottom: 4,
+    },
+    strongsInfoValue: {
+      fontSize: FONT_SIZES.md,
+      lineHeight: 22,
+      fontWeight: '500',
+    },
 
     // Listen stage - timer
     durationRow: {

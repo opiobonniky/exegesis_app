@@ -148,6 +148,37 @@ export interface DailyDevotionResponse {
   isLast: boolean;
 }
 
+export interface DailyExegesis {
+  id: number;
+  title: string;
+  passageReference: string;
+  introduction?: string | null;
+  contextSummary?: string | null;
+  teachingBody: string;
+  application?: string | null;
+  prayer?: string | null;
+  tags?: string | null;
+  displayDate: string;
+  displayTime?: string | null;
+  createdBy?: string | null;
+  createdOn: string;
+  updatedBy?: string | null;
+  updatedOn?: string;
+  isPublished: boolean;
+}
+
+export interface DailyExegesisResponse {
+  content: DailyExegesis[];
+  currentPage: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+}
+
 export interface ReadingPlan {
   id: number;
   planId: string;
@@ -170,6 +201,39 @@ export interface ReadingPlanResponse {
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+export interface AdminJournalEntry {
+  id: number;
+  userId: string;
+  title?: string | null;
+  content: string;
+  bookName?: string | null;
+  chapter?: number | null;
+  verseNumber?: number | null;
+  category?: string | null;
+  isPublished: boolean;
+  source?: string | null;
+  tags?: string | null;
+  createdOn: string;
+  updatedOn?: string;
+  user?: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    username?: string | null;
+    email?: string | null;
+  };
+}
+
+export interface AdminJournalEntriesResponse {
+  entries: AdminJournalEntry[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -378,7 +442,10 @@ export const addDailyVerse = async (
     published?: boolean;
   },
   id?: number,
-): Promise<{ verse: DailyVerse; conflict?: { type: string; field: string; existing: any }[] }> => {
+): Promise<{
+  verse: DailyVerse;
+  conflict?: { type: string; field: string; existing: any }[];
+}> => {
   try {
     const response = await sendPostRequest<DailyVerse>(
       'admin',
@@ -436,7 +503,9 @@ export const getAllDailyDevotions = async (
     },
   );
   if (response.returnCode !== 200) {
-    throw new Error(response.returnMessage || 'Failed to fetch daily devotions');
+    throw new Error(
+      response.returnMessage || 'Failed to fetch daily devotions',
+    );
   }
   return response.returnData as DailyDevotionResponse;
 };
@@ -463,20 +532,134 @@ export const addDailyDevotion = async (
     },
   );
 
-  
   if (response.returnCode !== 200) {
     throw new Error(response.returnMessage || 'Failed to add daily devotion');
   }
   return response.returnData as DailyDevotion;
 };
 
-export const deleteDailyDevotion = async (devotionId: number): Promise<void> => {
+export const deleteDailyDevotion = async (
+  devotionId: number,
+): Promise<void> => {
   const response = await sendPostRequest('admin', 'delete-daily-devotion', {
     id: devotionId,
   });
   if (response.returnCode !== 200) {
-    throw new Error(response.returnMessage || 'Failed to delete daily devotion');
+    throw new Error(
+      response.returnMessage || 'Failed to delete daily devotion',
+    );
   }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lordsbook Daily Exegesis API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getAllDailyExegesis = async (
+  page: number = 0,
+  size: number = 12,
+  filters?: {
+    startDate?: string;
+    endDate?: string;
+    smartDefault?: boolean;
+    futureDays?: number;
+  },
+): Promise<DailyExegesisResponse> => {
+  const response = await sendPostRequest<DailyExegesisResponse>(
+    'admin',
+    'get-all-daily-exegesis',
+    {
+      page,
+      size,
+      ...filters,
+    },
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to fetch daily exegesis');
+  }
+  return response.returnData as DailyExegesisResponse;
+};
+
+export const addDailyExegesis = async (
+  exegesisData: {
+    title: string;
+    passageReference: string;
+    introduction?: string | null;
+    contextSummary?: string | null;
+    teachingBody: string;
+    application?: string | null;
+    prayer?: string | null;
+    tags?: string | null;
+    displayDate: string;
+    displayTime?: string | null;
+    published?: boolean;
+  },
+  id?: number,
+): Promise<DailyExegesis> => {
+  const response = await sendPostRequest<DailyExegesis>(
+    'admin',
+    'add-daily-exegesis',
+    {
+      id,
+      ...exegesisData,
+    },
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to save daily exegesis');
+  }
+  return response.returnData as DailyExegesis;
+};
+
+export const deleteDailyExegesis = async (
+  exegesisId: number,
+): Promise<void> => {
+  const response = await sendPostRequest('admin', 'delete-daily-exegesis', {
+    id: exegesisId,
+  });
+  if (response.returnCode !== 200) {
+    throw new Error(
+      response.returnMessage || 'Failed to delete daily exegesis',
+    );
+  }
+};
+
+export const getTodaysExegesis = async (): Promise<DailyExegesis> => {
+  const response = await sendPostRequest<DailyExegesis>(
+    'bible',
+    'get-todays-exegesis',
+    {},
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(
+      response.returnMessage || "Failed to fetch today's exegesis",
+    );
+  }
+  return response.returnData as DailyExegesis;
+};
+
+export const getAllDailyExegesisPublic = async (
+  page: number = 0,
+  size: number = 12,
+  filters?: {
+    startDate?: string;
+    endDate?: string;
+    smartDefault?: boolean;
+    futureDays?: number;
+  },
+): Promise<DailyExegesisResponse> => {
+  const response = await sendPostRequest<DailyExegesisResponse>(
+    'bible',
+    'get-all-daily-exegesis',
+    {
+      page,
+      size,
+      ...filters,
+    },
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to fetch daily exegesis');
+  }
+  return response.returnData as DailyExegesisResponse;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -490,7 +673,9 @@ export const getTodaysDevotion = async (): Promise<DailyDevotion> => {
     {},
   );
   if (response.returnCode !== 200) {
-    throw new Error(response.returnMessage || 'Failed to fetch today\'s devotion');
+    throw new Error(
+      response.returnMessage || "Failed to fetch today's devotion",
+    );
   }
   return response.returnData as DailyDevotion;
 };
@@ -515,7 +700,9 @@ export const getAllDailyDevotionsPublic = async (
     },
   );
   if (response.returnCode !== 200) {
-    throw new Error(response.returnMessage || 'Failed to fetch daily devotions');
+    throw new Error(
+      response.returnMessage || 'Failed to fetch daily devotions',
+    );
   }
   return response.returnData as DailyDevotionResponse;
 };
@@ -539,6 +726,47 @@ export const getAllReadingPlansAdmin = async (
     throw new Error(response.returnMessage || 'Failed to fetch reading plans');
   }
   return response.returnData as ReadingPlanResponse;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Journal Moderation API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getJournalEntriesForAdmin = async (params?: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  category?: string;
+}): Promise<AdminJournalEntriesResponse> => {
+  const response = await sendPostRequest<AdminJournalEntriesResponse>(
+    'journal',
+    'admin/get-all',
+    {
+      page: params?.page ?? 1,
+      pageSize: params?.pageSize ?? 50,
+      search: params?.search || undefined,
+      category: params?.category || undefined,
+    },
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to fetch journal entries');
+  }
+  return response.returnData as AdminJournalEntriesResponse;
+};
+
+export const setJournalEntryPublicationForAdmin = async (
+  id: number,
+  isPublished: boolean,
+): Promise<AdminJournalEntry> => {
+  const response = await sendPostRequest<AdminJournalEntry>(
+    'journal',
+    'admin/set-publication',
+    { id, isPublished },
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to update journal entry');
+  }
+  return response.returnData as AdminJournalEntry;
 };
 
 export const createReadingPlan = async (planData: {
@@ -770,15 +998,25 @@ export interface SiteSettingResponse {
 }
 
 export const getSiteSetting = async (key: string): Promise<string | null> => {
-  const response = await sendPostRequest<SiteSettingResponse>('admin', 'get-site-setting', { key });
+  const response = await sendPostRequest<SiteSettingResponse>(
+    'admin',
+    'get-site-setting',
+    { key },
+  );
   if (response.returnCode === 200 && response.returnData) {
     return response.returnData.value;
   }
   return null;
 };
 
-export const setSiteSetting = async (key: string, value: string): Promise<void> => {
-  const response = await sendPostRequest('admin', 'set-site-setting', { key, value });
+export const setSiteSetting = async (
+  key: string,
+  value: string,
+): Promise<void> => {
+  const response = await sendPostRequest('admin', 'set-site-setting', {
+    key,
+    value,
+  });
   if (response.returnCode !== 200) {
     throw new Error(response.returnMessage || 'Failed to set site setting');
   }

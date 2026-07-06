@@ -4,7 +4,7 @@
  * Create or edit journal entry screen
  */
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,22 +20,20 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
 import { FONT_SIZES, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
-import { route } from '../../component/navigations/routes';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
+import {
+  useLanguage,
+  isRtlLanguage,
+} from '../../component/language-translation/LanguageProvider';
 import {
   createJournalEntry,
   updateJournalEntry,
   getJournalEntry,
-  JournalEntry,
 } from '../../services/api';
 import { showToast } from '../../helpers/Toash.helper';
 import { useSessionSync } from '../../hooks/useSessionSync';
 import {
-  ArrowLeft,
   Save,
-  BookOpen,
-  X,
   ChevronLeft,
   ChevronRight,
   Tag,
@@ -103,43 +101,14 @@ const JournalEntryScreen = () => {
   const [chapter, setChapter] = useState('');
   const [verseNumber, setVerseNumber] = useState('');
   const [tags, setTags] = useState('');
-  const [strongsWords, setStrongsWords] = useState<string | undefined>(undefined);
+  const [strongsWords, setStrongsWords] = useState<string | undefined>(
+    undefined,
+  );
   const [isPublished, setIsPublished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (isEditMode) {
-      loadEntry();
-    } else {
-      const params = routeParams?.params || {};
-      if (params.bookName) {
-        setBookName(params.bookName);
-      }
-      if (params.chapter) {
-        setChapter(String(params.chapter));
-      }
-      if (params.verseStart !== undefined) {
-        const verseStr = params.verseEnd !== undefined && params.verseEnd !== params.verseStart
-          ? `${params.verseStart}-${params.verseEnd}`
-          : String(params.verseStart);
-        setVerseNumber(verseStr);
-      }
-      // Pre-fill from Exegesis Lab
-      if (params.reflection) setContent(params.reflection);
-      if (params.prayers) setPrayers(params.prayers);
-      if (params.application) setApplication(params.application);
-      if (params.tags) setTags(params.tags);
-      if (params.strongsWords) setStrongsWords(params.strongsWords);
-      if (params.isPublic !== undefined) setIsPublished(params.isPublic);
-      if (params.passageRef && !params.title) {
-        // Auto-title from passage reference
-        setTitle(`Exegesis: ${params.passageRef}`);
-      }
-    }
-  }, [entryId]);
-
-  const loadEntry = async () => {
+  const loadEntry = useCallback(async () => {
     try {
       setLoading(true);
       const res = await getJournalEntry(entryId);
@@ -160,12 +129,53 @@ const JournalEntryScreen = () => {
         if (entry.chapter) setChapter(String(entry.chapter));
         if (entry.verseNumber) setVerseNumber(String(entry.verseNumber));
       }
-    } catch (error) {
+    } catch {
       showToast('error', jc?.failedToLoadEntry || 'Failed to load entry');
     } finally {
       setLoading(false);
     }
-  };
+  }, [entryId, jc?.failedToLoadEntry]);
+
+  useEffect(() => {
+    if (isEditMode) {
+      loadEntry();
+    } else {
+      const params = routeParams?.params || {};
+      if (params.bookName) {
+        setBookName(params.bookName);
+      }
+      if (params.title) {
+        setTitle(params.title);
+      }
+      if (
+        params.category &&
+        CATEGORIES.some(item => item.value === params.category)
+      ) {
+        setCategory(params.category);
+      }
+      if (params.chapter) {
+        setChapter(String(params.chapter));
+      }
+      if (params.verseStart !== undefined) {
+        const verseStr =
+          params.verseEnd !== undefined && params.verseEnd !== params.verseStart
+            ? `${params.verseStart}-${params.verseEnd}`
+            : String(params.verseStart);
+        setVerseNumber(verseStr);
+      }
+      // Pre-fill from Exegesis Lab
+      if (params.reflection) setContent(params.reflection);
+      if (params.prayers) setPrayers(params.prayers);
+      if (params.application) setApplication(params.application);
+      if (params.tags) setTags(params.tags);
+      if (params.strongsWords) setStrongsWords(params.strongsWords);
+      if (params.isPublic !== undefined) setIsPublished(params.isPublic);
+      if (params.passageRef && !params.title) {
+        // Auto-title from passage reference
+        setTitle(`Exegesis: ${params.passageRef}`);
+      }
+    }
+  }, [isEditMode, loadEntry, routeParams?.params]);
 
   const handleSave = async () => {
     if (!content.trim()) {
@@ -192,6 +202,9 @@ const JournalEntryScreen = () => {
       if (tags.trim()) data.tags = tags.trim();
       if (strongsWords) data.strongsWords = strongsWords;
       if (isPublished !== undefined) data.isPublished = isPublished;
+      if (!isEditMode && routeParams?.params?.source) {
+        data.source = routeParams.params.source;
+      }
 
       let res;
       if (isEditMode) {
@@ -202,7 +215,12 @@ const JournalEntryScreen = () => {
       }
 
       if (res.returnCode === 200) {
-        showToast('success', isEditMode ? (jc?.entryUpdated || 'Entry updated') : (jc?.entrySaved || 'Entry saved'));
+        showToast(
+          'success',
+          isEditMode
+            ? jc?.entryUpdated || 'Entry updated'
+            : jc?.entrySaved || 'Entry saved',
+        );
 
         // Sync journal entry ID back to Lab session (if applicable)
         if (!isEditMode && res.returnData?.id) {
@@ -216,9 +234,12 @@ const JournalEntryScreen = () => {
           navigation.goBack();
         }
       } else {
-        showToast('error', res.returnMessage || (jc?.failedToSave || 'Failed to save'));
+        showToast(
+          'error',
+          res.returnMessage || jc?.failedToSave || 'Failed to save',
+        );
       }
-    } catch (error) {
+    } catch {
       showToast('error', jc?.failedToSave || 'Failed to save entry');
     } finally {
       setSaving(false);
@@ -230,10 +251,12 @@ const JournalEntryScreen = () => {
     value: string,
     onChange: (text: string) => void,
     multiline = false,
-    placeholder?: string
+    placeholder?: string,
   ) => (
     <View style={styles.inputGroup}>
-      <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{label}</Text>
+      <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
+        {label}
+      </Text>
       <TextInput
         style={[
           styles.input,
@@ -255,222 +278,315 @@ const JournalEntryScreen = () => {
   );
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: COLORS.background }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.container, { backgroundColor: COLORS.background }]}
     >
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: COLORS.surface, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          {isRtl ? <ChevronRight size={24} color={COLORS.text} /> : <ChevronLeft size={24} color={COLORS.text} />}
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: COLORS.text }]}>
-          {isEditMode ? (jc?.editEntry || 'Edit Entry') : (jc?.newEntry || 'New Entry')}
-        </Text>
-        <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: COLORS.primary, marginRight: isRtl ? 0 : undefined }]}
-          onPress={handleSave}
-          disabled={saving || syncing}
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Header */}
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: COLORS.surface,
+              flexDirection: isRtl ? 'row-reverse' : 'row',
+            },
+          ]}
         >
-          <Save size={18} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Title */}
-        {renderInput(jc?.titleOptional || 'Title (optional)', title, setTitle, false, jc?.titlePlaceholder || 'Give your entry a title...')}
-
-        {/* Content */}
-        {renderInput(
-          jc?.contentPlaceholder || "What's on your mind? *",
-          content,
-          setContent,
-          true,
-          jc?.contentRequired || 'Write your thoughts, reflections, or prayers...'
-        )}
-
-        {/* Category */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{jc?.categoryLabel || 'Category'}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={[styles.chipContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-              {CATEGORIES.map(cat => (
-                <TouchableOpacity
-                  key={cat.value}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: category === cat.value ? COLORS.primary : COLORS.surface,
-                      borderColor: category === cat.value ? COLORS.primary : COLORS.border,
-                    },
-                  ]}
-                  onPress={() => setCategory(cat.value)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: category === cat.value ? '#FFFFFF' : COLORS.text },
-                    ]}
-                  >
-                    {getCategoryLabel(cat.value, jc)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-
-        {/* Mood */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{jc?.moodLabel || 'How are you feeling?'}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={[styles.chipContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-              {MOODS.map(m => (
-                <TouchableOpacity
-                  key={m.value}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: mood === m.value ? COLORS.primary + '20' : COLORS.surface,
-                      borderColor: mood === m.value ? COLORS.primary : COLORS.border,
-                    },
-                  ]}
-                  onPress={() => setMood(mood === m.value ? '' : m.value)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: mood === m.value ? COLORS.primary : COLORS.text },
-                    ]}
-                  >
-                    {m.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-
-        {/* Scripture Reference */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
-            {jc?.scriptureRefLabel || 'Scripture Reference (optional)'}
-          </Text>
-          <View style={[styles.scriptureRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-            <TextInput
-              style={[
-                styles.scriptureInput,
-                {
-                  backgroundColor: COLORS.surface,
-                  borderColor: COLORS.border,
-                  color: COLORS.text,
-                },
-              ]}
-              value={bookName}
-              onChangeText={setBookName}
-              placeholder={jc?.bookPlaceholder || 'Book'}
-              placeholderTextColor={COLORS.muted}
-            />
-            <TextInput
-              style={[
-                styles.chapterInput,
-                {
-                  backgroundColor: COLORS.surface,
-                  borderColor: COLORS.border,
-                  color: COLORS.text,
-                },
-              ]}
-              value={chapter}
-              onChangeText={setChapter}
-              placeholder={jc?.chapterPlaceholder || 'Ch'}
-              placeholderTextColor={COLORS.muted}
-              keyboardType="number-pad"
-            />
-            <TextInput
-              style={[
-                styles.chapterInput,
-                {
-                  backgroundColor: COLORS.surface,
-                  borderColor: COLORS.border,
-                  color: COLORS.text,
-                },
-              ]}
-              value={verseNumber}
-              onChangeText={setVerseNumber}
-              placeholder={jc?.versePlaceholder || 'Vs'}
-              placeholderTextColor={COLORS.muted}
-              keyboardType="number-pad"
-            />
-          </View>
-        </View>
-
-        {/* Prompt-based sections */}
-        {/* Tags */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
-            {'Tags'}
-          </Text>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderRadius: 12,
-            backgroundColor: COLORS.surface,
-            borderColor: COLORS.border,
-            paddingHorizontal: SPACING.md,
-          }}>
-            <Tag size={16} color={COLORS.muted} style={{ marginRight: 8 }} />
-            <TextInput
-              style={[{
-                flex: 1,
-                paddingVertical: SPACING.md,
-                fontSize: FONT_SIZES.md,
-                color: COLORS.text,
-              }]}
-              value={tags}
-              onChangeText={setTags}
-              placeholder={'#faith #prayer #study'}
-              placeholderTextColor={COLORS.muted}
-              autoCapitalize="none"
-            />
-          </View>
-        </View>
-
-        {/* Privacy toggle */}
-        <View style={styles.inputGroup}>
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              paddingVertical: SPACING.sm,
-            }}
-            onPress={() => setIsPublished(!isPublished)}
-            activeOpacity={0.7}
-          >
-            {isPublished ? (
-              <Globe size={18} color={COLORS.success} />
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            {isRtl ? (
+              <ChevronRight size={24} color={COLORS.text} />
             ) : (
-              <Lock size={18} color={COLORS.error} />
+              <ChevronLeft size={24} color={COLORS.text} />
             )}
-            <Text style={[{ color: COLORS.text, fontSize: FONT_SIZES.sm }]}>
-              {isPublished
-                ? 'Public — anyone can read this'
-                : 'Private — only you can see this'}
-            </Text>
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: COLORS.text }]}>
+            {isEditMode
+              ? jc?.editEntry || 'Edit Entry'
+              : jc?.newEntry || 'New Entry'}
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              {
+                backgroundColor: COLORS.primary,
+                marginRight: isRtl ? 0 : undefined,
+              },
+            ]}
+            onPress={handleSave}
+            disabled={saving || syncing || loading}
+          >
+            <Save size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
-        {renderInput(jc?.gratitudeLabel || 'Gratitude', gratitude, setGratitude, true, jc?.gratitudePlaceholder || 'What are you grateful for today?')}
-        {renderInput(jc?.learningsLabel || 'Learnings', learnings, setLearnings, true, jc?.learningsPlaceholder || 'What did you learn?')}
-        {renderInput(jc?.applicationLabel || 'Application', application, setApplication, true, jc?.applicationPlaceholder || 'How will you apply this?')}
-        {renderInput(jc?.prayerRequestsLabel || 'Prayer Requests', prayers, setPrayers, true, jc?.prayerRequestsPlaceholder || 'What do you want to pray for?')}
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Title */}
+          {renderInput(
+            jc?.titleOptional || 'Title (optional)',
+            title,
+            setTitle,
+            false,
+            jc?.titlePlaceholder || 'Give your entry a title...',
+          )}
 
-        <View style={{ height: SPACING.xxl }} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {/* Content */}
+          {renderInput(
+            jc?.contentPlaceholder || "What's on your mind? *",
+            content,
+            setContent,
+            true,
+            jc?.contentRequired ||
+              'Write your thoughts, reflections, or prayers...',
+          )}
+
+          {/* Category */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
+              {jc?.categoryLabel || 'Category'}
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View
+                style={[
+                  styles.chipContainer,
+                  { flexDirection: isRtl ? 'row-reverse' : 'row' },
+                ]}
+              >
+                {CATEGORIES.map(cat => (
+                  <TouchableOpacity
+                    key={cat.value}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor:
+                          category === cat.value
+                            ? COLORS.primary
+                            : COLORS.surface,
+                        borderColor:
+                          category === cat.value
+                            ? COLORS.primary
+                            : COLORS.border,
+                      },
+                    ]}
+                    onPress={() => setCategory(cat.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        {
+                          color:
+                            category === cat.value ? '#FFFFFF' : COLORS.text,
+                        },
+                      ]}
+                    >
+                      {getCategoryLabel(cat.value, jc)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* Mood */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
+              {jc?.moodLabel || 'How are you feeling?'}
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View
+                style={[
+                  styles.chipContainer,
+                  { flexDirection: isRtl ? 'row-reverse' : 'row' },
+                ]}
+              >
+                {MOODS.map(m => (
+                  <TouchableOpacity
+                    key={m.value}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor:
+                          mood === m.value
+                            ? COLORS.primary + '20'
+                            : COLORS.surface,
+                        borderColor:
+                          mood === m.value ? COLORS.primary : COLORS.border,
+                      },
+                    ]}
+                    onPress={() => setMood(mood === m.value ? '' : m.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        {
+                          color:
+                            mood === m.value ? COLORS.primary : COLORS.text,
+                        },
+                      ]}
+                    >
+                      {m.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* Scripture Reference */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
+              {jc?.scriptureRefLabel || 'Scripture Reference (optional)'}
+            </Text>
+            <View
+              style={[
+                styles.scriptureRow,
+                { flexDirection: isRtl ? 'row-reverse' : 'row' },
+              ]}
+            >
+              <TextInput
+                style={[
+                  styles.scriptureInput,
+                  {
+                    backgroundColor: COLORS.surface,
+                    borderColor: COLORS.border,
+                    color: COLORS.text,
+                  },
+                ]}
+                value={bookName}
+                onChangeText={setBookName}
+                placeholder={jc?.bookPlaceholder || 'Book'}
+                placeholderTextColor={COLORS.muted}
+              />
+              <TextInput
+                style={[
+                  styles.chapterInput,
+                  {
+                    backgroundColor: COLORS.surface,
+                    borderColor: COLORS.border,
+                    color: COLORS.text,
+                  },
+                ]}
+                value={chapter}
+                onChangeText={setChapter}
+                placeholder={jc?.chapterPlaceholder || 'Ch'}
+                placeholderTextColor={COLORS.muted}
+                keyboardType="number-pad"
+              />
+              <TextInput
+                style={[
+                  styles.chapterInput,
+                  {
+                    backgroundColor: COLORS.surface,
+                    borderColor: COLORS.border,
+                    color: COLORS.text,
+                  },
+                ]}
+                value={verseNumber}
+                onChangeText={setVerseNumber}
+                placeholder={jc?.versePlaceholder || 'Vs'}
+                placeholderTextColor={COLORS.muted}
+                keyboardType="number-pad"
+              />
+            </View>
+          </View>
+
+          {/* Prompt-based sections */}
+          {/* Tags */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
+              {'Tags'}
+            </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderRadius: 12,
+                backgroundColor: COLORS.surface,
+                borderColor: COLORS.border,
+                paddingHorizontal: SPACING.md,
+              }}
+            >
+              <Tag size={16} color={COLORS.muted} style={{ marginRight: 8 }} />
+              <TextInput
+                style={[
+                  {
+                    flex: 1,
+                    paddingVertical: SPACING.md,
+                    fontSize: FONT_SIZES.md,
+                    color: COLORS.text,
+                  },
+                ]}
+                value={tags}
+                onChangeText={setTags}
+                placeholder={'#faith #prayer #study'}
+                placeholderTextColor={COLORS.muted}
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          {/* Privacy toggle */}
+          <View style={styles.inputGroup}>
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                paddingVertical: SPACING.sm,
+              }}
+              onPress={() => setIsPublished(!isPublished)}
+              activeOpacity={0.7}
+            >
+              {isPublished ? (
+                <Globe size={18} color={COLORS.success} />
+              ) : (
+                <Lock size={18} color={COLORS.error} />
+              )}
+              <Text style={[{ color: COLORS.text, fontSize: FONT_SIZES.sm }]}>
+                {isPublished
+                  ? 'Public — anyone can read this'
+                  : 'Private — only you can see this'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {renderInput(
+            jc?.gratitudeLabel || 'Gratitude',
+            gratitude,
+            setGratitude,
+            true,
+            jc?.gratitudePlaceholder || 'What are you grateful for today?',
+          )}
+          {renderInput(
+            jc?.learningsLabel || 'Learnings',
+            learnings,
+            setLearnings,
+            true,
+            jc?.learningsPlaceholder || 'What did you learn?',
+          )}
+          {renderInput(
+            jc?.applicationLabel || 'Application',
+            application,
+            setApplication,
+            true,
+            jc?.applicationPlaceholder || 'How will you apply this?',
+          )}
+          {renderInput(
+            jc?.prayerRequestsLabel || 'Prayer Requests',
+            prayers,
+            setPrayers,
+            true,
+            jc?.prayerRequestsPlaceholder || 'What do you want to pray for?',
+          )}
+
+          <View style={{ height: SPACING.xxl }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

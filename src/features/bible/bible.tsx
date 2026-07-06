@@ -67,6 +67,7 @@ import {
   VerseList,
   AudioControlBar,
   VerseSideMenu,
+  ChapterStudyToolsSheet,
   SkeletonLoader,
 } from './components';
 
@@ -252,6 +253,7 @@ export default function Bible() {
     shareVerses,
     copyVerses,
     goToChapter,
+    goToVerse,
     handleVersionChange,
     getverseExplanation,
     clearVerseExplanationForVerse,
@@ -503,6 +505,15 @@ export default function Bible() {
     setVerseMenuVerse(null);
   }, []);
 
+  // ── Study Tools state ──────────────────────────────────────────────────────
+  const [showStudyTools, setShowStudyTools] = useState(false);
+  const [studyToolsSelectedVerses, setStudyToolsSelectedVerses] = useState<number[]>([]);
+  const [studyToolHighlights, setStudyToolHighlights] = useState<Record<number, { label: string; color: string }>>({});
+
+  useEffect(() => {
+    setStudyToolHighlights({});
+  }, [currentBook, currentChapter]);
+
   /** Guest action triggered from within VerseSideMenu (modal closes first, then gate) */
   const handleVerseMenuGuestAction = useCallback(
     (msg: string) => {
@@ -534,6 +545,7 @@ export default function Bible() {
         onBookPress={() => {}}
         onSearchPress={() => {}}
         onVersionPress={() => {}}
+        onStudyToolsPress={() => {}}
       />
 
       {/* ── Chapter Navigation ───────────────────────────────────────────── */}
@@ -586,6 +598,10 @@ export default function Bible() {
         }}
         onSearchPress={() => navigation.navigate(route.search)}
         onVersionPress={() => setShowTranslationPicker(true)}
+        onStudyToolsPress={() => {
+          setStudyToolsSelectedVerses([]);
+          setShowStudyTools(true);
+        }}
       />
 
       {/* ── Chapter Navigation ───────────────────────────────────────────── */}
@@ -743,7 +759,8 @@ export default function Bible() {
             explainingVerse={explainingVerse}
             navigation={navigation}
             verseWordMap={verseWordMap}
-          onWordPress={handleWordPress}
+            onWordPress={handleWordPress}
+            studyToolHighlights={studyToolHighlights}
         />
       </View>
     ) : (
@@ -807,6 +824,7 @@ export default function Bible() {
           explainingVerse={explainingVerse}
           verseWordMap={verseWordMap}
           onWordPress={handleWordPress}
+          studyToolHighlights={studyToolHighlights}
         />
       )}
 
@@ -1079,6 +1097,10 @@ export default function Bible() {
             handleWordPress(words[0]);
           }
         }}
+        onOpenStudyTools={(verses) => {
+          setStudyToolsSelectedVerses(verses);
+          setShowStudyTools(true);
+        }}
       />
 
       {/* ── Word Study Bottom Sheet (Strong's Concordance) ──────────────── */}
@@ -1101,6 +1123,53 @@ export default function Bible() {
         onSaveWord={entry => {
           // Future: persist saved word to user account
           setShowWordStudy(false);
+        }}
+      />
+
+      {/* ── Chapter Study Tools Sheet ───────────────────────────────────── */}
+      <ChapterStudyToolsSheet
+        visible={showStudyTools}
+        onClose={() => setShowStudyTools(false)}
+        bookName={currentBook}
+        chapter={currentChapter}
+        selectedVerses={studyToolsSelectedVerses}
+        onScrollToVerse={(verse) => {
+          flatListRef.current?.scrollToIndex({
+            index: Math.max(0, verse - 1),
+            animated: true,
+          });
+        }}
+        onOpenInLab={(bookName, chapter, verseRefs) => {
+          navigation.navigate('LabFlow', {
+            bookName,
+            chapter,
+            verseStart: verseRefs[0]?.verse ?? 1,
+            verseEnd: verseRefs[verseRefs.length - 1]?.verse ?? 1,
+          });
+        }}
+        onOpenBookContext={(bookName) => {
+          navigation.navigate('LabFlow', {
+            bookName,
+            chapter: currentChapter,
+            verseStart: 1,
+            verseEnd: 1,
+            stage: 'learn',
+            learnTab: 'prologue',
+          });
+        }}
+        onShowInReader={(label, color, verseRefs) => {
+          const next = verseRefs.reduce((acc, ref) => {
+            acc[ref.verse] = { label, color };
+            return acc;
+          }, {} as Record<number, { label: string; color: string }>);
+          setStudyToolHighlights(next);
+          const first = verseRefs[0]?.verse;
+          if (first) {
+            flatListRef.current?.scrollToIndex({
+              index: Math.max(0, first - 1),
+              animated: true,
+            });
+          }
         }}
       />
 

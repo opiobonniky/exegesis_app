@@ -26,6 +26,10 @@ const FORCED_ANIMATIONS: Record<string, AnimationType> = {
   notificationSettings: 'slide_from_bottom',
   AddDailyVerse: 'slide_from_bottom',
   EditDailyVerse: 'slide_from_bottom',
+  AddStudyTool: 'slide_from_bottom',
+  EditStudyTool: 'slide_from_bottom',
+  AddBookPrologue: 'slide_from_bottom',
+  EditBookPrologue: 'slide_from_bottom',
 
   CreateReadingPlan: 'slide_from_bottom',
   EditReadingPlan: 'slide_from_bottom',
@@ -50,7 +54,16 @@ const AppNavigation = () => {
   const screenOptions = useCallback(
     ({ route: r }: any) => {
       const animation = getAnimation(r.name);
-      const presentation: 'card' | 'modal' | 'transparentModal' | 'containedModal' | 'containedTransparentModal' | 'fullScreenModal' | 'formSheet' | 'pageSheet' = animation === 'slide_from_bottom' ? 'fullScreenModal' : 'card';
+      const presentation:
+        | 'card'
+        | 'modal'
+        | 'transparentModal'
+        | 'containedModal'
+        | 'containedTransparentModal'
+        | 'fullScreenModal'
+        | 'formSheet'
+        | 'pageSheet' =
+        animation === 'slide_from_bottom' ? 'fullScreenModal' : 'card';
       return {
         headerShown: false,
         animation,
@@ -198,6 +211,12 @@ const AppNavigation = () => {
           }
         />
         <Stack.Screen
+          name={route.dailyExegesis}
+          getComponent={() =>
+            require('../../features/bible/DailyExegesisScreen').default
+          }
+        />
+        <Stack.Screen
           name={route.favorites}
           getComponent={() => require('../../features/bible/Favorites').default}
         />
@@ -306,6 +325,90 @@ const AppNavigation = () => {
           }
         />
         <Stack.Screen
+          name={route.adminDailyExegesis}
+          getComponent={() =>
+            require('../../features/admin/AdminDailyExegesisManager').default
+          }
+        />
+        <Stack.Screen
+          name="AddDailyExegesis"
+          getComponent={() =>
+            require('../../features/admin/AddDailyExegesis').default
+          }
+        />
+        <Stack.Screen
+          name="EditDailyExegesis"
+          getComponent={() =>
+            require('../../features/admin/AddDailyExegesis').default
+          }
+        />
+        <Stack.Screen
+          name={route.adminTrivia}
+          getComponent={() =>
+            require('../../features/admin/AdminTriviaManager').default
+          }
+        />
+        <Stack.Screen
+          name="AddTriviaQuestion"
+          getComponent={() =>
+            require('../../features/admin/AddTriviaQuestion').default
+          }
+        />
+        <Stack.Screen
+          name="EditTriviaQuestion"
+          getComponent={() =>
+            require('../../features/admin/AddTriviaQuestion').default
+          }
+        />
+        <Stack.Screen
+          name={route.adminTriviaPerformance}
+          getComponent={() =>
+            require('../../features/admin/AdminTriviaPerformance').default
+          }
+        />
+        <Stack.Screen
+          name={route.adminTriviaUserDetail}
+          getComponent={() =>
+            require('../../features/admin/AdminTriviaUserDetail').default
+          }
+        />
+        <Stack.Screen
+          name={route.adminStudyTools}
+          getComponent={() =>
+            require('../../features/admin/AdminStudyToolsManager').default
+          }
+        />
+        <Stack.Screen
+          name="AddStudyTool"
+          getComponent={() =>
+            require('../../features/admin/AddStudyTool').default
+          }
+        />
+        <Stack.Screen
+          name="EditStudyTool"
+          getComponent={() =>
+            require('../../features/admin/AddStudyTool').default
+          }
+        />
+        <Stack.Screen
+          name={route.adminBookPrologues}
+          getComponent={() =>
+            require('../../features/admin/AdminBookProloguesManager').default
+          }
+        />
+        <Stack.Screen
+          name="AddBookPrologue"
+          getComponent={() =>
+            require('../../features/admin/AddBookPrologue').default
+          }
+        />
+        <Stack.Screen
+          name="EditBookPrologue"
+          getComponent={() =>
+            require('../../features/admin/AddBookPrologue').default
+          }
+        />
+        <Stack.Screen
           name="AddDailyDevotion"
           getComponent={() =>
             require('../../features/admin/AddDailyDevotion').default
@@ -391,6 +494,12 @@ const AppNavigation = () => {
           name={route.adminJournalTemplates}
           getComponent={() =>
             require('../../features/journal/AdminJournalTemplates').default
+          }
+        />
+        <Stack.Screen
+          name={route.adminJournalModeration}
+          getComponent={() =>
+            require('../../features/admin/AdminJournalModeration').default
           }
         />
         <Stack.Screen

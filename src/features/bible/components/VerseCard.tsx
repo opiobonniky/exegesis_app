@@ -10,7 +10,7 @@ import {
   Vibration,
   View,
 } from 'react-native';
-import { Heart, X, Lightbulb, BookText, Share2, Copy, Sun } from 'lucide-react-native';
+import { Heart, X, Lightbulb, BookText, Share2, Copy, Sun, BookMarked } from 'lucide-react-native';
 import ExpandableText from '../../bible/ExpandableText';
 import { bibleTTS } from '../../../utilits/bibleTTS';
 import { route } from '../../../component/navigations/routes';
@@ -55,6 +55,7 @@ type VerseCardProps = {
   navigation?: any;
   currentBook?: string;
   currentChapter?: number;
+  studyToolHighlight?: { label: string; color: string } | null;
   /** Word-level Strong's Concordance data for this verse */
   verseWords?: StrongsWordData[];
   /** Called when user taps a word that has Strong's data */
@@ -95,6 +96,7 @@ export default function VerseCard({
   navigation,
   currentBook,
   currentChapter,
+  studyToolHighlight,
   verseWords,
   onWordPress,
 }: VerseCardProps) {
@@ -536,7 +538,38 @@ export default function VerseCard({
           />
         )}
 
+        {studyToolHighlight && (
+          <View
+            pointerEvents="none"
+            style={[
+              localStyles.studyToolStrip,
+              { backgroundColor: studyToolHighlight.color },
+            ]}
+          />
+        )}
+
         <View style={styles.verseContent}>
+          {studyToolHighlight && (
+            <View
+              style={[
+                localStyles.studyToolBadge,
+                {
+                  backgroundColor: `${studyToolHighlight.color}18`,
+                  borderColor: `${studyToolHighlight.color}55`,
+                },
+              ]}
+            >
+              <BookMarked size={11} color={studyToolHighlight.color} />
+              <Text
+                style={[
+                  localStyles.studyToolBadgeText,
+                  { color: studyToolHighlight.color },
+                ]}
+              >
+                {studyToolHighlight.label}
+              </Text>
+            </View>
+          )}
           <View style={styles.verseTextContainer}>
             {renderVerseWords()}
 
@@ -958,6 +991,30 @@ const localStyles = StyleSheet.create({
     bottom: 2,
     width: 5,
     borderRadius: 3,
+  },
+  studyToolStrip: {
+    position: 'absolute',
+    right: 0,
+    top: 8,
+    bottom: 8,
+    width: 3,
+    borderRadius: 3,
+  },
+  studyToolBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: 6,
+  },
+  studyToolBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   fillOverlay: {
     ...StyleSheet.absoluteFillObject,

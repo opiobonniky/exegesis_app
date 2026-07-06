@@ -11,6 +11,7 @@ export const route = {
   profile: 'Profile',
   dailyDevotional: 'DailyDevotional',
   dailyDevotions: 'DailyDevotions',
+  dailyExegesis: 'DailyExegesis',
   dailyVerse: 'DailyVerse',
   home: 'Home',
   homeLogin: 'HomeLogin',
@@ -34,6 +35,10 @@ export const route = {
   adminActivity: 'AdminActivity',
   adminDailyVerse: 'AdminDailyVerse',
   adminDailyDevotion: 'AdminDailyDevotion',
+  adminDailyExegesis: 'AdminDailyExegesis',
+  adminTrivia: 'AdminTrivia',
+  adminStudyTools: 'AdminStudyTools',
+  adminBookPrologues: 'AdminBookPrologues',
   adminReadingPlans: 'AdminReadingPlans',
   adminReadingPlanDetail: 'AdminReadingPlanDetail',
   journal: 'Journal',
@@ -41,6 +46,7 @@ export const route = {
   journalDetail: 'JournalDetail',
   adminJournalPrompts: 'AdminJournalPrompts',
   adminJournalTemplates: 'AdminJournalTemplates',
+  adminJournalModeration: 'AdminJournalModeration',
   fullVerseExplanation: 'FullVerseExplanation',
   verseResources: 'VerseResources',
   wordStudy: 'WordStudy',
@@ -55,4 +61,6 @@ export const route = {
 
   // Bible Trivia
   trivia: 'Trivia',
+  adminTriviaPerformance: 'AdminTriviaPerformance',
+  adminTriviaUserDetail: 'AdminTriviaUserDetail',
 };

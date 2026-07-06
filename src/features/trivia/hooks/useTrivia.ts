@@ -9,7 +9,7 @@ import {
   TriviaStats,
 } from '../services/triviaApi';
 
-export type TriviaPhase = 'playing' | 'answered' | 'finished';
+export type TriviaPhase = 'plan' | 'playing' | 'answered' | 'finished';
 export type DifficultyFilter = 'easy' | 'medium' | 'hard' | null;
 
 export interface TriviaState {
@@ -29,13 +29,13 @@ export interface TriviaState {
 
 export function useTrivia() {
   const [state, setState] = useState<TriviaState>({
-    phase: 'playing',
+    phase: 'plan',
     question: null,
     selectedAnswer: null,
     result: null,
     score: { correct: 0, total: 0 },
     stats: null,
-    loading: true,
+    loading: false,
     error: null,
     questionIdsSeen: [],
     difficulty: null,
@@ -116,6 +116,11 @@ export function useTrivia() {
     }
   }, [update]);
 
+  /** Start a new quiz from the plan screen */
+  const startQuiz = useCallback(() => {
+    fetchQuestion();
+  }, [fetchQuestion]);
+
   /** Move to the next question */
   const nextQuestion = useCallback(() => {
     fetchQuestion();
@@ -136,23 +141,22 @@ export function useTrivia() {
     update({ difficulty, questionIdsSeen: [] });
   }, [update]);
 
-  /** Reset the game */
+  /** Reset the game — return to plan screen */
   const reset = useCallback(() => {
     setState({
-      phase: 'playing',
+      phase: 'plan',
       question: null,
       selectedAnswer: null,
       result: null,
       score: { correct: 0, total: 0 },
-      stats: null,
-      loading: true,
+      stats: stateRef.current.stats,
+      loading: false,
       error: null,
       questionIdsSeen: [],
       difficulty: stateRef.current.difficulty,
       totalCount: 0,
       streak: 0,
     });
-    // fetchQuestion will be called by the component after reset
   }, []);
 
   return {
@@ -163,5 +167,6 @@ export function useTrivia() {
     fetchStats,
     reset,
     setDifficulty,
+    startQuiz,
   };
 }

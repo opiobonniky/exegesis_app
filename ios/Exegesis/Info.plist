@@ -54,6 +54,8 @@
 	<string>We need your location to provide location-based features and services.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We need your location to provide location-based features and services.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app needs local network access during development to connect to the Exegesis backend running on your Mac.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to your microphone for audio features.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
