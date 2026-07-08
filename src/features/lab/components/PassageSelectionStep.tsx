@@ -81,12 +81,16 @@ export default function PassageSelectionStep({
             placeholder="16"
             placeholderTextColor={colors.muted}
             value={verseStart}
-            onChangeText={onVerseStartChange}
+            onChangeText={text => {
+              onVerseStartChange(text);
+              // Clear end when start changes to enforce single verse default
+              if (text && verseEnd) onVerseEndChange('');
+            }}
             keyboardType="number-pad"
           />
         </View>
         <View style={styles.inputGroupFlex}>
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Verse (end)</Text>
+<Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Verse (end)</Text>
           <TextInput
             style={[
               styles.input,
@@ -95,7 +99,13 @@ export default function PassageSelectionStep({
             placeholder="21"
             placeholderTextColor={colors.muted}
             value={verseEnd}
-            onChangeText={onVerseEndChange}
+            onChangeText={text => {
+              onVerseEndChange(text);
+              // Ensure start reflects single verse if user clears end
+              if (!text) {
+                // nothing, start remains
+              }
+            }}
             keyboardType="number-pad"
           />
         </View>

@@ -88,7 +88,7 @@ export default function NoteModal({
             </TouchableOpacity>
           </View>
 
-          {totalVerses > 1 && (
+          {totalVerses > 1 && selectedVerses.length > 1 && (
             <VerseRangeSlider
               totalVerses={totalVerses}
               startVerse={rangeStart}

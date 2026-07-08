@@ -1,7 +1,7 @@
 import { api } from './api';
 import { checkInternetConnection } from '../utilits/checkInternet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BibleVersion } from '../assets/bibleVersion/json/bibleVersions';
+import { BibleVersion, isLocalTranslation } from '../assets/bibleVersion/json/bibleVersions';
 
 export interface Translation {
   id: string;
@@ -326,6 +326,10 @@ export const bibleApi = {
 
     const online = await checkOnlineStatus();
     if (!online) {
+      // Offline: fall back to local JSON bundle for local translations
+      if (isLocalTranslation(translationId)) {
+        return loadVersesFromLocalBundle(translationId, bookName, chapter);
+      }
       return null;
     }
     try {
@@ -346,6 +350,10 @@ export const bibleApi = {
         `Failed to fetch verses for ${bookName} ${chapter}:`,
         error,
       );
+      // If API fails but we have a local version, use it
+      if (isLocalTranslation(translationId)) {
+        return loadVersesFromLocalBundle(translationId, bookName, chapter);
+      }
       return null;
     }
   },
@@ -510,3 +518,58 @@ export const bibleApi = {
 };
 
 export default bibleApi;
+
+// ─── Local bundle helper (offline fallback) ────────────────────────────────
+
+const VERSION_FILE_MAP: Record<string, { id: string; load: () => Record<string, string> }> = {};
+
+const getVersionData = (translationId: string): Record<string, string> | null => {
+  try {
+    if (!VERSION_FILE_MAP[translationId]) {
+      const { BIBLE_VERSIONS } = require('../assets/bibleVersion/json/bibleVersions');
+      const found = BIBLE_VERSIONS.find((v: any) => v.id === translationId);
+      if (found) {
+        VERSION_FILE_MAP[translationId] = found;
+      } else {
+        return null;
+      }
+    }
+    return VERSION_FILE_MAP[translationId].load();
+  } catch {
+    return null;
+  }
+};
+
+const loadVersesFromLocalBundle = (
+  translationId: string,
+  bookName: string,
+  chapter: number,
+): VerseData | null => {
+  const data = getVersionData(translationId);
+  if (!data) return null;
+
+  const prefix = `${bookName} ${chapter}:`;
+  const verses: Verse[] = [];
+
+  // Find all verses for this chapter by matching the prefix
+  for (const key of Object.keys(data)) {
+    if (key.startsWith(prefix)) {
+      const verseStr = key.slice(prefix.length);
+      const verseNumber = parseInt(verseStr, 10);
+      if (!isNaN(verseNumber)) {
+        verses.push({ verseNumber, text: data[key] });
+      }
+    }
+  }
+
+  if (verses.length === 0) return null;
+
+  verses.sort((a, b) => a.verseNumber - b.verseNumber);
+
+  return {
+    bookNumber: 0, // Unknown from local bundle
+    bookName,
+    chapterNumber: chapter,
+    verses,
+  };
+};

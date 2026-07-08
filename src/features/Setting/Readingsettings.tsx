@@ -43,6 +43,7 @@ import { route } from '../../component/navigations/routes';
 import ActionHeader from '../../reusable/ActionHeader';
 import useBible from '../../features/bible/hooks/useBible';
 import { bibleApi } from '../../services/bibleApi';
+import { isLocalTranslation } from '../../assets/bibleVersion/json/bibleVersions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -339,6 +340,29 @@ export default function ReadingSettingsScreen() {
                             </Text>
                           </View>
                         )}
+                        <View
+                          style={[
+                            s.offlinePill,
+                            {
+                              backgroundColor: isLocalTranslation(v.id)
+                                ? `${COLORS.primary}16`
+                                : '#F59E0B16',
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              s.offlinePillText,
+                              {
+                                color: isLocalTranslation(v.id)
+                                  ? COLORS.primary
+                                  : '#F59E0B',
+                              },
+                            ]}
+                          >
+                            {isLocalTranslation(v.id) ? 'Local' : 'Online'}
+                          </Text>
+                        </View>
                       </View>
                       <Text
                         style={[s.rowDesc, { color: COLORS.muted }]}
@@ -755,6 +779,13 @@ const s = StyleSheet.create({
     borderRadius: 999,
   },
   yearText: { fontSize: 10, fontWeight: '800' },
+  offlinePill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+    marginLeft: 5,
+  },
+  offlinePillText: { fontSize: 9, fontWeight: '700' },
   rowDesc: { fontSize: 11, marginTop: 2 },
 
   checkDot: {

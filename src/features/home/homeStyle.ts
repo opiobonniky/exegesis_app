@@ -284,6 +284,19 @@ export const createStyles = (COLORS: any) =>
       fontWeight: '600',
     },
 
+    // ── Verse Preview Block (for Daily Verse card) ──
+    versePreviewBlock: {
+      paddingLeft: SPACING.sm,
+      borderLeftWidth: 3,
+      marginBottom: SPACING.sm,
+      paddingVertical: 2,
+    },
+    versePreviewText: {
+      fontSize: FONT_SIZES.sm,
+      fontStyle: 'italic',
+      lineHeight: 19,
+    },
+
     // ── Bottom Tab ─────────────────────────────────────────────────────────
     bottomTabWrapper: {
       position: 'absolute',

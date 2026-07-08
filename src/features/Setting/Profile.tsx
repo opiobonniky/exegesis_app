@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Animated,
   Platform,
+  Linking,
 } from 'react-native';
 import {
   Moon,
@@ -98,6 +99,24 @@ export default function ProfileScreen() {
   const user = userInfo as any;
   const { translations, setLanguage, language, t } = useLanguage();
   const isRtl = isRtlLanguage(language);
+
+  const subscriptionTier = app?.subscriptionTier || 'free';
+  
+
+  const handleManageSubscription = async () => {
+    if (subscriptionTier === 'free') {
+      navigation.navigate(route.sower);
+    } else {
+      try {
+        const res = await sendPostRequest('subscriptions', 'create-portal-session', {});
+        if (res.returnCode === 200 && res.returnData?.url) {
+          Linking.openURL(res.returnData.url);
+        }
+      } catch (e) {
+        console.error('Failed to open portal:', e);
+      }
+    }
+  };
 
   useEffect(() => {
     loadProfileData();
@@ -309,313 +328,466 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
       {!app || !userInfo ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <View
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        >
           <ActivityIndicator size="large" color={COLORS.accent} />
         </View>
       ) : (
-      <>
-      <ActionHeader
-        title={t('profile.title') || (translations?.profile?.title) || 'Profile Informations'}
-        onPress={() => navigation.goBack()}
-      />
-    
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-      >
-        {/* ── PROFILE CARD ─────────────────────────────────────────────── */}
-        <View
-          style={[
-            styles.profileCard,
-            { backgroundColor: COLORS.cardBackground },
-          ]}
-        >
-          <View style={styles.profileHeader}>
-            <View style={[styles.profileTitleRow, isRtl && styles.profileTitleRowRtl]}>
-              <View style={styles.profileNameSection}>
-                <Text style={[styles.profileName, { color: COLORS.text }]}>
-                  {user?.firstName} {user?.lastName}
-                </Text>
-                {user?.username ? (
-                  <Text
-                    style={[styles.profileUsername, { color: COLORS.primary }]}
-                  >
-                    @{user.username}
-                  </Text>
-                ) : null}
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.editButton,
-                  { backgroundColor: COLORS.primary + '15' },
-                ]}
-                onPress={() => navigation.navigate(route.editProfile)}
-              >
-                <Edit size={16} color={COLORS.primary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View
-            style={[styles.profileDivider, { backgroundColor: COLORS.border }]}
+        <>
+          <ActionHeader
+            title={
+              t('profile.title') ||
+              translations?.profile?.title ||
+              'Profile Informations'
+            }
+            onPress={() => navigation.goBack()}
           />
 
-          <View style={styles.profileDetails}>
-            <View style={styles.detailRow}>
-              <View style={[styles.detailLabel, isRtl && styles.detailLabelRtl]}>
-                <Mail size={14} color={COLORS.muted} />
-                <Text style={[styles.detailLabelText, { color: COLORS.muted }]}> 
-                  {t('profile.fields.email') || (translations.profile && translations.profile.fields?.email) || 'Email'}
-                </Text>
-              </View>
-              <Text
-                style={[styles.detailValue, { color: COLORS.text }]}
-                numberOfLines={1}
-              >
-                {user?.email}
-              </Text>
-            </View>
-
-            {user?.phoneNumber ? (
-              <View style={styles.detailRow}>
-                <View style={[styles.detailLabel, isRtl && styles.detailLabelRtl]}>
-                  <Phone size={14} color={COLORS.muted} />
-                  <Text
-                    style={[styles.detailLabelText, { color: COLORS.muted }]}
-                  >
-                    {t('profile.fields.phone') || (translations.profile && translations.profile.fields?.phone) || 'Phone'}
-                  </Text>
-                </View>
-                <Text style={[styles.detailValue, { color: COLORS.text }]}>
-                  {user.phoneNumber}
-                </Text>
-              </View>
-            ) : null}
-
-            <View style={styles.detailRow}>
-              <View style={[styles.detailLabel, isRtl && styles.detailLabelRtl]}>
-                <Calendar size={14} color={COLORS.muted} />
-                <Text style={[styles.detailLabelText, { color: COLORS.muted }]}> 
-                  {t('profile.fields.memberSince') || (translations.profile && translations.profile.fields?.memberSince) || 'Member since'}
-                </Text>
-              </View>
-              <Text style={[styles.detailValue, { color: COLORS.text }]}>
-                {new Date(user?.createdAt || Date.now()).toLocaleDateString(
-                  'en-US',
-                  {
-                    month: 'long',
-                    year: 'numeric',
-                  },
-                )}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── STATS ROW ────────────────────────────────────────────────── */}
-        <View
-          style={[styles.statsRow, { backgroundColor: COLORS.cardBackground }]}
-        >
-          {statCards.map((stat, index) => (
-            <View key={index} style={styles.statItem}>
-              <View
-                style={[
-                  styles.statIconSmall,
-                  { backgroundColor: stat.color + '15' },
-                ]}
-              >
-                <stat.icon size={16} color={stat.color} />
-              </View>
-              <Text style={[styles.statValueCompact, { color: COLORS.text }]}>
-                {stat.value}
-              </Text>
-              <Text
-                style={[styles.statLabelCompact, { color: COLORS.muted }]}
-                numberOfLines={1}
-              >
-                {stat.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── MENU SECTIONS ────────────────────────────────────────────── */}
-        {menuSections.map((section, sectionIndex) => (
-          <View key={sectionIndex} style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, isRtl && styles.sectionTitleRtl, { color: COLORS.muted }]}>
-              {section.title}
-            </Text>
-
+          <ScrollView
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          >
+            {/* ── PROFILE CARD ─────────────────────────────────────────────── */}
             <View
               style={[
-                styles.menuCard,
+                styles.profileCard,
                 { backgroundColor: COLORS.cardBackground },
               ]}
             >
-              {section.items.map((item: any, itemIndex) => {
-                const Icon = item.icon;
-                const isLast = itemIndex === section.items.length - 1;
+              <View style={styles.profileHeader}>
+                <View
+                  style={[
+                    styles.profileTitleRow,
+                    isRtl && styles.profileTitleRowRtl,
+                  ]}
+                >
+                  <View style={styles.profileNameSection}>
+                    <Text style={[styles.profileName, { color: COLORS.text }]}>
+                      {user?.firstName} {user?.lastName}
+                    </Text>
+                    {user?.username ? (
+                      <Text
+                        style={[
+                          styles.profileUsername,
+                          { color: COLORS.primary },
+                        ]}
+                      >
+                        @{user.username}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.editButton,
+                      { backgroundColor: COLORS.primary + '15' },
+                    ]}
+                    onPress={() => navigation.navigate(route.editProfile)}
+                  >
+                    <Edit size={16} color={COLORS.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-                if (item.isSwitch) {
-                  return (
+              <View
+                style={[
+                  styles.profileDivider,
+                  { backgroundColor: COLORS.border },
+                ]}
+              />
+
+              <View style={styles.profileDetails}>
+                <View style={styles.detailRow}>
+                  <View
+                    style={[styles.detailLabel, isRtl && styles.detailLabelRtl]}
+                  >
+                    <Mail size={14} color={COLORS.muted} />
+                    <Text
+                      style={[styles.detailLabelText, { color: COLORS.muted }]}
+                    >
+                      {t('profile.fields.email') ||
+                        (translations.profile &&
+                          translations.profile.fields?.email) ||
+                        'Email'}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[styles.detailValue, { color: COLORS.text }]}
+                    numberOfLines={1}
+                  >
+                    {user?.email}
+                  </Text>
+                </View>
+
+                {user?.phoneNumber ? (
+                  <View style={styles.detailRow}>
                     <View
-                      key={itemIndex}
                       style={[
-                        styles.menuItem,
-                        !isLast && {
-                          borderBottomWidth: 1,
-                          borderBottomColor: COLORS.border,
-                        },
+                        styles.detailLabel,
+                        isRtl && styles.detailLabelRtl,
                       ]}
                     >
-                      <View style={[styles.menuLeft, isRtl && styles.menuLeftRtl]}>   
+                      <Phone size={14} color={COLORS.muted} />
+                      <Text
+                        style={[
+                          styles.detailLabelText,
+                          { color: COLORS.muted },
+                        ]}
+                      >
+                        {t('profile.fields.phone') ||
+                          (translations.profile &&
+                            translations.profile.fields?.phone) ||
+                          'Phone'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.detailValue, { color: COLORS.text }]}>
+                      {user.phoneNumber}
+                    </Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.detailRow}>
+                  <View
+                    style={[styles.detailLabel, isRtl && styles.detailLabelRtl]}
+                  >
+                    <Calendar size={14} color={COLORS.muted} />
+                    <Text
+                      style={[styles.detailLabelText, { color: COLORS.muted }]}
+                    >
+                      {t('profile.fields.memberSince') ||
+                        (translations.profile &&
+                          translations.profile.fields?.memberSince) ||
+                        'Member since'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.detailValue, { color: COLORS.text }]}>
+                    {new Date(user?.createdAt || Date.now()).toLocaleDateString(
+                      'en-US',
+                      {
+                        month: 'long',
+                        year: 'numeric',
+                      },
+                    )}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* ── SOWER STATUS ──────────────────────────────────────────────── */}
+            <TouchableOpacity
+              style={[
+                styles.sowerCard,
+                { backgroundColor: COLORS.cardBackground },
+              ]}
+              onPress={handleManageSubscription}
+              activeOpacity={0.7}
+            >
+              <View style={styles.sowerRow}>
+                <View style={styles.sowerInfo}>
+                  <Text style={[styles.sowerLabel, { color: COLORS.muted }]}>
+                    Account Status
+                  </Text>
+                  <Text style={[styles.sowerValue, { color: COLORS.text }]}>
+                    {subscriptionTier === 'covenant_sower_monthly' || subscriptionTier === 'covenant_sower_yearly'  
+                      ? 'Covenant Sower'
+                      : subscriptionTier === 'legacy_sower_monthly' || subscriptionTier === 'legacy_sower_yearly'
+                        ? 'Legacy Sower'
+                        : 'Free Reader'}
+                  </Text>
+                  {subscriptionTier !== 'free' && app?.accessExpiresAt && (
+                    <Text style={[styles.sowerExpiry, { color: COLORS.muted }]}>
+                      Renews{' '}
+                      {new Date(
+                        (app as any).accessExpiresAt,
+                      ).toLocaleDateString()}
+                    </Text>
+                  )}
+                </View>
+                <View
+                  style={[
+                    styles.manageButton,
+                    { backgroundColor: COLORS.primary + '15' },
+                  ]}
+                >
+                  <Text
+                    style={[styles.manageButtonText, { color: COLORS.primary }]}
+                  >
+                    {subscriptionTier === 'free'
+                      ? 'Become a Sower'
+                      : 'Manage Sowing'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* ── STATS ROW ────────────────────────────────────────────────── */}
+            <View
+              style={[
+                styles.statsRow,
+                { backgroundColor: COLORS.cardBackground },
+              ]}
+            >
+              {statCards.map((stat, index) => (
+                <View key={index} style={styles.statItem}>
+                  <View
+                    style={[
+                      styles.statIconSmall,
+                      { backgroundColor: stat.color + '15' },
+                    ]}
+                  >
+                    <stat.icon size={16} color={stat.color} />
+                  </View>
+                  <Text
+                    style={[styles.statValueCompact, { color: COLORS.text }]}
+                  >
+                    {stat.value}
+                  </Text>
+                  <Text
+                    style={[styles.statLabelCompact, { color: COLORS.muted }]}
+                    numberOfLines={1}
+                  >
+                    {stat.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* ── MENU SECTIONS ────────────────────────────────────────────── */}
+            {menuSections.map((section, sectionIndex) => (
+              <View key={sectionIndex} style={styles.menuSection}>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    isRtl && styles.sectionTitleRtl,
+                    { color: COLORS.muted },
+                  ]}
+                >
+                  {section.title}
+                </Text>
+
+                <View
+                  style={[
+                    styles.menuCard,
+                    { backgroundColor: COLORS.cardBackground },
+                  ]}
+                >
+                  {section.items.map((item: any, itemIndex) => {
+                    const Icon = item.icon;
+                    const isLast = itemIndex === section.items.length - 1;
+
+                    if (item.isSwitch) {
+                      return (
+                        <View
+                          key={itemIndex}
+                          style={[
+                            styles.menuItem,
+                            !isLast && {
+                              borderBottomWidth: 1,
+                              borderBottomColor: COLORS.border,
+                            },
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.menuLeft,
+                              isRtl && styles.menuLeftRtl,
+                            ]}
+                          >
                             <View
+                              style={[
+                                styles.menuIconContainer,
+                                isRtl && styles.menuIconContainerRtl,
+                                { backgroundColor: item.color + '15' },
+                              ]}
+                            >
+                              <Icon size={20} color={item.color} />
+                            </View>
+                            <Text
+                              style={[styles.menuLabel, { color: COLORS.text }]}
+                            >
+                              {item.label}
+                            </Text>
+                          </View>
+
+                          <Switch
+                            value={item.value}
+                            onValueChange={item.onToggle}
+                            trackColor={{
+                              false: COLORS.border,
+                              true: COLORS.primary,
+                            }}
+                            thumbColor={COLORS.white}
+                            ios_backgroundColor={COLORS.border}
+                          />
+                        </View>
+                      );
+                    }
+
+                    return (
+                      <TouchableOpacity
+                        key={itemIndex}
+                        style={[
+                          styles.menuItem,
+                          !isLast && {
+                            borderBottomWidth: 1,
+                            borderBottomColor: COLORS.border,
+                          },
+                        ]}
+                        onPress={
+                          item.route
+                            ? () => navigation.navigate(item.route)
+                            : item.onPress
+                        }
+                        activeOpacity={0.6}
+                      >
+                        <View
+                          style={[styles.menuLeft, isRtl && styles.menuLeftRtl]}
+                        >
+                          <View
                             style={[
                               styles.menuIconContainer,
                               isRtl && styles.menuIconContainerRtl,
                               { backgroundColor: item.color + '15' },
                             ]}
                           >
-                          <Icon size={20} color={item.color} />
+                            <Icon size={20} color={item.color} />
+                          </View>
+                          <Text
+                            style={[styles.menuLabel, { color: COLORS.text }]}
+                          >
+                            {item.label}
+                          </Text>
                         </View>
-                        <Text
-                          style={[styles.menuLabel, { color: COLORS.text }]}
-                        >
-                          {item.label}
-                        </Text>
-                      </View>
 
-                      <Switch
-                        value={item.value}
-                        onValueChange={item.onToggle}
-                        trackColor={{
-                          false: COLORS.border,
-                          true: COLORS.primary,
-                        }}
-                        thumbColor={COLORS.white}
-                        ios_backgroundColor={COLORS.border}
-                      />
-                    </View>
-                  );
-                }
-
-                return (
-                  <TouchableOpacity
-                    key={itemIndex}
-                    style={[
-                      styles.menuItem,
-                      !isLast && {
-                        borderBottomWidth: 1,
-                        borderBottomColor: COLORS.border,
-                      },
-                    ]}
-                    onPress={
-                      item.route
-                        ? () => navigation.navigate(item.route)
-                        : item.onPress
-                    }
-                    activeOpacity={0.6}
-                  >
-                    <View style={[styles.menuLeft, isRtl && styles.menuLeftRtl]}>
-                      <View
-                        style={[
-                          styles.menuIconContainer,
-                          isRtl && styles.menuIconContainerRtl,
-                          { backgroundColor: item.color + '15' },
-                        ]}
-                      >
-                        <Icon size={20} color={item.color} />
-                      </View>
-                      <Text style={[styles.menuLabel, { color: COLORS.text }]}>
-                        {item.label}
-                      </Text>
-                    </View>
-
-                    <View style={[styles.menuRight, isRtl && styles.menuRightRtl]}>
-                      {item.rightText && (
-                        <Text style={[styles.rightLangText, { color: COLORS.muted }]}>
-                          {item.rightText}
-                        </Text>
-                      )}
-                      {item.badge && (
                         <View
                           style={[
-                            styles.badge,
-                            { backgroundColor: item.color },
+                            styles.menuRight,
+                            isRtl && styles.menuRightRtl,
                           ]}
                         >
-                          <Text style={styles.badgeText}>{item.badge}</Text>
+                          {item.rightText && (
+                            <Text
+                              style={[
+                                styles.rightLangText,
+                                { color: COLORS.muted },
+                              ]}
+                            >
+                              {item.rightText}
+                            </Text>
+                          )}
+                          {item.badge && (
+                            <View
+                              style={[
+                                styles.badge,
+                                { backgroundColor: item.color },
+                              ]}
+                            >
+                              <Text style={styles.badgeText}>{item.badge}</Text>
+                            </View>
+                          )}
+                          {isRtl ? (
+                            <ChevronRight
+                              size={20}
+                              color={COLORS.muted}
+                              style={{ transform: [{ scaleX: -1 }] }}
+                            />
+                          ) : (
+                            <ChevronRight size={20} color={COLORS.muted} />
+                          )}
                         </View>
-                      )}
-                      {isRtl ? <ChevronRight size={20} color={COLORS.muted} style={{ transform: [{ scaleX: -1 }] }} /> : <ChevronRight size={20} color={COLORS.muted} />}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        ))}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
 
-        {/* ── LOGOUT ───────────────────────────────────────────────────── */}
-        <TouchableOpacity
-          style={[
-            styles.logoutButton,
-            isRtl && styles.logoutButtonRtl,
-            { backgroundColor: COLORS.cardBackground },
-            loggingOut && { opacity: 0.6 },
-          ]}
-          onPress={() => setShowLogout(true)}
-          activeOpacity={0.7}
-          disabled={loggingOut}
-        >
-          <View
-            style={[
-              styles.logoutIconContainer,
-              isRtl && styles.logoutIconContainerRtl,
-              { backgroundColor: COLORS.error + '15' },
-            ]}
-          >
-            {loggingOut ? (
-              <ActivityIndicator size="small" color={COLORS.error} />
-            ) : (
-              <LogOut size={20} color={COLORS.error} />
-            )}
-          </View>
-          <Text style={[styles.logoutText, { color: COLORS.error }]}> 
-            {loggingOut
-              ? t('profile.logout.loggingOut') || (translations.profile && translations.profile.logout?.loggingOut) || 'Logging out…'
-              : t('profile.logout.logout') || (translations.profile && translations.profile.logout?.logout) || 'Logout'}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+            {/* ── LOGOUT ───────────────────────────────────────────────────── */}
+            <TouchableOpacity
+              style={[
+                styles.logoutButton,
+                isRtl && styles.logoutButtonRtl,
+                { backgroundColor: COLORS.cardBackground },
+                loggingOut && { opacity: 0.6 },
+              ]}
+              onPress={() => setShowLogout(true)}
+              activeOpacity={0.7}
+              disabled={loggingOut}
+            >
+              <View
+                style={[
+                  styles.logoutIconContainer,
+                  isRtl && styles.logoutIconContainerRtl,
+                  { backgroundColor: COLORS.error + '15' },
+                ]}
+              >
+                {loggingOut ? (
+                  <ActivityIndicator size="small" color={COLORS.error} />
+                ) : (
+                  <LogOut size={20} color={COLORS.error} />
+                )}
+              </View>
+              <Text style={[styles.logoutText, { color: COLORS.error }]}>
+                {loggingOut
+                  ? t('profile.logout.loggingOut') ||
+                    (translations.profile &&
+                      translations.profile.logout?.loggingOut) ||
+                    'Logging out…'
+                  : t('profile.logout.logout') ||
+                    (translations.profile &&
+                      translations.profile.logout?.logout) ||
+                    'Logout'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
 
-      {/* ── MODALS ───────────────────────────────────────────────────────── */}
-      <ActionModal
-        visible={showLogout}
-        severity="warning"
-        title={t('profile.logout.confirmTitle') || (translations.profile && translations.profile.logout?.confirmTitle) || 'Logout'}
-        message={t('profile.logout.confirmMessage') || (translations.profile && translations.profile.logout?.confirmMessage) || 'Are you sure you want to logout from your account?'}
-        confirmLabel={t('profile.logout.confirmLabel') || (translations.profile && translations.profile.logout?.confirmLabel) || 'Logout'}
-        cancelLabel={t('profile.logout.cancelLabel') || (translations.profile && translations.profile.logout?.cancelLabel) || 'Cancel'}
-        onCancel={() => setShowLogout(false)}
-        onConfirm={handleLogout}
-      />
+          {/* ── MODALS ───────────────────────────────────────────────────────── */}
+          <ActionModal
+            visible={showLogout}
+            severity="warning"
+            title={
+              t('profile.logout.confirmTitle') ||
+              (translations.profile &&
+                translations.profile.logout?.confirmTitle) ||
+              'Logout'
+            }
+            message={
+              t('profile.logout.confirmMessage') ||
+              (translations.profile &&
+                translations.profile.logout?.confirmMessage) ||
+              'Are you sure you want to logout from your account?'
+            }
+            confirmLabel={
+              t('profile.logout.confirmLabel') ||
+              (translations.profile &&
+                translations.profile.logout?.confirmLabel) ||
+              'Logout'
+            }
+            cancelLabel={
+              t('profile.logout.cancelLabel') ||
+              (translations.profile &&
+                translations.profile.logout?.cancelLabel) ||
+              'Cancel'
+            }
+            onCancel={() => setShowLogout(false)}
+            onConfirm={handleLogout}
+          />
 
-      <LanguagePickerModal
-        visible={langModalOpen}
-        onRequestClose={() => setLangModalOpen(false)}
-      />
+          <LanguagePickerModal
+            visible={langModalOpen}
+            onRequestClose={() => setLangModalOpen(false)}
+          />
 
-      <ActionModal
-        visible={modal.status}
-        title={modal.title}
-        message={modal.message}
-        severity={modal.severity}
-        onConfirm={() => setModal({ ...modal, status: false })}
-      />
-      </>
+          <ActionModal
+            visible={modal.status}
+            title={modal.title}
+            message={modal.message}
+            severity={modal.severity}
+            onConfirm={() => setModal({ ...modal, status: false })}
+          />
+        </>
       )}
 
       <Animated.View
@@ -948,6 +1120,51 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: FONT_SIZES.md,
+    fontWeight: '700',
+  },
+
+  // ── Sower Status ──
+  sowerCard: {
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  sowerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sowerInfo: {
+    flex: 1,
+  },
+  sowerLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  sowerValue: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  sowerExpiry: {
+    fontSize: FONT_SIZES.xs,
+    marginTop: 4,
+  },
+  manageButton: {
+    borderRadius: BORDER_RADIUS.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    marginLeft: SPACING.md,
+  },
+  manageButtonText: {
+    fontSize: FONT_SIZES.sm,
     fontWeight: '700',
   },
 });

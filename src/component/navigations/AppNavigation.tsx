@@ -1,13 +1,13 @@
-import React, { useContext, useEffect, useRef, useCallback } from 'react';
+import React, { useContext, useEffect, useCallback, useRef } from 'react';
 import { InteractionManager } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
   NavigationContainer,
-  NavigationContainerRef,
 } from '@react-navigation/native';
 import { route } from './routes';
 import { AppContext } from '../../common/AppContext';
 import LoadingCard from '../../common/LoadingCard';
+import { navigationRef } from '../../services/navigationRef';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,10 +36,20 @@ const FORCED_ANIMATIONS: Record<string, AnimationType> = {
   journalEntry: 'slide_from_bottom',
 };
 
+
+const linking = {
+  prefixes: ['exegesis://'],
+  config: {
+    screens: {
+      [route.sower]: 'sower',
+    },
+  },
+};
+
 const AppNavigation = () => {
+
   const { firstLaunch, userInfo, loading }: any = useContext(AppContext);
   const userLoggedIn = !!userInfo;
-  const navigationRef = useRef<NavigationContainerRef<any>>(null);
   const animationMap = useRef<Map<string, AnimationType>>(new Map());
 
   const getAnimation = useCallback((screenName: string): AnimationType => {
@@ -108,7 +118,7 @@ const AppNavigation = () => {
   const isAdmin = userInfo?.userRole === 1;
 
   return (
-    <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} linking={linking}>
       <Stack.Navigator id="main" screenOptions={screenOptions}>
         {/* ── Initial screen ────────────────────────────────────────────── */}
         {firstLaunch ? (
@@ -528,6 +538,20 @@ const AppNavigation = () => {
           name={route.labFlow}
           getComponent={() =>
             require('../../features/lab/LabFlowScreen').default
+          }
+        />
+
+        {/* ── Subscription / Sower ────────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.sower}
+          getComponent={() =>
+            require('../../features/subscription/SowerScreen').default
+          }
+        />
+        <Stack.Screen
+          name={route.adminSubscriptions}
+          getComponent={() =>
+            require('../../features/admin/AdminSubscriptions').default
           }
         />
 

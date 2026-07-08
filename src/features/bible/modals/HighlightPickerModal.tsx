@@ -201,7 +201,7 @@ export default function HighlightPickerModal({
         <View style={styles.divider} />
 
         {/* Verse range slider */}
-        {totalVerses > 1 && (
+        {totalVerses > 1 && selectedVerses.length > 1 && (
           <VerseRangeSlider
             totalVerses={totalVerses}
             startVerse={rangeStart}

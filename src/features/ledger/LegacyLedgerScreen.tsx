@@ -70,9 +70,12 @@ import {
   Download,
   Users,
   Globe,
+  Calendar,
+  X,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
 import BottomTab from '../../component/navigations/BottomTab';
+import DatePickerInput from '../../reusable/DatePickerInput';
 
 // atob is available in Hermes (React Native 0.70+) via the global scope
 declare const atob: (input: string) => string;
@@ -445,6 +448,10 @@ const LegacyLedgerScreen = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'my' | 'discover'>('my');
   const [showExportModal, setShowExportModal] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -465,6 +472,8 @@ const LegacyLedgerScreen = () => {
         const payload: any = { page: pageNum, pageSize: 20 };
         if (searchDebounced) payload.search = searchDebounced;
         if (category !== 'all') payload.category = category;
+        if (startDate) payload.startDate = startDate;
+        if (endDate) payload.endDate = endDate;
 
         if (viewMode === 'discover') {
           const res = await getPublicJournalEntries(payload);
@@ -491,7 +500,7 @@ const LegacyLedgerScreen = () => {
         setRefreshing(false);
       }
     },
-    [searchDebounced, category, viewMode, jc],
+    [searchDebounced, category, viewMode, startDate, endDate, jc],
   );
 
   const fetchStats = useCallback(async () => {
@@ -718,7 +727,7 @@ const LegacyLedgerScreen = () => {
     );
   };
 
-  const hasActiveFilters = search.length > 0 || category !== 'all';
+  const hasActiveFilters = search.length > 0 || category !== 'all' || startDate.length > 0 || endDate.length > 0;
 
   const renderExportModal = () => {
     if (!showExportModal) return null;
@@ -838,6 +847,140 @@ const LegacyLedgerScreen = () => {
             )}
           />
         </View>
+
+        {/* ── Date Range Filter ── */}
+        {viewMode === 'my' && (
+          <View style={styles.dateFilterContainer}>
+            <View style={styles.dateFilterRow}>
+              <TouchableOpacity
+                style={[
+                  styles.dateFilterChip,
+                  {
+                    backgroundColor: startDate ? COLORS.primary + '15' : COLORS.surface,
+                    borderColor: startDate ? COLORS.primary : COLORS.border,
+                  },
+                ]}
+                onPress={() => setShowStartDatePicker(true)}
+                activeOpacity={0.7}
+              >
+                <Calendar size={12} color={startDate ? COLORS.primary : COLORS.muted} />
+                <Text
+                  style={[
+                    styles.dateFilterChipText,
+                    { color: startDate ? COLORS.primary : COLORS.muted },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {startDate
+                    ? new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : (jc?.startDateLabel || 'Start Date')}
+                </Text>
+                {startDate && (
+                  <TouchableOpacity
+                    onPress={() => { setStartDate(''); setPage(0); }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <X size={12} color={COLORS.primary} />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+
+              <Text style={[styles.dateFilterSeparator, { color: COLORS.muted }]}>→</Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.dateFilterChip,
+                  {
+                    backgroundColor: endDate ? COLORS.primary + '15' : COLORS.surface,
+                    borderColor: endDate ? COLORS.primary : COLORS.border,
+                  },
+                ]}
+                onPress={() => setShowEndDatePicker(true)}
+                activeOpacity={0.7}
+              >
+                <Calendar size={12} color={endDate ? COLORS.primary : COLORS.muted} />
+                <Text
+                  style={[
+                    styles.dateFilterChipText,
+                    { color: endDate ? COLORS.primary : COLORS.muted },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {endDate
+                    ? new Date(endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : (jc?.endDateLabel || 'End Date')}
+                </Text>
+                {endDate && (
+                  <TouchableOpacity
+                    onPress={() => { setEndDate(''); setPage(0); }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <X size={12} color={COLORS.primary} />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+
+              {(startDate || endDate) && (
+                <TouchableOpacity
+                  style={styles.dateFilterClearBtn}
+                  onPress={() => { setStartDate(''); setEndDate(''); setPage(0); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dateFilterClearText, { color: COLORS.error || '#EF4444' }]}>
+                    {jc?.clearFilterLabel || 'Clear'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* ── Date Pickers (hidden modals) ── */}
+        {showStartDatePicker && (
+          <View style={styles.datePickerModalWrapper}>
+            <TouchableOpacity style={styles.datePickerOverlay} activeOpacity={1} onPress={() => setShowStartDatePicker(false)} />
+            <View style={[styles.datePickerModal, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border }]}>
+              <DatePickerInput
+                value={startDate}
+                placeholder={jc?.startDateLabel || 'Start Date'}
+                onChangeDate={(date) => { setStartDate(date); setShowStartDatePicker(false); setPage(0); }}
+                maximumDate={endDate ? new Date(endDate + 'T00:00:00') : new Date()}
+              />
+              <TouchableOpacity
+                style={[styles.datePickerCancelBtn, { borderColor: COLORS.border }]}
+                onPress={() => setShowStartDatePicker(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.datePickerCancelText, { color: COLORS.text }]}>
+                  {translations?.bible?.cancel || 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        {showEndDatePicker && (
+          <View style={styles.datePickerModalWrapper}>
+            <TouchableOpacity style={styles.datePickerOverlay} activeOpacity={1} onPress={() => setShowEndDatePicker(false)} />
+            <View style={[styles.datePickerModal, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border }]}>
+              <DatePickerInput
+                value={endDate}
+                placeholder={jc?.endDateLabel || 'End Date'}
+                onChangeDate={(date) => { setEndDate(date); setShowEndDatePicker(false); setPage(0); }}
+                minimumDate={startDate ? new Date(startDate + 'T00:00:00') : undefined}
+                maximumDate={new Date()}
+              />
+              <TouchableOpacity
+                style={[styles.datePickerCancelBtn, { borderColor: COLORS.border }]}
+                onPress={() => setShowEndDatePicker(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.datePickerCancelText, { color: COLORS.text }]}>
+                  {translations?.bible?.cancel || 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* ── Stats (my entries only) ── */}
         {viewMode === 'my' && !hasActiveFilters && renderStats()}
@@ -1065,6 +1208,78 @@ const styles = StyleSheet.create({
   dateText: { fontSize: FONT_SIZES.xs, fontWeight: '500' },
   dateSeparator: { fontSize: FONT_SIZES.xs, marginHorizontal: 2 },
   dateFull: { fontSize: FONT_SIZES.xs, flex: 1 },
+
+  // ── Date Range Filter ──
+  dateFilterContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.xs,
+  },
+  dateFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dateFilterChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  dateFilterChipText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
+    flex: 1,
+  },
+  dateFilterSeparator: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+  },
+  dateFilterClearBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  dateFilterClearText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '700',
+  },
+  datePickerModalWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1001,
+  },
+  datePickerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  datePickerModal: {
+    width: '85%',
+    maxWidth: 360,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  datePickerCancelBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: SPACING.sm,
+  },
+  datePickerCancelText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+  },
 
   // ── Delete action ──
   deleteAction: { justifyContent: 'center', alignItems: 'center', width: 80, borderRadius: 12, marginBottom: SPACING.sm, marginLeft: SPACING.sm, gap: 4 },

@@ -6,6 +6,7 @@ import axios, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { showToast } from '../helpers/Toash.helper';
 import { Platform } from 'react-native';
+import { navigationRef } from './navigationRef';
 
 const DEV_BACKEND_HOST = '192.168.100.22';
 const DEV_BACKEND_PORT = '5001';
@@ -60,6 +61,19 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     const url = originalRequest.url || '';
 
+    // ── 403 — Tier gating ─────────────────────────────────────────────────
+    if (error.response?.status === 403 && !originalRequest._suppress403) {
+      const data = error.response.data;
+      const msg = data?.returnMessage || 'Subscription required';
+      showToast('warning', msg);
+      setTimeout(() => {
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('Sower');
+        }
+      }, 1200);
+      return Promise.reject(error);
+    }
+
     // Skip token refresh for login/register requests - let them handle the error
     const isAuthRequest =
       url.includes('/auth/login') || url.includes('/auth/register');
@@ -100,19 +114,27 @@ api.interceptors.response.use(
  * @param controller Controller name (e.g., 'auth')
  * @param request Request name (e.g., 'login')
  * @param data Request body (default empty object)
+ * @param suppressSubscriptionGate Skip the global 403 toast+navigate for this call
  * @returns GenericResponse
  */
 export const sendPostRequest = async <T = any>(
   controller: string,
   request: string,
   data: object = {},
+  suppressSubscriptionGate?: boolean,
 ): Promise<GenericResponse<T>> => {
   try {
     const language = (await AsyncStorage.getItem('@app:language')) || 'en';
 
+    const config: any = {};
+    if (suppressSubscriptionGate) {
+      config._suppress403 = true;
+    }
+
     const response = await api.post<GenericResponse<T>>(
       `/${controller}/${request}`,
       { ...data, lang: language },
+      config,
     );
     return response.data;
   } catch (error: any) {
@@ -252,6 +274,8 @@ export const getAllJournalEntries = async (data: {
   pageSize?: number;
   search?: string;
   category?: string;
+  startDate?: string;
+  endDate?: string;
 }): Promise<
   GenericResponse<{
     entries: JournalEntry[];
@@ -381,6 +405,8 @@ export const getPublicJournalEntries = async (data: {
   search?: string;
   bookName?: string;
   category?: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   pageSize?: number;
 }): Promise<

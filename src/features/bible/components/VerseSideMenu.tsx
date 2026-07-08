@@ -35,6 +35,8 @@ import {
   BORDER_RADIUS,
 } from '../../../constants/theme';
 import { useLanguage } from '../../../component/language-translation/LanguageProvider';
+import { useSubscription } from '../../../hooks/useSubscription';
+import { route } from '../../../component/navigations/routes';
 import VerseRangeSlider from '../modals/VerseRangeSlider';
 
 const PANEL_WIDTH = 260;
@@ -202,6 +204,7 @@ export default function VerseSideMenu({
   const COLORS = getColors(isDark);
   const { translations } = useLanguage();
   const bc = translations?.bible;
+  const { hasAccess } = useSubscription();
 
   const slideAnim = useRef(new Animated.Value(PANEL_WIDTH)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -253,15 +256,23 @@ export default function VerseSideMenu({
   }, [onClose]);
 
   const handleStudy = useCallback(() => {
+    if (!hasAccess('legacy_sower')) {
+      dismiss();
+      navigation?.navigate(route.sower);
+      return;
+    }
     guard('Study this verse requires a free account.', () => {
       const verses = sortedVerses.length > 0 ? sortedVerses : [verseNumber];
       navigation?.navigate('LabFlow', {
-        bookName: currentBook, chapter: currentChapter,
-        verseStart: verses[0], verseEnd: verses[verses.length - 1],
+        bookName: currentBook,
+        chapter: currentChapter,
+        verseStart: verses[0],
+        verseEnd: verses[verses.length - 1],
+        stage: 'look',
       });
       dismiss();
     });
-  }, [guard, navigation, currentBook, currentChapter, sortedVerses, verseNumber, dismiss]);
+  }, [guard, hasAccess, navigation, currentBook, currentChapter, sortedVerses, verseNumber, dismiss]);
 
   const handleStrongs = useCallback(() => {
     guard("Strong's Concordance requires a free account.", () => {
@@ -319,7 +330,7 @@ export default function VerseSideMenu({
   const actions: ActionItem[] = [
     {
       key: 'listen',
-      label: bc?.listen || 'Listen',
+      label: bc?.audioBible || bc?.playAudio || 'Listen',
       icon: <Headphones size={16} color={COLORS.primary} strokeWidth={2} />,
       onPress: () => { guard('Audio narration requires a free account.', () => { onListen?.(); dismiss(); }); },
       isPrimary: true,
@@ -343,7 +354,10 @@ export default function VerseSideMenu({
       key: 'journal',
       label: bc?.journal || 'Journal',
       icon: <BookText size={16} color={COLORS.textSecondary} strokeWidth={2} />,
-      onPress: () => { guard('Journal requires a free account.', () => { onJournal?.(); dismiss(); }); },
+      onPress: () => {
+        if (!hasAccess('legacy_sower')) { dismiss(); navigation?.navigate(route.sower); return; }
+        guard('Journal requires a free account.', () => { onJournal?.(); dismiss(); });
+      },
       section: 'primary',
     },
     {
@@ -355,7 +369,7 @@ export default function VerseSideMenu({
     },
     {
       key: 'note',
-      label: bc?.note || 'Note',
+      label: bc?.notes || 'Note',
       icon: <FileText size={16} color={COLORS.textSecondary} strokeWidth={2} />,
       onPress: () => { guard('Notes require a free account.', () => { onNote?.(); dismiss(); }); },
       section: 'tools',
@@ -369,7 +383,7 @@ export default function VerseSideMenu({
     },
     {
       key: 'favorite',
-      label: bc?.favorite || 'Favorite',
+      label: bc?.favorites || 'Favorite',
       icon: <Star size={16} color={COLORS.textSecondary} strokeWidth={2} />,
       onPress: () => { guard('Favourites require a free account.', () => { onFavorite?.(); dismiss(); }); },
       section: 'tools',
@@ -510,7 +524,7 @@ export default function VerseSideMenu({
         <View style={[localStyles.divider, { backgroundColor: COLORS.border }]} />
 
         {/* Verse Range Slider */}
-        {totalVerses > 1 && (
+        {totalVerses > 1 && sortedVerses.length > 1 && (
           <View style={localStyles.sliderContainer}>
             <VerseRangeSlider
               totalVerses={totalVerses}

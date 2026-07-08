@@ -16,6 +16,7 @@ import {
   Animated,
   StyleSheet,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Star,
   History,
@@ -42,6 +43,7 @@ import { getColors, SPACING } from '../../constants/theme';
 import BottomTab from '../../component/navigations/BottomTab';
 import { route } from '../../component/navigations/routes';
 import { sendPostRequest } from '../../services/api';
+import { useSubscription } from '../../hooks/useSubscription';
 import { formatWhatsAppTime } from '../../utilits/bibleUtils';
 import ActionHeader from '../../reusable/ActionHeader';
 import { ProfileCard } from './cards';
@@ -92,6 +94,7 @@ export default function Home() {
   const toggleTheme = app?.toggleTheme ?? (() => {});
   const COLORS = getColors(isDark);
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
+  const { hasAccess } = useSubscription();
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [stats, setStats] = useState<Stats>({
@@ -103,6 +106,9 @@ export default function Home() {
   const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>(
     [],
   );
+  const [lastBiblePosition, setLastBiblePosition] = useState<{ bookName: string; chapter: number } | null>(null);
+  const [todaysVerse, setTodaysVerse] = useState<any | null>(null);
+  const [todaysDevotion, setTodaysDevotion] = useState<any | null>(null);
   const [activeSession, setActiveSession] = useState<any | null>(null);
   const [recentEntry, setRecentEntry] = useState<any | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -133,13 +139,13 @@ export default function Home() {
         id: 'journal',
         label: 'Journals',
         icon: BookMarked,
-        onPress: () => navigation.navigate(route.legacyLedger),
+        onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.legacyLedger) : navigation.navigate(route.sower),
       },
       {
         id: 'plan',
         label: 'Reading Plans',
         icon: CalendarDays,
-        onPress: () => navigation.navigate(route.readingPlan),
+        onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.readingPlan) : navigation.navigate(route.sower),
       },
       {
         id: 'trivia',
@@ -232,13 +238,13 @@ export default function Home() {
 
   const loadHomeStats = useCallback(async () => {
     try {
-      const [statsRes, activityRes, labRes, journalRes] = await Promise.all([
+      const [statsRes, activityRes, labRes, journalRes, verseRes, devotionRes] = await Promise.all([
         sendPostRequest('bible', 'get-home-stats', {}),
         sendPostRequest('bible', 'get-recent-activity', { limit: 10 }),
-        sendPostRequest('exegesis', 'current', {}).catch(() => null),
-        sendPostRequest('journal', 'get-all', { page: 0, pageSize: 1 }).catch(
-          () => null,
-        ),
+        sendPostRequest('exegesis', 'current', {}, true).catch(() => null),
+        sendPostRequest('journal', 'get-all', { page: 0, pageSize: 1 }, true).catch(() => null),
+        sendPostRequest('bible', 'get-todays-verse', {}).catch(() => null),
+        sendPostRequest('bible', 'get-todays-devotion', {}).catch(() => null),
       ]);
 
       if (statsRes.returnCode === 200) {
@@ -283,8 +289,38 @@ export default function Home() {
       } else {
         setRecentEntry(null);
       }
+
+      // Today's verse
+      if (verseRes?.returnCode === 200 && verseRes?.returnData) {
+        setTodaysVerse(verseRes.returnData);
+      } else {
+        setTodaysVerse(null);
+      }
+
+      // Today's devotion
+      if (devotionRes?.returnCode === 200 && devotionRes?.returnData) {
+        setTodaysDevotion(devotionRes.returnData);
+      } else {
+        setTodaysDevotion(null);
+      }
     } catch (e) {
       console.error('Error loading home stats:', e);
+    }
+  }, []);
+
+  const loadBiblePosition = useCallback(async () => {
+    try {
+      const saved = await AsyncStorage.getItem('bible_last_position');
+      if (saved) {
+        const pos = JSON.parse(saved);
+        if (pos.bookName && pos.chapter) {
+          setLastBiblePosition({ bookName: pos.bookName, chapter: Number(pos.chapter) });
+          return;
+        }
+      }
+      setLastBiblePosition(null);
+    } catch {
+      setLastBiblePosition(null);
     }
   }, []);
 
@@ -292,14 +328,16 @@ export default function Home() {
   useEffect(() => {
     if (userInfo) {
       loadHomeStats();
+      loadBiblePosition();
     }
-  }, [loadHomeStats, userInfo]);
+  }, [loadHomeStats, userInfo, loadBiblePosition]);
 
   useFocusEffect(
     useCallback(() => {
       if (!userInfo) return;
       loadHomeStats();
-    }, [loadHomeStats, userInfo]),
+      loadBiblePosition();
+    }, [loadHomeStats, userInfo, loadBiblePosition]),
   );
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -403,8 +441,253 @@ export default function Home() {
               })}
             </View>
 
+            {/* ── Daily Verse Card ── */}
+            {todaysVerse && (
+              <View
+                style={[
+                  styles.dashboardCard,
+                  {
+                    backgroundColor: COLORS.cardBackground,
+                    borderColor: COLORS.border,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate(route.dailyExegesis)
+                  }
+                  style={styles.dashboardCardInner}
+                >
+                  <View style={styles.dashboardCardTop}>
+                    <View
+                      style={[
+                        styles.dashboardCardIcon,
+                        { backgroundColor: `${COLORS.accent}18` },
+                        isRtl && rtlCardIcon,
+                      ]}
+                    >
+                      <Star
+                        size={18}
+                        color={COLORS.accent}
+                        strokeWidth={2}
+                      />
+                    </View>
+                    <View style={styles.dashboardCardTitleGroup}>
+                      <Text
+                        style={[
+                          styles.dashboardCardTitle,
+                          { color: COLORS.text },
+                        ]}
+                      >
+                        Daily Verse
+                      </Text>
+                      <Text
+                        style={[
+                          styles.dashboardCardSubtitle,
+                          { color: COLORS.muted },
+                        ]}
+                      >
+                        {todaysVerse.reference ||
+                          `${todaysVerse.bookName} ${todaysVerse.chapter}:${todaysVerse.verseNumber}`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Verse text preview */}
+                  {todaysVerse.text && (
+                    <View
+                      style={[
+                        styles.versePreviewBlock,
+                        { borderLeftColor: COLORS.accent + '60' },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.versePreviewText,
+                          { color: COLORS.textSecondary },
+                        ]}
+                        numberOfLines={2}
+                      >
+                        "{todaysVerse.text}"
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={styles.dashboardCardAction}>
+                    <Text
+                      style={[
+                        styles.dashboardCardLink,
+                        { color: COLORS.accent },
+                      ]}
+                    >
+                      Read Explanation
+                    </Text>
+                    {isRtl ? (
+                      <ArrowLeft size={14} color={COLORS.accent} />
+                    ) : (
+                      <ArrowRight size={14} color={COLORS.accent} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* ── Daily Devotion Card ── */}
+            {todaysDevotion && (
+              <View
+                style={[
+                  styles.dashboardCard,
+                  {
+                    backgroundColor: COLORS.cardBackground,
+                    borderColor: COLORS.border,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate(route.dailyDevotional)
+                  }
+                  style={styles.dashboardCardInner}
+                >
+                  <View style={styles.dashboardCardTop}>
+                    <View
+                      style={[
+                        styles.dashboardCardIcon,
+                        { backgroundColor: `${COLORS.primary}15` },
+                        isRtl && rtlCardIcon,
+                      ]}
+                    >
+                      <BookOpen
+                        size={18}
+                        color={COLORS.primary}
+                        strokeWidth={2}
+                      />
+                    </View>
+                    <View style={styles.dashboardCardTitleGroup}>
+                      <Text
+                        style={[
+                          styles.dashboardCardTitle,
+                          { color: COLORS.text },
+                        ]}
+                      >
+                        Daily Devotional
+                      </Text>
+                      <Text
+                        style={[
+                          styles.dashboardCardSubtitle,
+                          { color: COLORS.muted },
+                        ]}
+                      >
+                        {todaysDevotion.title || 'Today\'s devotion'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Devotion content preview */}
+                  <Text
+                    style={[
+                      styles.dashboardEntryPreview,
+                      { color: COLORS.textSecondary },
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {todaysDevotion.content || ''}
+                  </Text>
+
+                  <View style={styles.dashboardCardAction}>
+                    <Text
+                      style={[
+                        styles.dashboardCardLink,
+                        { color: COLORS.primary },
+                      ]}
+                    >
+                      Read Devotion
+                    </Text>
+                    {isRtl ? (
+                      <ArrowLeft size={14} color={COLORS.primary} />
+                    ) : (
+                      <ArrowRight size={14} color={COLORS.primary} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* ── Continue Reading Card ── */}
+            {lastBiblePosition && (
+              <View
+                style={[
+                  styles.dashboardCard,
+                  {
+                    backgroundColor: COLORS.cardBackground,
+                    borderColor: COLORS.border,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate(route.bible, {
+                      bookName: lastBiblePosition.bookName,
+                      chapter: lastBiblePosition.chapter,
+                    })
+                  }
+                  style={styles.dashboardCardInner}
+                >
+                  <View style={styles.dashboardCardTop}>
+                    <View
+                      style={[
+                        styles.dashboardCardIcon,
+                        { backgroundColor: `${COLORS.primary}15` },
+                        isRtl && rtlCardIcon,
+                      ]}
+                    >
+                      <BookOpen
+                        size={18}
+                        color={COLORS.primary}
+                        strokeWidth={2}
+                      />
+                    </View>
+                    <View style={styles.dashboardCardTitleGroup}>
+                      <Text
+                        style={[
+                          styles.dashboardCardTitle,
+                          { color: COLORS.text },
+                        ]}
+                      >
+                        Continue Reading
+                      </Text>
+                      <Text
+                        style={[
+                          styles.dashboardCardSubtitle,
+                          { color: COLORS.muted },
+                        ]}
+                      >
+                        {lastBiblePosition.bookName} {lastBiblePosition.chapter}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.dashboardCardAction}>
+                    <View
+                      style={[
+                        styles.dashboardCardBtn,
+                        { backgroundColor: COLORS.primary },
+                      ]}
+                    >
+                      <Play size={14} color="#FFFFFF" fill="#FFFFFF" />
+                      <Text style={styles.dashboardCardBtnText}>
+                        Continue
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* ── Continue Exegesis Lab Card ── */}
-            {activeSession && !activeSession.completed && (
+            {activeSession && !activeSession.completed && hasAccess('legacy_sower') && (
               <View
                 style={[
                   styles.dashboardCard,
@@ -530,7 +813,7 @@ export default function Home() {
             )}
 
             {/* ── Recent Journal Entry Card ── */}
-            {recentEntry && (
+            {recentEntry && hasAccess('legacy_sower') && (
               <View
                 style={[
                   styles.dashboardCard,
@@ -833,14 +1116,16 @@ export default function Home() {
                           isRtl && activityStyles.activityCardRtl,
                           { backgroundColor: COLORS.cardBackground },
                         ]}
-                        onPress={() =>
-                          act.type === 'plan'
-                            ? navigation.navigate(route.readingPlan)
-                            : navigation.navigate(route.bible, {
-                                bookName: act.book,
-                                chapter: act.chapter,
-                              })
-                        }
+                        onPress={() => {
+                          if (act.type === 'plan') {
+                            navigation.navigate(hasAccess('legacy_sower') ? route.readingPlan : route.sower);
+                          } else {
+                            navigation.navigate(route.bible, {
+                              bookName: act.book,
+                              chapter: act.chapter,
+                            });
+                          }
+                        }}
                       >
                         <View
                           style={[

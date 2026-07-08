@@ -26,6 +26,7 @@ import {
   useFocusEffect,
 } from '@react-navigation/native';
 import { route } from '../../component/navigations/routes';
+import { useSubscription } from '../../hooks/useSubscription';
 import { createBibleStyles } from './bibleStyle';
 import {
   getColors,
@@ -140,6 +141,7 @@ export default function Bible() {
   const isFromReadingPlan = hasReflections;
   const dayTitle = routeParams.dayTitle;
   const planTitle = routeParams.planTitle;
+  const { hasAccess } = useSubscription();
 
   const [reflectionOpen, setReflectionOpen] = useState(false);
   const reflectionOpenRef = useRef(false);
@@ -287,6 +289,7 @@ export default function Bible() {
     getDailyVerseRef,
     clearDailyVerseRef,
     explainingVerse,
+    isOnline,
   } = useBible();
 
   const { language, translations } = useLanguage();
@@ -500,6 +503,16 @@ export default function Bible() {
     setVerseMenuVisible(true);
   }, []);
 
+  const getVerseMenuSelection = useCallback(() => {
+    if (
+      selectedVerses.length > 0 &&
+      (!verseMenuVerse || selectedVerses.includes(verseMenuVerse))
+    ) {
+      return [...selectedVerses];
+    }
+    return verseMenuVerse ? [verseMenuVerse] : [];
+  }, [selectedVerses, verseMenuVerse]);
+
   const closeVerseMenu = useCallback(() => {
     setVerseMenuVisible(false);
     setVerseMenuVerse(null);
@@ -532,6 +545,15 @@ export default function Bible() {
 
   return (
     <View style={styles.container}>
+      {/* Offline banner */}
+      {isOnline === false && (
+        <View style={{ backgroundColor: '#F59E0B', paddingVertical: 6, paddingHorizontal: 16 }}>
+          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
+            You are offline — showing cached or local content
+          </Text>
+        </View>
+      )}
+
       {initialLoading ? (
         <>
       {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -933,13 +955,19 @@ export default function Bible() {
 
       <HighlightPickerModal
         visible={showHighlightPicker}
-        onClose={() => setShowHighlightPicker(false)}
+        onClose={() => {
+          setShowHighlightPicker(false);
+          setPendingVerses([]);
+          clearSelection();
+        }}
         isDark={isDark}
         selectedVerses={selectedVerses}
         totalVerses={Object.keys(verses).length}
         onSelectColor={(colorId, color, rangeStart, rangeEnd) => {
           setShowHighlightPicker(false);
           highlightVerses(colorId, color, rangeStart, rangeEnd);
+          setPendingVerses([]);
+          clearSelection();
         }}
       />
 
@@ -1001,7 +1029,7 @@ export default function Bible() {
         onRangeChange={(start, end) => setVerseRangeSelection(start, end)}
         onListen={() =>
           guard('Audio narration requires a free account.', () => {
-            const current = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+            const current = getVerseMenuSelection();
             clearSelection();
             startReadingSelectedVerses(current);
           })
@@ -1010,7 +1038,8 @@ export default function Bible() {
           guard(
             'Journal entries are saved to your account. Sign in to use this feature.',
             () => {
-              const v = verseMenuVerse ?? Math.min(...selectedVerses, 1);
+              const verses = getVerseMenuSelection();
+              const v = verses[0] ?? 1;
               clearSelection();
               navigation.navigate(route.journalEntry, {
                 bookName: currentBook,
@@ -1022,7 +1051,7 @@ export default function Bible() {
           )
         }
         onExplain={async () => {
-          const verses = verseMenuVerse ? [verseMenuVerse] : selectedVerses;
+          const verses = getVerseMenuSelection();
           if (verses.length > 0) {
             await getverseExplanation(verses, currentBook, currentChapter);
           }
@@ -1031,9 +1060,9 @@ export default function Bible() {
           guard(
             'Highlights are saved to your account. Sign in to use this feature.',
             () => {
-              const verses = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+              const verses = getVerseMenuSelection();
               setPendingVerses(verses);
-              clearSelection();
+              if (verses.length === 1) setVerseRangeSelection(verses[0], verses[0]);
               setShowHighlightPicker(true);
             },
           )
@@ -1042,9 +1071,9 @@ export default function Bible() {
           guard(
             'Notes are saved to your account. Sign in to use this feature.',
             () => {
-              const verses = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+              const verses = getVerseMenuSelection();
               setPendingVerses(verses);
-              clearSelection();
+              if (verses.length === 1) setVerseRangeSelection(verses[0], verses[0]);
               openNoteModal();
             },
           )
@@ -1053,7 +1082,7 @@ export default function Bible() {
           guard(
             'Favourites are saved to your account. Sign in to use this feature.',
             () => {
-              const verses = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+              const verses = getVerseMenuSelection();
               clearSelection();
               addFavorite(verses);
             },
@@ -1061,14 +1090,14 @@ export default function Bible() {
         }
         onShare={() =>
           guard('Sharing requires a free account.', () => {
-            const verses = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+            const verses = getVerseMenuSelection();
             clearSelection();
             shareVerses(verses);
           })
         }
         onCopy={() =>
           guard('Copying requires a free account.', () => {
-            const verses = verseMenuVerse ? [verseMenuVerse] : [...selectedVerses];
+            const verses = getVerseMenuSelection();
             clearSelection();
             copyVerses(verses);
           })
@@ -1078,6 +1107,7 @@ export default function Bible() {
             'Notes are saved to your account. Sign in to use this feature.',
             () => {
               setPendingVerses([verseNumber]);
+              setVerseRangeSelection(verseNumber, verseNumber);
               openNoteModal();
             },
           );
@@ -1087,6 +1117,7 @@ export default function Bible() {
             'Highlights are saved to your account. Sign in to use this feature.',
             () => {
               setPendingVerses([verseNumber]);
+              setVerseRangeSelection(verseNumber, verseNumber);
               setShowHighlightPicker(true);
             },
           );
@@ -1140,6 +1171,7 @@ export default function Bible() {
           });
         }}
         onOpenInLab={(bookName, chapter, verseRefs) => {
+          if (!hasAccess('legacy_sower')) { navigation.navigate(route.sower); return; }
           navigation.navigate('LabFlow', {
             bookName,
             chapter,
@@ -1148,6 +1180,7 @@ export default function Bible() {
           });
         }}
         onOpenBookContext={(bookName) => {
+          if (!hasAccess('legacy_sower')) { navigation.navigate(route.sower); return; }
           navigation.navigate('LabFlow', {
             bookName,
             chapter: currentChapter,

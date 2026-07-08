@@ -510,7 +510,7 @@ const Login = () => {
                   s.socialBtn,
                   { borderColor: C.border, backgroundColor: C.surface },
                 ]}
-                onPress={() => navigation.navigate(route.bible)}
+                onPress={() => navigation.navigate(route.login)}
                 activeOpacity={0.82}
               >
                 <View style={s.socialIconWrap}>

@@ -425,4 +425,133 @@ export const createSearchStyles = (COLORS: any) =>
     covenantChipTextInactive: {
       color: COLORS.muted,
     },
+
+    // ── Search History ──
+    historyHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: SPACING.lg,
+      paddingTop: SPACING.md,
+      paddingBottom: SPACING.xs,
+    },
+    historyHeaderLabel: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+      color: COLORS.muted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    historyClearBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: BORDER_RADIUS.sm,
+    },
+    historyClearText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '600',
+      color: COLORS.muted,
+    },
+    historyItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: SPACING.lg,
+      paddingVertical: 10,
+      gap: 10,
+    },
+    historyItemText: {
+      flex: 1,
+      fontSize: FONT_SIZES.sm,
+      color: COLORS.text,
+    },
+    historyRemoveBtn: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    historyDivider: {
+      height: 1,
+      backgroundColor: COLORS.border,
+      marginHorizontal: SPACING.lg,
+      marginBottom: SPACING.xs,
+    },
+
+    // ── Cross-Translation Search ──
+    translationRow: {
+      paddingBottom: 4,
+    },
+    translationChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: BORDER_RADIUS.round,
+      borderWidth: 1,
+    },
+    translationChipActive: {
+      backgroundColor: COLORS.primary,
+      borderColor: COLORS.primary,
+    },
+    translationChipInactive: {
+      backgroundColor: 'transparent',
+      borderColor: COLORS.border,
+    },
+    translationChipText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+    },
+    crossModeHint: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '600',
+      paddingHorizontal: SPACING.md,
+      paddingBottom: 4,
+    },
+    translationBadge: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 5,
+      paddingVertical: 1,
+      borderRadius: 4,
+      marginBottom: 3,
+    },
+    translationBadgeText: {
+      fontSize: 9,
+      fontWeight: '800',
+      letterSpacing: 0.3,
+    },
+
+    // ── Popular Search Suggestions ──
+    popularHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: SPACING.lg,
+      paddingTop: SPACING.sm,
+      paddingBottom: SPACING.xs,
+    },
+    popularHeaderLabel: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+      color: COLORS.muted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    popularChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: BORDER_RADIUS.round,
+      backgroundColor: COLORS.surface,
+      borderWidth: 1,
+      borderColor: COLORS.primary + '30',
+    },
+    popularChipText: {
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '600',
+      color: COLORS.text,
+    },
   });

@@ -64,9 +64,7 @@ export function useLabPassageData({
         if (chapterData?.verses?.length) {
           setPassageVerses(
             chapterData.verses.filter(v =>
-              ve > vs
-                ? v.verseNumber >= vs && v.verseNumber <= ve
-                : v.verseNumber >= vs,
+              v.verseNumber >= vs && v.verseNumber <= ve,
             ),
           );
         } else {

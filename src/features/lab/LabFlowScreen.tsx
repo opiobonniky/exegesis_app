@@ -62,6 +62,11 @@ export default function LabFlowScreen() {
   const navigation = useNavigation<any>();
   const navRoute = useRoute<any>();
   const routeParams = navRoute.params || {};
+
+
+  console.log('LabFlowScreen routeParams:', routeParams);
+
+
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
@@ -83,7 +88,7 @@ export default function LabFlowScreen() {
   const scrollX = useRef(new Animated.Value(0)).current;
 
   // ── Learn stage tab row ref (horizontal scroll with programmatic auto-scroll) ─
-  const tabRowRef = useRef<ScrollView>(null);
+  const tabRowRef = useRef<ScrollView |any>(null);
   const tabPositions = useRef<Record<string, number>>({});
   const [tabScrollX, setTabScrollX] = useState(0);
   const [tabContentWidth, setTabContentWidth] = useState(0);
@@ -213,8 +218,19 @@ export default function LabFlowScreen() {
   const [timerPaused, setTimerPaused] = useState(false);
   const [timerElapsed, setTimerElapsed] = useState(0);
   const [timerComplete, setTimerComplete] = useState(false);
+  const [repeatCount, setRepeatCount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerPendingRef = useRef(false);
+  const timerRunningRef = useRef(false);
+  const timerCompleteRef = useRef(false);
+  const timerElapsedRef = useRef(0);
+  const repeatCountRef = useRef(0);
+  const singlePassageDurationRef = useRef(0);
+  const playLoopActiveRef = useRef(false);
+  const durationManuallySetRef = useRef(false);
+  const currentPlayOffsetBaseRef = useRef(0); // chars from fullPrepared start to current speak() text-start
+  const lastKnownCharOffsetRef = useRef(0);    // latest verseCharOffset from onProgress
+  const savedCharPositionRef = useRef(0);      // absolute position saved when stopping
   const animatedValue = useRef(new Animated.Value(1)).current;
 
   // ── Learn stage ───────────────────────────────────────────────────────────
@@ -264,7 +280,6 @@ export default function LabFlowScreen() {
         timerPendingRef.current = false;
         setTimerRunning(true);
         setTimerPaused(false);
-        setTimerElapsed(0);
       }
     });
     return unsub;
@@ -279,43 +294,66 @@ export default function LabFlowScreen() {
   const [completed, setCompleted] = useState(false);
   const [journalEntryId, setJournalEntryId] = useState<string | null>(null);
 
-  // ── Timer logic ───────────────────────────────────────────────────────────
+  // Sync refs with state for use in async callbacks
+  useEffect(() => { timerRunningRef.current = timerRunning; }, [timerRunning]);
+  useEffect(() => { timerCompleteRef.current = timerComplete; }, [timerComplete]);
+  useEffect(() => { timerElapsedRef.current = timerElapsed; }, [timerElapsed]);
+  useEffect(() => { repeatCountRef.current = repeatCount; }, [repeatCount]);
+
+  // Reset timer and progress state when a new passage is loaded
+  useEffect(() => {
+    // When the passage reference changes (book/chapter/verse range), clear any lingering timer state
+    setTimerRunning(false);
+    setTimerPaused(false);
+    setTimerElapsed(0);
+    setTimerComplete(false);
+    setRepeatCount(0);
+    timerPendingRef.current = false;
+    timerRunningRef.current = false;
+    timerCompleteRef.current = false;
+    timerElapsedRef.current = 0;
+    repeatCountRef.current = 0;
+    savedCharPositionRef.current = 0;
+    playLoopActiveRef.current = false;
+  }, [bookName, chapter, verseStart, verseEnd]);
+
+  // Tick timer every second when running (not paused, not complete)
   useEffect(() => {
     if (timerRunning && !timerPaused) {
       timerRef.current = setInterval(() => {
         setTimerElapsed(prev => {
           const next = prev + 1;
+          timerElapsedRef.current = next;
           if (next >= selectedDuration) {
-            clearInterval(timerRef.current!);
-            setTimerRunning(false);
             setTimerComplete(true);
-            return selectedDuration;
+            setTimerRunning(false);
+            clearInterval(timerRef.current!);
+            timerRef.current = null;
           }
           return next;
         });
       }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     }
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [timerRunning, timerPaused, selectedDuration]);
 
-  const audioRestartingRef = useRef(false);
-
-  // Loop passage audio while timer runs
+  // Stop audio when timer completes and cancel play loop
   useEffect(() => {
-    if (!isTtsPlaying && !isTtsPaused && timerRunning && !timerComplete && passageVerses.length > 0 && !audioRestartingRef.current) {
-      audioRestartingRef.current = true;
-      speakPassageWithPreferredVoice()
-        .catch(() => {})
-        .finally(() => { audioRestartingRef.current = false; });
-    }
-  }, [isTtsPlaying, isTtsPaused, timerRunning, timerComplete, passageVerses.length, speakPassageWithPreferredVoice]);
-
-  // Stop audio when timer completes
-  useEffect(() => {
-    if (timerComplete && isTtsPlaying) {
-      bibleTTS.stop().catch(() => {});
+    if (timerComplete) {
+      playLoopActiveRef.current = false;
+      if (isTtsPlaying) {
+        bibleTTS.stop().catch(() => {});
+      }
     }
   }, [timerComplete, isTtsPlaying]);
 
@@ -350,7 +388,7 @@ export default function LabFlowScreen() {
     }
   }, [pageIndex, stage]);
 
-  // ── Stop TTS when swiping away from Listen ─────────────────────────────
+  // ── Pause TTS + reset timer display when swiping away from Listen ───
   const prevPageRef = useRef(pageIndex);
   useEffect(() => {
     const prev = prevPageRef.current;
@@ -358,11 +396,14 @@ export default function LabFlowScreen() {
     const prevStage = STAGE_ORDER[prev];
     const currentStage = STAGE_ORDER[pageIndex];
     if (prevStage !== currentStage) {
-      // Swiped away from Listen → stop TTS
       if (prevStage === 'listen' && isTtsPlaying) {
+        savedCharPositionRef.current =
+          currentPlayOffsetBaseRef.current + lastKnownCharOffsetRef.current;
         bibleTTS.stop().catch(() => {});
+        setTimerRunning(false);
+        setTimerPaused(false);
+        playLoopActiveRef.current = false;
       }
-      // Swiped to Listen → no auto-start, user taps "Play"
     }
   }, [pageIndex, isTtsPlaying]);
 
@@ -420,43 +461,58 @@ export default function LabFlowScreen() {
       setChapter('');
       setVerseStart('');
       setVerseEnd('');
+      setPassageRef('');
+      setSessionId(null);
       setPassageVerses([]);
       setAvailableVerses([]);
       setSubStage('chapter');
     },
-    [books, setAvailableVerses, setPassageVerses],
+    [books, setAvailableVerses, setPassageVerses, setPassageRef],
   );
 
-  const handleSelectChapter = useCallback((ch: number) => {
-    setChapter(String(ch));
-    setVerseStart('');
-    setVerseEnd('');
-    setPassageVerses([]);
-    setAvailableVerses([]);
-    setSubStage('verse');
-  }, [setAvailableVerses, setPassageVerses]);
+const handleSelectChapter = useCallback((ch: number) => {
+      setChapter(String(ch));
+      setVerseStart('');
+      setVerseEnd('');
+      setPassageRef('');
+      setSessionId(null);
+      setPassageVerses([]);
+      setAvailableVerses([]);
+      setSubStage('verse');
+    }, [setAvailableVerses, setPassageVerses, setPassageRef]);
 
-  const handleSelectVerse = useCallback(
-    (verseNumber: number) => {
-      const currentStart = verseStart ? Number(verseStart) : undefined;
-      const currentEnd = verseEnd ? Number(verseEnd) : undefined;
+const handleSelectVerse = useCallback(
+      (verseNumber: number) => {
+        // If a range is already set (verseEnd defined) treat any new tap as a fresh single selection.
+        if (verseEnd) {
+          setVerseStart(String(verseNumber));
+          setVerseEnd('');
+          setPassageRef('');
+          return;
+        }
 
-      if (!currentStart || currentEnd) {
-        setVerseStart(String(verseNumber));
-        setVerseEnd('');
-        return;
-      }
-
-      if (verseNumber <= currentStart) {
-        setVerseStart(String(verseNumber));
-        setVerseEnd('');
-        return;
-      }
-
-      setVerseEnd(String(verseNumber));
-    },
-    [verseEnd, verseStart],
-  );
+        const currentStart = verseStart ? Number(verseStart) : undefined;
+        const currentEnd = verseEnd ? Number(verseEnd) : undefined;
+ 
+        if (!currentStart || currentEnd) {
+          setVerseStart(String(verseNumber));
+          setVerseEnd('');
+          setPassageRef('');
+          return;
+        }
+ 
+        if (verseNumber <= currentStart) {
+          setVerseStart(String(verseNumber));
+          setVerseEnd('');
+          setPassageRef('');
+          return;
+        }
+ 
+        setVerseEnd(String(verseNumber));
+        setPassageRef('');
+      },
+      [verseEnd, verseStart, setPassageRef],
+    );
 
   const isVerseSelected = useCallback(
     (verseNumber: number) => {
@@ -472,52 +528,57 @@ export default function LabFlowScreen() {
     [verseEnd, verseStart],
   );
 
-  const handleBackToBooks = useCallback(() => {
-    setSubStage('book');
-  }, []);
-
-  const handleChangePassage = useCallback(
-    (nextSubStage: 'book' | 'chapter' | 'verse') => {
-      bibleTTS.stop().catch(() => {});
-      setStage('passage');
-      setPageIndex(0);
-      setSubStage(nextSubStage);
-      setSessionId(null);
+const handleBackToBooks = useCallback(() => {
       setPassageRef('');
-      setPassageVerses([]);
-      setVerseWords([]);
-      setVerseResources(null);
-      setBookPrologue(null);
-      setLookNotes('');
-      setLearnNotes('');
-      setTimerRunning(false);
-      setTimerPaused(false);
-      setTimerElapsed(0);
-      setTimerComplete(false);
+      setSessionId(null);
+      setSubStage('book');
+    }, [setPassageRef]);
 
-      if (nextSubStage === 'book') {
-        setBookName('');
-        setChapter('');
-        setVerseStart('');
-        setVerseEnd('');
-        setAvailableVerses([]);
-      } else if (nextSubStage === 'chapter') {
-        setChapter('');
-        setVerseStart('');
-        setVerseEnd('');
-        setAvailableVerses([]);
-      } else {
-        setVerseStart('');
-        setVerseEnd('');
-      }
-    },
-    [
-      setAvailableVerses,
-      setBookPrologue,
-      setPassageVerses,
-      setVerseResources,
-    ],
-  );
+const handleChangePassage = useCallback(
+      (nextSubStage: 'book' | 'chapter' | 'verse') => {
+        bibleTTS.stop().catch(() => {});
+        setStage('passage');
+        setPageIndex(0);
+        setSubStage(nextSubStage);
+        setSessionId(null);
+        setPassageRef('');
+        setPassageVerses([]);
+        setVerseWords([]);
+        setVerseResources(null);
+        setBookPrologue(null);
+        setLookNotes('');
+        setLearnNotes('');
+        setTimerRunning(false);
+        setTimerPaused(false);
+        setTimerElapsed(0);
+        setTimerComplete(false);
+        singlePassageDurationRef.current = 0;
+        savedCharPositionRef.current = 0;
+        durationManuallySetRef.current = false;
+
+        if (nextSubStage === 'book') {
+          setBookName('');
+          setChapter('');
+          setVerseStart('');
+          setVerseEnd('');
+          setAvailableVerses([]);
+        } else if (nextSubStage === 'chapter') {
+          setChapter('');
+          setVerseStart('');
+          setVerseEnd('');
+          setAvailableVerses([]);
+        } else {
+          setVerseStart('');
+          setVerseEnd('');
+        }
+      },
+      [
+        setAvailableVerses,
+        setBookPrologue,
+        setPassageVerses,
+        setVerseResources,
+      ],
+    );
 
   // ── API calls ────────────────────────────────────────────────────────────
   const startSession = useCallback(async () => {
@@ -701,6 +762,7 @@ export default function LabFlowScreen() {
         case 'listen':
           body.listenDuration = selectedDuration;
           body.listenElapsed = timerElapsed;
+          body.listenRepeatCount = repeatCount;
           if (timerComplete) body.listenCompleted = true;
           break;
         case 'learn':
@@ -731,6 +793,7 @@ export default function LabFlowScreen() {
     selectedDuration,
     timerElapsed,
     timerComplete,
+    repeatCount,
     learnNotes,
     reflection,
     prayer,
@@ -740,21 +803,51 @@ export default function LabFlowScreen() {
   ]);
 
   // ── TTS passage playback for Listen stage ─────────────────────────────
-  const speakPassageWithPreferredVoice = useCallback(async () => {
+  const speakPassageWithPreferredVoice = useCallback(async (skipChars = 0) => {
     if (!passageVerses.length) return;
-    const verses = passageVerses.map(v => ({
-      num: v.verseNumber,
-      text: v.text,
-    }));
+    const firstNum = passageVerses[0].verseNumber;
+    const lastNum = passageVerses[passageVerses.length - 1].verseNumber;
+    const rangeStr =
+      firstNum === lastNum
+        ? `verse ${firstNum}`
+        : `verses ${firstNum} to ${lastNum}`;
+    const prefixRaw = `${bookName}, chapter ${chapter}, ${rangeStr}. `;
+    const fullRaw = prefixRaw + passageVerses.map(v => v.text).join(' ');
+    const fullPrepared = bibleTTS.prepareText(fullRaw);
+    const prefixLen = bibleTTS.prepareText(prefixRaw).length;
+
+    // Skip already-heard content when resuming mid-passage.
+    // Keep at least 20 % so the user hears a meaningful chunk before the next full loop.
+    const minRemaining = Math.max(10, Math.floor(fullPrepared.length * 0.2));
+    const safeSkip = Math.min(skipChars, fullPrepared.length - minRemaining);
+    const trimmed = safeSkip > 0 ? fullPrepared.slice(safeSkip) : fullPrepared;
+    const actualPrefixLen = safeSkip > 0 ? 0 : prefixLen;
+    currentPlayOffsetBaseRef.current = safeSkip + actualPrefixLen;
+    lastKnownCharOffsetRef.current = 0;
 
     await bibleTTS.init();
     bibleTTS.setEdgeEnabled(await ttsService.isEnabled());
     await bibleTTS.stop();
-    await bibleTTS.speakVerses(verses, bookName, parseInt(chapter, 10), {
-      announceLocation: true,
-      announceVerseNumbers: passageVerses.length <= 5,
-    });
+    await bibleTTS.speak(trimmed, actualPrefixLen, 0, (verseCharOffset: number) => {
+      lastKnownCharOffsetRef.current = verseCharOffset;
+    }, true);
   }, [bookName, chapter, passageVerses]);
+
+  const scheduleNextPlay = useCallback(() => {
+    if (!playLoopActiveRef.current) return;
+    // Measure passage duration on first completed loop
+    if (repeatCountRef.current === 0 && singlePassageDurationRef.current === 0) {
+      singlePassageDurationRef.current = timerElapsedRef.current;
+    }
+    speakPassageWithPreferredVoice()
+      .then(() => {
+        if (playLoopActiveRef.current) {
+          setRepeatCount(c => c + 1);
+          scheduleNextPlay();
+        }
+      })
+      .catch(() => {});
+  }, [speakPassageWithPreferredVoice]);
 
   const handleReplayPassageAudio = useCallback(async () => {
     if (!passageVerses.length) {
@@ -763,28 +856,45 @@ export default function LabFlowScreen() {
     }
 
     setAudioStarting(true);
+    setRepeatCount(0);
+    setTimerElapsed(0);
+    setTimerRunning(true);
+    setTimerPaused(false);
+    setTimerComplete(false);
+    savedCharPositionRef.current = 0;
+    timerPendingRef.current = true;
+    playLoopActiveRef.current = true;
     try {
-      setTimerRunning(false);
-      setTimerPaused(false);
       await speakPassageWithPreferredVoice();
+      if (playLoopActiveRef.current) scheduleNextPlay();
     } catch (error: any) {
       showToast('error', error?.message || 'Audio could not start');
     } finally {
       setAudioStarting(false);
     }
-  }, [passageVerses.length, speakPassageWithPreferredVoice]);
+  }, [passageVerses.length, speakPassageWithPreferredVoice, scheduleNextPlay]);
 
   const handleBeginListenTimer = useCallback(() => {
     if (passageVerses.length > 0 && !isTtsPlaying) {
       setAudioStarting(true);
+      setRepeatCount(0);
+      setTimerElapsed(0);
+      setTimerRunning(true);
+      setTimerPaused(false);
+      setTimerComplete(false);
+      savedCharPositionRef.current = 0;
       timerPendingRef.current = true;
+      playLoopActiveRef.current = true;
       speakPassageWithPreferredVoice()
+        .then(() => {
+          if (playLoopActiveRef.current) scheduleNextPlay();
+        })
         .catch((error: any) => {
           showToast('error', error?.message || 'Audio could not start');
         })
         .finally(() => setAudioStarting(false));
     }
-  }, [isTtsPlaying, passageVerses.length, speakPassageWithPreferredVoice]);
+  }, [isTtsPlaying, passageVerses.length, speakPassageWithPreferredVoice, scheduleNextPlay]);
 
   const handleToggleListenTimer = useCallback(() => {
     if (timerRunning && !timerPaused) {
@@ -792,15 +902,114 @@ export default function LabFlowScreen() {
       bibleTTS.pause().catch(() => {});
     } else if (timerPaused) {
       setTimerPaused(false);
-      bibleTTS.resume().catch(() => {});
+      if (isTtsPaused) {
+        playLoopActiveRef.current = true;
+        bibleTTS.resume().catch(() => {});
+      }
     }
-  }, [timerPaused, timerRunning]);
+  }, [timerPaused, timerRunning, isTtsPaused]);
+
+  // ── Duration selection (tracks manual vs. auto-restore) ────────────
+  const handleSetSelectedDuration = useCallback((value: number) => {
+    durationManuallySetRef.current = true;
+    setSelectedDuration(value);
+  }, []);
+
+  const handleResumeListenTimer = useCallback(() => {
+    if (passageVerses.length === 0 || isTtsPlaying) return;
+
+    // Estimate which verse the user was on when they left and build text
+    // from that verse onward for a natural mid-passage resume.
+    const verses = passageVerses;
+    const vCount = verses.length;
+
+    // Measure or estimate total passage duration (seconds)
+    const firstNum = verses[0].verseNumber;
+    const lastNum = verses[vCount - 1].verseNumber;
+    const rangeStr =
+      firstNum === lastNum
+        ? `verse ${firstNum}`
+        : `verses ${firstNum} to ${lastNum}`;
+    const prefixRaw = `${bookName}, chapter ${chapter}, ${rangeStr}. `;
+    const fullRaw = prefixRaw + verses.map(v => v.text).join(' ');
+    const totalChars = bibleTTS.prepareText(fullRaw).length;
+
+    const spd =
+      singlePassageDurationRef.current ||
+      Math.max(5, totalChars / 13);
+    const timeInCurrentLoop = Math.max(
+      0,
+      timerElapsedRef.current - repeatCountRef.current * spd,
+    );
+
+    // Determine resume verse (0-based index into verses[])
+    let resumeVerseIdx = 0;
+    if (timeInCurrentLoop > 2 && vCount > 1) {
+      const secPerVerse = spd / vCount;
+      resumeVerseIdx = Math.min(
+        vCount - 1,
+        Math.floor(timeInCurrentLoop / secPerVerse),
+      );
+    }
+
+    // Build text from resume verse onward.
+    // Include a brief "verse N" intro only when we're mid-passage.
+    let resumeText: string;
+    if (resumeVerseIdx === 0) {
+      // Near the beginning — play from the top with the announcement.
+      resumeText = fullRaw;
+    } else {
+      // Mid-passage — introduce the starting verse, then read from there.
+      const startV = verses[resumeVerseIdx].verseNumber;
+      const remainingText = verses
+        .slice(resumeVerseIdx)
+        .map(v => v.text)
+        .join(' ');
+      resumeText = `${bookName}, chapter ${chapter}, verse ${startV}. ${remainingText}`;
+    }
+
+    const prepared = bibleTTS.prepareText(resumeText);
+
+    currentPlayOffsetBaseRef.current = 0;
+    lastKnownCharOffsetRef.current = 0;
+
+    const doResume = async () => {
+      setAudioStarting(true);
+      try {
+        await bibleTTS.init();
+        bibleTTS.setEdgeEnabled(await ttsService.isEnabled());
+        await bibleTTS.stop();
+        await bibleTTS.speak(prepared, 0, 0, undefined, true);
+        if (playLoopActiveRef.current) scheduleNextPlay();
+      } catch (error: any) {
+        showToast('error', error?.message || 'Audio could not start');
+      } finally {
+        setAudioStarting(false);
+      }
+    };
+
+    playLoopActiveRef.current = true;
+    timerPendingRef.current = true;
+    setTimerRunning(true);
+    setTimerPaused(false);
+    doResume();
+  }, [
+    isTtsPlaying,
+    passageVerses,
+    bookName,
+    chapter,
+    scheduleNextPlay,
+  ]);
 
   const handleResetListenTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
+    playLoopActiveRef.current = false;
+    setRepeatCount(0);
     setTimerRunning(false);
     setTimerPaused(false);
     setTimerElapsed(0);
+    savedCharPositionRef.current = 0;
+    durationManuallySetRef.current = false;
     bibleTTS.stop().catch(() => {});
   }, []);
 
@@ -829,14 +1038,14 @@ export default function LabFlowScreen() {
         if (data.isPublic !== undefined) setIsPublic(data.isPublic);
         if (data.journalEntryId) setJournalEntryId(data.journalEntryId);
         // Restore listen stage progress
-        if (data.listenDuration) setSelectedDuration(Number(data.listenDuration));
+        if (data.listenDuration && !durationManuallySetRef.current) {
+          setSelectedDuration(Number(data.listenDuration));
+        }
         if (data.listenCompleted) {
           setTimerComplete(true);
-          setTimerElapsed(Number(data.listenDuration) || selectedDuration);
+          setTimerElapsed(Number(data.listenDuration) || 180);
         } else if (data.listenElapsed != null && Number(data.listenElapsed) > 0) {
-          // Mid-timer — restore elapsed seconds and resume the countdown
           setTimerElapsed(Number(data.listenElapsed));
-          setTimerRunning(true);
         }
         // Restore book/chapter if the current stage is beyond passage selection
         if (data.bookName && !bookName) setBookName(data.bookName);
@@ -852,7 +1061,6 @@ export default function LabFlowScreen() {
   }, [
     bookName,
     chapter,
-    selectedDuration,
     sessionId,
     verseEnd,
     verseStart,
@@ -863,11 +1071,21 @@ export default function LabFlowScreen() {
     loadSession();
   }, [loadSession]);
 
-  // Reload session data when screen regains focus (e.g. after JournalEntry saves)
+  // Stop audio + timer when navigating away from the Lab screen (tab switch, back, etc.).
+  // On re-focus, reload session and show the initial Listen view so the user explicitly
+  // taps Play or Resume instead of the timer counting automatically.
   useFocusEffect(
     useCallback(() => {
-      // Reload session to pick up journalEntryId set by JournalEntry
       loadSession();
+      return () => {
+        savedCharPositionRef.current =
+          currentPlayOffsetBaseRef.current + lastKnownCharOffsetRef.current;
+        bibleTTS.stop().catch(() => {});
+        setTimerRunning(false);
+        setTimerPaused(false);
+        playLoopActiveRef.current = false;
+        if (timerRef.current) clearInterval(timerRef.current);
+      };
     }, [loadSession]),
   );
 
@@ -1072,11 +1290,13 @@ export default function LabFlowScreen() {
       passageRef={passageRef}
       passageVersesCount={passageVerses.length}
       selectedDuration={selectedDuration}
-      setSelectedDuration={setSelectedDuration}
+      setSelectedDuration={handleSetSelectedDuration}
       timerRunning={timerRunning}
       timerPaused={timerPaused}
       timerElapsed={timerElapsed}
       timerComplete={timerComplete}
+      repeatCount={repeatCount}
+      hasSavedProgress={timerElapsed > 0}
       animatedValue={animatedValue}
       audioStarting={audioStarting}
       isTtsPlaying={isTtsPlaying}
@@ -1088,6 +1308,7 @@ export default function LabFlowScreen() {
       screenWidth={SCREEN_WIDTH}
       renderChangePassageActions={renderChangePassageActions}
       onBeginTimer={handleBeginListenTimer}
+      onResumeTimer={handleResumeListenTimer}
       onToggleTimer={handleToggleListenTimer}
       onResetTimer={handleResetListenTimer}
       onReplayPassageAudio={handleReplayPassageAudio}
@@ -1261,7 +1482,11 @@ export default function LabFlowScreen() {
     setPassageVerses([]);
     setTimerComplete(false);
     setTimerElapsed(0);
+    setRepeatCount(0);
     setCompleted(false);
+    savedCharPositionRef.current = 0;
+    singlePassageDurationRef.current = 0;
+    durationManuallySetRef.current = false;
   }, [
     setStage, setSubStage, setSessionId, setBookName, setChapter,
     setVerseStart, setVerseEnd, setLookNotes, setLearnNotes,

@@ -26,6 +26,9 @@ import {
   FileText,
   StickyNote,
   ChevronDown,
+  Clock,
+  Trash2,
+  TrendingUp,
 } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
@@ -40,9 +43,12 @@ import {
   JournalSearchResult,
   TopicResult,
   LemmaResult,
+  CrossTranslationResult,
+  PopularSearchItem,
   SearchScope,
 } from '../../services/searchApi';
 import ActionHeader from '../../reusable/ActionHeader';
+import { useSubscription } from '../../hooks/useSubscription';
 
 const SUGGESTIONS: Record<SearchScope, string[]> = {
   bible: ['love', 'faith', 'hope', 'peace', 'joy', 'grace', 'mercy', 'truth'],
@@ -184,6 +190,7 @@ export default function SearchScreen() {
   const COLORS = getColors(isDark);
   const styles = useMemo(() => createSearchStyles(COLORS), [COLORS]);
   const { translations: translation } = useLanguage();
+  const { hasAccess } = useSubscription();
   const inputRef = useRef<TextInput>(null);
 
   const {
@@ -194,6 +201,8 @@ export default function SearchScreen() {
     switchScope,
     bookName,
     setBookFilter,
+    translations,
+    setTranslations,
     results,
     loading,
     total,
@@ -203,6 +212,11 @@ export default function SearchScreen() {
     searchedOnce,
     relatedWords,
     loadRelatedWords,
+    searchHistory,
+    clearHistory,
+    removeHistoryItem,
+    popularSearches,
+    CROSS_TRANSLATION_OPTIONS,
   } = useSearch();
 
   const hasQuery = query.trim().length >= 3;
@@ -274,14 +288,20 @@ export default function SearchScreen() {
 
   const handleStudy = useCallback(
     (item: SearchResult) => {
+      if (!hasAccess('legacy_sower')) {
+        navigation.navigate(route.sower);
+        return;
+      }
       Keyboard.dismiss();
-      navigation.navigate(route.verseResources, {
+      navigation.navigate(route.labFlow, {
         bookName: item.book_name,
         chapter: item.chapter,
-        verse: item.verse,
+        verseStart: item.verse,
+        verseEnd: item.verse,
+        stage: 'look',
       });
     },
-    [navigation],
+    [navigation, hasAccess],
   );
 
   const handleSave = useCallback(
@@ -317,6 +337,25 @@ export default function SearchScreen() {
     [setQuery, scope],
   );
 
+  const handlePopularTap = useCallback(
+    (item: PopularSearchItem) => {
+      setSearchContext(null);
+      searchImmediate(item.query, item.scope);
+      if (item.scope !== scope) {
+        switchScope(item.scope);
+      }
+    },
+    [searchImmediate, scope, switchScope],
+  );
+
+  const handleHistoryTap = useCallback(
+    (item: string) => {
+      setSearchContext(null);
+      searchImmediate(item, scope);
+    },
+    [searchImmediate, scope],
+  );
+
   const handleRelatedWords = useCallback(
     (strongsId: string) => {
       loadRelatedWords(strongsId);
@@ -325,14 +364,23 @@ export default function SearchScreen() {
   );
 
   const renderBibleResult = useCallback(
-    ({ item }: { item: SearchResult }) => {
-      const parts = item.headline ? splitHeadline(item.headline) : null;
+    ({ item }: { item: SearchResult | CrossTranslationResult }) => {
+      const parts = (item as any).headline ? splitHeadline((item as any).headline) : null;
+      const isCrossResult = 'translationAbbr' in item;
+      const crossItem = item as CrossTranslationResult;
       return (
         <TouchableOpacity
           style={styles.resultItem}
-          onPress={() => handleSelect(item)}
+          onPress={() => handleSelect(item as SearchResult)}
           activeOpacity={0.7}
         >
+          {isCrossResult && (
+            <View style={[styles.translationBadge, { backgroundColor: COLORS.primary + '20' }]}>
+              <Text style={[styles.translationBadgeText, { color: COLORS.primary }]}>
+                {crossItem.translationAbbr}
+              </Text>
+            </View>
+          )}
           <Text style={styles.resultRef}>
             {item.book_name} {item.chapter}:{item.verse}
           </Text>
@@ -525,15 +573,24 @@ export default function SearchScreen() {
     );
   }, [loading, results.length, COLORS.primary, styles, translation]);
 
+  const isScopeGated = useCallback(
+    (s: SearchScope) => s !== 'bible' && !hasAccess('legacy_sower'),
+    [hasAccess],
+  );
+
   const handleScopeSwitch = useCallback(
     (s: SearchScope) => {
+      if (s !== 'bible' && !hasAccess('legacy_sower')) {
+        navigation.navigate(route.sower);
+        return;
+      }
       setSearchContext(null);
       switchScope(s);
       setShowBookPicker(false);
       setCovenant('all');
       inputRef.current?.focus();
     },
-    [switchScope],
+    [switchScope, hasAccess, navigation],
   );
 
   const handleInputChange = useCallback(
@@ -659,6 +716,77 @@ export default function SearchScreen() {
 
         {scope === 'bible' && (
           <>
+            {/* ── Translation picker ── */}
+            <View style={styles.translationRow}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ flexDirection: 'row', gap: 5, paddingHorizontal: SPACING.md }}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.translationChip,
+                    translations.length === CROSS_TRANSLATION_OPTIONS.length
+                      ? styles.translationChipActive
+                      : styles.translationChipInactive,
+                  ]}
+                  onPress={() => {
+                    if (translations.length === CROSS_TRANSLATION_OPTIONS.length) {
+                      setTranslations([]);
+                    } else {
+                      setTranslations(CROSS_TRANSLATION_OPTIONS.map(t => t.id));
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.translationChipText,
+                      translations.length === CROSS_TRANSLATION_OPTIONS.length
+                        ? { color: '#FFFFFF' }
+                        : { color: COLORS.text },
+                    ]}
+                  >
+                    All ({CROSS_TRANSLATION_OPTIONS.length})
+                  </Text>
+                </TouchableOpacity>
+                {CROSS_TRANSLATION_OPTIONS.map(t => {
+                  const selected = translations.includes(t.id);
+                  return (
+                    <TouchableOpacity
+                      key={t.id}
+                      style={[
+                        styles.translationChip,
+                        selected ? styles.translationChipActive : styles.translationChipInactive,
+                      ]}
+                      onPress={() => {
+                        if (selected) {
+                          setTranslations(translations.filter(x => x !== t.id));
+                        } else {
+                          setTranslations([...translations, t.id]);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.translationChipText,
+                          selected ? { color: '#FFFFFF' } : { color: COLORS.text },
+                        ]}
+                      >
+                        {t.abbr}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+            {translations.length >= 2 && (
+              <Text style={[styles.crossModeHint, { color: COLORS.muted }]}>
+                Searching {translations.length} translations
+              </Text>
+            )}
+
             <View style={styles.bookFilterRow}>
               {(['all', 'ot', 'nt'] as const).map(c => (
                 <TouchableOpacity
@@ -825,45 +953,119 @@ export default function SearchScreen() {
                 <Text style={styles.emptySubtitle}>{error}</Text>
               </View>
             ) : !hasQuery ? (
-              <View style={styles.center}>
-                <FileText
-                  size={48}
-                  color={COLORS.muted}
-                  style={styles.emptyIcon}
-                />
-                <Text style={styles.emptyTitle}>
-                  {scope === 'bible'
-                    ? translation?.search?.title || 'Search the Bible'
-                    : scope === 'strongs'
-                      ? "Search Strong's Concordance"
-                      : scope === 'journal'
-                        ? 'Search Your Journal'
-                        : scope === 'topics'
-                          ? 'Explore Bible topics and themes'
-                          : 'Search Greek/Hebrew Lemmas'}
-                </Text>
-                <Text style={styles.emptySubtitle}>
-                  {scope === 'bible'
-                    ? translation?.search?.subtitle ||
-                      'Find verses across all books and chapters'
-                    : scope === 'strongs'
-                      ? 'Find Greek & Hebrew word studies'
-                      : scope === 'journal'
-                        ? 'Find reflections, prayers, and notes'
-                        : scope === 'topics'
-                          ? 'Explore Bible topics and themes'
-                          : 'Search by Greek/Hebrew root word'}
-                </Text>
-                <View style={styles.suggestionsRow}>
-                  {SUGGESTIONS[scope].map(s => (
-                    <TouchableOpacity
-                      key={s}
-                      style={styles.chip}
-                      onPress={() => handleSuggestion(s)}
-                    >
-                      <Text style={styles.chipText}>{s}</Text>
-                    </TouchableOpacity>
-                  ))}
+              <View style={{ flex: 1 }}>
+                {/* ── Search History ── */}
+                {searchHistory.length > 0 && (
+                  <View>
+                    <View style={styles.historyHeader}>
+                      <Text style={styles.historyHeaderLabel}>
+                        {translation?.search?.recent || 'Recent Searches'}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.historyClearBtn}
+                        onPress={clearHistory}
+                      >
+                        <Trash2 size={14} color={COLORS.muted} />
+                        <Text style={styles.historyClearText}>
+                          {translation?.search?.clear || 'Clear'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    {searchHistory.map(item => (
+                      <TouchableOpacity
+                        key={item}
+                        style={styles.historyItem}
+                        onPress={() => handleHistoryTap(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Clock size={14} color={COLORS.muted} />
+                        <Text style={styles.historyItemText} numberOfLines={1}>
+                          {item}
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.historyRemoveBtn}
+                          onPress={() => removeHistoryItem(item)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <X size={12} color={COLORS.muted} />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))}
+                    <View style={styles.historyDivider} />
+                  </View>
+                )}
+
+                {/* ── Popular Suggestions ── */}
+                {popularSearches.filter(p => p.scope === scope).length > 0 && (
+                  <View>
+                    <View style={styles.popularHeader}>
+                      <TrendingUp size={13} color={COLORS.muted} />
+                      <Text style={styles.popularHeaderLabel}>
+                        {translation?.search?.popular || 'Popular'}
+                      </Text>
+                    </View>
+                    <View style={styles.suggestionsRow}>
+                      {popularSearches
+                        .filter(p => p.scope === scope)
+                        .slice(0, 8)
+                        .map(p => (
+                          <TouchableOpacity
+                            key={p.query}
+                            style={styles.popularChip}
+                            onPress={() => handlePopularTap(p)}
+                            activeOpacity={0.7}
+                          >
+                            <TrendingUp size={11} color={COLORS.primary} />
+                            <Text style={styles.popularChipText}>
+                              {p.query}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* ── Suggestions (fallback when no popular data) ── */}
+                <View style={styles.center}>
+                  <FileText
+                    size={48}
+                    color={COLORS.muted}
+                    style={styles.emptyIcon}
+                  />
+                  <Text style={styles.emptyTitle}>
+                    {scope === 'bible'
+                      ? translation?.search?.title || 'Search the Bible'
+                      : scope === 'strongs'
+                        ? "Search Strong's Concordance"
+                        : scope === 'journal'
+                          ? 'Search Your Journal'
+                          : scope === 'topics'
+                            ? 'Explore Bible topics and themes'
+                            : 'Search Greek/Hebrew Lemmas'}
+                  </Text>
+                  <Text style={styles.emptySubtitle}>
+                    {scope === 'bible'
+                      ? translation?.search?.subtitle ||
+                        'Find verses across all books and chapters'
+                      : scope === 'strongs'
+                        ? 'Find Greek & Hebrew word studies'
+                        : scope === 'journal'
+                          ? 'Find reflections, prayers, and notes'
+                          : scope === 'topics'
+                            ? 'Explore Bible topics and themes'
+                            : 'Search by Greek/Hebrew root word'}
+                  </Text>
+                  <View style={styles.suggestionsRow}>
+                    {SUGGESTIONS[scope].map(s => (
+                      <TouchableOpacity
+                        key={s}
+                        style={styles.chip}
+                        onPress={() => handleSuggestion(s)}
+                      >
+                        <Text style={styles.chipText}>{s}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </View>
             ) : null

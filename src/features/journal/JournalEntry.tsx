@@ -235,12 +235,12 @@ const JournalEntryScreen = () => {
         }
       } else {
         showToast(
-          'error',
+          'warning',
           res.returnMessage || jc?.failedToSave || 'Failed to save',
         );
       }
-    } catch {
-      showToast('error', jc?.failedToSave || 'Failed to save entry');
+    } catch (error: any) {
+      showToast('error', error?.message || jc?.failedToSave || 'Failed to save entry');
     } finally {
       setSaving(false);
     }

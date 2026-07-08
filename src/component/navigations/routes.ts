@@ -63,4 +63,6 @@ export const route = {
   trivia: 'Trivia',
   adminTriviaPerformance: 'AdminTriviaPerformance',
   adminTriviaUserDetail: 'AdminTriviaUserDetail',
+  sower: 'Sower',
+  adminSubscriptions: 'AdminSubscriptions',
 };

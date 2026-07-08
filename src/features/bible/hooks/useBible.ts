@@ -424,11 +424,14 @@ export const useBible = () => {
 
   // ─── Selection ──────────────────────────────────────────────────────────────
   const toggleVerseSelection = useCallback((verseNumber: number) => {
-    setSelectedVerses(prev =>
-      prev.includes(verseNumber)
-        ? prev.filter(v => v !== verseNumber)
-        : [...prev, verseNumber].sort((a, b) => a - b),
-    );
+    setSelectedVerses(prev => {
+      if (prev.includes(verseNumber)) {
+        // Deselect the verse
+        return prev.filter(v => v !== verseNumber);
+      }
+      // Selecting a new verse should replace any existing selection
+      return [verseNumber];
+    });
   }, []);
 
   const setVerseRangeSelection = useCallback((start: number, end: number) => {
@@ -532,6 +535,8 @@ export const useBible = () => {
         body.verseNumbers = versesArr;
 
         await sendPostRequest('bible', 'add-highlight', body);
+        pendingVersesRef.current = [];
+        setSelectedVerses([]);
 
         const newHighlights = { ...highlights };
         versesArr.forEach(v => {
@@ -728,6 +733,8 @@ export const useBible = () => {
   const closeNoteModal = useCallback(() => {
     setShowNoteModal(false);
     setNoteText('');
+    pendingVersesRef.current = [];
+    setSelectedVerses([]);
   }, []);
 
   const saveNote = useCallback(
@@ -758,6 +765,8 @@ export const useBible = () => {
         body.verseNumbers = versesArr;
 
         await sendPostRequest('bible', 'add-verse-note', body);
+        pendingVersesRef.current = [];
+        setSelectedVerses([]);
         showToast('success', 'Note saved');
         closeNoteModal();
       } catch (err:any) {

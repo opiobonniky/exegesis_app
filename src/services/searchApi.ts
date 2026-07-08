@@ -58,6 +58,32 @@ export interface LemmaResult {
   usageCount: number | null;
 }
 
+export interface CrossTranslationResult {
+  translation: string;
+  translationAbbr: string;
+  book_number: number;
+  book_name: string;
+  chapter: number;
+  verse: number;
+  verse_text: string;
+  rank: number;
+}
+
+export interface CrossTranslationResponse {
+  success: boolean;
+  query: string;
+  total: number;
+  page: number;
+  limit: number;
+  data: CrossTranslationResult[];
+}
+
+export interface PopularSearchItem {
+  query: string;
+  scope: SearchScope;
+  count: number;
+}
+
 export type SearchScope = 'bible' | 'strongs' | 'journal' | 'topics' | 'lemma';
 
 export const searchApi = {
@@ -177,6 +203,69 @@ export const searchApi = {
       return { data: [], total: 0 };
     } catch {
       return { data: [], total: 0 };
+    }
+  },
+
+  searchCross: async (
+    query: string,
+    options?: {
+      translations?: string[];
+      bookName?: string;
+      limit?: number;
+      offset?: number;
+    },
+  ): Promise<CrossTranslationResponse> => {
+    const response = await api.post('/translations/search-cross', {
+      query,
+      translations: options?.translations,
+      bookName: options?.bookName,
+      limit: options?.limit ?? 50,
+      offset: options?.offset ?? 0,
+    });
+    return response.data as CrossTranslationResponse;
+  },
+
+  /**
+   * Log a search query to the backend for popularity tracking.
+   * Silently fails — never blocks the user's search.
+   */
+  logSearch: async (
+    query: string,
+    scope: SearchScope = 'bible',
+  ): Promise<void> => {
+    try {
+      await api.post('/popular-searches/log', { query, scope });
+    } catch {
+      // Silently fail
+    }
+  },
+
+  /**
+   * Fetch popular search suggestions from the backend.
+   * Returns top searches within the given scope and time window.
+   */
+  getPopularSearches: async (
+    options?: {
+      scope?: SearchScope;
+      limit?: number;
+      days?: number;
+    },
+  ): Promise<PopularSearchItem[]> => {
+    try {
+      const response = await api.get('/popular-searches', {
+        params: {
+          scope: options?.scope,
+          limit: options?.limit ?? 12,
+          days: options?.days ?? 7,
+        },
+      });
+      const body = response.data as any;
+      if (body?.returnCode === 200 && body?.returnData) {
+        return body.returnData;
+      }
+      return [];
+    } catch {
+      return [];
     }
   },
 

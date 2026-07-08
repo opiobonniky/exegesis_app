@@ -331,6 +331,12 @@ const Drawer: React.FC<{
       routeKey: 'adminActivity',
     },
     {
+      id: 'adminSubscriptions',
+      label: 'Subscriptions',
+      icon: ShieldCheck,
+      routeKey: 'adminSubscriptions',
+    },
+    {
       id: 'adminSettings',
       label: ac?.systemSettings || 'Settings',
       icon: Settings,

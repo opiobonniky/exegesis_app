@@ -37,7 +37,7 @@ const STORAGE_KEYS_EDGE = {
   edgeEnabled: 'tts_edge_enabled',
 };
 
-const DEFAULT_EDGE_VOICE_ID = 'en-US-EmmaNeural';
+const DEFAULT_EDGE_VOICE_ID = 'en-US-AriaNeural';
 
 const PREFERRED_VOICES: string[] =
   Platform.select({

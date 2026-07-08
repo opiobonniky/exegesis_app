@@ -58,7 +58,6 @@ export default function useLogin() {
           roleName: returnData.roleName,
         };
 
-        console.log('Google Login Success:', JSON.stringify(info));
 
         const dashboardRoute =
           info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
@@ -66,6 +65,7 @@ export default function useLogin() {
         await setUserInfo(info);
         navigation.navigate(dashboardRoute);
       } else if (returnCode === 201 && returnData?.needsRegistration) {
+
         navigation.navigate(route.googleRegister, {
           googleId: returnData.googleId,
           email: returnData.email,

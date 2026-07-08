@@ -18,11 +18,13 @@ import {
   BookText,
   Lightbulb,
   Beaker,
+  Lock,
 } from 'lucide-react-native';
 import { getColors } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { useLanguage, isRtlLanguage } from '../language-translation/LanguageProvider';
+import { useSubscription } from '../../hooks/useSubscription';
 import { route } from './routes';
 
 interface BottomTabProps {
@@ -205,6 +207,7 @@ export default function BottomTab({
   const navigation = useNavigation<any>();
   const { translations, language } = useLanguage();
   const isRtl = isRtlLanguage(language);
+  const { hasAccess } = useSubscription();
 
   const navigationState = useNavigationState(s => s);
   const currentRouteName = navigationState?.routes[navigationState.index]?.name;
@@ -243,8 +246,8 @@ export default function BottomTab({
     : [
         { id: 'home',   label: translations?.bottomTab?.home   || 'Home',   icon: Home,     onPress: () => navigation.navigate(route.home) },
         { id: 'bible',  label: translations?.bottomTab?.bible  || 'Bible',  icon: BookOpen, onPress: () => navigation.navigate(route.bible) },
-        { id: 'lab',    label: translations?.bottomTab?.lab    || 'Lab',    icon: Beaker,   onPress: () => navigation.navigate(route.lab) },
-        { id: 'ledger', label: translations?.bottomTab?.ledger || 'Ledger', icon: BookText, onPress: () => navigation.navigate(route.legacyLedger) },
+        { id: 'lab',    label: translations?.bottomTab?.lab    || 'Lab',    icon: hasAccess('legacy_sower') ? Beaker : Lock, onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.lab) : navigation.navigate(route.sower) },
+        { id: 'ledger', label: translations?.bottomTab?.ledger || 'Ledger', icon: hasAccess('legacy_sower') ? BookText : Lock, onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.legacyLedger) : navigation.navigate(route.sower) },
       ];
 
   const activeIndex = Math.max(0, tabs.findIndex(t => t.id === activeTab));

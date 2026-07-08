@@ -18,8 +18,9 @@ import { getColors, SPACING } from '../../constants/theme';
 import logo from '../../assets/logos/exegesis_bg_rm.png';
 import {
   BookOpen,
-  Search,
-  SquareCheckBig,
+  Hash,
+  Beaker,
+  BookText,
 } from 'lucide-react-native';
 import { PrimaryButton } from '../../reusable/PrimaryButton';
 import { useLanguage } from '../../component/language-translation/LanguageProvider';
@@ -61,51 +62,69 @@ const Welcome = () => {
     () => [
       {
         id: 1,
-        title: ' ',
-        highlight: t?.onboarding?.slide1Highlight || 'Search The Scriptures',
-        text: t?.onboarding?.slide1Text || 'Exegesis is the process of carefully studying Scripture to discover the original meaning in its historical and literary context.',
+        title: '',
+        highlight: t?.onboarding?.slide1Highlight || 'The Word',
+        text: t?.onboarding?.slide1Text || 'Read the Bible in a clean, distraction-free space.',
         gradientColors: isDark
           ? ['#0F172A', '#1E293B']
           : ['#F8FAFC', '#E2E8F0'],
         icon: <BookOpen size={64} color={COLORS.accent} strokeWidth={1.5} />,
         features: [
-          t?.onboarding?.slide1Feature1 || 'Bibical Deep Dives',
-          t?.onboarding?.slide1Feature2 || 'Verse-by-Verse teachings',
-          t?.onboarding?.slide1Feature3 || 'Personalized Journaling',
+          t?.onboarding?.slide1Feature1 || '8 Bible Translations',
+          t?.onboarding?.slide1Feature2 || 'Verse Highlights',
+          t?.onboarding?.slide1Feature3 || 'Audio Narration',
         ],
         accent: COLORS.accent,
       },
       {
         id: 2,
-        title: 'Compare &',
-        highlight: t?.onboarding?.slide2Highlight || 'Interpret',
-        text: t?.onboarding?.slide2Text || 'Analyze multiple translations side-by-side to uncover the original meaning of scripture.',
+        title: '',
+        highlight: t?.onboarding?.slide2Highlight || 'The Tools',
+        text: t?.onboarding?.slide2Text || 'Tap verses and words to discover context, Strong\'s definitions, and study helps.',
         gradientColors: isDark
           ? ['#1E1B4B', '#312E81']
           : ['#EEF2FF', '#E0E7FF'],
-        icon: <Search size={64} color={COLORS.accent} strokeWidth={1.5} />,
+        icon: <Hash size={64} color={COLORS.accent} strokeWidth={1.5} />,
         features: [
-          t?.onboarding?.slide2Feature1 || 'Multi-Version View',
-          t?.onboarding?.slide2Feature2 || 'Context Analysis',
+          t?.onboarding?.slide2Feature1 || 'Strong\'s Concordance',
+          t?.onboarding?.slide2Feature2 || 'Verse Side Menu',
           t?.onboarding?.slide2Feature3 || 'Cross References',
         ],
         accent: COLORS.accent,
       },
       {
         id: 3,
-        title: 'Engage &',
-        highlight: t?.onboarding?.slide3Highlight || 'Reflect',
-        text: t?.onboarding?.slide3Text || 'Save your study notes and share meaningful interpretations with your community.',
+        title: '',
+        highlight: t?.onboarding?.slide3Highlight || 'The Lab',
+        text: t?.onboarding?.slide3Text || 'Learn to study through Look, Listen, Learn, and Abide.',
         gradientColors: isDark
           ? ['#134E4A', '#115E59']
           : ['#F0FDFA', '#CCFBF1'],
         icon: (
-          <SquareCheckBig size={64} color={COLORS.accent} strokeWidth={1.5} />
+          <Beaker size={64} color={COLORS.accent} strokeWidth={1.5} />
         ),
         features: [
-          t?.onboarding?.slide3Feature1 || 'Personal Notes',
-          t?.onboarding?.slide3Feature2 || 'Verse Sharing',
-          t?.onboarding?.slide3Feature3 || 'Progress Tracking',
+          t?.onboarding?.slide3Feature1 || 'Guided Observation',
+          t?.onboarding?.slide3Feature2 || 'Dwell Timer',
+          t?.onboarding?.slide3Feature3 || 'Study Tabs',
+        ],
+        accent: COLORS.accent,
+      },
+      {
+        id: 4,
+        title: '',
+        highlight: t?.onboarding?.slide4Highlight || 'The Legacy Ledger',
+        text: t?.onboarding?.slide4Text || 'Save your reflections, prayers, and studies into your private journal.',
+        gradientColors: isDark
+          ? ['#3B0764', '#581C87']
+          : ['#FAF5FF', '#F3E8FF'],
+        icon: (
+          <BookText size={64} color={COLORS.accent} strokeWidth={1.5} />
+        ),
+        features: [
+          t?.onboarding?.slide4Feature1 || 'Private Journal',
+          t?.onboarding?.slide4Feature2 || 'Bulk Export',
+          t?.onboarding?.slide4Feature3 || 'Community Discover',
         ],
         accent: COLORS.accent,
       },
@@ -217,11 +236,6 @@ const Welcome = () => {
                   },
                 ]}
               >
-                <SquareCheckBig
-                  size={16}
-                  color={COLORS.accent}
-                  strokeWidth={2.5}
-                />
                 <Text style={[styles.featureText, { color: COLORS.accent }]}>
                   {feature}
                 </Text>
@@ -289,9 +303,12 @@ const Welcome = () => {
 
       <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
         <Image source={logo} style={styles.headerLogo} />
-        <TouchableOpacity style={styles.skipBtn} onPress={handleGetStarted}>
-          <Text style={[styles.skipText, { color: COLORS.muted }]}>{t?.onboarding?.skip || 'Skip'}</Text>
-        </TouchableOpacity>
+        {/* Skip button only visible after first slide */}
+        {currentIndex > 0 && (
+          <TouchableOpacity style={styles.skipBtn} onPress={handleGetStarted}>
+            <Text style={[styles.skipText, { color: COLORS.muted }]}>{t?.onboarding?.skip || 'Skip'}</Text>
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       <Animated.ScrollView
@@ -360,13 +377,26 @@ const Welcome = () => {
         
 
           <PrimaryButton title={currentIndex === slides.length - 1
-                  ? t?.onboarding?.getStarted || 'Get Started'
-                  : t?.onboarding?.continueLabel || 'Continue'} style={[styles.cta, {backgroundColor:currentIndex !== 1 ?COLORS.accent:COLORS.primary}]}
+                  ? t?.onboarding?.createAccount || 'Create Account'
+                  : t?.onboarding?.continueLabel || 'Continue'} style={[styles.cta, {backgroundColor: currentIndex % 2 === 0 ? COLORS.accent : COLORS.primary}]}
             onPress={
               currentIndex === slides.length - 1
                 ? handleGetStarted
                 : handleContinue
             }/>
+
+          {/* "I already have an account" link — only on the first slide */}
+          {currentIndex === 0 && (
+            <TouchableOpacity
+              style={styles.loginLink}
+              onPress={handleGetStarted}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.loginLinkText, { color: COLORS.muted }]}>
+                {t?.onboarding?.alreadyHaveAccount || 'I already have an account'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       </View>
     </View>
@@ -506,7 +536,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 15,
     elevation: 10,
-    
+  },
+  loginLink: {
+    alignSelf: 'center',
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  loginLinkText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+    letterSpacing: 0.3,
   },
   ctaGradient: {
     flexDirection: 'row',
