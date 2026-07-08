@@ -32,6 +32,8 @@ import {
 } from '../../services/api';
 import { showToast } from '../../helpers/Toash.helper';
 import { useSessionSync } from '../../hooks/useSessionSync';
+import { useJournalDraft } from '../../hooks/useJournalDraft';
+import { useConnectivity } from '../../providers/ConnectivityProvider';
 import {
   Save,
   ChevronLeft,
@@ -107,6 +109,37 @@ const JournalEntryScreen = () => {
   const [isPublished, setIsPublished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { isOnline } = useConnectivity();
+
+  // Memoized form state for draft auto-save
+  const formState = React.useMemo(
+    () => ({
+      title,
+      content,
+      category,
+      mood,
+      prayers,
+      gratitude,
+      learnings,
+      application,
+      bookName,
+      chapter,
+      verseNumber,
+      tags,
+      isPublished,
+    }),
+    [
+      title, content, category, mood, prayers, gratitude,
+      learnings, application, bookName, chapter, verseNumber,
+      tags, isPublished,
+    ],
+  );
+
+  const { hasDraft, restoreDraft, clearDraft } = useJournalDraft(
+    `entry_${entryId || 'new'}`,
+    formState,
+    isEditMode,
+  );
 
   const loadEntry = useCallback(async () => {
     try {
@@ -174,8 +207,28 @@ const JournalEntryScreen = () => {
         // Auto-title from passage reference
         setTitle(`Exegesis: ${params.passageRef}`);
       }
+
+      // Restore unsaved draft (overrides prefill)
+      restoreDraft().then(draft => {
+        if (draft) {
+          setTitle(draft.title);
+          setContent(draft.content);
+          setCategory(draft.category);
+          setMood(draft.mood);
+          setPrayers(draft.prayers);
+          setGratitude(draft.gratitude);
+          setLearnings(draft.learnings);
+          setApplication(draft.application);
+          setBookName(draft.bookName);
+          setChapter(draft.chapter);
+          setVerseNumber(draft.verseNumber);
+          setTags(draft.tags);
+          setIsPublished(draft.isPublished);
+          showToast('info', 'Draft restored');
+        }
+      });
     }
-  }, [isEditMode, loadEntry, routeParams?.params]);
+  }, [isEditMode, loadEntry, routeParams?.params, restoreDraft]);
 
   const handleSave = async () => {
     if (!content.trim()) {
@@ -222,11 +275,25 @@ const JournalEntryScreen = () => {
             : jc?.entrySaved || 'Entry saved',
         );
 
+        await clearDraft();
+
         // Sync journal entry ID back to Lab session (if applicable)
         if (!isEditMode && res.returnData?.id) {
           await syncJournalEntry(res.returnData.id);
         }
 
+        const returnTo = routeParams?.params?.returnTo;
+        if (returnTo) {
+          navigation.navigate(returnTo);
+        } else {
+          navigation.goBack();
+        }
+      } else if (res.returnCode === 202) {
+        showToast(
+          'info',
+          'Saved offline — will sync when connected',
+        );
+        await clearDraft();
         const returnTo = routeParams?.params?.returnTo;
         if (returnTo) {
           navigation.navigate(returnTo);
@@ -323,6 +390,14 @@ const JournalEntryScreen = () => {
             <Save size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
+
+        {isOnline === false && (
+          <View style={[styles.offlineBanner, { backgroundColor: '#F59E0B', flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Text style={styles.offlineBannerText}>
+              You are offline — your entry will be saved locally and synced when connected
+            </Text>
+          </View>
+        )}
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Title */}
@@ -662,6 +737,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: SPACING.md,
     fontSize: FONT_SIZES.md,
+    textAlign: 'center',
+  },
+  offlineBanner: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offlineBannerText: {
+    color: '#FFFFFF',
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
     textAlign: 'center',
   },
 });

@@ -40,7 +40,6 @@ import {
 } from 'lucide-react-native';
 import { AppContext } from '../../common/AppContext';
 import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
-import { showToast } from '../../helpers/Toash.helper';
 import LanguagePickerModal, { FLAGS, NATIVE_NAMES } from '../../component/LanguagePickerModal';
 import {
   BORDER_RADIUS,
@@ -94,13 +93,29 @@ export default function ProfileScreen() {
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
   const userInfo = app?.userInfo ?? null;
-  const toggleTheme = app?.toggleTheme ?? (() => {});
+  const toggleTheme = useCallback(() => {
+    app?.toggleTheme?.();
+  }, [app]);
   const logout = app?.logout ?? (async () => {});
   const user = userInfo as any;
-  const { translations, setLanguage, language, t } = useLanguage();
+  const { translations, language, t } = useLanguage();
   const isRtl = isRtlLanguage(language);
 
   const subscriptionTier = app?.subscriptionTier || 'free';
+
+  const displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || 'Reader';
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part: string) => part[0]?.toUpperCase())
+    .join('') || 'R';
+  const accountLabel =
+    subscriptionTier === 'covenant_sower_monthly' || subscriptionTier === 'covenant_sower_yearly'
+      ? 'Covenant Sower'
+      : subscriptionTier === 'legacy_sower_monthly' || subscriptionTier === 'legacy_sower_yearly'
+        ? 'Legacy Sower'
+        : 'Free Reader';
   
 
   const handleManageSubscription = async () => {
@@ -215,6 +230,48 @@ export default function ProfileScreen() {
     [stats, COLORS.primary, translations, t],
   );
 
+  const quickActions = useMemo(
+    () => [
+      {
+        label: 'Daily Exegesis',
+        icon: Sun,
+        color: '#F59E0B',
+        onPress: () => navigation.navigate(route.dailyExegesis),
+      },
+      {
+        label: 'Journals',
+        icon: FileText,
+        color: '#8B5CF6',
+        onPress: () => navigation.navigate(route.journal),
+      },
+      {
+        label: 'Reading Plan',
+        icon: Calendar,
+        color: '#10B981',
+        onPress: () => navigation.navigate(route.readingPlan),
+      },
+      {
+        label: 'Bible Trivia',
+        icon: Star,
+        color: '#EC4899',
+        onPress: () => navigation.navigate(route.trivia),
+      },
+      {
+        label: 'Bible Study',
+        icon: BookOpen,
+        color: COLORS.primary,
+        onPress: () => navigation.navigate(route.lab),
+      },
+      {
+        label: 'Community Feed',
+        icon: Globe,
+        color: '#06B6D4',
+        onPress: () => navigation.navigate(route.legacyLedger),
+      },
+    ],
+    [COLORS.primary, navigation],
+  );
+
   const handleScroll = useCallback(
     (event: any) => {
       if (!isMounted.current) return;
@@ -322,7 +379,7 @@ export default function ProfileScreen() {
         ],
       },
     ],
-    [COLORS.primary, COLORS.accent, isDark, stats, translations, t, language],
+    [COLORS.primary, COLORS.accent, isDark, stats, translations, t, language, navigation, toggleTheme],
   );
 
   return (
@@ -339,7 +396,7 @@ export default function ProfileScreen() {
             title={
               t('profile.title') ||
               translations?.profile?.title ||
-              'Profile Informations'
+              'Profile Information'
             }
             onPress={() => navigation.goBack()}
           />
@@ -357,122 +414,88 @@ export default function ProfileScreen() {
                 { backgroundColor: COLORS.cardBackground },
               ]}
             >
-              <View style={styles.profileHeader}>
-                <View
-                  style={[
-                    styles.profileTitleRow,
-                    isRtl && styles.profileTitleRowRtl,
-                  ]}
-                >
-                  <View style={styles.profileNameSection}>
-                    <Text style={[styles.profileName, { color: COLORS.text }]}>
-                      {user?.firstName} {user?.lastName}
-                    </Text>
-                    {user?.username ? (
-                      <Text
-                        style={[
-                          styles.profileUsername,
-                          { color: COLORS.primary },
-                        ]}
-                      >
-                        @{user.username}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.editButton,
-                      { backgroundColor: COLORS.primary + '15' },
-                    ]}
-                    onPress={() => navigation.navigate(route.editProfile)}
-                  >
-                    <Edit size={16} color={COLORS.primary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View
-                style={[
-                  styles.profileDivider,
-                  { backgroundColor: COLORS.border },
-                ]}
-              />
-
-              <View style={styles.profileDetails}>
-                <View style={styles.detailRow}>
-                  <View
-                    style={[styles.detailLabel, isRtl && styles.detailLabelRtl]}
-                  >
-                    <Mail size={14} color={COLORS.muted} />
-                    <Text
-                      style={[styles.detailLabelText, { color: COLORS.muted }]}
-                    >
-                      {t('profile.fields.email') ||
-                        (translations.profile &&
-                          translations.profile.fields?.email) ||
-                        'Email'}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[styles.detailValue, { color: COLORS.text }]}
-                    numberOfLines={1}
-                  >
-                    {user?.email}
-                  </Text>
+              <View style={[styles.profileHeader, isRtl && styles.profileHeaderRtl]}>
+                <View style={[styles.profileAvatar, { backgroundColor: COLORS.primary }]}> 
+                  <Text style={styles.profileAvatarText}>{initials}</Text>
                 </View>
 
-                {user?.phoneNumber ? (
-                  <View style={styles.detailRow}>
-                    <View
-                      style={[
-                        styles.detailLabel,
-                        isRtl && styles.detailLabelRtl,
-                      ]}
-                    >
-                      <Phone size={14} color={COLORS.muted} />
-                      <Text
-                        style={[
-                          styles.detailLabelText,
-                          { color: COLORS.muted },
-                        ]}
-                      >
-                        {t('profile.fields.phone') ||
-                          (translations.profile &&
-                            translations.profile.fields?.phone) ||
-                          'Phone'}
+                <View style={styles.profileNameSection}>
+                  <View style={[styles.profileNameRow, isRtl && styles.profileNameRowRtl]}>
+                    <Text style={[styles.profileName, { color: COLORS.text }]} numberOfLines={1}>
+                      {displayName}
+                    </Text>
+                    <View style={[styles.accountPill, { backgroundColor: COLORS.primary + '14' }]}> 
+                      <Text style={[styles.accountPillText, { color: COLORS.primary }]}>
+                        {accountLabel}
                       </Text>
                     </View>
-                    <Text style={[styles.detailValue, { color: COLORS.text }]}>
-                      {user.phoneNumber}
-                    </Text>
                   </View>
-                ) : null}
 
-                <View style={styles.detailRow}>
-                  <View
-                    style={[styles.detailLabel, isRtl && styles.detailLabelRtl]}
-                  >
-                    <Calendar size={14} color={COLORS.muted} />
-                    <Text
-                      style={[styles.detailLabelText, { color: COLORS.muted }]}
-                    >
-                      {t('profile.fields.memberSince') ||
-                        (translations.profile &&
-                          translations.profile.fields?.memberSince) ||
-                        'Member since'}
+                  {user?.username ? (
+                    <Text style={[styles.profileUsername, { color: COLORS.muted }]} numberOfLines={1}>
+                      @{user.username}
                     </Text>
+                  ) : null}
+
+                  <View style={[styles.profileMetaRow, isRtl && styles.profileMetaRowRtl]}>
+                    <View style={[styles.profileMetaItem, isRtl && styles.profileMetaItemRtl]}>
+                      <Mail size={13} color={COLORS.muted} />
+                      <Text style={[styles.profileMetaText, { color: COLORS.muted }]} numberOfLines={1}>
+                        {user?.email || 'No email'}
+                      </Text>
+                    </View>
+                    {user?.phoneNumber ? (
+                      <View style={[styles.profileMetaItem, isRtl && styles.profileMetaItemRtl]}>
+                        <Phone size={13} color={COLORS.muted} />
+                        <Text style={[styles.profileMetaText, { color: COLORS.muted }]} numberOfLines={1}>
+                          {user.phoneNumber}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
-                  <Text style={[styles.detailValue, { color: COLORS.text }]}>
-                    {new Date(user?.createdAt || Date.now()).toLocaleDateString(
-                      'en-US',
-                      {
-                        month: 'long',
-                        year: 'numeric',
-                      },
-                    )}
-                  </Text>
                 </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.editButton,
+                    { backgroundColor: COLORS.primary + '15' },
+                  ]}
+                  onPress={() => navigation.navigate(route.editProfile)}
+                  activeOpacity={0.7}
+                >
+                  <Edit size={16} color={COLORS.primary} />
+                </TouchableOpacity>
               </View>
+            </View>
+
+            {/* ── QUICK ACTIONS ─────────────────────────────────────────────── */}
+            <View style={styles.quickActionsGrid}>
+              {quickActions.map(action => {
+                const Icon = action.icon;
+                return (
+                  <TouchableOpacity
+                    key={action.label}
+                    style={[
+                      styles.quickActionCard,
+                      { backgroundColor: COLORS.cardBackground },
+                    ]}
+                    onPress={action.onPress}
+                    activeOpacity={0.75}
+                  >
+                    <View
+                      style={[
+                        styles.quickActionIcon,
+                        { backgroundColor: action.color + '16' },
+                      ]}
+                    >
+                      <Icon size={18} color={action.color} />
+                    </View>
+                    <Text style={[styles.quickActionText, { color: COLORS.text }]} numberOfLines={2}>
+                      {action.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {/* ── SOWER STATUS ──────────────────────────────────────────────── */}
@@ -825,53 +848,103 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   content: {
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
     paddingTop: 0,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 56 : 32,
   },
 
   // ── Profile card ──
   profileCard: {
     borderRadius: BORDER_RADIUS.xl,
-    marginTop: SPACING.xl,
-    marginBottom: SPACING.xl,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.md,
+    padding: SPACING.lg,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   profileHeader: {
-    paddingTop: SPACING.lg,
-    paddingHorizontal: SPACING.lg,
-  },
-  profileTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: SPACING.md,
   },
-  profileTitleRowRtl: {
+  profileHeaderRtl: {
+    flexDirection: 'row-reverse',
+  },
+  profileNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  profileNameRowRtl: {
     flexDirection: 'row-reverse',
   },
   profileNameSection: {
     flex: 1,
+    minWidth: 0,
+  },
+  profileAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileAvatarText: {
+    color: '#FFFFFF',
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   editButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileName: {
     fontSize: FONT_SIZES.xl,
     fontWeight: '800',
+    flexShrink: 1,
   },
   profileUsername: {
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 3,
+  },
+  accountPill: {
+    borderRadius: BORDER_RADIUS.round,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+  },
+  accountPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  profileMetaRow: {
+    marginTop: SPACING.sm,
+    gap: 4,
+  },
+  profileMetaRowRtl: {
+    alignItems: 'flex-end',
+  },
+  profileMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  profileMetaItemRtl: {
+    flexDirection: 'row-reverse',
+  },
+  profileMetaText: {
+    flexShrink: 1,
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
   },
   profileDivider: {
     height: 1,
@@ -902,6 +975,38 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: FONT_SIZES.md,
     fontWeight: '500',
+  },
+
+  // Quick actions
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+    marginBottom: SPACING.lg,
+  },
+  quickActionCard: {
+    width: '31.8%',
+    minHeight: 88,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.sm,
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  quickActionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickActionText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '800',
+    lineHeight: 15,
   },
 
   // Stats
@@ -977,10 +1082,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingVertical: SPACING.lg,
+    paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.sm,
     borderRadius: BORDER_RADIUS.xl,
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -1039,7 +1144,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
   },
   menuLeft: {
     flexDirection: 'row',
@@ -1126,8 +1232,8 @@ const styles = StyleSheet.create({
   // ── Sower Status ──
   sowerCard: {
     borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -1166,20 +1272,5 @@ const styles = StyleSheet.create({
   manageButtonText: {
     fontSize: FONT_SIZES.sm,
     fontWeight: '700',
-  },
-});
-
-const floatingLang = StyleSheet.create({
-  langFloatingBtn: {
-    position: 'absolute',
-    top: 56,
-    right: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderRadius: 10,
-    zIndex: 100,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
 });

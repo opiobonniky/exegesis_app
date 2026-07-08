@@ -206,6 +206,29 @@ export default function VerseCard({
     }
   }, [activeWordOffset]);
 
+  // ── Favorite heart fade/spring animation ──────────────────────────────
+  const favAnim = useRef(new Animated.Value(isFavorite ? 1 : 0)).current;
+  const prevFavRef = useRef(isFavorite);
+
+  useEffect(() => {
+    if (isFavorite && !prevFavRef.current) {
+      favAnim.setValue(0);
+      Animated.spring(favAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 14,
+        bounciness: 10,
+      }).start();
+    } else if (!isFavorite && prevFavRef.current) {
+      Animated.timing(favAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+    prevFavRef.current = isFavorite;
+  }, [isFavorite, favAnim]);
+
   // ── Split verse text into word-level components ──────────────────────────
   const renderVerseWords = () => {
     const lineHeight = Math.round(fontSize * 1.75);
@@ -263,6 +286,30 @@ export default function VerseCard({
             );
           }
         });
+      }
+
+      if (isFavorite) {
+        elements.push(
+          <Animated.View
+            key="favorite"
+            style={[
+              localStyles.inlineFavorite,
+              {
+                opacity: favAnim,
+                transform: [
+                  {
+                    scale: favAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.5, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Heart size={14} color={colors.accent} fill={colors.accent} />
+          </Animated.View>,
+        );
       }
 
       return elements;
@@ -383,29 +430,6 @@ export default function VerseCard({
     }
     prevSelectedRef.current = isSelected;
   }, [isSelected, selectedAnim]);
-
-  // ── Favorite heart fade/spring animation ──────────────────────────────
-  const favAnim = useRef(new Animated.Value(isFavorite ? 1 : 0)).current;
-  const prevFavRef = useRef(isFavorite);
-
-  useEffect(() => {
-    if (isFavorite && !prevFavRef.current) {
-      favAnim.setValue(0);
-      Animated.spring(favAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 14,
-        bounciness: 10,
-      }).start();
-    } else if (!isFavorite && prevFavRef.current) {
-      Animated.timing(favAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
-    prevFavRef.current = isFavorite;
-  }, [isFavorite, favAnim]);
 
   // ── Double-tap detection ────────────────────────────────────────────
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -935,28 +959,6 @@ export default function VerseCard({
               </View>
             )}
           </View>
-          <View style={localStyles.rightColumn}>
-            {isFavorite && (
-              <Animated.View
-                style={[
-                  styles.verseRightIcons,
-                  {
-                    opacity: favAnim,
-                    transform: [
-                      {
-                        scale: favAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.5, 1],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <Heart size={20} color={colors.accent} fill={colors.accent} />
-              </Animated.View>
-            )}
-          </View>
         </View>
 
         {/* Remove highlight pill — bottom-left, tinted with the highlight colour */}
@@ -1113,9 +1115,10 @@ const localStyles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  rightColumn: {
-    alignItems: 'flex-end',
-    justifyContent: 'flex-start',
+  inlineFavorite: {
+    marginLeft: 2,
+    marginRight: 2,
+    alignSelf: 'center',
   },
   removeHighlightPill: {
     position: 'absolute',

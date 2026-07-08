@@ -14,6 +14,7 @@ import {
   StatusBar,
   Alert,
   Share,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { getColors } from '../../constants/theme';
@@ -30,6 +31,9 @@ import {
 } from '../../services/api';
 import { showToast } from '../../helpers/Toash.helper';
 import { exportOneJournalEntry } from '../../services/api';
+import ReactNativeBlobUtil from 'react-native-blob-util';
+import { cacheJournalEntry, getCachedJournalEntry } from '../../services/journalCache';
+import { useConnectivity } from '../../providers/ConnectivityProvider';
 
 // atob is available in Hermes (React Native 0.70+) via the global scope
 // We declare it here since the TS lib doesn't include it
@@ -73,6 +77,8 @@ const JournalDetail = () => {
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const { isOnline } = useConnectivity();
+
   useEffect(() => {
     loadEntry();
   }, [entryId]);
@@ -83,9 +89,16 @@ const JournalDetail = () => {
       const res = await getJournalEntry(entryId);
       if (res.returnCode === 200 && res.returnData) {
         setEntry(res.returnData);
+        cacheJournalEntry(res.returnData);
       }
     } catch (error) {
-      showToast('error', jc?.failedToLoadEntry || 'Failed to load entry');
+      const cached = await getCachedJournalEntry(entryId);
+      if (cached) {
+        setEntry(cached);
+        showToast('info', 'Showing cached entry (offline)');
+      } else {
+        showToast('error', jc?.failedToLoadEntry || 'Failed to load entry');
+      }
     } finally {
       setLoading(false);
     }
@@ -400,8 +413,44 @@ const JournalDetail = () => {
           );
         })()}
 
-        {/* Action buttons: Download + Share */}
+        {/* Action buttons: Download PDF + Share Text */}
         <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[
+              styles.actionBtn,
+              {
+                backgroundColor: COLORS.surface,
+                borderColor: COLORS.border,
+              },
+            ]}
+            onPress={async () => {
+              try {
+                const res = await exportOneJournalEntry(entry.id, 'pdf');
+                if (res.returnCode === 200 && res.returnData) {
+                  const filename = res.returnData.filename || 'journal-entry.pdf';
+                  const pdfPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${filename}`;
+                  await ReactNativeBlobUtil.fs.writeFile(pdfPath, res.returnData.content!, 'base64');
+                  if (Platform.OS === 'android') {
+                    await (ReactNativeBlobUtil.fs as any).actionViewIntent(pdfPath, 'application/pdf');
+                  } else {
+                    await Share.share({
+                      url: `file://${pdfPath}`,
+                      title: filename,
+                    });
+                  }
+                }
+              } catch (e: any) {
+                showToast('error', e?.message || 'Failed to export PDF');
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Download size={16} color={COLORS.text} />
+            <Text style={[styles.actionBtnText, { color: COLORS.text }]}>
+              Download PDF
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[
               styles.actionBtn,

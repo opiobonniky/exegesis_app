@@ -54,6 +54,13 @@ import {
   deleteJournalEntry,
   exportAllJournalEntries,
 } from '../../services/api';
+import ReactNativeBlobUtil from 'react-native-blob-util';
+import {
+  cacheJournalEntry,
+  cacheJournalEntryList,
+  getCachedJournalEntryList,
+} from '../../services/journalCache';
+import { useConnectivity } from '../../providers/ConnectivityProvider';
 import { getVerseText } from '../../utilits/bibleUtils';
 import {
   Search,
@@ -302,7 +309,7 @@ const ExportModal = ({
   jc: any;
 }) => {
   const [exporting, setExporting] = useState(false);
-  const [format, setFormat] = useState<'txt' | 'json'>('txt');
+  const [format, setFormat] = useState<'txt' | 'json' | 'pdf'>('txt');
 
   const handleExport = async () => {
     setExporting(true);
@@ -310,11 +317,26 @@ const ExportModal = ({
       const res = await exportAllJournalEntries(format);
       if (res.returnCode === 200 && res.returnData) {
         const data = res.returnData!;
-        const decoded = decodeURIComponent(escape(atob(data.content || '')));
-        await Share.share({
-          message: decoded,
-          title: data.filename || 'legacy-ledger-export',
-        });
+
+        if (format === 'pdf') {
+          const filename = data.filename || 'legacy-ledger-export.pdf';
+          const pdfPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${filename}`;
+          await ReactNativeBlobUtil.fs.writeFile(pdfPath, data.content!, 'base64');
+          if (Platform.OS === 'android') {
+            await (ReactNativeBlobUtil.fs as any).actionViewIntent(pdfPath, 'application/pdf');
+          } else {
+            await Share.share({
+              url: `file://${pdfPath}`,
+              title: filename,
+            });
+          }
+        } else {
+          const decoded = decodeURIComponent(escape(atob(data.content || '')));
+          await Share.share({
+            message: decoded,
+            title: data.filename || 'legacy-ledger-export',
+          });
+        }
         showToast('success', `Exported ${data.entryCount} entries`);
         onClose();
       }
@@ -392,6 +414,34 @@ const ExportModal = ({
             {jc?.jsonFormat || 'Structured Data'}
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.exportFormatBtn,
+            {
+              backgroundColor: format === 'pdf' ? colors.primary : colors.surface,
+              borderColor: format === 'pdf' ? colors.primary : colors.border,
+            },
+          ]}
+          onPress={() => setFormat('pdf')}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              styles.exportFormatText,
+              { color: format === 'pdf' ? '#FFFFFF' : colors.text },
+            ]}
+          >
+            .pdf
+          </Text>
+          <Text
+            style={[
+              styles.exportFormatDesc,
+              { color: format === 'pdf' ? '#FFFFFFCC' : colors.textSecondary },
+            ]}
+          >
+            {jc?.pdfFormat || 'Formatted Document'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Action buttons */}
@@ -435,6 +485,7 @@ const LegacyLedgerScreen = () => {
   const { language, translations } = useLanguage();
   const isRtl = isRtlLanguage(language);
   const jc = translations?.journal;
+  const { isOnline } = useConnectivity();
 
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [stats, setStats] = useState<JournalStats | null>(null);
@@ -465,6 +516,7 @@ const LegacyLedgerScreen = () => {
 
   const fetchEntries = useCallback(
     async (pageNum = 0, refresh = false) => {
+      const filterKey = `${searchDebounced || ''}_${category}_${startDate}_${endDate}`;
       try {
         if (refresh) setRefreshing(true);
         else if (pageNum === 0) setLoading(true);
@@ -482,6 +534,9 @@ const LegacyLedgerScreen = () => {
             if (pageNum === 0) setEntries(entriesData.entries || []);
             else setEntries(prev => [...prev, ...(entriesData.entries || [])]);
             setHasMore(entriesData.hasNext || false);
+            if (pageNum === 0 && entriesData.entries) {
+              entriesData.entries.forEach(e => cacheJournalEntry(e));
+            }
           }
         } else {
           const res = await getAllJournalEntries(payload);
@@ -490,11 +545,22 @@ const LegacyLedgerScreen = () => {
             if (pageNum === 0) setEntries(entriesData.entries || []);
             else setEntries(prev => [...prev, ...(entriesData.entries || [])]);
             setHasMore(entriesData.hasNext || false);
+            if (pageNum === 0 && entriesData.entries) {
+              entriesData.entries.forEach(e => cacheJournalEntry(e));
+              cacheJournalEntryList(entriesData.entries, pageNum, filterKey);
+            }
           }
         }
       } catch (error) {
-        console.error('Error fetching entries:', error);
-        showToast('error', jc?.failedToLoadEntry || 'Failed to load entries');
+        if (pageNum === 0) {
+          const cached = await getCachedJournalEntryList(0, filterKey);
+          if (cached) {
+            setEntries(cached);
+            showToast('info', 'Showing cached entries');
+          } else {
+            showToast('error', jc?.failedToLoadEntry || 'Failed to load entries');
+          }
+        }
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -789,6 +855,15 @@ const LegacyLedgerScreen = () => {
             <Text style={[styles.segmentBtnText, { color: viewMode === 'discover' ? '#FFFFFF' : COLORS.text }]}>Community</Text>
           </TouchableOpacity>
         </View>
+
+        {/* ── Offline Banner ── */}
+        {isOnline === false && (
+          <View style={[styles.offlineBanner, { backgroundColor: '#F59E0B' }]}>
+            <Text style={styles.offlineBannerText}>
+              You are offline — showing cached content
+            </Text>
+          </View>
+        )}
 
         {/* ── Search Bar ── */}
         <View style={styles.searchContainer}>
@@ -1363,6 +1438,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   exportSubmitText: { color: '#FFFFFF', fontWeight: '600', fontSize: FONT_SIZES.sm },
+  offlineBanner: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offlineBannerText: {
+    color: '#FFFFFF',
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
 });
 
 export default LegacyLedgerScreen;

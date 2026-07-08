@@ -8,6 +8,7 @@ import { route } from './routes';
 import { AppContext } from '../../common/AppContext';
 import LoadingCard from '../../common/LoadingCard';
 import { navigationRef } from '../../services/navigationRef';
+import { ConnectivityProvider } from '../../providers/ConnectivityProvider';
 
 const Stack = createNativeStackNavigator();
 
@@ -118,6 +119,7 @@ const AppNavigation = () => {
   const isAdmin = userInfo?.userRole === 1;
 
   return (
+    <ConnectivityProvider>
       <NavigationContainer ref={navigationRef} linking={linking}>
       <Stack.Navigator id="main" screenOptions={screenOptions}>
         {/* ── Initial screen ────────────────────────────────────────────── */}
@@ -564,6 +566,7 @@ const AppNavigation = () => {
         />
       </Stack.Navigator>
     </NavigationContainer>
+    </ConnectivityProvider>
   );
 };
 

@@ -115,6 +115,7 @@ api.interceptors.response.use(
  * @param request Request name (e.g., 'login')
  * @param data Request body (default empty object)
  * @param suppressSubscriptionGate Skip the global 403 toast+navigate for this call
+ * @param offlineQueue When true, network errors enqueue the mutation locally instead of failing
  * @returns GenericResponse
  */
 export const sendPostRequest = async <T = any>(
@@ -122,6 +123,7 @@ export const sendPostRequest = async <T = any>(
   request: string,
   data: object = {},
   suppressSubscriptionGate?: boolean,
+  offlineQueue?: boolean,
 ): Promise<GenericResponse<T>> => {
   try {
     const language = (await AsyncStorage.getItem('@app:language')) || 'en';
@@ -138,6 +140,17 @@ export const sendPostRequest = async <T = any>(
     );
     return response.data;
   } catch (error: any) {
+    // ── Offline queue: enqueue mutation on network error ────────────────
+    if (offlineQueue && !error.response) {
+      const { enqueueMutation } = await import('./syncQueue');
+      await enqueueMutation(controller, request, data);
+      return {
+        returnCode: 202,
+        returnMessage: 'Queued for sync',
+        returnData: undefined,
+      } as GenericResponse<T>;
+    }
+
     if (error.response?.data) {
       const { returnCode, returnMessage, returnData } = error.response.data;
       const err = new Error(returnMessage || 'Request failed');
@@ -234,7 +247,7 @@ export const createJournalEntry = async (data: {
   source?: string;
   strongsWords?: string; // JSON: [{ strongsId, surfaceText, lemma }]
 }): Promise<GenericResponse<JournalEntry>> => {
-  return sendPostRequest('journal', 'create', data);
+  return sendPostRequest('journal', 'create', data, undefined, true);
 };
 
 export const updateJournalEntry = async (data: {
@@ -254,13 +267,13 @@ export const updateJournalEntry = async (data: {
   tags?: string;
   strongsWords?: string; // JSON: [{ strongsId, surfaceText, lemma }]
 }): Promise<GenericResponse<JournalEntry>> => {
-  return sendPostRequest('journal', 'update', data);
+  return sendPostRequest('journal', 'update', data, undefined, true);
 };
 
 export const deleteJournalEntry = async (
   id: number,
 ): Promise<GenericResponse> => {
-  return sendPostRequest('journal', 'delete', { id });
+  return sendPostRequest('journal', 'delete', { id }, undefined, true);
 };
 
 export const getJournalEntry = async (
@@ -298,7 +311,7 @@ export const getJournalEntriesByVerse = async (data: {
 export const toggleJournalFavorite = async (
   id: number,
 ): Promise<GenericResponse<JournalEntry>> => {
-  return sendPostRequest('journal', 'toggle-favorite', { id });
+  return sendPostRequest('journal', 'toggle-favorite', { id }, undefined, true);
 };
 
 export const getJournalStats = async (): Promise<
@@ -376,7 +389,7 @@ export const deleteJournalTemplate = async (
 
 // Export & Search APIs
 export const exportAllJournalEntries = async (
-  format: 'txt' | 'json' = 'txt',
+  format: 'txt' | 'json' | 'pdf' = 'txt',
 ): Promise<
   GenericResponse<{
     content: string;
@@ -390,7 +403,7 @@ export const exportAllJournalEntries = async (
 
 export const exportOneJournalEntry = async (
   id: number,
-  format: 'txt' | 'json' = 'txt',
+  format: 'txt' | 'json' | 'pdf' = 'txt',
 ): Promise<
   GenericResponse<{
     content: string;

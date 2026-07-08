@@ -11,7 +11,7 @@
  */
 
 import React, { createContext, useState, useEffect } from 'react';
-import { Appearance } from 'react-native';
+import { Appearance, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setActiveVersion } from '../utilits/bibleUtils';
 import {
@@ -137,6 +137,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => subscription.remove();
   }, []);
 
+  // Re-fetch subscription status when app comes to foreground
+  // so gating reflects latest Stripe webhook updates immediately
+  useEffect(() => {
+    const handleAppState = (nextState: string) => {
+      if (nextState === 'active' && userInfo) {
+        fetchSubscriptionStatus();
+      }
+    };
+    const subscription = AppState.addEventListener('change', handleAppState);
+    return () => subscription.remove();
+  }, [userInfo]);
+
   const loadAppData = async () => {
     try {
       setLoading(true);
@@ -241,9 +253,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       if (user) {
         await AsyncStorage.setItem(USER_INFO_KEY, JSON.stringify(user));
         await AsyncStorage.setItem('auth_token', user.token);
+        // Re-fetch subscription status in case user already has a subscription
+        fetchSubscriptionStatus();
       } else {
         await AsyncStorage.removeItem(USER_INFO_KEY);
         await AsyncStorage.removeItem('auth_token');
+        setSubscriptionTier('free');
+        setAccessExpiresAt(null);
       }
       setUserInfoState(user);
     } catch (error) {

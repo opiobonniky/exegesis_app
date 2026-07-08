@@ -190,7 +190,7 @@ export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: SPACING.lg,
+      paddingLeft: 5,
       paddingTop: SPACING.sm,
       // Leave space for BottomTab + selection actions bar + audio player
       paddingBottom: SPACING.xxl * 3,
@@ -287,8 +287,8 @@ export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
 
     verseTextContainer: {
       flex: 1,
-      paddingRight: rtl ? 0 : SPACING.sm,
-      paddingLeft: rtl ? SPACING.sm : 0,
+      paddingRight: 0,
+      paddingLeft: 0,
     },
     verseText: {
       color: COLORS.text,
@@ -296,12 +296,6 @@ export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
       letterSpacing: 0.15,
       textAlign: 'justify',
       writingDirection: rtl ? 'rtl' : 'ltr',
-    },
-
-    verseRightIcons: {
-      alignItems: 'flex-start',
-      justifyContent: 'flex-start',
-      paddingTop: 2,
     },
 
     removeHighlight: {

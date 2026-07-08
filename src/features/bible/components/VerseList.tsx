@@ -115,10 +115,9 @@ export type VerseListProps = {
   versesArray: { num: number; text: string }[];
   selectedVerses: number[];
   /**
-   * Keyed by verse NUMBER (not a string key). Matches useBible's
-   * Record<number, {colorId, color}> state.
+   * Keyed by book, chapter, and verse so highlights do not leak across chapters.
    */
-  highlights: Record<number, { colorId?: number; color?: string }>;
+  highlights: Record<string, { colorId?: number; color?: string }>;
   /**
    * Set of verse NUMBERS. Matches useBible's Set<number> state.
    */
@@ -213,14 +212,12 @@ export default function VerseList({
     const { num, text } = item;
     const verseNum = num;
     const verseNumber = verseNum;
-    const key = `${currentBook} ${currentChapter}:${verseNum}`;
     const isSelected = selectedVerses.includes(verseNumber);
     // favorites is Set<number> from useBible — check by verse number directly.
     const isFavorite = (favorites as unknown as Set<number>).has(verseNumber);
-    // highlights is Record<number, {colorId, color}> from useBible — key by verse number.
-    const highlight = (
-      highlights as unknown as Record<number, { color?: string }>
-    )[verseNumber];
+    // Scope by full reference so Genesis 1:4 does not highlight Genesis 2:4.
+    const highlightKey = `${currentBook}-${currentChapter}-${verseNumber}`;
+    const highlight = highlights[highlightKey];
     const highlightColor = highlight?.color;
     const isTargetHighlight = highlightedVerse === verseNumber;
     const isActiveAudio = activeAudioVerse === verseNumber;

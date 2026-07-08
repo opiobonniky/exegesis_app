@@ -699,13 +699,13 @@ const handleChangePassage = useCallback(
         }));
 
       // Save abide progress to session before navigating
-      await sendPostRequest('exegesis', `${sessionId}/progress`, {
+      const progressRes = await sendPostRequest('exegesis', `${sessionId}/progress`, {
         abideReflection: reflection,
         abidePrayer: prayer,
         abideApplication: appText,
         abideTags: tags,
         isPublic: isPublic,
-      });
+      }, false, true);
 
       // Navigate to JournalEntry with pre-filled data
       navigation.navigate(route.ledgerEntry, {
@@ -779,10 +779,14 @@ const handleChangePassage = useCallback(
           setSavingProgress(false);
           return;
       }
-      await sendPostRequest('exegesis', `${sessionId}/progress`, body);
+      await sendPostRequest('exegesis', `${sessionId}/progress`, body, false, true);
       if (!silent) showToast('success', 'Progress saved!');
     } catch (e: any) {
-      showToast('error', e?.message || 'Failed to save progress');
+      if (e?.returnCode === 202) {
+        if (!silent) showToast('info', 'Progress saved offline');
+      } else {
+        showToast('error', e?.message || 'Failed to save progress');
+      }
     } finally {
       setSavingProgress(false);
     }

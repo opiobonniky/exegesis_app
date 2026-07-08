@@ -17,7 +17,7 @@ import {
   Clipboard,
   Share,
 } from 'react-native';
-import { bibleApi, checkOnlineStatus } from '../../../services/bibleApi';
+import { bibleApi } from '../../../services/bibleApi';
 import {
   getVerseText,
   getVersesForChapter,
@@ -28,6 +28,7 @@ import { getColors } from '../../../constants/theme';
 import { route } from '../../../component/navigations/routes';
 import { sendPostRequest } from '../../../services/api';
 import { showToast } from '../../../helpers/Toash.helper';
+import { useConnectivity } from '../../../providers/ConnectivityProvider';
 import { useVoiceReading } from '../../../hooks/useVoiceReading';
 
 if (
@@ -51,6 +52,11 @@ export interface VerseSearchResult {
   text: string;
 }
 
+type ChapterVerseHighlights = Record<
+  string,
+  { colorId: number; color: string }
+>;
+
 type RootStackParamList = {
   [route.bible]: { bookName: string; chapter: number; verseNumber: number };
   [route.journalEntry]: any;
@@ -66,7 +72,6 @@ export const useBible = () => {
 
   const activeVersionId = app?.bibleVersionId || 'Berean';
 
-  const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [currentBook, setCurrentBook] = useState<string>('Genesis');
   const [currentChapter, setCurrentChapter] = useState<number>(1);
   const [maxChapters, setMaxChapters] = useState<number>(50);
@@ -76,9 +81,7 @@ export const useBible = () => {
   const [versesArray, setVersesArray] = useState<
     Array<{ num: number; text: string }>
   >([]);
-  const [highlights, setHighlights] = useState<
-    Record<number, { colorId: number; color: string }>
-  >({});
+  const [highlights, setHighlights] = useState<ChapterVerseHighlights>({});
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [highlightedVerse, setHighlightedVerse] = useState<number | null>(null);
@@ -194,17 +197,7 @@ export const useBible = () => {
   });
 
   // ─── Network ────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const checkConnection = async () => {
-      const connected = await checkOnlineStatus();
-      setIsOnline(connected);
-    };
-    checkConnection();
-    const interval = setInterval(() => {
-      checkConnection().catch(console.warn);
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  const { isOnline } = useConnectivity();
 
   // ─── Data loading ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -538,17 +531,20 @@ export const useBible = () => {
         pendingVersesRef.current = [];
         setSelectedVerses([]);
 
-        const newHighlights = { ...highlights };
-        versesArr.forEach(v => {
-          newHighlights[v] = { colorId, color };
+        setHighlights(prev => {
+          const next = { ...prev };
+          versesArr.forEach(v => {
+            const key = `${currentBook}-${currentChapter}-${v}`;
+            next[key] = { colorId, color };
+          });
+          return next;
         });
-        setHighlights(newHighlights);
       } catch (err:any) {
         console.warn('Failed to highlight', err);
         showToast('error', 'Failed to highlight');
       }
     },
-    [currentBook, currentChapter, highlights, selectedVerses],
+    [currentBook, currentChapter, selectedVerses],
   );
 
   const removeHighlight = useCallback(
@@ -571,14 +567,17 @@ export const useBible = () => {
             }
           }
         }
-        const newHighlights = { ...highlights };
-        delete newHighlights[verseNumber];
-        setHighlights(newHighlights);
+        const highlightKey = `${currentBook}-${currentChapter}-${verseNumber}`;
+        setHighlights(prev => {
+          const next = { ...prev };
+          delete next[highlightKey];
+          return next;
+        });
       } catch (err:any) {
         console.warn('Failed to remove highlight', err);
       }
     },
-    [currentBook, currentChapter, highlights],
+    [currentBook, currentChapter],
   );
 
   // ─── Share / Copy ───────────────────────────────────────────────────────────

@@ -23,5 +23,6 @@ export const useSubscription = () => {
     isFree: tier === 'free',
     isLegacySower: tier === 'legacy_sower',
     isCovenantSower: tier === 'covenant_sower',
+    fetchSubscriptionStatus: app?.fetchSubscriptionStatus || (async () => {}),
   };
 };

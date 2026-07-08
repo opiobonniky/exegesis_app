@@ -1020,7 +1020,7 @@ export default function Bible() {
       <VerseSideMenu
         visible={verseMenuVisible}
         verseNumber={verseMenuVerse ?? 0}
-        verseText={verseMenuVerse ? verses[verseMenuVerse]?.text ?? '' : ''}
+        verseText={verseMenuVerse ? verses[verseMenuVerse] ?? '' : ''}
         navigation={navigation}
         currentBook={currentBook}
         currentChapter={currentChapter}
