@@ -27,6 +27,7 @@ import {
 } from '@react-navigation/native';
 import { route } from '../../component/navigations/routes';
 import { useSubscription } from '../../hooks/useSubscription';
+import { showToast } from '../../helpers/Toash.helper';
 import { createBibleStyles } from './bibleStyle';
 import {
   getColors,
@@ -311,6 +312,11 @@ export default function Bible() {
   const [wordStudyLoading, setWordStudyLoading] = useState(false);
 
   const handleWordPress = useCallback(async (word: StrongsWordData) => {
+    if (!hasAccess('legacy_sower')) {
+      showToast('warning', 'Word Study requires a Legacy Sower subscription');
+      setTimeout(() => navigation.navigate(route.sower), 1200);
+      return;
+    }
     setSelectedWord(word);
     setShowWordStudy(true);
     setWordStudyLoading(true);
@@ -326,7 +332,7 @@ export default function Bible() {
       }
     }
     setWordStudyLoading(false);
-  }, []);
+  }, [hasAccess, navigation]);
 
   // Fetch Strong's word data when chapter changes
   const fetchVerseWords = useCallback(async () => {
