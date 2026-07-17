@@ -19,6 +19,49 @@ export interface Tier {
   maxSlots?: number;
 }
 
+const FALLBACK_TIERS: Tier[] = [
+  {
+    id: 'free',
+    name: 'Free',
+    price: 0,
+    currency: 'usd',
+    interval: 'none',
+    features: ['Bible reading', 'Daily verse', 'Basic tools'],
+    isActive: true,
+    sortOrder: 0,
+  },
+  {
+    id: 'legacy_sower',
+    name: 'Legacy Sower',
+    price: 30,
+    currency: 'usd',
+    interval: 'year',
+    features: [
+      'Advanced word study (Strong\'s Concordance)',
+      'In-depth verse explanations',
+      'Lab (AI-assisted study)',
+      'Higher-rate API access',
+      'Legacy badge',
+    ],
+    isActive: true,
+    sortOrder: 1,
+  },
+  {
+    id: 'covenant_sower',
+    name: 'Covenant Sower',
+    price: 90,
+    currency: 'usd',
+    interval: 'year',
+    features: [
+      'Everything in Legacy Sower',
+      'Priority support',
+      'Covenant badge',
+    ],
+    isActive: true,
+    sortOrder: 2,
+  },
+];
+
 interface UseTiersResult {
   tiers: Tier[];
   loading: boolean;
@@ -51,18 +94,29 @@ export const useTiers = (): UseTiersResult => {
 
       // Then fetch fresh data
       const res = await sendPostRequest('subscriptions', 'tiers', {});
+
+      console.log('Fetched subscription tiers:', res.returnData?.tiers);
       if (res.returnCode === 200 && res.returnData?.tiers) {
         const data: Tier[] = res.returnData.tiers;
-        setTiers(data);
-        setError(null);
-        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        if (data.length > 0) {
+          setTiers(data);
+          setError(null);
+          await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        } else if (!cached) {
+          // API returned empty tiers (no DB seed) — use fallback silently
+          setTiers(FALLBACK_TIERS);
+          setError(null);
+        }
       } else if (!cached) {
-        setError('Failed to load subscription plans');
+        setTiers(FALLBACK_TIERS);
+        setError(null);
       }
     } catch {
-      // If we already have cached/state data, swallow the error silently
+      // If we already have cached/state data, swallow the error silently.
+      // Otherwise use the hardcoded fallback so the screen never breaks.
       if (tiersRef.current.length === 0) {
-        setError('Unable to load plans. Check your connection.');
+        setTiers(FALLBACK_TIERS);
+        setError(null);
       }
     } finally {
       setLoading(false);

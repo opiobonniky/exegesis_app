@@ -1536,11 +1536,10 @@ const AdminDashboard: React.FC = () => {
 };
 
 const s = StyleSheet.create({
-  root: { flex: 1 },
-  topBar: {
+  root: { flex: 1 },    topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingBottom: 12,
     borderBottomWidth: 1,
     zIndex: 10,
@@ -1551,6 +1550,7 @@ const s = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 16,
   },
   topBarCenter: { flex: 1, alignItems: 'center' },
   topBarTitle: { fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
@@ -1568,7 +1568,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarSmallText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  scrollContent: { paddingBottom: 80, paddingTop: 8, paddingHorizontal: 16 },
+  scrollContent: { paddingBottom: 80, paddingTop: 8, paddingHorizontal: 0 },
   heroCard: { borderRadius: 22, padding: 22, marginTop: 16 },
   heroRow: {
     alignItems: 'center',

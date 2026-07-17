@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Animated, Dimensions, StyleSheet } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -25,11 +25,16 @@ export default function ConfettiOverlay({ visible, onFinish }: Props) {
   const finishedCount = useRef(0);
 
   // Initialize particles once
+  const particleStarts = useRef<{ sx: number; sy: number }[]>([]);
   if (particles.current.length === 0) {
+    const starts: { sx: number; sy: number }[] = [];
     for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const sx = Math.random() * SCREEN_WIDTH;
+      const sy = -20 - Math.random() * 100;
+      starts.push({ sx, sy });
       particles.current.push({
-        x: new Animated.Value(Math.random() * SCREEN_WIDTH),
-        y: new Animated.Value(-20 - Math.random() * 100),
+        x: new Animated.Value(0),
+        y: new Animated.Value(0),
         rotation: new Animated.Value(0),
         opacity: new Animated.Value(0),
         color: COLORS[Math.floor(Math.random() * COLORS.length)],
@@ -37,6 +42,7 @@ export default function ConfettiOverlay({ visible, onFinish }: Props) {
         delay: Math.random() * 300,
       });
     }
+    particleStarts.current = starts;
   }
 
   // Store onFinish in a ref so the effect doesn't depend on it
@@ -54,14 +60,15 @@ export default function ConfettiOverlay({ visible, onFinish }: Props) {
 
     finishedCount.current = 0;
 
-    const anims = particles.current.map((p) => {
-      const startX = Math.random() * SCREEN_WIDTH;
-      const endX = startX + (Math.random() - 0.5) * 80;
-      const endY = SCREEN_HEIGHT + 20;
+    const anims = particles.current.map((p, idx) => {
+      const startX = particleStarts.current[idx]?.sx ?? Math.random() * SCREEN_WIDTH;
+      const startY = particleStarts.current[idx]?.sy ?? (-20 - Math.random() * 100);
+      const endX = (Math.random() - 0.5) * 80;
+      const endY = SCREEN_HEIGHT + 20 - startY;
       const duration = 2200 + Math.random() * 1200;
 
-      p.x.setValue(startX);
-      p.y.setValue(-20 - Math.random() * 60);
+      p.x.setValue(0);
+      p.y.setValue(0);
       p.rotation.setValue(0);
       p.opacity.setValue(1);
 
@@ -119,17 +126,21 @@ export default function ConfettiOverlay({ visible, onFinish }: Props) {
           style={[
             styles.particle,
             {
-              left: p.x,
-              top: p.y,
+              left: particleStarts.current[i]?.sx ?? 0,
+              top: particleStarts.current[i]?.sy ?? 0,
               width: p.size,
               height: p.size * 1.4,
               borderRadius: p.size * 0.15,
               backgroundColor: p.color,
               opacity: p.opacity,
-              transform: [{ rotate: p.rotation.interpolate({
-                inputRange: [-3, 3],
-                outputRange: ['-60deg', '60deg'],
-              }) }],
+              transform: [
+                { translateX: p.x },
+                { translateY: p.y },
+                { rotate: p.rotation.interpolate({
+                  inputRange: [-3, 3],
+                  outputRange: ['-60deg', '60deg'],
+                }) },
+              ],
             },
           ]}
         />

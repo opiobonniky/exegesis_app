@@ -38,10 +38,27 @@ export interface StrongsVerseRef {
 export const getStrongsEntry = async (
   strongsId: string,
 ): Promise<GenericResponse<StrongsEntry>> => {
-  const response = await api.get<GenericResponse<StrongsEntry>>(
-    `/strongs/${strongsId}`,
-  );
-  return response.data;
+  try {
+    const response = await api.get<GenericResponse<StrongsEntry>>(
+      `/strongs/${strongsId}`,
+    );
+    if (response.data?.returnCode === 200 && response.data?.returnData) {
+      const { cacheStrongsEntry } = await import('./strongsCache');
+      cacheStrongsEntry(response.data.returnData);
+    }
+    return response.data;
+  } catch {
+    const { getCachedStrongsEntry } = await import('./strongsCache');
+    const cached = await getCachedStrongsEntry(strongsId);
+    if (cached) {
+      return {
+        returnCode: 200,
+        returnMessage: 'Loaded from cache',
+        returnData: cached,
+      };
+    }
+    throw new Error('Offline and no cached Strongs entry');
+  }
 };
 
 export const getVersesByStrongs = async (
@@ -66,10 +83,28 @@ export const getVerseWords = async (
   verseNumber?: number,
   translation?: string,
 ): Promise<GenericResponse<StrongsWordData[]>> => {
-  return sendPostRequest('strongs', 'verse-words', {
-    bookName,
-    chapter,
-    ...(verseNumber != null ? { verseNumber } : {}),
-    translation: translation || 'Berean',
-  });
+  try {
+    const res = await sendPostRequest<StrongsWordData[]>('strongs', 'verse-words', {
+      bookName,
+      chapter,
+      ...(verseNumber != null ? { verseNumber } : {}),
+      translation: translation || 'Berean',
+    });
+    if (res.returnCode === 200 && res.returnData) {
+      const { cacheVerseWords } = await import('./strongsCache');
+      cacheVerseWords(bookName, chapter, verseNumber, res.returnData);
+    }
+    return res;
+  } catch {
+    const { getCachedVerseWords } = await import('./strongsCache');
+    const cached = await getCachedVerseWords(bookName, chapter, verseNumber);
+    if (cached) {
+      return {
+        returnCode: 200,
+        returnMessage: 'Loaded from cache',
+        returnData: cached,
+      };
+    }
+    throw new Error('Offline and no cached verse words');
+  }
 };

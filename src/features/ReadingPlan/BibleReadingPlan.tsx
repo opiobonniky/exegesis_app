@@ -38,6 +38,7 @@ import { showToast } from '../../helpers/Toash.helper';
 import { displayCustomTestNotification } from '../../utilits/firebaseService';
 import ActionModal from '../../reusable/ActionModal';
 import ActionHeader from '../../reusable/ActionHeader';
+import { cacheAllPlans, getCachedAllPlans, cacheUserPlans, getCachedUserPlans } from './readingPlanCache';
 import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,6 +152,7 @@ export default function BibleReadingPlan() {
       if (returnCode === 200) {
         const plans = returnData.plans || [];
         setPlans(plans);
+        cacheAllPlans(plans);
         
         // Build user progress from get-user-plans response
         let userProgressMap: Record<string, UserProgress> = {};
@@ -187,11 +189,24 @@ export default function BibleReadingPlan() {
 
         setUserProgress(Object.values(userProgressMap));
         setProgressMap(userProgressMap);
+        cacheUserPlans({ startedPlans, userProgressMap, active });
       } else {
         console.warn('Failed to load reading plans:', returnMessage);
       }
     } catch (err) {
       console.error('Failed to load reading plans', err);
+      // Offline fallback
+      try {
+        const cached = await getCachedAllPlans();
+        if (cached) setPlans(cached);
+        const cachedUser = await getCachedUserPlans();
+        if (cachedUser) {
+          setMyPlans(cachedUser.startedPlans);
+          setActivePlans(cachedUser.active);
+          setProgressMap(cachedUser.userProgressMap);
+          setUserProgress(Object.values(cachedUser.userProgressMap));
+        }
+      } catch {}
     }
   };
 
@@ -199,7 +214,7 @@ export default function BibleReadingPlan() {
     try {
       const response = await sendPostRequest('reading-plans', 'start', {
         planId: plan.planId,
-      });
+      }, undefined, true);
 
       console.log('Start Plan response:', JSON.stringify(response));
       const { returnCode, returnMessage, returnData } = response;
@@ -218,6 +233,8 @@ export default function BibleReadingPlan() {
         }
         await loadData();
         setActiveTab('progress');
+      } else if (returnCode === 202) {
+        showToast('success', 'Reading plan will start when online');
       } else {
         showToast('error', returnMessage || 'Failed to start reading plan');
       }
@@ -231,11 +248,13 @@ export default function BibleReadingPlan() {
     try {
       const response = await sendPostRequest('reading-plans', 'remove', {
         planId: plan.planId,
-      });
+      }, undefined, true);
       const { returnCode, returnMessage } = response;
       if (returnCode === 200) {
         showToast('success', 'Reading plan removed.');
         await loadData(false);
+      } else if (returnCode === 202) {
+        showToast('success', 'Will remove plan when online');
       } else {
         showToast('error', returnMessage || 'Failed to remove reading plan');
       }

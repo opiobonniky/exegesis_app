@@ -9,8 +9,75 @@ import { AppContext } from '../../common/AppContext';
 import LoadingCard from '../../common/LoadingCard';
 import { navigationRef } from '../../services/navigationRef';
 import { ConnectivityProvider } from '../../providers/ConnectivityProvider';
+import { withSubscriptionGate } from '../../reusable/SubscriptionGate';
+
+const gate = (
+  mod: any,
+  tier: 'legacy_sower' | 'covenant_sower',
+): React.ComponentType<any> =>
+  withSubscriptionGate(mod, tier) as React.ComponentType<any>;
 
 const Stack = createNativeStackNavigator();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gated screens must be created OUTSIDE the component function.
+// If created inside (e.g. inline in getComponent), React sees a brand-new
+// component type every render → unmount/remount → effect fires → navigate →
+// re-render → infinite loop.
+// ─────────────────────────────────────────────────────────────────────────────
+const GatedReadingPlan = gate(
+  require('../../features/ReadingPlan/BibleReadingPlan').default,
+  'legacy_sower',
+);
+const GatedPlanDetail = gate(
+  require('../../features/ReadingPlan/PlanDetailScreen').default,
+  'legacy_sower',
+);
+const GatedDailyReading = gate(
+  require('../../features/ReadingPlan/DailyReadingScreen').default,
+  'legacy_sower',
+);
+const GatedPlanBible = gate(
+  require('../../features/ReadingPlan/Planbiblescreen').default,
+  'legacy_sower',
+);
+const GatedJournal = gate(
+  require('../../features/ledger/LegacyLedgerScreen').default,
+  'legacy_sower',
+);
+const GatedJournalEntry = gate(
+  require('../../features/journal/JournalEntry').default,
+  'legacy_sower',
+);
+const GatedJournalDetail = gate(
+  require('../../features/journal/JournalDetail').default,
+  'legacy_sower',
+);
+const GatedLegacyLedger = gate(
+  require('../../features/ledger/LegacyLedgerScreen').default,
+  'legacy_sower',
+);
+const GatedLedgerDetail = gate(
+  require('../../features/journal/JournalDetail').default,
+  'legacy_sower',
+);
+const GatedLedgerEntry = gate(
+  require('../../features/journal/JournalEntry').default,
+  'legacy_sower',
+);
+const GatedLab = gate(
+  require('../../features/lab/LabHomeScreen').default,
+  'legacy_sower',
+);
+const GatedLabFlow = gate(
+  require('../../features/lab/LabFlowScreen').default,
+  'legacy_sower',
+);
+const GatedTrivia = gate(
+  require('../../features/trivia/TriviaScreen').default,
+  'legacy_sower',
+);
+
 
 const ANIMATIONS = [
   'slide_from_right',
@@ -250,27 +317,19 @@ const AppNavigation = () => {
         />
         <Stack.Screen
           name={route.readingPlan}
-          getComponent={() =>
-            require('../../features/ReadingPlan/BibleReadingPlan').default
-          }
+          getComponent={() => GatedReadingPlan}
         />
         <Stack.Screen
           name={route.planDetail}
-          getComponent={() =>
-            require('../../features/ReadingPlan/PlanDetailScreen').default
-          }
+          getComponent={() => GatedPlanDetail}
         />
         <Stack.Screen
           name={route.dailyReading}
-          getComponent={() =>
-            require('../../features/ReadingPlan/DailyReadingScreen').default
-          }
+          getComponent={() => GatedDailyReading}
         />
         <Stack.Screen
           name={route.planBible}
-          getComponent={() =>
-            require('../../features/ReadingPlan/Planbiblescreen').default
-          }
+          getComponent={() => GatedPlanBible}
         />
 
         {/* ── Settings (modal) ──────────────────────────────────────────── */}
@@ -460,41 +519,29 @@ const AppNavigation = () => {
         {/* ── Journal → Legacy Ledger ──────────────────────────────────── */}
         <Stack.Screen
           name={route.journal}
-          getComponent={() =>
-            require('../../features/ledger/LegacyLedgerScreen').default
-          }
+          getComponent={() => GatedJournal}
         />
         <Stack.Screen
           name={route.journalEntry}
-          getComponent={() =>
-            require('../../features/journal/JournalEntry').default
-          }
+          getComponent={() => GatedJournalEntry}
         />
         <Stack.Screen
           name={route.journalDetail}
-          getComponent={() =>
-            require('../../features/journal/JournalDetail').default
-          }
+          getComponent={() => GatedJournalDetail}
         />
 
         {/* ── Legacy Ledger ─────────────────────────────────────────────── */}
         <Stack.Screen
           name={route.legacyLedger}
-          getComponent={() =>
-            require('../../features/ledger/LegacyLedgerScreen').default
-          }
+          getComponent={() => GatedLegacyLedger}
         />
         <Stack.Screen
           name={route.ledgerDetail}
-          getComponent={() =>
-            require('../../features/journal/JournalDetail').default
-          }
+          getComponent={() => GatedLedgerDetail}
         />
         <Stack.Screen
           name={route.ledgerEntry}
-          getComponent={() =>
-            require('../../features/journal/JournalEntry').default
-          }
+          getComponent={() => GatedLedgerEntry}
         />
         <Stack.Screen
           name={route.adminJournalPrompts}
@@ -532,15 +579,11 @@ const AppNavigation = () => {
         {/* ── Exegesis Lab ─────────────────────────────────────────────────── */}
         <Stack.Screen
           name={route.lab}
-          getComponent={() =>
-            require('../../features/lab/LabHomeScreen').default
-          }
+          getComponent={() => GatedLab}
         />
         <Stack.Screen
           name={route.labFlow}
-          getComponent={() =>
-            require('../../features/lab/LabFlowScreen').default
-          }
+          getComponent={() => GatedLabFlow}
         />
 
         {/* ── Subscription / Sower ────────────────────────────────────────── */}
@@ -560,9 +603,7 @@ const AppNavigation = () => {
         {/* ── Bible Trivia ───────────────────────────────────────────────── */}
         <Stack.Screen
           name={route.trivia}
-          getComponent={() =>
-            require('../../features/trivia/TriviaScreen').default
-          }
+          getComponent={() => GatedTrivia}
         />
       </Stack.Navigator>
     </NavigationContainer>

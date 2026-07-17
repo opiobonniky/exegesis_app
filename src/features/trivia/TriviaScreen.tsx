@@ -372,7 +372,7 @@ export default function TriviaScreen() {
                 const isSelected = difficulty === opt.value;
 
                 return (
-                  <TouchableOpacity
+                    <TouchableOpacity
                     key={opt.value ?? 'all'}
                     style={[
                       styles.difficultyCard,
@@ -381,6 +381,7 @@ export default function TriviaScreen() {
                         backgroundColor: isSelected
                           ? `${opt.color}12`
                           : COLORS.cardBackground,
+                        elevation: 0,
                       },
                       isRtl && { flexDirection: 'row-reverse' },
                     ]}
@@ -1136,7 +1137,6 @@ const createStyles = (COLORS: any) =>
       shadowOffset: { width: 0, height: 5 },
       shadowOpacity: 0.08,
       shadowRadius: 12,
-      elevation: 2,
     },
     diffTopRow: {
       flexDirection: 'row',

@@ -34,6 +34,7 @@ import {
 import ActionModal from '../../reusable/ActionModal';
 import { sendPostRequest } from '../../services/api';
 import { showToast } from '../../helpers/Toash.helper';
+import { cacheDailyAssignment, getCachedDailyAssignment } from './readingPlanCache';
 import { route } from '../../component/navigations/routes';
 import LinearGradient from 'react-native-linear-gradient';
 import ProgressCircle from './ProgressCircle';
@@ -432,6 +433,7 @@ export default function DailyReadingScreen() {
         setNotYetAdded(false);
         setAssignment(returnData);
         setIsCompleted(returnData.completed ?? false);
+        cacheDailyAssignment(planId, day, returnData);
 
         // Always start fresh
         setCurrentQ(0);
@@ -481,7 +483,13 @@ export default function DailyReadingScreen() {
       }
     } catch (e) {
       console.error(e);
-      showToast('error', 'daily assignment: Failed to load');
+      const cached = await getCachedDailyAssignment(planId, day);
+      if (cached) {
+        setAssignment(cached);
+        setIsCompleted(cached.completed ?? false);
+      } else {
+        showToast('error', 'daily assignment: Failed to load');
+      }
     }
   };
 
@@ -494,7 +502,7 @@ export default function DailyReadingScreen() {
       const r = await sendPostRequest('reading-plans', 'complete-day', {
         planId,
         dayNumber: day,
-      });
+      }, undefined, true);
       if (r.returnCode === 200) {
         setIsCompleted(true);
         loadData();
@@ -655,7 +663,7 @@ export default function DailyReadingScreen() {
         dayNumber: day,
         questionId: q.questionId,
         userAnswer: selected,
-      });
+      }, undefined, true);
       if (res?.returnCode === 200 && res.returnData) {
         const { isCorrect, correctAnswer, explanation, numberAttempt } =
           res.returnData;

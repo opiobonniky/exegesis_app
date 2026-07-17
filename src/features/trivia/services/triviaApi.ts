@@ -131,35 +131,65 @@ export const getRandomQuestion = async (
   excludeIds?: number[],
   difficulty?: string | null,
 ): Promise<TriviaQuestionResponse | null> => {
-  const res = await sendPostRequest<TriviaQuestionResponse>(
-    'trivia',
-    'random',
-    {
-      excludeIds: excludeIds || [],
-      ...(difficulty ? { difficulty } : {}),
-    },
-  );
-  return res.returnData ?? null;
+  try {
+    const res = await sendPostRequest<TriviaQuestionResponse>(
+      'trivia',
+      'random',
+      {
+        excludeIds: excludeIds || [],
+        ...(difficulty ? { difficulty } : {}),
+      },
+    );
+    if (res.returnData) {
+      const { cacheTriviaQuestions } = await import('./triviaCache');
+      cacheTriviaQuestions([res.returnData]);
+      return res.returnData;
+    }
+    return null;
+  } catch {
+    const { getCachedRandomQuestion } = await import('./triviaCache');
+    return getCachedRandomQuestion(excludeIds || [], difficulty);
+  }
 };
 
 export const submitTriviaAnswer = async (
   questionId: number,
   selectedAnswer: number,
 ): Promise<TriviaAnswerResult> => {
-  const res = await sendPostRequest<TriviaAnswerResult>('trivia', 'submit', {
-    questionId,
-    selectedAnswer,
-  });
-  if (!res.returnData) throw new Error('No response data');
-  return res.returnData;
+  try {
+    const res = await sendPostRequest<TriviaAnswerResult>('trivia', 'submit', {
+      questionId,
+      selectedAnswer,
+    });
+    if (!res.returnData) throw new Error('No response data');
+
+    const { updateTriviaAnswer } = await import('../../../services/dbCache');
+    updateTriviaAnswer(questionId, res.returnData.correctAnswer).catch(() => {});
+
+    return res.returnData;
+  } catch {
+    const { loadAllCachedQuestions, buildOfflineAnswerResult } = await import('./triviaCache');
+    const cached = await loadAllCachedQuestions();
+    const q = cached.find(c => c.id === questionId);
+    if (q) {
+      return buildOfflineAnswerResult(q, selectedAnswer);
+    }
+    throw new Error('Cannot verify answer offline');
+  }
 };
 
 export const getTriviaStats = async (): Promise<TriviaStats> => {
-  const res = await sendPostRequest<TriviaStats>('trivia', 'stats', {});
-  if (!res.returnData) {
-    return { totalAnswered: 0, correct: 0, incorrect: 0, percentage: 0 };
-  }
-  return res.returnData;
+  try {
+    const res = await sendPostRequest<TriviaStats>('trivia', 'stats', {});
+    if (res.returnData) {
+      const { saveCachedStats } = await import('./triviaCache');
+      saveCachedStats(res.returnData);
+      return res.returnData;
+    }
+  } catch {}
+  const { getCachedStats } = await import('./triviaCache');
+  const cached = await getCachedStats();
+  return cached || { totalAnswered: 0, correct: 0, incorrect: 0, percentage: 0 };
 };
 
 export const getAllTriviaQuestions = async (params?: {

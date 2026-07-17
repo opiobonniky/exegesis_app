@@ -15,7 +15,6 @@
 
 import React, { useMemo } from 'react';
 import {
-  Platform,
   StatusBar,
   StyleSheet,
   Text,
@@ -250,7 +249,7 @@ const localStyles = StyleSheet.create({
   },
 
   container: {
-    height: Platform.OS === 'ios' ? 56 : 76,
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,

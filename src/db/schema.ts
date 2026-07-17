@@ -7,10 +7,12 @@
  * Do NOT import this file directly; use `database.ts` → `migrations.ts`.
  *
  * ⚠️  Schema version history:
- *   v1 — Verse storage, translations, books, FTS5, offline queue, strongs dict
+ *   v1 — Verse storage, translations, books, offline queue, strongs dict
+ *   FTS5 virtual tables attempted separately; failure is non-fatal
+ *   v2 — Typed cache tables: app_cache, trivia_questions, daily_content_cache, reading_plan_cache
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const SCHEMA_SQL = `
 -- ────────────────────────────────────────────────────────────────────────────
@@ -49,34 +51,6 @@ CREATE TABLE IF NOT EXISTS verses (
   updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(translation_id, book_id, chapter, verse)
 );
-
--- FTS5 virtual table for full-text search across all cached translations
-CREATE VIRTUAL TABLE IF NOT EXISTS verses_fts USING fts5(
-  translation_id UNINDEXED,
-  book_id UNINDEXED,
-  chapter UNINDEXED,
-  verse UNINDEXED,
-  text,
-  tokenize='porter unicode61'
-);
-
--- Triggers to keep FTS in sync
-CREATE TRIGGER IF NOT EXISTS verses_ai AFTER INSERT ON verses BEGIN
-  INSERT INTO verses_fts(translation_id, book_id, chapter, verse, text)
-  VALUES (new.translation_id, new.book_id, new.chapter, new.verse, new.text);
-END;
-
-CREATE TRIGGER IF NOT EXISTS verses_ad AFTER DELETE ON verses BEGIN
-  INSERT INTO verses_fts(verses_fts, translation_id, book_id, chapter, verse, text)
-  VALUES ('delete', old.translation_id, old.book_id, old.chapter, old.verse, old.text);
-END;
-
-CREATE TRIGGER IF NOT EXISTS verses_au AFTER UPDATE ON verses BEGIN
-  INSERT INTO verses_fts(verses_fts, translation_id, book_id, chapter, verse, text)
-  VALUES ('delete', old.translation_id, old.book_id, old.chapter, old.verse, old.text);
-  INSERT INTO verses_fts(translation_id, book_id, chapter, verse, text)
-  VALUES (new.translation_id, new.book_id, new.chapter, new.verse, new.text);
-END;
 
 -- Indexes for fast lookups
 CREATE INDEX IF NOT EXISTS idx_verses_lookup
@@ -123,6 +97,48 @@ CREATE TABLE IF NOT EXISTS strongs_dictionary (
   cross_references TEXT
 );
 
+-- ─── Schema Version Tracking ──────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS schema_version (
+  version INTEGER PRIMARY KEY,
+  applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`;
+
+/**
+ * FTS5 virtual tables and triggers.
+ * Created separately because FTS5 may not be available in all SQLite builds.
+ * The migration handles failure gracefully.
+ */
+export const FTS_SQL = `
+-- Verse text FTS
+CREATE VIRTUAL TABLE IF NOT EXISTS verses_fts USING fts5(
+  translation_id UNINDEXED,
+  book_id UNINDEXED,
+  chapter UNINDEXED,
+  verse UNINDEXED,
+  text,
+  tokenize='porter unicode61'
+);
+
+CREATE TRIGGER IF NOT EXISTS verses_ai AFTER INSERT ON verses BEGIN
+  INSERT INTO verses_fts(translation_id, book_id, chapter, verse, text)
+  VALUES (new.translation_id, new.book_id, new.chapter, new.verse, new.text);
+END;
+
+CREATE TRIGGER IF NOT EXISTS verses_ad AFTER DELETE ON verses BEGIN
+  INSERT INTO verses_fts(verses_fts, translation_id, book_id, chapter, verse, text)
+  VALUES ('delete', old.translation_id, old.book_id, old.chapter, old.verse, old.text);
+END;
+
+CREATE TRIGGER IF NOT EXISTS verses_au AFTER UPDATE ON verses BEGIN
+  INSERT INTO verses_fts(verses_fts, translation_id, book_id, chapter, verse, text)
+  VALUES ('delete', old.translation_id, old.book_id, old.chapter, old.verse, old.text);
+  INSERT INTO verses_fts(translation_id, book_id, chapter, verse, text)
+  VALUES (new.translation_id, new.book_id, new.chapter, new.verse, new.text);
+END;
+
+-- Strong's dictionary FTS
 CREATE VIRTUAL TABLE IF NOT EXISTS strongs_fts USING fts5(
   strongs_id UNINDEXED,
   original_word,
@@ -136,11 +152,61 @@ CREATE TRIGGER IF NOT EXISTS strongs_ai AFTER INSERT ON strongs_dictionary BEGIN
   INSERT INTO strongs_fts(strongs_id, original_word, transliteration, short_definition, full_definition)
   VALUES (new.strongs_id, new.original_word, new.transliteration, new.short_definition, new.full_definition);
 END;
+`;
 
--- ─── Schema Version Tracking ──────────────────────────────────────────────
+export const V2_SQL = `
+-- ─── App Cache (typed key-value, replaces AsyncStorage caches) ──────────
 
-CREATE TABLE IF NOT EXISTS schema_version (
-  version INTEGER PRIMARY KEY,
-  applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+CREATE TABLE IF NOT EXISTS app_cache (
+  cache_key       TEXT PRIMARY KEY,
+  content_type    TEXT NOT NULL DEFAULT 'json',
+  value           TEXT NOT NULL,
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_app_cache_type
+  ON app_cache(content_type, updated_at);
+
+-- ─── Trivia Questions (offline cache) ──────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS trivia_questions (
+  id              INTEGER PRIMARY KEY,
+  question        TEXT NOT NULL,
+  options_json    TEXT NOT NULL,
+  correct_answer  INTEGER,
+  explanation     TEXT,
+  book_name       TEXT,
+  chapter         INTEGER,
+  verse_number    INTEGER,
+  category        TEXT,
+  difficulty      TEXT,
+  fetched_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  answered_online INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_trivia_difficulty
+  ON trivia_questions(difficulty);
+
+-- ─── Daily Content Cache ───────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS daily_content_cache (
+  content_type    TEXT NOT NULL,
+  date_key        TEXT NOT NULL,
+  value           TEXT NOT NULL,
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (content_type, date_key)
+);
+
+-- ─── Reading Plans Cache ───────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS reading_plan_cache (
+  cache_key       TEXT PRIMARY KEY,
+  plan_id         TEXT,
+  value           TEXT NOT NULL,
+  content_type    TEXT NOT NULL DEFAULT 'plan_list',
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_rp_cache_plan
+  ON reading_plan_cache(plan_id);
 `;

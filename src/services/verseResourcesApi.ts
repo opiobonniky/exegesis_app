@@ -44,6 +44,42 @@ export interface TopicEntry {
   name: string;
 }
 
+export interface StudyToolWordResource {
+  id: number;
+  strongsId: string;
+  bookName: string;
+  chapter: number;
+  verse: number;
+  surfaceText: string;
+  originalWord: string | null;
+  transliteration: string | null;
+  adminExplanation: string | null;
+  wordOrder: number;
+  strongs?: {
+    strongsId: string;
+    originalWord: string | null;
+    transliteration: string | null;
+    shortDefinition: string;
+    fullDefinition: string | null;
+    adminExplanation: string | null;
+    language: string;
+    partOfSpeech: string | null;
+  } | null;
+}
+
+export interface StudyToolResource {
+  id: number;
+  bookName: string;
+  chapter: number;
+  toolType: string;
+  label: string;
+  description: string | null;
+  verseRefs: Array<{ verse: number; excerpt?: string }>;
+  strongsIds: Array<string | number> | null;
+  order: number;
+  studyToolWords?: StudyToolWordResource[];
+}
+
 export interface VerseResourceData {
   id: number;
   bookName: string;
@@ -56,6 +92,7 @@ export interface VerseResourceData {
   dictionaryTerms: DictionaryEntry[];
   interlinearWords: InterlinearWord[];
   relatedTopics: TopicEntry[];
+  studyTools?: StudyToolResource[];
 }
 
 /**

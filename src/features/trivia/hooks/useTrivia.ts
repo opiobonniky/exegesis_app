@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import {
   getRandomQuestion,
@@ -8,6 +8,7 @@ import {
   TriviaAnswerResult,
   TriviaStats,
 } from '../services/triviaApi';
+import { preFetchTriviaQuestions } from '../services/triviaCache';
 
 export type TriviaPhase = 'plan' | 'playing' | 'answered' | 'finished';
 export type DifficultyFilter = 'easy' | 'medium' | 'hard' | null;
@@ -52,6 +53,10 @@ export function useTrivia() {
       stateRef.current = next;
       return next;
     });
+  }, []);
+
+  useEffect(() => {
+    preFetchTriviaQuestions();
   }, []);
 
   /** Fetch a random question, excluding ones already seen, filtered by difficulty */

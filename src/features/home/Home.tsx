@@ -52,6 +52,7 @@ import {
   useLanguage,
   isRtlLanguage,
 } from '../../component/language-translation/LanguageProvider';
+import { saveDailyVerseCache, loadDailyVerseCache, getLocalISODate, normalizeDailyVerse } from './dailyVerseCache';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ActivityType = 'read' | 'highlight' | 'note' | 'favorite' | 'plan';
@@ -239,24 +240,26 @@ export default function Home() {
   const loadHomeStats = useCallback(async () => {
     try {
       const [statsRes, activityRes, labRes, journalRes, verseRes, devotionRes] = await Promise.all([
-        sendPostRequest('bible', 'get-home-stats', {}),
-        sendPostRequest('bible', 'get-recent-activity', { limit: 10 }),
+        sendPostRequest('bible', 'get-home-stats', {}).catch(() => null),
+        sendPostRequest('bible', 'get-recent-activity', { limit: 10 }).catch(() => null),
         sendPostRequest('exegesis', 'current', {}, true).catch(() => null),
         sendPostRequest('journal', 'get-all', { page: 0, pageSize: 1 }, true).catch(() => null),
         sendPostRequest('bible', 'get-todays-verse', {}).catch(() => null),
         sendPostRequest('bible', 'get-todays-devotion', {}).catch(() => null),
       ]);
 
-      if (statsRes.returnCode === 200) {
-        const d = statsRes.returnData;
+      if (statsRes?.returnCode === 200) {
+        const d = statsRes.returnData || {};
         setStats({
           chaptersRead: d.readHistoryCount ?? 0,
           highlights: d.highlightCount ?? 0,
           notes: d.noteCount ?? 0,
           bookmarks: d.favoriteCount ?? 0,
         });
+      }
 
-        const activities = (activityRes.returnData || []).map((act: any) => ({
+      if (activityRes?.returnData) {
+        const activities = activityRes.returnData.map((act: any) => ({
           type: act.type,
           id: act.id,
           book: act.book,
@@ -290,18 +293,57 @@ export default function Home() {
         setRecentEntry(null);
       }
 
-      // Today's verse
+      // Today's verse — cache on success, fallback to cache on failure
       if (verseRes?.returnCode === 200 && verseRes?.returnData) {
         setTodaysVerse(verseRes.returnData);
+        try {
+          const cached = normalizeDailyVerse(verseRes.returnData, getLocalISODate(), 'rest');
+          if (cached) saveDailyVerseCache(cached);
+        } catch {}
       } else {
-        setTodaysVerse(null);
+        try {
+          const cached = await loadDailyVerseCache();
+          if (cached) {
+            setTodaysVerse({
+              bookName: cached.bookName,
+              chapter: cached.chapter,
+              verseNumber: cached.verseNumber,
+              text: cached.text,
+              reference: `${cached.bookName} ${cached.chapter}:${cached.verseNumber}`,
+            });
+          } else {
+            setTodaysVerse(null);
+          }
+        } catch {
+          setTodaysVerse(null);
+        }
       }
 
-      // Today's devotion
+      // Today's devotion — cache on success, fallback to cache on failure
       if (devotionRes?.returnCode === 200 && devotionRes?.returnData) {
         setTodaysDevotion(devotionRes.returnData);
+        try {
+          await AsyncStorage.setItem('daily_devotion_cache', JSON.stringify({
+            date: getLocalISODate(),
+            data: devotionRes.returnData,
+          }));
+        } catch {}
       } else {
-        setTodaysDevotion(null);
+        try {
+          const devotionRaw = await AsyncStorage.getItem('daily_devotion_cache');
+          if (devotionRaw) {
+            const devotionCached = JSON.parse(devotionRaw);
+            if (devotionCached.date === getLocalISODate()) {
+              setTodaysDevotion(devotionCached.data);
+            } else {
+              setTodaysDevotion(null);
+            }
+          } else {
+            setTodaysDevotion(null);
+          }
+        } catch {
+          setTodaysDevotion(null);
+        }
       }
     } catch (e) {
       console.error('Error loading home stats:', e);

@@ -38,6 +38,7 @@ import {
 import { sendPostRequest } from '../../services/api';
 import ActionHeader from '../../reusable/ActionHeader';
 import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
+import { cachePlanDetail, getCachedPlanDetail, cacheAssignments, getCachedAssignments } from './readingPlanCache';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const CAL_CELL = Math.floor((SCREEN_W - SPACING.md * 2 - 32 - 6 * 4) / 7);
@@ -487,9 +488,12 @@ export default function PlanDetailScreen() {
       });
       if (res.returnCode === 200 && res.returnData) {
         setPlanDetail(res.returnData);
+        cachePlanDetail(planId, res.returnData);
       }
     } catch (e) {
       console.error(e);
+      const cached = await getCachedPlanDetail(planId);
+      if (cached) setPlanDetail(cached);
     } finally {
       setPlanLoading(false);
     }
@@ -515,9 +519,27 @@ export default function PlanDetailScreen() {
               quizQuestions: r.quizQuestions || [],
             })),
         );
+        cacheAssignments(planId, res.returnData);
       }
     } catch (e) {
       console.error(e);
+      const cached = await getCachedAssignments(planId);
+      if (cached && Array.isArray(cached)) {
+        setAssignments(
+          cached
+            .filter((r: any) => typeof r?.dayNumber === 'number' || typeof r?.day === 'number')
+            .map((r: any) => ({
+              day: r.day ?? r.dayNumber,
+              title: r.title || '',
+              chapters: r.chapters ?? [],
+              completed: r.completed || false,
+              reflectionQuestions: Array.isArray(r.reflectionQuestions)
+                ? r.reflectionQuestions
+                : [],
+              quizQuestions: r.quizQuestions || [],
+            })),
+        );
+      }
     } finally {
       setAssignmentsLoading(false);
     }

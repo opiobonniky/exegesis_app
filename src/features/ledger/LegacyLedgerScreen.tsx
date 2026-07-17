@@ -534,7 +534,7 @@ const LegacyLedgerScreen = () => {
             if (pageNum === 0) setEntries(entriesData.entries || []);
             else setEntries(prev => [...prev, ...(entriesData.entries || [])]);
             setHasMore(entriesData.hasNext || false);
-            if (pageNum === 0 && entriesData.entries) {
+            if (entriesData.entries) {
               entriesData.entries.forEach(e => cacheJournalEntry(e));
             }
           }
@@ -545,7 +545,7 @@ const LegacyLedgerScreen = () => {
             if (pageNum === 0) setEntries(entriesData.entries || []);
             else setEntries(prev => [...prev, ...(entriesData.entries || [])]);
             setHasMore(entriesData.hasNext || false);
-            if (pageNum === 0 && entriesData.entries) {
+            if (entriesData.entries) {
               entriesData.entries.forEach(e => cacheJournalEntry(e));
               cacheJournalEntryList(entriesData.entries, pageNum, filterKey);
             }

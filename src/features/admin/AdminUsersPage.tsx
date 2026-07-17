@@ -92,6 +92,7 @@ const AdminUsersPage: React.FC = () => {
     status: true,
   });
   const [saving, setSaving] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const currentUsername = app?.userInfo?.username ?? '';
 
@@ -394,38 +395,43 @@ const AdminUsersPage: React.FC = () => {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.surface} />
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={[styles.headerTop, isRtl && { flexDirection: 'row-reverse' }]}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            {isRtl ? (
-              <ChevronRight size={20} color={theme.primary} />
-            ) : (
-              <ChevronLeft size={20} color={theme.primary} />
-            )}
-          </TouchableOpacity>
-          <Text style={[styles.title, isRtl && { textAlign: 'right' }]}>
-            {ac?.userManagement || 'User Management'}
+      {/* Sticky header group */}
+      <View style={[
+        styles.stickyHeader,
+        isScrolled && styles.stickyHeaderScrolled,
+      ]}>
+        <View style={styles.header}>
+          <View style={[styles.headerTop, isRtl && { flexDirection: 'row-reverse' }]}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              {isRtl ? (
+                <ChevronRight size={20} color={theme.primary} />
+              ) : (
+                <ChevronLeft size={20} color={theme.primary} />
+              )}
+            </TouchableOpacity>
+            <Text style={[styles.title, isRtl && { textAlign: 'right' }]}>
+              {ac?.userManagement || 'User Management'}
+            </Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          <Text style={[styles.subtitle, isRtl && { textAlign: 'right' }]}>
+            {userCountText}
           </Text>
-          <View style={styles.headerSpacer} />
         </View>
-        <Text style={[styles.subtitle, isRtl && { textAlign: 'right' }]}>
-          {userCountText}
-        </Text>
-      </View>
 
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={[styles.searchInput, isRtl && { textAlign: 'right' }]}
-          placeholder={ac?.searchUsersPlaceholder || 'Search users...'}
-          value={search}
-          onChangeText={handleSearch}
-          placeholderTextColor={theme.muted}
-        />
+        {/* Search */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={[styles.searchInput, isRtl && { textAlign: 'right' }]}
+            placeholder={ac?.searchUsersPlaceholder || 'Search users...'}
+            value={search}
+            onChangeText={handleSearch}
+            placeholderTextColor={theme.muted}
+          />
+        </View>
       </View>
 
       {loading ? (
@@ -443,6 +449,12 @@ const AdminUsersPage: React.FC = () => {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
             contentContainerStyle={styles.list}
+            onScroll={(e) => {
+              const offsetY = e.nativeEvent.contentOffset.y;
+              setIsScrolled(offsetY > 2);
+            }}
+            scrollIndicatorInsets={{ top: 0 }}
+            scrollEventThrottle={16}
           />
           <View style={styles.bottomPadding} />
           <BottomTab activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -1063,18 +1075,30 @@ const modalStyles = StyleSheet.create({
   },
 });
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
-const getStyles = (theme: ReturnType<typeof getUsersPageTheme>) =>
+// ─── Styles ──────────────────────────────────────────────────────────────────  const getStyles = (theme: ReturnType<typeof getUsersPageTheme>) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.bg,
     },
-    header: {
-      padding: 16,
-      paddingTop: 8,
+    stickyHeader: {
       backgroundColor: theme.surface,
-      display: 'flex',
+      borderBottomWidth: 0,
+      borderBottomColor: theme.border,
+      zIndex: 10,
+    },
+    stickyHeaderScrolled: {
+      borderBottomWidth: 1,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    header: {
+      paddingVertical: 12,
+      paddingHorizontal: 0,
+      backgroundColor: theme.surface,
     },
     headerTop: {
       flexDirection: 'row',
@@ -1103,7 +1127,6 @@ const getStyles = (theme: ReturnType<typeof getUsersPageTheme>) =>
       textAlign: 'center',
     },
     searchContainer: {
-      paddingHorizontal: 16,
       paddingVertical: 12,
     },
     searchInput: {
@@ -1115,6 +1138,7 @@ const getStyles = (theme: ReturnType<typeof getUsersPageTheme>) =>
       color: theme.text,
       borderWidth: 1,
       borderColor: theme.border,
+      marginHorizontal: 16,
     },
     loading: {
       flex: 1,
@@ -1122,8 +1146,8 @@ const getStyles = (theme: ReturnType<typeof getUsersPageTheme>) =>
       alignItems: 'center',
     },
     list: {
-      padding: 16,
-      paddingTop: 0,
+      paddingHorizontal: 0,
+      paddingVertical: 4,
     },
     userCard: {
       backgroundColor: theme.cardBackground,

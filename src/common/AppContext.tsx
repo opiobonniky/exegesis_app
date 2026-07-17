@@ -10,7 +10,7 @@
  *   • Everything else is identical to the original file.
  */
 
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { Appearance, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setActiveVersion } from '../utilits/bibleUtils';
@@ -30,6 +30,9 @@ export interface UserInfo {
   profilePhotoUrl?: string;
   userRole?: number;
   roleName?: string;
+  /** Subscription tier returned directly from the login response */
+  subscriptionTier?: string;
+  accessExpiresAt?: string | null;
 }
 
 type AppContextType = {
@@ -62,8 +65,12 @@ type AppContextType = {
   subscriptionTier: string;
   /** Subscription expiry date */
   accessExpiresAt: string | null;
-  /** Fetch latest subscription status from backend */
-  fetchSubscriptionStatus: () => Promise<void>;
+  /** True while subscription status is being fetched from backend */
+  subscriptionLoading: boolean;
+  /** Fetch latest subscription status from backend. Pass silent=true to skip the loading spinner (for background refreshes). */
+  fetchSubscriptionStatus: (silent?: boolean) => Promise<void>;
+  /** Poll every 3s until the tier changes from the current value, or timeout after 30s. Returns the new tier. */
+  waitForTierUpdate: () => Promise<string>;
   /** Check if user has access to a given tier */
   hasSubscriptionAccess: (minimumTier: 'legacy_sower' | 'covenant_sower') => boolean;
 };
@@ -94,30 +101,101 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   // ── Subscription ─────────────────────────────────────────────────────────
   const [subscriptionTier, setSubscriptionTier] = useState('free');
   const [accessExpiresAt, setAccessExpiresAt] = useState<string | null>(null);
+  // True while a subscription status fetch is in-flight.
+  // The gate must not redirect while this is true to avoid blocking users
+  // whose tier hasn't loaded yet (e.g. right after login).
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   const TIER_ORDER: Record<string, number> = {
     free: 0,
+    legacy_sower_monthly: 1,
     legacy_sower: 1,
+    covenant_sower_monthly: 2,
     covenant_sower: 2,
   };
 
-  const hasSubscriptionAccess = (minimumTier: 'legacy_sower' | 'covenant_sower'): boolean => {
-    return TIER_ORDER[subscriptionTier] >= TIER_ORDER[minimumTier];
-  };
+  const hasSubscriptionAccess = useCallback(
+    (minimumTier: 'legacy_sower' | 'covenant_sower'): boolean => {
+      const order: Record<string, number> = {
+        free: 0,
+        legacy_sower_monthly: 1,
+        legacy_sower: 1,
+        covenant_sower_monthly: 2,
+        covenant_sower: 2,
+      };
+      return (order[subscriptionTier] ?? 0) >= order[minimumTier];
+    },
+    [subscriptionTier],
+  );
 
-  const fetchSubscriptionStatus = async () => {
+  const fetchSubscriptionStatus = async (silent = false) => {
     try {
+      if (!silent) setSubscriptionLoading(true);
       const token = await AsyncStorage.getItem('auth_token');
       if (!token) return;
       const res = await sendPostRequest('subscriptions', 'status', {});
-      if (res.returnCode === 200 && res.returnData?.subscriptionTier) {
-        setSubscriptionTier(res.returnData.subscriptionTier);
-        setAccessExpiresAt(res.returnData.accessExpiresAt || null);
+      if (res.returnCode === 200) {
+        const freshTier: string = res.returnData?.subscriptionTier || 'free';
+        const freshExpiry: string | null = res.returnData?.accessExpiresAt || null;
+        setSubscriptionTier(freshTier);
+        setAccessExpiresAt(freshExpiry);
+        // Persist the refreshed tier back into the cached UserInfo so that
+        // the next cold boot restores the correct tier instantly.
+        const userInfoStr = await AsyncStorage.getItem(USER_INFO_KEY);
+        if (userInfoStr) {
+          const saved: UserInfo = JSON.parse(userInfoStr);
+          saved.subscriptionTier = freshTier;
+          saved.accessExpiresAt = freshExpiry;
+          await AsyncStorage.setItem(USER_INFO_KEY, JSON.stringify(saved));
+        }
       }
     } catch {
       // Non-fatal — default to free
+    } finally {
+      if (!silent) setSubscriptionLoading(false);
     }
   };
+
+  const waitForTierUpdate = useCallback(async (): Promise<string> => {
+    const initialTier = subscriptionTier;
+    return new Promise(resolve => {
+      let attempts = 0;
+      const maxAttempts = 10; // 30 seconds total (10 × 3s)
+      const iv = setInterval(async () => {
+        attempts++;
+        try {
+          await fetchSubscriptionStatus(true);
+          // subscriptionTier is now updated by the state setter from fetchSubscriptionStatus
+          // We need to check it via the ref or just check via a new request
+          const res = await sendPostRequest('subscriptions', 'status', {});
+          if (res.returnCode === 200) {
+            const newTier = res.returnData?.subscriptionTier || 'free';
+            if (newTier !== initialTier || attempts >= maxAttempts) {
+              clearInterval(iv);
+              setSubscriptionTier(newTier);
+              // persist
+              const userInfoStr = await AsyncStorage.getItem(USER_INFO_KEY);
+              if (userInfoStr) {
+                const saved: UserInfo = JSON.parse(userInfoStr);
+                saved.subscriptionTier = newTier;
+                saved.accessExpiresAt = res.returnData.accessExpiresAt || null;
+                await AsyncStorage.setItem(USER_INFO_KEY, JSON.stringify(saved));
+              }
+              resolve(newTier);
+            }
+          } else if (attempts >= maxAttempts) {
+            clearInterval(iv);
+            resolve(subscriptionTier);
+          }
+        } catch {
+          if (attempts >= maxAttempts) {
+            clearInterval(iv);
+            resolve(subscriptionTier);
+          }
+        }
+      }, 3000);
+    });
+  }, [subscriptionTier, fetchSubscriptionStatus]);
 
   // ── Guest mode ────────────────────────────────────────────────────────────
   const [isGuest, setIsGuest] = useState(false);
@@ -142,7 +220,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const handleAppState = (nextState: string) => {
       if (nextState === 'active' && userInfo) {
-        fetchSubscriptionStatus();
+        fetchSubscriptionStatus(true); // silent — user already has a known tier
       }
     };
     const subscription = AppState.addEventListener('change', handleAppState);
@@ -182,9 +260,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       // User info
       const userInfoStr = await AsyncStorage.getItem(USER_INFO_KEY);
       if (userInfoStr) {
-        setUserInfoState(JSON.parse(userInfoStr));
-        // Fetch subscription status if logged in
-        fetchSubscriptionStatus();
+        const savedUser: UserInfo = JSON.parse(userInfoStr);
+        setUserInfoState(savedUser);
+
+        if (savedUser.subscriptionTier && savedUser.subscriptionTier !== 'free') {
+          // Paid tier cached — apply it immediately so gated screens
+          // never see 'free' on boot, then refresh in the background.
+          setSubscriptionTier(savedUser.subscriptionTier);
+          setAccessExpiresAt(savedUser.accessExpiresAt ?? null);
+          // silent=true: don't show spinner since we already have a valid tier
+          fetchSubscriptionStatus(true);
+        } else {
+          // No tier or cached as 'free' — must await the fetch so
+          // subscriptionLoading stays true and the gate doesn't redirect
+          // before the real tier arrives from the server.
+          await fetchSubscriptionStatus(false);
+        }
       }
     } catch (error) {
       console.error('❌ Error loading app data:', error);
@@ -253,8 +344,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       if (user) {
         await AsyncStorage.setItem(USER_INFO_KEY, JSON.stringify(user));
         await AsyncStorage.setItem('auth_token', user.token);
-        // Re-fetch subscription status in case user already has a subscription
-        fetchSubscriptionStatus();
+        // If the login response already includes the tier (backend now sends it),
+        // apply it immediately so gated screens see the correct tier before any
+        // navigation happens — no extra round-trip needed.
+        if (user.subscriptionTier) {
+          setSubscriptionTier(user.subscriptionTier);
+          setAccessExpiresAt(user.accessExpiresAt ?? null);
+        }
+        // Callers can still call fetchSubscriptionStatus() afterwards to refresh,
+        // but it's no longer required for the initial gating check.
       } else {
         await AsyncStorage.removeItem(USER_INFO_KEY);
         await AsyncStorage.removeItem('auth_token');
@@ -309,7 +407,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           isAdmin: userInfo?.userRole === 1,
           subscriptionTier,
           accessExpiresAt,
+          subscriptionLoading,
           fetchSubscriptionStatus,
+          waitForTierUpdate,
           hasSubscriptionAccess,
         }}
       >

@@ -10,6 +10,7 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, X, BookOpen, ChevronRight, ChevronLeft } from 'lucide-react-native';
 import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
@@ -36,6 +37,7 @@ export default function BookSelectorScreen({
   onBack,
   loading = false,
 }: BookSelectorScreenProps) {
+  const insets = useSafeAreaInsets();
   const { translations } = useLanguage();
   const bc = translations?.bible;
   const COLORS = getColors(isDark);
@@ -55,7 +57,7 @@ export default function BookSelectorScreen({
   );
 
   return (
-    <View style={[s.container, { backgroundColor: COLORS.background }]}>
+    <View style={[s.container, { backgroundColor: COLORS.background, paddingTop: Platform.OS === 'ios' ? insets.top + 4 : insets.top }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
@@ -209,7 +211,6 @@ export default function BookSelectorScreen({
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 18 : 10,
   },
   header: {
     paddingHorizontal: 20,

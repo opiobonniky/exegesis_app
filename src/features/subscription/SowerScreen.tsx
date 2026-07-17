@@ -14,39 +14,41 @@ import { AppContext } from '../../common/AppContext';
 import { getColors } from '../../constants/theme';
 import { sendPostRequest } from '../../services/api';
 import { useTiers, Tier } from '../../hooks/useTiers';
+import { route } from '../../component/navigations/routes';
 import ActionHeader from '../../reusable/ActionHeader';
 
 const formatPrice = (price: number) => '$' + price.toFixed(2);
 
-const buildTierCards = (tiers: Tier[]) => {
-  const cards: {
-    id: string;
-    name: string;
-    price: string;
-    period: string;
-    features: string[];
-  }[] = [];
+interface TierCard {
+  id: string;
+  name: string;
+  priceYearly: number;
+  priceMonthly: number;
+  features: string[];
+}
+
+const buildTierCards = (tiers: Tier[]): TierCard[] => {
+  const cards: TierCard[] = [];
 
   const free = tiers.find(t => t.id === 'free');
-  if (free) {
-    cards.push({
-      id: 'free',
-      name: free.name,
-      price: '$0',
-      period: '',
-      features: ['Bible reading', 'Daily verse', 'Basic tools'],
-    });
-  }
+  cards.push({
+    id: 'free',
+    name: free?.name ?? 'Free',
+    priceYearly: 0,
+    priceMonthly: 0,
+    features: free?.features?.length ? free.features : ['Bible reading', 'Daily verse', 'Basic tools'],
+  });
 
   for (const baseId of ['legacy_sower', 'covenant_sower']) {
-    const tier = tiers.find(t => t.id === baseId);
-    if (tier) {
+    const yearly = tiers.find(t => t.id === baseId);
+    const monthly = tiers.find(t => t.id === `${baseId}_monthly`);
+    if (yearly || monthly) {
       cards.push({
         id: baseId,
-        name: tier.name,
-        price: formatPrice(tier.price),
-        period: '/year',
-        features: tier.features?.length ? tier.features : [],
+        name: yearly?.name ?? monthly?.name ?? baseId,
+        priceYearly: yearly?.price ?? 0,
+        priceMonthly: monthly?.price ?? 0,
+        features: yearly?.features?.length ? yearly.features : (monthly?.features ?? []),
       });
     }
   }
@@ -67,47 +69,84 @@ export default function SowerScreen() {
 
   const { tiers, loading: tiersLoading, error: tiersError } = useTiers();
   const fetchSubscriptionStatus = app?.fetchSubscriptionStatus;
+  const waitForTierUpdate = app?.waitForTierUpdate;
   const subscriptionTier = app?.subscriptionTier ?? 'free';
 
   useFocusEffect(
     React.useCallback(() => {
       fetchSubscriptionStatus?.();
-    }, [fetchSubscriptionStatus]),
+    }, []),
   );
 
   const [loading, setLoading] = useState<string | null>(null);
   const TIERS = useMemo(() => buildTierCards(tiers), [tiers]);
 
-  const handleSubscribe = async (cardId: string) => {
+  // Track the selected interval per tier card
+  const [intervals, setIntervals] = useState<Record<string, 'month' | 'year'>>({});
+
+  const getInterval = (cardId: string, card: TierCard) => {
+    if (card.id === 'free') return 'year';
+    // Default to the interval that has a valid price
+    if (!card.priceMonthly || card.priceMonthly === 0) return 'year';
+    return intervals[cardId] || 'month';
+  };
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Home');
+    }
+  };
+
+  const handleSubscribe = async (cardId: string, interval: string) => {
     if (cardId === 'free') return;
     try {
-      setLoading(cardId);
+      setLoading(`${cardId}_${interval}`);
       const res = await sendPostRequest('subscriptions', 'create-checkout-session', {
         tier: cardId,
-        interval: 'year',
+        interval,
       });
       if (res.returnCode === 200 && res.returnData?.url) {
-        Linking.openURL(res.returnData.url);
+        await Linking.openURL(res.returnData.url);
+        // After returning from Stripe Checkout, poll until the tier updates
+        if (waitForTierUpdate) {
+          const newTier = await waitForTierUpdate();
+          if (newTier !== 'free' && newTier !== subscriptionTier) {
+            Alert.alert('Subscription Active', `Your ${newTier} plan is now active.`);
+          }
+        }
       } else {
         Alert.alert('Error', res.returnMessage ?? 'Something went wrong. Please try again.');
       }
     } catch (e: any) {
       console.error('Failed to subscribe:', e);
-      Alert.alert('Error', e?.message ?? 'Something went wrong.');
+      const msg = e?.message ?? '';
+      if (msg.toLowerCase().includes('token') || msg === 'No token provided') {
+        Alert.alert('Sign In Required', 'Please sign in to subscribe.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => navigation.navigate(route.homeLogin as never) },
+        ]);
+      } else if (msg.toLowerCase().includes('cancelled') || msg.toLowerCase().includes('cancel')) {
+        // User cancelled at Stripe — no action needed
+      } else {
+        Alert.alert('Error', msg || 'Something went wrong.');
+      }
     } finally {
       setLoading(null);
     }
   };
 
-  const isCurrentPlan = (cardId: string) => {
+  const isCurrentPlan = (cardId: string, interval: 'month' | 'year') => {
     if (cardId === 'free') return subscriptionTier === 'free';
+    if (interval === 'month') return subscriptionTier === `${cardId}_monthly`;
     const base = subscriptionTier.replace(/_monthly$/, '');
     return base === cardId;
   };
 
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
-      <ActionHeader title="Sower Plans" onPress={() => navigation.goBack()} />
+      <ActionHeader title="Sower Plans" onPress={handleBack} />
 
       {tiersLoading && tiers.length === 0 ? (
         <View style={[styles.center, { backgroundColor: COLORS.background }]}>
@@ -130,8 +169,12 @@ export default function SowerScreen() {
 
           {/* Tier cards */}
           {TIERS.map(tier => {
-            const current = isCurrentPlan(tier.id);
+            const interval = getInterval(tier.id, tier);
+            const hasBothPrices = tier.id !== 'free' && tier.priceMonthly > 0 && tier.priceYearly > 0;
+            const displayPrice = interval === 'month' ? tier.priceMonthly : tier.priceYearly;
+            const current = isCurrentPlan(tier.id, interval);
             const slotLabel = getSlotLabel(tier.id);
+            const isLoading = loading === `${tier.id}_${interval}`;
 
             return (
               <View
@@ -140,9 +183,58 @@ export default function SowerScreen() {
               >
                 <Text style={[styles.tierName, { color: COLORS.text }]}>{tier.name}</Text>
 
+                {hasBothPrices && (
+                  <View style={styles.intervalToggle}>
+                    <TouchableOpacity
+                      style={[
+                        styles.intervalBtn,
+                        {
+                          backgroundColor: interval === 'month' ? COLORS.primary : COLORS.cardBackground,
+                          borderColor: interval === 'month' ? COLORS.primary : COLORS.border,
+                        },
+                      ]}
+                      onPress={() => setIntervals(p => ({ ...p, [tier.id]: 'month' }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.intervalBtnText,
+                          { color: interval === 'month' ? '#fff' : COLORS.textSecondary },
+                        ]}
+                      >
+                        Monthly
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.intervalBtn,
+                        {
+                          backgroundColor: interval === 'year' ? COLORS.primary : COLORS.cardBackground,
+                          borderColor: interval === 'year' ? COLORS.primary : COLORS.border,
+                        },
+                      ]}
+                      onPress={() => setIntervals(p => ({ ...p, [tier.id]: 'year' }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.intervalBtnText,
+                          { color: interval === 'year' ? '#fff' : COLORS.textSecondary },
+                        ]}
+                      >
+                        Yearly
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
                 <View style={styles.priceRow}>
-                  <Text style={[styles.price, { color: COLORS.text }]}>{tier.price}</Text>
-                  <Text style={[styles.period, { color: COLORS.textSecondary }]}>{tier.period}</Text>
+                  <Text style={[styles.price, { color: COLORS.text }]}>
+                    {tier.id === 'free' ? '$0' : formatPrice(displayPrice)}
+                  </Text>
+                  <Text style={[styles.period, { color: COLORS.textSecondary }]}>
+                    {tier.id === 'free' ? '' : interval === 'month' ? '/month' : '/year'}
+                  </Text>
                   {slotLabel && (
                     <Text style={[styles.slotLabel, { color: COLORS.textSecondary }]}>
                       {' '}{slotLabel}
@@ -167,15 +259,19 @@ export default function SowerScreen() {
                       opacity: current || loading !== null ? 0.6 : 1,
                     },
                   ]}
-                  onPress={() => handleSubscribe(tier.id)}
+                  onPress={() => handleSubscribe(tier.id, interval)}
                   disabled={current || loading !== null}
                   activeOpacity={0.8}
                 >
-                  {loading === tier.id ? (
+                  {isLoading ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <Text style={styles.ctaText}>
-                      {current ? 'Current Plan' : tier.id === 'free' ? 'Free' : 'Sow Yearly'}
+                      {current
+                        ? 'Current Plan'
+                        : tier.id === 'free'
+                        ? 'Free'
+                        : `Sow ${interval === 'month' ? 'Monthly' : 'Yearly'}`}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -216,6 +312,23 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
   check: { fontSize: 16, fontWeight: '700', marginRight: 10, marginTop: 1 },
   featureText: { fontSize: 14, flex: 1, lineHeight: 20 },
+
+  intervalToggle: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  intervalBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  intervalBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
 
   ctaButton: {
     borderRadius: 12,

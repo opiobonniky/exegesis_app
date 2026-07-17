@@ -102,6 +102,23 @@ export default function ProfileScreen() {
   const isRtl = isRtlLanguage(language);
 
   const subscriptionTier = app?.subscriptionTier || 'free';
+  const hasSubscriptionAccess = app?.hasSubscriptionAccess ?? (() => false);
+
+  const [gateModal, setGateModal] = useState<{
+    visible: boolean;
+    featureName: string;
+  }>({ visible: false, featureName: '' });
+
+  const requireAccess = useCallback(
+    (minimumTier: 'legacy_sower' | 'covenant_sower', featureName: string, onGranted: () => void) => {
+      if (hasSubscriptionAccess(minimumTier)) {
+        onGranted();
+      } else {
+        setGateModal({ visible: true, featureName });
+      }
+    },
+    [hasSubscriptionAccess],
+  );
 
   const displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || 'Reader';
   const initials = displayName
@@ -111,11 +128,13 @@ export default function ProfileScreen() {
     .map((part: string) => part[0]?.toUpperCase())
     .join('') || 'R';
   const accountLabel =
-    subscriptionTier === 'covenant_sower_monthly' || subscriptionTier === 'covenant_sower_yearly'
+    subscriptionTier === 'covenant_sower_monthly' || subscriptionTier === 'covenant_sower_yearly'  || subscriptionTier === 'covenant_sower'
       ? 'Covenant Sower'
-      : subscriptionTier === 'legacy_sower_monthly' || subscriptionTier === 'legacy_sower_yearly'
+      : subscriptionTier === 'legacy_sower_monthly' || subscriptionTier === 'legacy_sower_yearly' || subscriptionTier === 'legacy_sower'
         ? 'Legacy Sower'
         : 'Free Reader';
+  
+  console.log("subscriptionTier in ProfileScreen::::", subscriptionTier);
   
 
   const handleManageSubscription = async () => {
@@ -236,36 +255,42 @@ export default function ProfileScreen() {
         label: 'Daily Exegesis',
         icon: Sun,
         color: '#F59E0B',
+        requiredTier: 'covenant_sower' as const,
         onPress: () => navigation.navigate(route.dailyExegesis),
       },
       {
         label: 'Journals',
         icon: FileText,
         color: '#8B5CF6',
+        requiredTier: null,
         onPress: () => navigation.navigate(route.journal),
       },
       {
         label: 'Reading Plan',
         icon: Calendar,
         color: '#10B981',
+        requiredTier: 'covenant_sower' as const,
         onPress: () => navigation.navigate(route.readingPlan),
       },
       {
         label: 'Bible Trivia',
         icon: Star,
         color: '#EC4899',
+        requiredTier: null,
         onPress: () => navigation.navigate(route.trivia),
       },
       {
         label: 'Bible Study',
         icon: BookOpen,
         color: COLORS.primary,
+        requiredTier: 'legacy_sower' as const,
         onPress: () => navigation.navigate(route.lab),
       },
       {
         label: 'Community Feed',
         icon: Globe,
         color: '#06B6D4',
+        requiredTier: null,
         onPress: () => navigation.navigate(route.legacyLedger),
       },
     ],
@@ -479,7 +504,13 @@ export default function ProfileScreen() {
                       styles.quickActionCard,
                       { backgroundColor: COLORS.cardBackground },
                     ]}
-                    onPress={action.onPress}
+                    onPress={() => {
+                      if (action.requiredTier) {
+                        requireAccess(action.requiredTier, action.label, action.onPress);
+                      } else {
+                        action.onPress();
+                      }
+                    }}
                     activeOpacity={0.75}
                   >
                     <View
@@ -513,11 +544,12 @@ export default function ProfileScreen() {
                     Account Status
                   </Text>
                   <Text style={[styles.sowerValue, { color: COLORS.text }]}>
-                    {subscriptionTier === 'covenant_sower_monthly' || subscriptionTier === 'covenant_sower_yearly'  
-                      ? 'Covenant Sower'
-                      : subscriptionTier === 'legacy_sower_monthly' || subscriptionTier === 'legacy_sower_yearly'
-                        ? 'Legacy Sower'
-                        : 'Free Reader'}
+                    {accountLabel}
+                  </Text>
+                  <Text style={[styles.sowerExpiry, { color: COLORS.muted }]}>
+                    {subscriptionTier !== 'free' && app?.accessExpiresAt
+                      ? `Renews ${new Date(app.accessExpiresAt).toLocaleDateString()}`
+                      : ''}
                   </Text>
                   {subscriptionTier !== 'free' && app?.accessExpiresAt && (
                     <Text style={[styles.sowerExpiry, { color: COLORS.muted }]}>
@@ -809,6 +841,27 @@ export default function ProfileScreen() {
             message={modal.message}
             severity={modal.severity}
             onConfirm={() => setModal({ ...modal, status: false })}
+          />
+
+          {/* ── Subscription Gate Modal ─────────────────────────── */}
+          <ActionModal
+            visible={gateModal.visible}
+            severity="warning"
+            title={`${gateModal.featureName} requires a Sower subscription`}
+            message={
+              subscriptionTier === 'free'
+                ? `Upgrade your plan to access ${gateModal.featureName}. Choose a Sower tier to unlock premium features.`
+                : `${gateModal.featureName} requires a higher-tier plan. Upgrade to Covenant Sower to access this feature.`
+            }
+            confirmLabel="Upgrade"
+            cancelLabel="Not now"
+            onCancel={() =>
+              setGateModal({ visible: false, featureName: '' })
+            }
+            onConfirm={() => {
+              setGateModal({ visible: false, featureName: '' });
+              navigation.navigate(route.sower);
+            }}
           />
         </>
       )}

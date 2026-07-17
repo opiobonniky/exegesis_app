@@ -31,7 +31,7 @@ import {
   TrendingUp,
 } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { getColors } from '../../constants/theme';
+import { getColors, SPACING } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { route } from '../../component/navigations/routes';
 import { useLanguage } from '../../component/language-translation/LanguageProvider';

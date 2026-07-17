@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, sendPostRequest } from './api';
 import { getStrongsEntry } from './strongsService';
 import { getAllJournalEntries } from './api';
 
@@ -97,16 +97,24 @@ export const searchApi = {
     },
   ): Promise<SearchResponse> => {
     const translationId = options?.translation || 'Berean';
-    const response = await api.post(
-      `/translations/${translationId}/search-fts`,
-      {
-        query,
-        bookName: options?.bookName || undefined,
-        limit: options?.limit ?? 50,
-        offset: options?.offset ?? 0,
-      },
-    );
-    return response.data as SearchResponse;
+    const response = await sendPostRequest('translations', `${translationId}/search-fts`, {
+      query,
+      bookName: options?.bookName || undefined,
+      limit: options?.limit ?? 50,
+      offset: options?.offset ?? 0,
+    });
+    if (response.returnCode === 200 && response.returnData) {
+      const rd = response.returnData as any;
+      return {
+        success: true,
+        query: rd.query || query,
+        total: rd.total ?? 0,
+        page: rd.page ?? 1,
+        limit: rd.limit ?? 50,
+        data: rd.data || [],
+      };
+    }
+    return { success: false, query, total: 0, page: 1, limit: 50, data: [] };
   },
 
   searchStrongs: async (
@@ -215,14 +223,25 @@ export const searchApi = {
       offset?: number;
     },
   ): Promise<CrossTranslationResponse> => {
-    const response = await api.post('/translations/search-cross', {
+    const response = await sendPostRequest('translations', 'search-cross', {
       query,
       translations: options?.translations,
       bookName: options?.bookName,
       limit: options?.limit ?? 50,
       offset: options?.offset ?? 0,
     });
-    return response.data as CrossTranslationResponse;
+    if (response.returnCode === 200 && response.returnData) {
+      const rd = response.returnData as any;
+      return {
+        success: true,
+        query: rd.query || query,
+        total: rd.total ?? 0,
+        page: rd.page ?? 1,
+        limit: rd.limit ?? 50,
+        data: rd.data || [],
+      };
+    }
+    return { success: false, query, total: 0, page: 1, limit: 50, data: [] };
   },
 
   /**

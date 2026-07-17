@@ -15,11 +15,14 @@ import {
   ArrowLeftRight,
   ArrowRightLeft,
   BookMarked,
+  BookOpen,
   ChevronDown,
   ChevronUp,
+  Hash,
   HeartHandshake,
   Info,
   Repeat2,
+  ScrollText,
   Sparkles,
   X,
 } from 'lucide-react-native';
@@ -33,6 +36,8 @@ import {
   TOOL_TYPE_ORDER,
   ToolType,
 } from '../services/studyToolsApi';
+import { getBookPrologue, BookPrologue } from '../../../services/bookProloguesApi';
+import { getVerseWords, StrongsWordData } from '../../../services/strongsService';
 
 const GUIDE_SEEN_KEY = 'study_tools_guide_seen';
 
@@ -86,11 +91,21 @@ export default function ChapterStudyToolsSheet({
   const [loading, setLoading] = useState(true);
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
   const [showGuide, setShowGuide] = useState(false);
+
+  const [prologue, setPrologue] = useState<BookPrologue | null>(null);
+  const [prologueLoading, setPrologueLoading] = useState(false);
+  const [strongsWords, setStrongsWords] = useState<StrongsWordData[]>([]);
+  const [strongsLoading, setStrongsLoading] = useState(false);
+  const [expandedPrologue, setExpandedPrologue] = useState(false);
+  const [expandedStrongs, setExpandedStrongs] = useState(false);
+
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   const fetchTools = useCallback(async () => {
     if (!visible) return;
     setLoading(true);
+    setPrologueLoading(true);
+    setStrongsLoading(true);
     try {
       const data = await getChapterStudyTools(bookName, chapter);
       setTools(data);
@@ -112,6 +127,28 @@ export default function ChapterStudyToolsSheet({
       setTools({});
     } finally {
       setLoading(false);
+    }
+
+    // Fetch book prologue (non-blocking)
+    try {
+      const p = await getBookPrologue(bookName);
+      setPrologue(p);
+    } catch {
+      setPrologue(null);
+    } finally {
+      setPrologueLoading(false);
+    }
+
+    // Fetch Strong's words for the chapter (non-blocking)
+    try {
+      const res = await getVerseWords(bookName, chapter);
+      if (res.returnCode === 200 && res.returnData) {
+        setStrongsWords(res.returnData);
+      }
+    } catch {
+      setStrongsWords([]);
+    } finally {
+      setStrongsLoading(false);
     }
   }, [visible, bookName, chapter]);
 
@@ -268,7 +305,151 @@ export default function ChapterStudyToolsSheet({
                 })}
               </View>
 
-              {!hasTools && (
+              {/* ── Book Overview (Prologue) ── */}
+              {prologue && (
+                <View style={styles.section}>
+                  <TouchableOpacity
+                    style={styles.sectionHeader}
+                    onPress={() => setExpandedPrologue(prev => !prev)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.sectionIcon, { backgroundColor: '#6366f118' }]}>
+                      <BookOpen size={16} color="#6366f1" />
+                    </View>
+                    <Text style={styles.sectionTitle}>Book Overview</Text>
+                    {expandedPrologue ? (
+                      <ChevronUp size={16} color={COLORS.muted} />
+                    ) : (
+                      <ChevronDown size={16} color={COLORS.muted} />
+                    )}
+                  </TouchableOpacity>
+
+                  {expandedPrologue && (
+                    <View style={styles.itemsWrap}>
+                      {prologue.summary && (
+                        <Text style={styles.prologueText}>{prologue.summary}</Text>
+                      )}
+
+                      <View style={styles.prologueMeta}>
+                        {prologue.author && (
+                          <View style={styles.prologueMetaRow}>
+                            <Text style={styles.prologueMetaLabel}>Author</Text>
+                            <Text style={styles.prologueMetaValue}>{prologue.author}</Text>
+                          </View>
+                        )}
+                        {prologue.audience && (
+                          <View style={styles.prologueMetaRow}>
+                            <Text style={styles.prologueMetaLabel}>Audience</Text>
+                            <Text style={styles.prologueMetaValue}>{prologue.audience}</Text>
+                          </View>
+                        )}
+                        {prologue.dateWritten && (
+                          <View style={styles.prologueMetaRow}>
+                            <Text style={styles.prologueMetaLabel}>Date Written</Text>
+                            <Text style={styles.prologueMetaValue}>{prologue.dateWritten}</Text>
+                          </View>
+                        )}
+                        {prologue.purpose && (
+                          <View style={styles.prologueMetaRow}>
+                            <Text style={styles.prologueMetaLabel}>Purpose</Text>
+                            <Text style={styles.prologueMetaValue}>{prologue.purpose}</Text>
+                          </View>
+                        )}
+                        {prologue.keyTheme && (
+                          <View style={styles.prologueMetaRow}>
+                            <Text style={styles.prologueMetaLabel}>Key Theme</Text>
+                            <Text style={styles.prologueMetaValue}>{prologue.keyTheme}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {prologue.mainThemes && prologue.mainThemes.length > 0 && (
+                        <>
+                          <Text style={styles.prologueSubtitle}>Main Themes</Text>
+                          <View style={styles.themeRow}>
+                            {prologue.mainThemes.map((theme, i) => (
+                              <View key={i} style={[styles.themePill, { backgroundColor: '#6366f118', borderColor: '#6366f130' }]}>
+                                <Text style={[styles.themePillText, { color: '#6366f1' }]}>{theme}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        </>
+                      )}
+
+                      {prologue.christConnection && (
+                        <View style={styles.christSection}>
+                          <Text style={styles.prologueSubtitle}>Connection to Christ</Text>
+                          <Text style={styles.prologueText}>{prologue.christConnection}</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* ── Key Words (Strong's) ── */}
+              {strongsWords.length > 0 && (
+                <View style={styles.section}>
+                  <TouchableOpacity
+                    style={styles.sectionHeader}
+                    onPress={() => setExpandedStrongs(prev => !prev)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.sectionIcon, { backgroundColor: '#f59e0b18' }]}>
+                      <Hash size={16} color="#f59e0b" />
+                    </View>
+                    <Text style={styles.sectionTitle}>Key Words (Strong&apos;s)</Text>
+                    <Text style={styles.sectionCount}>{strongsWords.length}</Text>
+                    {expandedStrongs ? (
+                      <ChevronUp size={16} color={COLORS.muted} />
+                    ) : (
+                      <ChevronDown size={16} color={COLORS.muted} />
+                    )}
+                  </TouchableOpacity>
+
+                  {expandedStrongs && (
+                    <View style={styles.itemsWrap}>
+                      {Object.entries(
+                        strongsWords.reduce((acc, w) => {
+                          if (!w.strongsId) return acc;
+                          if (!acc[w.strongsId]) acc[w.strongsId] = { ...w, verses: new Set<number>() };
+                          if (w.verseNumber) acc[w.strongsId].verses.add(w.verseNumber);
+                          return acc;
+                        }, {} as Record<string, StrongsWordData & { verses: Set<number> }>)
+                      ).map(([strongsId, w]) => (
+                        <View key={strongsId} style={styles.strongsItem}>
+                          <View style={styles.strongsHeader}>
+                            <Text style={styles.strongsWord}>{w.surfaceText}</Text>
+                            {w.strongs?.transliteration && (
+                              <Text style={styles.strongsTranslit}>{w.strongs.transliteration}</Text>
+                            )}
+                            <Text style={styles.strongsId}>{strongsId}</Text>
+                          </View>
+                          {w.strongs?.shortDefinition && (
+                            <Text style={styles.strongsDef} numberOfLines={2}>{w.strongs.shortDefinition}</Text>
+                          )}
+                          {w.verses.size > 0 && (
+                            <View style={styles.strongsVerseRow}>
+                              {Array.from(w.verses).sort((a, b) => a - b).map(v => (
+                                <TouchableOpacity
+                                  key={v}
+                                  style={[styles.strongsVerseChip, { borderColor: '#f59e0b30' }]}
+                                  onPress={() => handleVersePress(v)}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={[styles.strongsVerseNum, { color: '#f59e0b' }]}>v{v}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {!hasTools && !prologue && strongsWords.length === 0 && (
                 <View style={styles.emptyState}>
                   <BookMarked size={40} color={COLORS.muted} />
                   <Text style={styles.emptyTitle}>No Study Tools Yet</Text>
@@ -725,6 +906,117 @@ const createStyles = (COLORS: any) =>
     guideGotItText: {
       color: '#fff',
       fontSize: 15,
+      fontWeight: '800',
+    },
+
+    // ── Prologue ──
+    prologueText: {
+      color: COLORS.textSecondary,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    prologueMeta: {
+      marginTop: 12,
+      gap: 6,
+    },
+    prologueMetaRow: {
+      flexDirection: 'row',
+      gap: 6,
+    },
+    prologueMetaLabel: {
+      color: COLORS.muted,
+      fontSize: 12,
+      fontWeight: '700',
+      width: 90,
+    },
+    prologueMetaValue: {
+      color: COLORS.text,
+      fontSize: 12,
+      flex: 1,
+    },
+    prologueSubtitle: {
+      color: COLORS.text,
+      fontSize: 12,
+      fontWeight: '800',
+      marginTop: 12,
+      marginBottom: 6,
+    },
+    themeRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    themePill: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    themePillText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    christSection: {
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: COLORS.border,
+    },
+
+    // ── Strong's Words ──
+    strongsItem: {
+      backgroundColor: COLORS.surface,
+      borderRadius: 12,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      marginBottom: 8,
+    },
+    strongsHeader: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 6,
+      marginBottom: 4,
+    },
+    strongsWord: {
+      color: COLORS.text,
+      fontSize: 14,
+      fontWeight: '800',
+    },
+    strongsTranslit: {
+      color: COLORS.muted,
+      fontSize: 12,
+      fontStyle: 'italic',
+    },
+    strongsId: {
+      color: '#f59e0b',
+      fontSize: 11,
+      fontWeight: '700',
+      backgroundColor: 'rgba(245,158,11,0.12)',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      overflow: 'hidden',
+    },
+    strongsDef: {
+      color: COLORS.textSecondary,
+      fontSize: 12,
+      lineHeight: 17,
+      marginBottom: 6,
+    },
+    strongsVerseRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 4,
+    },
+    strongsVerseChip: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    strongsVerseNum: {
+      fontSize: 11,
       fontWeight: '800',
     },
   });

@@ -480,11 +480,14 @@ export const useBible = () => {
         // Always send an array for consistency with backend expectations
         body.verseNumbers = versesArr;
 
-        const response = await sendPostRequest<any>('bible', 'add-favorite', body);
+        const response = await sendPostRequest<any>('bible', 'add-favorite', body, undefined, true);
 
         if (response.returnCode === 200) {
           setFavorites(prev => new Set([...Array.from(prev), ...versesArr]));
           showToast('success', 'Added to favorites');
+        } else if (response.returnCode === 202) {
+          setFavorites(prev => new Set([...Array.from(prev), ...versesArr]));
+          showToast('success', 'Saved offline — will sync');
         }
       } catch (error: any) {
         showToast('error', error?.message || 'Failed to add favorite');
@@ -527,7 +530,7 @@ export const useBible = () => {
         // Always send array key
         body.verseNumbers = versesArr;
 
-        await sendPostRequest('bible', 'add-highlight', body);
+        const hlRes = await sendPostRequest('bible', 'add-highlight', body, undefined, true);
         pendingVersesRef.current = [];
         setSelectedVerses([]);
 
@@ -763,10 +766,10 @@ export const useBible = () => {
         // Always send array key
         body.verseNumbers = versesArr;
 
-        await sendPostRequest('bible', 'add-verse-note', body);
+        const noteRes = await sendPostRequest('bible', 'add-verse-note', body, undefined, true);
         pendingVersesRef.current = [];
         setSelectedVerses([]);
-        showToast('success', 'Note saved');
+        showToast('success', noteRes.returnCode === 202 ? 'Saved offline — will sync' : 'Note saved');
         closeNoteModal();
       } catch (err:any) {
         console.warn('Failed to save note', err);

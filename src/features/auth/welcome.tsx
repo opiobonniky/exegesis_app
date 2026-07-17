@@ -377,7 +377,7 @@ const Welcome = () => {
         
 
           <PrimaryButton title={currentIndex === slides.length - 1
-                  ? t?.onboarding?.createAccount || 'Create Account'
+                  ? t?.onboarding?.getStarted || 'Get Started'
                   : t?.onboarding?.continueLabel || 'Continue'} style={[styles.cta, {backgroundColor: currentIndex % 2 === 0 ? COLORS.accent : COLORS.primary}]}
             onPress={
               currentIndex === slides.length - 1
@@ -386,17 +386,7 @@ const Welcome = () => {
             }/>
 
           {/* "I already have an account" link — only on the first slide */}
-          {currentIndex === 0 && (
-            <TouchableOpacity
-              style={styles.loginLink}
-              onPress={handleGetStarted}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.loginLinkText, { color: COLORS.muted }]}>
-                {t?.onboarding?.alreadyHaveAccount || 'I already have an account'}
-              </Text>
-            </TouchableOpacity>
-          )}
+         
         </Animated.View>
       </View>
     </View>

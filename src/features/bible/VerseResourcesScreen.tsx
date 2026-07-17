@@ -35,16 +35,21 @@ import ActionHeader from '../../reusable/ActionHeader';
 import { useLanguage, isRtlLanguage, toArabicIndic } from '../../component/language-translation/LanguageProvider';
 import ExpandableText from './ExpandableText';
 import {
+  CommentaryEntry,
   getVerseResources,
   getTranslationComparison,
   VerseResourceData,
   TranslationComparisonEntry,
   DictionaryEntry,
   InterlinearWord,
+  StudyToolResource,
 } from '../../services/verseResourcesApi';
+import { getBookPrologue, BookPrologue } from '../../services/bookProloguesApi';
+import { getVerseWords, StrongsWordData } from '../../services/strongsService';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   BookOpen,
   Hash,
   Tags,
@@ -60,65 +65,14 @@ import {
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type ResourceView = 'main' | 'translation' | 'dictionary' | 'interlinear';
-
-// ── Default demo data ────────────────────────────────────────────────────────
-const DEFAULT_DEMO_DATA: VerseResourceData = {
-  id: 0,
-  bookName: 'Genesis',
-  chapter: 1,
-  verseStart: 1,
-  verseEnd: 1,
-  commentaries: [
-    {
-      author: 'Matthew Henry',
-      title: "Matthew Henry's Concise Commentary",
-      text: 'The first verse of the Bible gives us a satisfying account of the origin of the universe. The world was not eternal, nor did it come by chance. God, the eternal self-existent Being, by His sovereign power and wisdom, created the heavens and the earth. This truth is the foundation of all true religion and the basis of our faith.',
-    },
-    {
-      author: 'C.H. Spurgeon',
-      title: "Spurgeon's Devotional Commentary",
-      text: '\"In the beginning God\" — these four words are the foundation upon which all knowledge rests. Before the mountains were brought forth, before the stars sang together, God was. He existed in the fullness of His eternal being, needing nothing, wanting nothing, but out of the abundance of His love choosing to create. Let the reader pause and consider: the God who made the heavens is the same God who stoops to hear our prayers.',
-    },
-    {
-      author: 'John Calvin',
-      title: "Calvin's Commentaries",
-      text: 'Moses intends here to assert that the world was created, and that it was created by God. By faith we understand that the worlds were framed by the word of God. The Hebrew word \"bara\" is used exclusively for divine creativity — it means to create out of nothing. This stands as a rebuke to all human pride, for we can only shape what already exists, but God alone brings existence out of non-existence.',
-    },
-  ],
-  crossReferences: [
-    { ref: 'John 1:1-3', text: 'In the beginning was the Word, and the Word was with God, and the Word was God. He was with God in the beginning. Through him all things were made.' },
-    { ref: 'Psalm 33:6', text: 'By the word of the Lord the heavens were made, their starry host by the breath of his mouth.' },
-    { ref: 'Colossians 1:16', text: 'For in him all things were created: things in heaven and on earth, visible and invisible, whether thrones or powers or rulers or authorities.' },
-    { ref: 'Hebrews 11:3', text: 'By faith we understand that the universe was formed at God\'s command, so that what is seen was not made out of what was visible.' },
-    { ref: 'Isaiah 45:18', text: 'For this is what the Lord says — he who created the heavens, he is God; he who fashioned and made the earth, he founded it.' },
-  ],
-  wordStudies: [
-    { word: 'בראשית (Bereshit)', transliteration: 'Bereshit', meaning: 'In beginning — The Hebrew word carries the sense of a specific commencement of time itself. Unlike the Greek concept of eternal cycles, Bereshit declares a definite starting point for history. The prefix \"Be-\" (\"in\") combined with \"reshit\" (\"beginning, firstfruits\") suggests a period of time, the first installment of a new order.', strongs: 'H7225' },
-    { word: 'ברא (Bara)', transliteration: 'Bara', meaning: 'He created — This verb is used exclusively in Scripture for divine activity. It never describes human craftsmanship. Bara implies creation ex nihilo (out of nothing), a work that requires no pre-existing material. In the Qal stem, it always has God as its subject, emphasizing that creation is a uniquely divine prerogative.', strongs: 'H1254' },
-    { word: 'אלהים (Elohim)', transliteration: 'Elohim', meaning: 'God — Though grammatically plural in form (suggesting fullness and majesty), this name for God is consistently used with singular verbs when referring to the one true God. It hints at the complexity within the Godhead while maintaining absolute monotheism. The word conveys power, judgment, and covenant authority.', strongs: 'H430' },
-  ],
-  dictionaryTerms: [
-    { term: 'Creation Ex Nihilo', pronunciation: 'eks NEE-hee-loh', definition: 'Creation out of nothing', description: 'The theological doctrine that God did not use any pre-existing material when He created the universe. He spoke, and what He commanded came into being from non-being. This distinguishes Christian theism from all other worldviews, which either posit eternal matter or emanation from the divine substance.' },
-    { term: 'Divine Fiat', pronunciation: 'FEE-aht', definition: 'A decree or command of God', description: 'The concept that God\'s word carries creative power. When God speaks, reality conforms to His utterance. Unlike human speech which describes or requests, divine speech accomplishes. This is seen supremely in the creation account where \"God said, Let there be... and there was.\"' },
-  ],
-  interlinearWords: [
-    { original: 'בראשית', transliteration: 'Bereshit', translation: 'In beginning', strongs: 'H7225' },
-    { original: 'ברא', transliteration: 'bara', translation: 'created', strongs: 'H1254' },
-    { original: 'אלהים', transliteration: 'Elohim', translation: 'God', strongs: 'H430' },
-    { original: 'את', transliteration: 'et', translation: '[direct object marker]', strongs: 'H853' },
-    { original: 'השמים', transliteration: 'ha-shamayim', translation: 'the heavens', strongs: 'H8064' },
-    { original: 'ואת', transliteration: 'v\'et', translation: 'and [direct object]', strongs: 'H853' },
-    { original: 'הארץ', transliteration: 'ha-aretz', translation: 'the earth', strongs: 'H776' },
-  ],
-  relatedTopics: [
-    { name: 'Creation' },
-    { name: 'God the Creator' },
-    { name: 'Origins' },
-    { name: 'Divine Power' },
-    { name: 'The Beginning' },
-  ],
-};
+// ── Fallback data (used when API returns empty) ──────────────────────────────
+const FALLBACK_COMMENTARIES: CommentaryEntry[] = [
+  {
+    author: 'Matthew Henry',
+    title: "Matthew Henry's Concise Commentary",
+    text: 'This passage reveals the character of God and His dealings with humanity. It invites us to consider the depth of His wisdom, the breadth of His love, and the certainty of His promises.',
+  },
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-views
@@ -184,8 +138,11 @@ function DictionaryView({ data, colors, isRtl, bc }: { data: DictionaryEntry[]; 
   );
 }
 
-function InterlinearView({ data, colors, isRtl, bc }: { data: InterlinearWord[]; colors: any; isRtl: boolean; bc: any }) {
-  if (!data || data.length === 0) {
+function InterlinearView({ data, colors, isRtl, bc, verseWords = [], maxRows }: { data: InterlinearWord[]; colors: any; isRtl: boolean; bc: any; verseWords?: StrongsWordData[]; maxRows?: number }) {
+  const hasBackendData = data && data.length > 0;
+  const hasStrongsData = verseWords && verseWords.length > 0;
+
+  if (!hasBackendData && !hasStrongsData) {
     return (
       <View style={{ padding: SPACING.xl, alignItems: 'center' }}>
         <Text style={{ color: colors.muted, fontSize: FONT_SIZES.sm, textAlign: 'center' }}>
@@ -194,6 +151,18 @@ function InterlinearView({ data, colors, isRtl, bc }: { data: InterlinearWord[];
       </View>
     );
   }
+
+  // Build combined word list — prefer backend data, augment with Strong's data
+  const combinedRows = hasBackendData
+    ? data.map(w => ({ original: w.original, strongs: w.strongs, transliteration: w.transliteration, translation: w.translation }))
+    : verseWords.map(w => ({
+        original: w.surfaceText,
+        strongs: w.strongsId || '',
+        transliteration: w.strongs?.transliteration || '',
+        translation: w.strongs?.shortDefinition || '',
+      }));
+
+  const displayed = maxRows ? combinedRows.slice(0, maxRows) : combinedRows;
 
   return (
     <View style={subStyles.wrapper}>
@@ -205,7 +174,7 @@ function InterlinearView({ data, colors, isRtl, bc }: { data: InterlinearWord[];
           <Text style={[subStyles.colHead, { color: colors.muted, textAlign: isRtl ? 'right' : 'left' }]}>{bc?.translate || 'Translit.'}</Text>
           <Text style={[subStyles.colHeadTrans, { color: colors.muted, textAlign: isRtl ? 'right' : 'left' }]}>{bc?.copy || 'English'}</Text>
         </View>
-        {data.map((w, i) => (
+        {displayed.map((w, i) => (
           <View key={`il-${i}`} style={[subStyles.tableRow, { flexDirection: isRtl ? 'row-reverse' : 'row', backgroundColor: i % 2 === 0 ? 'transparent' : `${colors.border}40` }]}>
             <Text style={[subStyles.colOrig, { color: colors.text, textAlign: isRtl ? 'right' : 'left' }]}>{w.original}</Text>
             <Text style={[subStyles.col, { color: colors.muted, textAlign: isRtl ? 'right' : 'left' }]}>{w.strongs}</Text>
@@ -267,23 +236,154 @@ function SectionHeader({ icon, label, color, colors, isRtl }: { icon: React.Reac
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Resource Action Card
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Collapsible Section ──────────────────────────────────────────────────────
 
-function ResourceActionCard({ icon, label, description, accentColor, onPress, colors, isRtl }: {
-  icon: React.ReactNode; label: string; description: string; accentColor: string; onPress: () => void; colors: any; isRtl?: boolean;
+const BATCH = { translation: 3, dictionary: 2, interlinear: 10 };
+
+function MoreButton({ remaining, batch, onPress, colors }: { remaining: number; batch: number; onPress: () => void; colors: any }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, marginTop: 4 }}
+    >
+      <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>
+        More ({Math.min(batch, remaining)})
+      </Text>
+      <ChevronDown size={14} color={colors.primary} strokeWidth={2.5} />
+    </TouchableOpacity>
+  );
+}
+
+function CollapsibleSection({
+  expanded, onToggle, icon, label, color, count, colors, isRtl, children
+}: {
+  expanded: boolean; onToggle: () => void; icon: React.ReactNode; label: string; color: string; count?: number; colors: any; isRtl?: boolean; children: React.ReactNode;
 }) {
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7}
-      style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftWidth: 3, borderLeftColor: accentColor, borderRightWidth: isRtl ? 3 : 0, borderRightColor: isRtl ? accentColor : 'transparent' }]}>
-      <View style={[styles.actionIconWrap, { backgroundColor: `${accentColor}18` }]}>{icon}</View>
-      <View style={[styles.actionTextCol, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
-        <Text style={[styles.actionLabel, { color: colors.text, textAlign: isRtl ? 'right' : 'left' }]}>{label}</Text>
-        <Text style={[styles.actionDesc, { color: colors.muted, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={2}>{description}</Text>
-      </View>
-      {isRtl ? <ChevronLeft size={16} color={colors.muted} strokeWidth={2} /> : <ChevronRight size={16} color={colors.muted} strokeWidth={2} />}
-    </TouchableOpacity>
+    <View style={{ marginBottom: SPACING.sm, backgroundColor: colors.surface, borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+      <TouchableOpacity
+        onPress={onToggle}
+        activeOpacity={0.7}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: SPACING.md, borderLeftWidth: 3, borderLeftColor: color }}
+      >
+        <View style={[styles.collapsibleIcon, { backgroundColor: `${color}18` }]}>{icon}</View>
+        <Text style={[styles.collapsibleLabel, { color: colors.text }]}>{label}</Text>
+        {count !== undefined && <Text style={[styles.collapsibleCount, { color: colors.muted }]}>{count}</Text>}
+        <ChevronDown
+          size={16}
+          color={colors.muted}
+          strokeWidth={2}
+          style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}
+        />
+      </TouchableOpacity>
+      {expanded && (
+        <View style={{ paddingHorizontal: SPACING.md, paddingBottom: SPACING.md }}>
+          {children}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const STUDY_TOOL_LABELS: Record<string, string> = {
+  COMMAND: 'Command',
+  PROMISE: 'Promise',
+  WARNING: 'Warning',
+  REPEATED_WORD: 'Repeated Word',
+  TRANSITION: 'Transition',
+  CONTRAST: 'Contrast',
+};
+
+function StudyToolsSection({ tools, colors, isRtl }: { tools: StudyToolResource[]; colors: any; isRtl?: boolean }) {
+  if (!tools.length) return null;
+
+  return (
+    <View style={{ marginBottom: SPACING.md }}>
+      <SectionHeader
+        icon={<FileText size={16} color="#8B5CF6" strokeWidth={2} />}
+        label="Study Tools"
+        color="#8B5CF6"
+        colors={colors}
+        isRtl={isRtl}
+      />
+      {tools.map(tool => (
+        <View
+          key={tool.id}
+          style={[
+            styles.studyToolCard,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderLeftColor: isRtl ? colors.border : '#8B5CF6',
+              borderRightColor: isRtl ? '#8B5CF6' : 'transparent',
+              borderRightWidth: isRtl ? 3 : 0,
+            },
+          ]}
+        >
+          <View style={[styles.studyToolTop, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={[styles.studyToolIcon, { backgroundColor: '#8B5CF618' }]}>
+              <FileText size={16} color="#8B5CF6" strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+              <View style={[styles.studyToolMetaRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Text style={styles.studyToolType}>{STUDY_TOOL_LABELS[tool.toolType] || tool.toolType}</Text>
+                <Text style={[styles.studyToolRef, { color: colors.muted }]}>{tool.bookName} {tool.chapter}</Text>
+              </View>
+              <Text style={[styles.studyToolTitle, { color: colors.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                {tool.label}
+              </Text>
+            </View>
+          </View>
+
+          {tool.description ? (
+            <Text style={[styles.studyToolDescription, { color: colors.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
+              {tool.description}
+            </Text>
+          ) : null}
+
+          {tool.verseRefs?.length ? (
+            <View style={[styles.studyToolVerseBox, { backgroundColor: `${colors.primary}08`, borderColor: `${colors.primary}18` }]}>
+              {tool.verseRefs.map((ref, i) => (
+                <Text key={`${tool.id}-ref-${i}`} style={[styles.studyToolVerseText, { color: colors.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {ref.verse}. {ref.excerpt || ''}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+
+          {tool.studyToolWords?.length ? (
+            <View style={styles.studyToolWordsWrap}>
+              {tool.studyToolWords.map(word => {
+                const strongs = word.strongs;
+                const explanation = word.adminExplanation || strongs?.adminExplanation;
+                return (
+                  <View key={word.id} style={[styles.studyToolWordCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                    <View style={[styles.studyToolWordHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                      <Text style={[styles.studyToolWordSurface, { color: colors.text }]}>{word.surfaceText}</Text>
+                      <Text style={styles.studyToolWordStrong}>{word.strongsId}</Text>
+                      {strongs?.originalWord ? (
+                        <Text style={[styles.studyToolOriginal, { color: colors.textSecondary }]}>{strongs.originalWord}</Text>
+                      ) : null}
+                    </View>
+                    {(strongs?.transliteration || strongs?.shortDefinition) ? (
+                      <Text style={[styles.studyToolWordDefinition, { color: colors.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+                        {strongs?.transliteration ? `${strongs.transliteration} · ` : ''}{strongs?.shortDefinition || ''}
+                      </Text>
+                    ) : null}
+                    {explanation ? (
+                      <Text style={[styles.studyToolExplanation, { color: colors.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
+                        {explanation}
+                      </Text>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -309,70 +409,111 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
   const rawVerseNumber: number = params.verseNumber ?? 0;
   const verseText: string = params.verseText ?? '';
 
-  // If no params were passed, default to Genesis 1:1 and use demo data
-  const isUsingDemo = !rawBookName || !rawChapter || !rawVerseNumber;
-  const bookName = isUsingDemo ? 'Genesis' : rawBookName;
-  const chapter = isUsingDemo ? 1 : rawChapter;
-  const verseNumber = isUsingDemo ? 1 : rawVerseNumber;
+  const isInvalidParams = !rawBookName || !rawChapter || !rawVerseNumber;
+  const bookName = isInvalidParams ? 'Genesis' : rawBookName;
+  const chapter = isInvalidParams ? 1 : rawChapter;
+  const verseNumber = isInvalidParams ? 1 : rawVerseNumber;
   const verseRef = `${bookName} ${chapter}:${verseNumber}`;
 
-  const [view, setView] = useState<ResourceView>('main');
-  const [data, setData] = useState<VerseResourceData | null>(
-    isUsingDemo ? DEFAULT_DEMO_DATA : null,
-  );
-  const [loading, setLoading] = useState(!isUsingDemo);
+  const [data, setData] = useState<VerseResourceData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDemo, setIsDemo] = useState(isUsingDemo);
+  const [useFallback, setUseFallback] = useState(false);
   const [translationComp, setTranslationComp] = useState<TranslationComparisonEntry[] | null>(null);
   const [translationCompLoading, setTranslationCompLoading] = useState(false);
   const [translationCompError, setTranslationCompError] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const toggleSection = useCallback((name: string) => {
+    setExpandedSections(prev => ({ ...prev, [name]: !prev[name] }));
+  }, []);
+  const [progressiveLimits, setProgressiveLimits] = useState<Record<string, number>>({});
+  const progressiveLimit = useCallback((key: string, batch: number) =>
+    progressiveLimits[key] ?? batch, [progressiveLimits]);
+  const showMore = useCallback((key: string, batch: number) => {
+    setProgressiveLimits(prev => ({ ...prev, [key]: (prev[key] ?? batch) + batch }));
+  }, []);
+
+  // Prologue
+  const [prologue, setPrologue] = useState<BookPrologue | null>(null);
+  const [prologueLoading, setPrologueLoading] = useState(false);
+  const [expandedPrologue, setExpandedPrologue] = useState(false);
+
+  // Strong's words for the verse
+  const [verseWords, setVerseWords] = useState<StrongsWordData[]>([]);
+  const [verseWordsLoading, setVerseWordsLoading] = useState(false);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
-  const fetchTranslations = useCallback(async () => {
-    if (translationComp !== null) return; // already loaded
-    setTranslationCompLoading(true);
-    setTranslationCompError(null);
+  const fetchResources = useCallback(async () => {
+    if (isInvalidParams) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setPrologueLoading(true);
+    setVerseWordsLoading(true);
     try {
-      const response = await getTranslationComparison(bookName, chapter, verseNumber);
+      const response = await getVerseResources(bookName, chapter, verseNumber);
+
+      console.log('Verse resources response:', JSON.stringify(response));
+
       if (response.returnCode === 200 && response.returnData) {
-        setTranslationComp(response.returnData);
+        setData(response.returnData);
+        setUseFallback(false);
       } else {
-        setTranslationComp(null);
-        setTranslationCompError(response.returnMessage || 'No translations available');
+        setData({ id: 0, bookName, chapter, verseStart: verseNumber, verseEnd: verseNumber, commentaries: FALLBACK_COMMENTARIES, crossReferences: [], wordStudies: [], dictionaryTerms: [], interlinearWords: [], relatedTopics: [], studyTools: [] });
+        setUseFallback(true);
       }
     } catch (err: any) {
-      console.error('Failed to fetch translation comparison:', err);
+      console.error('Failed to fetch verse resources:', err);
+      setData({ id: 0, bookName, chapter, verseStart: verseNumber, verseEnd: verseNumber, commentaries: FALLBACK_COMMENTARIES, crossReferences: [], wordStudies: [], dictionaryTerms: [], interlinearWords: [], relatedTopics: [], studyTools: [] });
+      setUseFallback(true);
+    } finally {
+      setLoading(false);
+    }
+
+    // Fetch book prologue (non-blocking)
+    try {
+      const p = await getBookPrologue(bookName);
+      console.log('Book prologue response:', JSON.stringify(p));
+      setPrologue(p);
+    } catch {
+      setPrologue(null);
+    } finally {
+      setPrologueLoading(false);
+    }
+
+    // Fetch Strong's words for this verse (non-blocking)
+    try {
+      const res = await getVerseWords(bookName, chapter, verseNumber);
+      if (res.returnCode === 200 && res.returnData) {
+        setVerseWords(res.returnData);
+      }
+    } catch {
+      setVerseWords([]);
+    } finally {
+      setVerseWordsLoading(false);
+    }
+
+    // Fetch translation comparison (non-blocking)
+    try {
+      setTranslationCompLoading(true);
+      const res = await getTranslationComparison(bookName, chapter, verseNumber);
+      if (res.returnCode === 200 && res.returnData) {
+        setTranslationComp(res.returnData);
+      } else {
+        setTranslationComp(null);
+        setTranslationCompError(res.returnMessage || 'No translations available');
+      }
+    } catch (err: any) {
       setTranslationComp(null);
       setTranslationCompError(err?.returnMessage || err?.message || 'Failed to load translations');
     } finally {
       setTranslationCompLoading(false);
     }
-  }, [bookName, chapter, verseNumber, translationComp]);
-
-  const fetchResources = useCallback(async () => {
-    if (isUsingDemo) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getVerseResources(bookName, chapter, verseNumber);
-      if (response.returnCode === 200 && response.returnData) {
-        setData(response.returnData);
-        setIsDemo(false);
-      } else {
-        // Fall back to demo data when API returns no data
-        setData(DEFAULT_DEMO_DATA);
-        setIsDemo(true);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch verse resources:', err);
-      // Fall back to demo data on error
-      setData(DEFAULT_DEMO_DATA);
-      setIsDemo(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [bookName, chapter, verseNumber, isUsingDemo]);
+  }, [bookName, chapter, verseNumber, isInvalidParams]);
 
   useEffect(() => {
     fetchResources();
@@ -385,16 +526,7 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
     ]).start();
-  }, [view, data]);
-
-  const isSubView = view !== 'main';
-  const subViewConfig = isSubView
-    ? view === 'translation'
-      ? { title: langT?.translate || 'Translation Comparison', icon: <Languages size={16} color="#3B82F6" strokeWidth={2} />, color: '#3B82F6' }
-      : view === 'dictionary'
-        ? { title: bc?.resources || 'Bible Dictionary', icon: <Book size={16} color="#10B981" strokeWidth={2} />, color: '#10B981' }
-        : { title: bc?.strongsConcordance || 'Interlinear', icon: <FileText size={16} color="#F59E0B" strokeWidth={2} />, color: '#F59E0B' }
-    : undefined;
+  }, [data]);
 
   const accentGradient = isDark ? ['#0D1829', '#1A3F7A', '#0D1829'] : ['#1A3F7A', '#2755A0', '#1A3F7A'];
 
@@ -413,11 +545,12 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
   }, [nav]);
 
   const hasDictionary = data?.dictionaryTerms && data.dictionaryTerms.length > 0;
-  const hasInterlinear = data?.interlinearWords && data.interlinearWords.length > 0;
+  const hasInterlinear = (data?.interlinearWords && data.interlinearWords.length > 0) || verseWords.length > 0;
   const hasCommentaries = data?.commentaries && data.commentaries.length > 0;
   const hasCrossRefs = data?.crossReferences && data.crossReferences.length > 0;
   const hasWordStudies = data?.wordStudies && data.wordStudies.length > 0;
   const hasTopics = data?.relatedTopics && data.relatedTopics.length > 0;
+  const hasStudyTools = data?.studyTools && data.studyTools.length > 0;
 
   // ── Render loading state ──
   if (loading) {
@@ -490,46 +623,19 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}>
       <ActionHeader
-        title={isSubView ? (subViewConfig?.title ?? '') : (bc?.resources || 'Verse Resources')}
+        title={bc?.resources || 'Verse Resources'}
         subtitle={verseRef}
         onPress={goBack}
       />
-
-      {isSubView && (
-        <TouchableOpacity onPress={() => setView('main')} style={[styles.backToMain, { flexDirection: isRtl ? 'row-reverse' : 'row', backgroundColor: COLORS.surface, borderColor: COLORS.border }]} activeOpacity={0.7}>
-          {isRtl ? <ChevronRight size={16} color={COLORS.primary} strokeWidth={2.5} /> : <ChevronLeft size={16} color={COLORS.primary} strokeWidth={2.5} />}
-          <Text style={[styles.backToMainText, { color: COLORS.primary }]}>{'Back to Resources'}</Text>
-        </TouchableOpacity>
-      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-          {isSubView ? (
-            <>
-              {view === 'translation' && (
-                translationCompLoading ? (
-                  <View style={{ paddingVertical: SPACING.xl }}>
-                    <ActivityIndicator color={COLORS.primary} />
-                  </View>
-                ) : translationCompError ? (
-                  <View style={{ alignItems: 'center', paddingVertical: SPACING.xl }}>
-                    <Text style={{ color: COLORS.muted, fontSize: FONT_SIZES.sm, textAlign: 'center' }}>{translationCompError}</Text>
-                  </View>
-                ) : (
-                  <TranslationView data={translationComp || []} colors={COLORS} isRtl={isRtl} bc={bc} />
-                )
-              )}
-              {view === 'dictionary' && <DictionaryView data={data.dictionaryTerms} colors={COLORS} isRtl={isRtl} bc={bc} />}
-              {view === 'interlinear' && <InterlinearView data={data.interlinearWords} colors={COLORS} isRtl={isRtl} bc={bc} />}
-            </>
-          ) : (
-            <>
-              {/* ── Hero Verse Card ── */}
-              <LinearGradient colors={accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.heroCard, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                <View style={[styles.heroContent, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+          {/* ── Hero Verse Card ── */}
+              <LinearGradient colors={accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.heroCard, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}> 
+                <View style={[styles.heroContent, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}> 
                   <View style={[styles.heroPillRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                     <View style={styles.heroPill}>
                       <Text style={styles.heroPillText}>{bookName} {chapter}</Text>
@@ -537,9 +643,9 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
                     <View style={[styles.heroPill, styles.heroPillAccent]}>
                       <Text style={[styles.heroPillText, styles.heroPillTextAccent]}>{bc?.verseLabel || 'Verse'} {toArabicIndic(isRtl, verseNumber)}</Text>
                     </View>
-                    {isDemo && (
+                    {useFallback && (
                       <View style={[styles.heroPill, { backgroundColor: 'rgba(255,193,7,0.25)', borderColor: 'rgba(255,193,7,0.5)' }]}>
-                        <Text style={[styles.heroPillText, { color: '#FFC107', fontWeight: '800' }]}>Sample</Text>
+                        <Text style={[styles.heroPillText, { color: '#FFC107', fontWeight: '800' }]}>Fallback</Text>
                       </View>
                     )}
                   </View>
@@ -550,40 +656,235 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
                 </View>
               </LinearGradient>
 
-              {/* ── Quick Action Cards ── */}
-              <View style={{ marginTop: SPACING.sm }}>
-                <ResourceActionCard
-                  icon={<Languages size={20} color="#3B82F6" strokeWidth={2} />}
-                  label={langT?.translate || 'Translation Comparison'}
-                  description="Compare this verse across 9 Bible translations side-by-side."
-                  accentColor="#3B82F6"
-                  onPress={() => { fetchTranslations(); setView('translation'); }}
+              {/* ── Curated Study Tools ── */}
+              {hasStudyTools && (
+                <StudyToolsSection tools={data.studyTools || []} colors={COLORS} isRtl={isRtl} />
+              )}
+
+              {/* ── Book Context (Prologue) ── */}
+              {prologue && (
+                <View style={{ marginBottom: SPACING.md }}>
+                  <TouchableOpacity
+                    onPress={() => setExpandedPrologue(prev => !prev)}
+                    activeOpacity={0.7}
+                    style={[styles.actionCard, { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderLeftWidth: 3, borderLeftColor: '#6366f1', borderRightWidth: isRtl ? 3 : 0, borderRightColor: isRtl ? '#6366f1' : 'transparent' }]}
+                  >
+                    <View style={[styles.actionIconWrap, { backgroundColor: '#6366f118' }]}>
+                      <BookOpen size={20} color="#6366f1" strokeWidth={2} />
+                    </View>
+                    <View style={[styles.actionTextCol, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                      <Text style={[styles.actionLabel, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>Book Context</Text>
+                      <Text style={[styles.actionDesc, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={2}>
+                        {prologue.keyTheme || prologue.summary || `${prologue.author ? `By ${prologue.author}` : ''} ${prologue.author && prologue.dateWritten ? '·' : ''} ${prologue.dateWritten || ''}`}
+                      </Text>
+                    </View>
+                    {isRtl ? <ChevronLeft size={16} color={COLORS.muted} strokeWidth={2} /> : <ChevronRight size={16} color={COLORS.muted} strokeWidth={2} />}
+                  </TouchableOpacity>
+
+                  {expandedPrologue && (
+                    <View style={[styles.card, { backgroundColor: COLORS.surface, borderColor: COLORS.border, marginTop: 8 }]}>
+                      <View style={{ padding: SPACING.md }}>
+                        {prologue.summary && <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 20, marginBottom: 12 }}>{prologue.summary}</Text>}
+                        {prologue.author && (
+                          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4 }}>
+                            <Text style={{ color: COLORS.muted, fontSize: 12, fontWeight: '700', width: 90 }}>Author</Text>
+                            <Text style={{ color: COLORS.text, fontSize: 12, flex: 1 }}>{prologue.author}</Text>
+                          </View>
+                        )}
+                        {prologue.audience && (
+                          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4 }}>
+                            <Text style={{ color: COLORS.muted, fontSize: 12, fontWeight: '700', width: 90 }}>Audience</Text>
+                            <Text style={{ color: COLORS.text, fontSize: 12, flex: 1 }}>{prologue.audience}</Text>
+                          </View>
+                        )}
+                        {prologue.dateWritten && (
+                          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4 }}>
+                            <Text style={{ color: COLORS.muted, fontSize: 12, fontWeight: '700', width: 90 }}>Date Written</Text>
+                            <Text style={{ color: COLORS.text, fontSize: 12, flex: 1 }}>{prologue.dateWritten}</Text>
+                          </View>
+                        )}
+                        {prologue.purpose && (
+                          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4 }}>
+                            <Text style={{ color: COLORS.muted, fontSize: 12, fontWeight: '700', width: 90 }}>Purpose</Text>
+                            <Text style={{ color: COLORS.text, fontSize: 12, flex: 1 }}>{prologue.purpose}</Text>
+                          </View>
+                        )}
+                        {prologue.mainThemes && prologue.mainThemes.length > 0 && (
+                          <>
+                            <Text style={{ color: COLORS.text, fontSize: 12, fontWeight: '800', marginTop: 10, marginBottom: 6 }}>Main Themes</Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                              {prologue.mainThemes.map((t, i) => (
+                                <View key={i} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#6366f130', backgroundColor: '#6366f118' }}>
+                                  <Text style={{ color: '#6366f1', fontSize: 11, fontWeight: '700' }}>{t}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          </>
+                        )}
+                        {prologue.christConnection && (
+                          <>
+                            <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 12 }} />
+                            <Text style={{ color: COLORS.text, fontSize: 12, fontWeight: '800', marginBottom: 6 }}>Connection to Christ</Text>
+                            <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 20 }}>{prologue.christConnection}</Text>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* ── Strong's Words for This Verse ── */}
+              {verseWords.length > 0 && (
+                <View style={{ marginBottom: SPACING.md }}>
+                  <View style={[styles.card, { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderLeftWidth: 3, borderLeftColor: '#f59e0b', borderRightWidth: isRtl ? 3 : 0, borderRightColor: isRtl ? '#f59e0b' : 'transparent' }]}>
+                    <View style={{ padding: SPACING.md }}>
+                      <View style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#f59e0b18', alignItems: 'center', justifyContent: 'center' }}>
+                          <Hash size={16} color="#f59e0b" strokeWidth={2} />
+                        </View>
+                        <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '800', flex: 1 }}>Original Language Words</Text>
+                        <Text style={{ color: COLORS.muted, fontSize: 12, fontWeight: '700' }}>{verseWords.length}</Text>
+                      </View>
+                      {Object.entries(
+                        verseWords.reduce((acc, w) => {
+                          if (!w.strongsId) return acc;
+                          if (!acc[w.strongsId]) acc[w.strongsId] = { ...w, count: 0 };
+                          acc[w.strongsId].count++;
+                          return acc;
+                        }, {} as Record<string, StrongsWordData & { count: number }>)
+                      ).map(([strongsId, w]) => (
+                        <TouchableOpacity
+                          key={strongsId}
+                          activeOpacity={0.7}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                              <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '800' }}>{w.surfaceText}</Text>
+                              {w.strongs?.transliteration && (
+                                <Text style={{ color: COLORS.muted, fontSize: 11, fontStyle: 'italic' }}>{w.strongs.transliteration}</Text>
+                              )}
+                              <Text style={{ color: '#f59e0b', fontSize: 10, fontWeight: '700', backgroundColor: 'rgba(245,158,11,0.12)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, overflow: 'hidden' }}>{strongsId}</Text>
+                            </View>
+                            {w.strongs?.shortDefinition && (
+                              <Text style={{ color: COLORS.textSecondary, fontSize: 12, lineHeight: 16, marginTop: 2 }} numberOfLines={2}>{w.strongs.shortDefinition}</Text>
+                            )}
+                          </View>
+                          <Text style={{ color: COLORS.muted, fontSize: 10, fontWeight: '700' }}>×{w.count}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* ── Translation Comparison ── */}
+              <CollapsibleSection
+                expanded={!!expandedSections.translation}
+                onToggle={() => toggleSection('translation')}
+                icon={<Languages size={18} color="#3B82F6" strokeWidth={2} />}
+                label={langT?.translate || 'Translation Comparison'}
+                color="#3B82F6"
+                count={translationComp?.length}
+                colors={COLORS}
+                isRtl={isRtl}
+              >
+                {translationCompLoading ? (
+                  <View style={{ paddingVertical: SPACING.xl }}>
+                    <ActivityIndicator color={COLORS.primary} />
+                  </View>
+                ) : translationCompError ? (
+                  <View style={{ alignItems: 'center', paddingVertical: SPACING.xl }}>
+                    <Text style={{ color: COLORS.muted, fontSize: FONT_SIZES.sm, textAlign: 'center' }}>{translationCompError}</Text>
+                  </View>
+                ) : (
+                  <>
+                    <TranslationView
+                      data={(translationComp || []).slice(0, progressiveLimit('translation', BATCH.translation))}
+                      colors={COLORS}
+                      isRtl={isRtl}
+                      bc={bc}
+                    />
+                    {(translationComp?.length || 0) > progressiveLimit('translation', BATCH.translation) && (
+                      <MoreButton
+                        remaining={(translationComp?.length || 0) - progressiveLimit('translation', BATCH.translation)}
+                        batch={BATCH.translation}
+                        onPress={() => showMore('translation', BATCH.translation)}
+                        colors={COLORS}
+                      />
+                    )}
+                  </>
+                )}
+              </CollapsibleSection>
+
+              {/* ── Bible Dictionary ── */}
+              {hasDictionary && (
+                <CollapsibleSection
+                  expanded={!!expandedSections.dictionary}
+                  onToggle={() => toggleSection('dictionary')}
+                  icon={<Book size={18} color="#10B981" strokeWidth={2} />}
+                  label={bc?.resources || 'Bible Dictionary'}
+                  color="#10B981"
+                  count={data.dictionaryTerms?.length}
                   colors={COLORS}
                   isRtl={isRtl}
-                />
-                {hasInterlinear && (
-                  <ResourceActionCard
-                    icon={<FileText size={20} color="#F59E0B" strokeWidth={2} />}
+                >
+                  <>
+                    <DictionaryView
+                      data={(data.dictionaryTerms || []).slice(0, progressiveLimit('dictionary', BATCH.dictionary))}
+                      colors={COLORS}
+                      isRtl={isRtl}
+                      bc={bc}
+                    />
+                    {(data.dictionaryTerms?.length || 0) > progressiveLimit('dictionary', BATCH.dictionary) && (
+                      <MoreButton
+                        remaining={(data.dictionaryTerms?.length || 0) - progressiveLimit('dictionary', BATCH.dictionary)}
+                        batch={BATCH.dictionary}
+                        onPress={() => showMore('dictionary', BATCH.dictionary)}
+                        colors={COLORS}
+                      />
+                    )}
+                  </>
+                </CollapsibleSection>
+              )}
+
+              {/* ── Interlinear ── */}
+              {hasInterlinear && (() => {
+                const intLimit = progressiveLimit('interlinear', BATCH.interlinear);
+                const intTotal = Math.max(data?.interlinearWords?.length || 0, verseWords.length);
+                return (
+                  <CollapsibleSection
+                    expanded={!!expandedSections.interlinear}
+                    onToggle={() => toggleSection('interlinear')}
+                    icon={<FileText size={18} color="#F59E0B" strokeWidth={2} />}
                     label={bc?.strongsConcordance || 'Interlinear'}
-                    description="Explore the original Hebrew text with Strong's numbers."
-                    accentColor="#F59E0B"
-                    onPress={() => setView('interlinear')}
+                    color="#F59E0B"
+                    count={intTotal}
                     colors={COLORS}
                     isRtl={isRtl}
-                  />
-                )}
-                {hasDictionary && (
-                  <ResourceActionCard
-                    icon={<Book size={20} color="#10B981" strokeWidth={2} />}
-                    label={bc?.resources || 'Bible Dictionary'}
-                    description="Study key theological terms with detailed explanations."
-                    accentColor="#10B981"
-                    onPress={() => setView('dictionary')}
-                    colors={COLORS}
-                    isRtl={isRtl}
-                  />
-                )}
-              </View>
+                  >
+                    <>
+                      <InterlinearView
+                        data={data?.interlinearWords || []}
+                        colors={COLORS}
+                        isRtl={isRtl}
+                        bc={bc}
+                        verseWords={verseWords}
+                        maxRows={intLimit}
+                      />
+                      {intTotal > intLimit && (
+                        <MoreButton
+                          remaining={intTotal - intLimit}
+                          batch={BATCH.interlinear}
+                          onPress={() => showMore('interlinear', BATCH.interlinear)}
+                          colors={COLORS}
+                        />
+                      )}
+                    </>
+                  </CollapsibleSection>
+                );
+              })()}
 
               {/* ── Commentaries ── */}
               {hasCommentaries && (
@@ -667,15 +968,13 @@ export default function VerseResourcesScreen({ route: routeProp }: any) {
               )}
 
               {/* ── Empty state if nothing available ── */}
-              {!hasCommentaries && !hasCrossRefs && !hasWordStudies && !hasTopics && (
+              {!hasStudyTools && !hasCommentaries && !hasCrossRefs && !hasWordStudies && !hasTopics && (
                 <View style={{ alignItems: 'center', paddingVertical: SPACING.xl * 2 }}>
                   <Text style={{ color: COLORS.muted, fontSize: FONT_SIZES.sm, textAlign: 'center' }}>
                     {bc?.noExplanationFound || 'No detailed resources available for this verse yet.'}
                   </Text>
                 </View>
               )}
-            </>
-          )}
         </Animated.View>
       </ScrollView>
     </View>
@@ -693,18 +992,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
   },
-
-  // ── Back to main (sub-view header) ──
-  backToMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    marginBottom: SPACING.sm,
-  },
-  backToMainText: { fontSize: FONT_SIZES.sm, fontWeight: '700' },
 
   // ── Hero Card ──
   heroCard: {
@@ -744,6 +1031,11 @@ const styles = StyleSheet.create({
   actionLabel: { fontSize: FONT_SIZES.sm, fontWeight: '700', marginBottom: 2 },
   actionDesc: { fontSize: FONT_SIZES.xs, lineHeight: 16 },
 
+  // ── Collapsible Section ──
+  collapsibleIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  collapsibleLabel: { flex: 1, fontSize: FONT_SIZES.sm, fontWeight: '700' },
+  collapsibleCount: { fontSize: FONT_SIZES.xs, fontWeight: '700' },
+
   // ── Section Header ──
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: SPACING.lg, marginBottom: SPACING.sm },
   sectionAccent: { width: 3, height: 16, borderRadius: 2 },
@@ -751,6 +1043,53 @@ const styles = StyleSheet.create({
 
   // ── Card ──
   card: { borderRadius: BORDER_RADIUS.md, borderWidth: 1, marginBottom: SPACING.sm, overflow: 'hidden' },
+
+  // ── Study Tools ──
+  studyToolCard: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderLeftWidth: 3,
+    marginBottom: SPACING.sm,
+    padding: SPACING.md,
+    overflow: 'hidden',
+  },
+  studyToolTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  studyToolIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  studyToolMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 3 },
+  studyToolType: {
+    color: '#8B5CF6',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    backgroundColor: '#8B5CF618',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  studyToolRef: { fontSize: 10, fontWeight: '700' },
+  studyToolTitle: { fontSize: FONT_SIZES.md, fontWeight: '900', lineHeight: 21 },
+  studyToolDescription: { fontSize: FONT_SIZES.sm, lineHeight: 20, marginTop: 10 },
+  studyToolVerseBox: { borderRadius: 12, borderWidth: 1, padding: 10, marginTop: 10 },
+  studyToolVerseText: { fontSize: FONT_SIZES.xs, lineHeight: 18, fontStyle: 'italic' },
+  studyToolWordsWrap: { gap: 8, marginTop: 10 },
+  studyToolWordCard: { borderRadius: 12, borderWidth: 1, padding: 10 },
+  studyToolWordHeader: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 6 },
+  studyToolWordSurface: { fontSize: FONT_SIZES.sm, fontWeight: '900' },
+  studyToolWordStrong: {
+    color: '#F59E0B',
+    fontSize: 10,
+    fontWeight: '900',
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  studyToolOriginal: { fontSize: FONT_SIZES.sm, fontWeight: '700' },
+  studyToolWordDefinition: { fontSize: 11, lineHeight: 16, marginTop: 4 },
+  studyToolExplanation: { fontSize: FONT_SIZES.xs, lineHeight: 18, marginTop: 7 },
 
   // ── Commentary ──
   commAuthor: { fontSize: FONT_SIZES.sm, fontWeight: '700' },

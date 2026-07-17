@@ -216,7 +216,18 @@ export const bibleApi = {
   ): Promise<Translation | null> => {
     const online = await checkOnlineStatus();
     if (!online) {
-      return null;
+      if (isLocalTranslation(translationId)) {
+        const { getBibleBooks } = require('../utilits/bibleUtils');
+        return getBibleBooks().map(b => ({
+          bookNumber: 0,
+          bookName: b.name,
+          testament: b.testament,
+          chaptersCount: b.chapters,
+          totalVerses: b.verses,
+          maxChapter: b.chapters,
+        }));
+      }
+      return [];
     }
     try {
       const response = await api.post(
@@ -236,6 +247,17 @@ export const bibleApi = {
     const backendId = mapTranslationId(translationId);
     const online = await checkOnlineStatus();
     if (!online) {
+      if (isLocalTranslation(translationId)) {
+        const { getBibleBooks } = require('../utilits/bibleUtils');
+        const local = getBibleBooks();
+        return local.map(b => ({
+          bookNumber: 0,
+          bookName: b.name,
+          testament: b.testament,
+          chaptersCount: b.chapters,
+          totalVerses: b.verses,
+        }));
+      }
       return [];
     }
     try {
@@ -248,6 +270,17 @@ export const bibleApi = {
       return [];
     } catch (error) {
       console.error(`Failed to fetch books for ${translationId}:`, error);
+      if (isLocalTranslation(translationId)) {
+        const { getBibleBooks } = require('../utilits/bibleUtils');
+        const local = getBibleBooks();
+        return local.map(b => ({
+          bookNumber: 0,
+          bookName: b.name,
+          testament: b.testament,
+          chaptersCount: b.chapters,
+          totalVerses: b.verses,
+        }));
+      }
       return [];
     }
   },
@@ -292,6 +325,18 @@ export const bibleApi = {
     const backendId = mapTranslationId(translationId);
     const online = await checkOnlineStatus();
     if (!online) {
+      if (isLocalTranslation(translationId)) {
+        const { getChaptersForBook } = require('../utilits/bibleUtils');
+        const chapters = getChaptersForBook(bookName);
+        return {
+          bookNumber: 0,
+          bookName,
+          chapters: chapters.map(c => ({
+            chapterNumber: c,
+            versesCount: 0,
+          })),
+        };
+      }
       return null;
     }
     try {
@@ -307,6 +352,18 @@ export const bibleApi = {
       return null;
     } catch (error) {
       console.error(`Failed to fetch chapters for ${bookName}:`, error);
+      if (isLocalTranslation(translationId)) {
+        const { getChaptersForBook } = require('../utilits/bibleUtils');
+        const chapters = getChaptersForBook(bookName);
+        return {
+          bookNumber: 0,
+          bookName,
+          chapters: chapters.map(c => ({
+            chapterNumber: c,
+            versesCount: 0,
+          })),
+        };
+      }
       return null;
     }
   },
@@ -367,6 +424,11 @@ export const bibleApi = {
     const backendId = mapTranslationId(translationId);
     const online = await checkOnlineStatus();
     if (!online) {
+      if (isLocalTranslation(translationId)) {
+        const { getVerseText } = require('../utilits/bibleUtils');
+        const text = getVerseText(bookName, chapter, verseNumber);
+        if (text) return { verseNumber, text };
+      }
       return null;
     }
     try {
@@ -387,6 +449,11 @@ export const bibleApi = {
         `Failed to fetch verse ${bookName} ${chapter}:${verseNumber}:`,
         error,
       );
+      if (isLocalTranslation(translationId)) {
+        const { getVerseText } = require('../utilits/bibleUtils');
+        const text = getVerseText(bookName, chapter, verseNumber);
+        if (text) return { verseNumber, text };
+      }
       return null;
     }
   },
@@ -399,6 +466,16 @@ export const bibleApi = {
     const backendId = mapTranslationId(translationId);
     const online = await checkOnlineStatus();
     if (!online) {
+      if (isLocalTranslation(translationId)) {
+        const { searchVerses } = require('../utilits/bibleUtils');
+        return searchVerses(query, limit).map(r => ({
+          bookNumber: 0,
+          bookName: r.book,
+          chapter: r.chapter,
+          verse: r.verse,
+          text: r.text,
+        }));
+      }
       return [];
     }
     try {
@@ -415,6 +492,16 @@ export const bibleApi = {
       return [];
     } catch (error) {
       console.error(`Search failed for ${translationId}:`, error);
+      if (isLocalTranslation(translationId)) {
+        const { searchVerses } = require('../utilits/bibleUtils');
+        return searchVerses(query, limit).map(r => ({
+          bookNumber: 0,
+          bookName: r.book,
+          chapter: r.chapter,
+          verse: r.verse,
+          text: r.text,
+        }));
+      }
       return [];
     }
   },

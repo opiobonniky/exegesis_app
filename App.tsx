@@ -5,6 +5,8 @@ import { AppProvider } from './src/common/AppContext';
 import { initializeNotifications } from './src/utilits/firebaseService';
 import { initBibleTTS } from './src/utilits/bibleTTS';
 import SocketProvider from './src/services/socket/SocketProvider';
+import { ConnectivityProvider } from './src/providers/ConnectivityProvider';
+import OfflineBanner from './src/reusable/OfflineBanner';
 import { toastConfig } from './src/helpers/Toash.helper';
 import { LanguageProvider } from './src/component/language-translation/LanguageProvider';
 import Toast from 'react-native-toast-message';
@@ -60,6 +62,7 @@ const App = () => {
   return (
     <LanguageProvider>
       <AppProvider>
+        <ConnectivityProvider>
         <View style={styles.root}>
           <SocketProvider
             topics={['notifications', 'daily-verse']}
@@ -67,6 +70,7 @@ const App = () => {
           >
             <AppNavigation />
           </SocketProvider>
+          <OfflineBanner />
           <Toast config={toastConfig} />
         </View>
     <ActionModal
@@ -84,6 +88,7 @@ const App = () => {
     setIsAppUpdated(true);
   }}
 />
+    </ConnectivityProvider>
     </AppProvider>
     </LanguageProvider>
   );

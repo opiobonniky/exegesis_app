@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setDailyContent, getDailyContent } from '../../services/dbCache';
 
 export type DailyVerseCached = {
   date: string; // YYYY-MM-DD (device local date)
@@ -10,18 +10,7 @@ export type DailyVerseCached = {
   source: 'socket' | 'rest' | 'push' | 'unknown';
 };
 
-const STORAGE_KEYS = {
-  latest: 'daily_verse_cache_latest',
-};
-
-const REMINDER_KEYS = {
-  hour: 'daily_verse_notif_hour',
-  minute: 'daily_verse_notif_minute',
-};
-
 const DEFAULT_REMINDER_TIME = { hour: 7, minute: 0 };
-
-const keyForDate = (date: string) => `daily_verse_cache_${date}`;
 
 export const getLocalISODate = (d = new Date()): string => {
   const yyyy = d.getFullYear();
@@ -34,22 +23,9 @@ export async function getDailyVerseReminderTime(): Promise<{
   hour: number;
   minute: number;
 }> {
-  const [hStr, mStr] = await Promise.all([
-    AsyncStorage.getItem(REMINDER_KEYS.hour),
-    AsyncStorage.getItem(REMINDER_KEYS.minute),
-  ]);
-
-  const hour = hStr ? parseInt(hStr, 10) : DEFAULT_REMINDER_TIME.hour;
-  const minute = mStr ? parseInt(mStr, 10) : DEFAULT_REMINDER_TIME.minute;
-
-  return {
-    hour: Number.isFinite(hour)
-      ? Math.max(0, Math.min(23, hour))
-      : DEFAULT_REMINDER_TIME.hour,
-    minute: Number.isFinite(minute)
-      ? Math.max(0, Math.min(59, minute))
-      : DEFAULT_REMINDER_TIME.minute,
-  };
+  const row = await getDailyContent<{ hour: number; minute: number }>('reminder_time', 'daily_verse');
+  if (row) return row;
+  return DEFAULT_REMINDER_TIME;
 }
 
 export const todayAt = (hour: number, minute: number, now = new Date()) => {
@@ -95,31 +71,15 @@ export const normalizeDailyVerse = (
 };
 
 export async function saveDailyVerseCache(v: DailyVerseCached): Promise<void> {
-  const raw = JSON.stringify(v);
-  await AsyncStorage.multiSet([
-    [keyForDate(v.date), raw],
-    [STORAGE_KEYS.latest, raw],
-  ]);
+  await setDailyContent('daily_verse', v.date, v);
 }
 
 export async function loadDailyVerseCache(
   date = getLocalISODate(),
 ): Promise<DailyVerseCached | null> {
-  const raw = await AsyncStorage.getItem(keyForDate(date));
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as DailyVerseCached;
-  } catch {
-    return null;
-  }
+  return getDailyContent<DailyVerseCached>('daily_verse', date);
 }
 
 export async function loadLatestDailyVerseCache(): Promise<DailyVerseCached | null> {
-  const raw = await AsyncStorage.getItem(STORAGE_KEYS.latest);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as DailyVerseCached;
-  } catch {
-    return null;
-  }
+  return loadDailyVerseCache();
 }

@@ -5,8 +5,8 @@ import axios, {
 } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { showToast } from '../helpers/Toash.helper';
-import { Platform } from 'react-native';
 import { navigationRef } from './navigationRef';
+import { route } from '../component/navigations/routes';
 
 const DEV_BACKEND_HOST = '192.168.100.22';
 const DEV_BACKEND_PORT = '5001';
@@ -68,7 +68,7 @@ api.interceptors.response.use(
       showToast('warning', msg);
       setTimeout(() => {
         if (navigationRef.isReady()) {
-          navigationRef.navigate('Sower');
+          navigationRef.navigate(route.sower);
         }
       }, 1200);
       return Promise.reject(error);
@@ -118,6 +118,31 @@ api.interceptors.response.use(
  * @param offlineQueue When true, network errors enqueue the mutation locally instead of failing
  * @returns GenericResponse
  */
+export const sendGet = async <T = any>(
+  controller: string,
+  request: string,
+  params: object = {},
+): Promise<GenericResponse<T>> => {
+  try {
+    const language = (await AsyncStorage.getItem('@app:language')) || 'en';
+    const response = await api.get<GenericResponse<T>>(
+      `/${controller}/${request}`,
+      { params: { ...params, lang: language } },
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      const { returnCode, returnMessage, returnData } = error.response.data;
+      const err = new Error(returnMessage || 'Request failed');
+      (err as any).returnCode = returnCode;
+      (err as any).returnData = returnData;
+      throw err;
+    }
+    console.error(`❌ GET ${controller}/${request} failed`, error);
+    throw error;
+  }
+};
+
 export const sendPostRequest = async <T = any>(
   controller: string,
   request: string,

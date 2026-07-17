@@ -431,7 +431,7 @@ const JournalDetail = () => {
                   const pdfPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${filename}`;
                   await ReactNativeBlobUtil.fs.writeFile(pdfPath, res.returnData.content!, 'base64');
                   if (Platform.OS === 'android') {
-                    await (ReactNativeBlobUtil.fs as any).actionViewIntent(pdfPath, 'application/pdf');
+                    await ReactNativeBlobUtil.android.actionViewIntent(pdfPath, 'application/pdf');
                   } else {
                     await Share.share({
                       url: `file://${pdfPath}`,

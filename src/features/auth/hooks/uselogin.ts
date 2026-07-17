@@ -11,7 +11,7 @@ import { useLanguage } from '../../../component/language-translation/LanguagePro
 export default function useLogin() {
   const navigation = useNavigation<any>();
   const appContext = useContext(AppContext);
-  const { setUserInfo } = appContext || ({} as any);
+  const { setUserInfo, fetchSubscriptionStatus } = appContext || ({} as any);
   const { translations } = useLanguage();
 
   const [email, setEmail] = useState('');
@@ -56,6 +56,8 @@ export default function useLogin() {
           profilePhotoUrl: returnData.profilePhotoUrl,
           userRole: returnData.userRole,
           roleName: returnData.roleName,
+          subscriptionTier: returnData.subscriptionTier ?? 'free',
+          accessExpiresAt: returnData.accessExpiresAt ?? null,
         };
 
 
@@ -63,6 +65,8 @@ export default function useLogin() {
           info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
 
         await setUserInfo(info);
+        // Same as email login: resolve subscription before navigating.
+        await fetchSubscriptionStatus?.();
         navigation.navigate(dashboardRoute);
       } else if (returnCode === 201 && returnData?.needsRegistration) {
 
@@ -150,11 +154,16 @@ export default function useLogin() {
           profilePhotoUrl: returnData.profilePhotoUrl,
           userRole: returnData.userRole,
           roleName: returnData.roleName,
+          // Backend now returns tier on login — apply it synchronously so
+          // gated screens see the correct tier without any extra API call.
+          subscriptionTier: returnData.subscriptionTier ?? 'free',
+          accessExpiresAt: returnData.accessExpiresAt ?? null,
         };
 
         const dashboardRoute =
           info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
 
+        // setUserInfo applies the tier immediately from the UserInfo object.
         await setUserInfo(info);
         navigation.navigate(dashboardRoute);
       } else if (returnCode === 405) {
