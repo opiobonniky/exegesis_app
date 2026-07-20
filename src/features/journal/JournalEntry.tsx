@@ -1,10 +1,4 @@
-/**
- * JournalEntry.tsx
- * ─────────────────────────────────────────────────────────────────────────────
- * Create or edit journal entry screen
- */
-
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,11 +8,10 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { getColors } from '../../constants/theme';
-import { FONT_SIZES, SPACING } from '../../constants/theme';
+import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -34,33 +27,43 @@ import { showToast } from '../../helpers/Toash.helper';
 import { useSessionSync } from '../../hooks/useSessionSync';
 import { useJournalDraft } from '../../hooks/useJournalDraft';
 import { useConnectivity } from '../../providers/ConnectivityProvider';
+import ActionHeader from '../../reusable/ActionHeader';
 import {
   Save,
-  ChevronLeft,
-  ChevronRight,
   Tag,
   Globe,
   Lock,
+  FileText,
+  BookOpen,
+  Heart,
+  Lightbulb,
+  Sparkles,
+  BookText,
+  Hash,
+  Smile,
+  Wifi,
+  WifiOff,
+  RefreshCw,
 } from 'lucide-react-native';
 
 const CATEGORIES = [
-  { value: 'general' },
-  { value: 'study' },
-  { value: 'prayer' },
-  { value: 'gratitude' },
-  { value: 'reflection' },
-  { value: 'application' },
+  { value: 'general', icon: FileText },
+  { value: 'study', icon: BookOpen },
+  { value: 'prayer', icon: Heart },
+  { value: 'gratitude', icon: Sparkles },
+  { value: 'reflection', icon: Lightbulb },
+  { value: 'application', icon: BookText },
 ];
 
 const MOODS = [
-  { value: 'happy', label: '😊 Happy' },
-  { value: 'grateful', label: '🙏 Grateful' },
-  { value: 'peaceful', label: '🕊️ Peaceful' },
-  { value: 'thoughtful', label: '🤔 Thoughtful' },
-  { value: 'motivated', label: '💪 Motivated' },
-  { value: 'hopeful', label: '🌟 Hopeful' },
-  { value: 'challenged', label: '🧗 Challenged' },
-  { value: 'blessed', label: '✨ Blessed' },
+  { value: 'happy', label: '😊' },
+  { value: 'grateful', label: '🙏' },
+  { value: 'peaceful', label: '🕊️' },
+  { value: 'thoughtful', label: '🤔' },
+  { value: 'motivated', label: '💪' },
+  { value: 'hopeful', label: '🌟' },
+  { value: 'challenged', label: '🧗' },
+  { value: 'blessed', label: '✨' },
 ];
 
 const getCategoryLabel = (value: string, jc: any): string => {
@@ -80,7 +83,8 @@ const JournalEntryScreen = () => {
   const routeParams = useRoute() as any;
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
-  const COLORS = getColors(isDark);
+  const COLORS = useMemo(() => getColors(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { language, translations } = useLanguage();
   const isRtl = isRtlLanguage(language);
   const jc = translations?.journal;
@@ -103,37 +107,20 @@ const JournalEntryScreen = () => {
   const [chapter, setChapter] = useState('');
   const [verseNumber, setVerseNumber] = useState('');
   const [tags, setTags] = useState('');
-  const [strongsWords, setStrongsWords] = useState<string | undefined>(
-    undefined,
-  );
+  const [strongsWords, setStrongsWords] = useState<string | undefined>(undefined);
   const [isPublished, setIsPublished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const { isOnline } = useConnectivity();
+  const [draftRestored, setDraftRestored] = useState(false);
 
-  // Memoized form state for draft auto-save
-  const formState = React.useMemo(
-    () => ({
-      title,
-      content,
-      category,
-      mood,
-      prayers,
-      gratitude,
-      learnings,
-      application,
-      bookName,
-      chapter,
-      verseNumber,
-      tags,
-      isPublished,
-    }),
-    [
-      title, content, category, mood, prayers, gratitude,
-      learnings, application, bookName, chapter, verseNumber,
-      tags, isPublished,
-    ],
-  );
+  const formState = useMemo(() => ({
+    title, content, category, mood, prayers, gratitude,
+    learnings, application, bookName, chapter, verseNumber, tags, isPublished,
+  }), [
+    title, content, category, mood, prayers, gratitude,
+    learnings, application, bookName, chapter, verseNumber, tags, isPublished,
+  ]);
 
   const { hasDraft, restoreDraft, clearDraft } = useJournalDraft(
     `entry_${entryId || 'new'}`,
@@ -174,29 +161,18 @@ const JournalEntryScreen = () => {
       loadEntry();
     } else {
       const params = routeParams?.params || {};
-      if (params.bookName) {
-        setBookName(params.bookName);
-      }
-      if (params.title) {
-        setTitle(params.title);
-      }
-      if (
-        params.category &&
-        CATEGORIES.some(item => item.value === params.category)
-      ) {
+      if (params.bookName) setBookName(params.bookName);
+      if (params.title) setTitle(params.title);
+      if (params.category && CATEGORIES.some(item => item.value === params.category)) {
         setCategory(params.category);
       }
-      if (params.chapter) {
-        setChapter(String(params.chapter));
-      }
+      if (params.chapter) setChapter(String(params.chapter));
       if (params.verseStart !== undefined) {
-        const verseStr =
-          params.verseEnd !== undefined && params.verseEnd !== params.verseStart
-            ? `${params.verseStart}-${params.verseEnd}`
-            : String(params.verseStart);
+        const verseStr = params.verseEnd !== undefined && params.verseEnd !== params.verseStart
+          ? `${params.verseStart}-${params.verseEnd}`
+          : String(params.verseStart);
         setVerseNumber(verseStr);
       }
-      // Pre-fill from Exegesis Lab
       if (params.reflection) setContent(params.reflection);
       if (params.prayers) setPrayers(params.prayers);
       if (params.application) setApplication(params.application);
@@ -204,11 +180,9 @@ const JournalEntryScreen = () => {
       if (params.strongsWords) setStrongsWords(params.strongsWords);
       if (params.isPublic !== undefined) setIsPublished(params.isPublic);
       if (params.passageRef && !params.title) {
-        // Auto-title from passage reference
         setTitle(`Exegesis: ${params.passageRef}`);
       }
 
-      // Restore unsaved draft (overrides prefill)
       restoreDraft().then(draft => {
         if (draft) {
           setTitle(draft.title);
@@ -224,11 +198,18 @@ const JournalEntryScreen = () => {
           setVerseNumber(draft.verseNumber);
           setTags(draft.tags);
           setIsPublished(draft.isPublished);
-          showToast('info', 'Draft restored');
+          setDraftRestored(true);
         }
       });
     }
   }, [isEditMode, loadEntry, routeParams?.params, restoreDraft]);
+
+  useEffect(() => {
+    if (draftRestored) {
+      showToast('info', 'Draft restored');
+      setDraftRestored(false);
+    }
+  }, [draftRestored]);
 
   const handleSave = async () => {
     if (!content.trim()) {
@@ -268,43 +249,24 @@ const JournalEntryScreen = () => {
       }
 
       if (res.returnCode === 200) {
-        showToast(
-          'success',
-          isEditMode
-            ? jc?.entryUpdated || 'Entry updated'
-            : jc?.entrySaved || 'Entry saved',
-        );
-
+        showToast('success', isEditMode
+          ? jc?.entryUpdated || 'Entry updated'
+          : jc?.entrySaved || 'Entry saved');
         await clearDraft();
-
-        // Sync journal entry ID back to Lab session (if applicable)
         if (!isEditMode && res.returnData?.id) {
           await syncJournalEntry(res.returnData.id);
         }
-
         const returnTo = routeParams?.params?.returnTo;
-        if (returnTo) {
-          navigation.navigate(returnTo);
-        } else {
-          navigation.goBack();
-        }
+        if (returnTo) navigation.navigate(returnTo);
+        else navigation.goBack();
       } else if (res.returnCode === 202) {
-        showToast(
-          'info',
-          'Saved offline — will sync when connected',
-        );
+        showToast('info', 'Saved offline — will sync when connected');
         await clearDraft();
         const returnTo = routeParams?.params?.returnTo;
-        if (returnTo) {
-          navigation.navigate(returnTo);
-        } else {
-          navigation.goBack();
-        }
+        if (returnTo) navigation.navigate(returnTo);
+        else navigation.goBack();
       } else {
-        showToast(
-          'warning',
-          res.returnMessage || jc?.failedToSave || 'Failed to save',
-        );
+        showToast('warning', res.returnMessage || jc?.failedToSave || 'Failed to save');
       }
     } catch (error: any) {
       showToast('error', error?.message || jc?.failedToSave || 'Failed to save entry');
@@ -313,351 +275,248 @@ const JournalEntryScreen = () => {
     }
   };
 
-  const renderInput = (
-    label: string,
-    value: string,
-    onChange: (text: string) => void,
-    multiline = false,
-    placeholder?: string,
-  ) => (
-    <View style={styles.inputGroup}>
-      <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
-        {label}
-      </Text>
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: COLORS.surface,
-            borderColor: COLORS.border,
-            color: COLORS.text,
-          },
-          multiline && { minHeight: 100, textAlignVertical: 'top' },
-        ]}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={COLORS.muted}
-        multiline={multiline}
-        textAlign={isRtl ? 'right' : 'left'}
-      />
-    </View>
-  );
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
-    <SafeAreaView
-      edges={['top']}
-      style={[styles.container, { backgroundColor: COLORS.background }]}
-    >
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* Header */}
-        <View
-          style={[
-            styles.header,
-            {
-              backgroundColor: COLORS.surface,
-              flexDirection: isRtl ? 'row-reverse' : 'row',
-            },
-          ]}
-        >
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            {isRtl ? (
-              <ChevronRight size={24} color={COLORS.text} />
+    <SafeAreaView edges={['top']} style={styles.container}>
+      <ActionHeader
+        title={isEditMode ? jc?.editEntry || 'Edit Entry' : jc?.newEntry || 'New Entry'}
+        onPress={() => navigation.goBack()}
+        rightComponent={
+          <TouchableOpacity
+            style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
+            onPress={handleSave}
+            disabled={saving || syncing}
+            activeOpacity={0.85}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <ChevronLeft size={24} color={COLORS.text} />
+              <Save size={16} color="#FFFFFF" />
             )}
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: COLORS.text }]}>
-            {isEditMode
-              ? jc?.editEntry || 'Edit Entry'
-              : jc?.newEntry || 'New Entry'}
+        }
+      />
+
+      {isOnline === false && (
+        <View style={styles.offlineBanner}>
+          <WifiOff size={14} color="#FFFFFF" />
+          <Text style={styles.offlineBannerText}>
+            Offline — saved locally, syncs when connected
           </Text>
-          <TouchableOpacity
-            style={[
-              styles.saveButton,
-              {
-                backgroundColor: COLORS.primary,
-                marginRight: isRtl ? 0 : undefined,
-              },
-            ]}
-            onPress={handleSave}
-            disabled={saving || syncing || loading}
-          >
-            <Save size={18} color="#FFFFFF" />
-          </TouchableOpacity>
         </View>
+      )}
 
-        {isOnline === false && (
-          <View style={[styles.offlineBanner, { backgroundColor: '#F59E0B', flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-            <Text style={styles.offlineBannerText}>
-              You are offline — your entry will be saved locally and synced when connected
-            </Text>
-          </View>
-        )}
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Title */}
-          {renderInput(
-            jc?.titleOptional || 'Title (optional)',
-            title,
-            setTitle,
-            false,
-            jc?.titlePlaceholder || 'Give your entry a title...',
-          )}
+          <View style={[styles.fieldCard, { backgroundColor: COLORS.cardBackground }]}>
+            <TextInput
+              style={[styles.titleInput, { color: COLORS.text }]}
+              value={title}
+              onChangeText={setTitle}
+              placeholder={jc?.titlePlaceholder || 'Entry title...'}
+              placeholderTextColor={COLORS.muted}
+              textAlign={isRtl ? 'right' : 'left'}
+            />
+          </View>
 
           {/* Content */}
-          {renderInput(
-            jc?.contentPlaceholder || "What's on your mind? *",
-            content,
-            setContent,
-            true,
-            jc?.contentRequired ||
-              'Write your thoughts, reflections, or prayers...',
-          )}
+          <View style={[styles.fieldCard, { backgroundColor: COLORS.cardBackground }]}>
+            <View style={[styles.fieldHeader, isRtl && { flexDirection: 'row-reverse' }]}>
+              <FileText size={14} color={COLORS.primary} />
+              <Text style={[styles.fieldLabel, { color: COLORS.textSecondary }]}>
+                {jc?.contentPlaceholder || 'Journal Entry'} *
+              </Text>
+            </View>
+            <TextInput
+              style={[styles.contentInput, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
+              value={content}
+              onChangeText={setContent}
+              placeholder={jc?.contentRequired || 'Write your thoughts...'}
+              placeholderTextColor={COLORS.muted}
+              multiline
+              textAlignVertical="top"
+              textAlign={isRtl ? 'right' : 'left'}
+            />
+          </View>
 
-          {/* Category */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
+          {/* Category + Mood row */}
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: COLORS.text }]}>Details</Text>
+          </View>
+          <View style={[styles.fieldCard, { backgroundColor: COLORS.cardBackground }]}>
+            <Text style={[styles.fieldLabel, { color: COLORS.textSecondary }]}>
               {jc?.categoryLabel || 'Category'}
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View
-                style={[
-                  styles.chipContainer,
-                  { flexDirection: isRtl ? 'row-reverse' : 'row' },
-                ]}
-              >
-                {CATEGORIES.map(cat => (
+            <View style={[styles.chipRow, isRtl && { flexDirection: 'row-reverse' }]}>
+              {CATEGORIES.map(cat => {
+                const IconComp = cat.icon;
+                const isSelected = category === cat.value;
+                return (
                   <TouchableOpacity
                     key={cat.value}
                     style={[
                       styles.chip,
                       {
-                        backgroundColor:
-                          category === cat.value
-                            ? COLORS.primary
-                            : COLORS.surface,
-                        borderColor:
-                          category === cat.value
-                            ? COLORS.primary
-                            : COLORS.border,
+                        backgroundColor: isSelected ? COLORS.primary : COLORS.surface,
+                        borderColor: isSelected ? COLORS.primary : COLORS.border,
                       },
                     ]}
                     onPress={() => setCategory(cat.value)}
+                    activeOpacity={0.7}
                   >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        {
-                          color:
-                            category === cat.value ? '#FFFFFF' : COLORS.text,
-                        },
-                      ]}
-                    >
+                    <IconComp size={12} color={isSelected ? '#FFFFFF' : COLORS.textSecondary} />
+                    <Text style={[styles.chipText, { color: isSelected ? '#FFFFFF' : COLORS.text }]}>
                       {getCategoryLabel(cat.value, jc)}
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
+                );
+              })}
+            </View>
 
-          {/* Mood */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
-              {jc?.moodLabel || 'How are you feeling?'}
+            <View style={styles.divider} />
+
+            <Text style={[styles.fieldLabel, { color: COLORS.textSecondary }]}>
+              {jc?.moodLabel || 'Mood'}
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View
-                style={[
-                  styles.chipContainer,
-                  { flexDirection: isRtl ? 'row-reverse' : 'row' },
-                ]}
-              >
-                {MOODS.map(m => (
-                  <TouchableOpacity
-                    key={m.value}
-                    style={[
-                      styles.chip,
-                      {
-                        backgroundColor:
-                          mood === m.value
-                            ? COLORS.primary + '20'
-                            : COLORS.surface,
-                        borderColor:
-                          mood === m.value ? COLORS.primary : COLORS.border,
-                      },
-                    ]}
-                    onPress={() => setMood(mood === m.value ? '' : m.value)}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        {
-                          color:
-                            mood === m.value ? COLORS.primary : COLORS.text,
-                        },
-                      ]}
-                    >
-                      {m.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
+            <View style={[styles.chipRow, isRtl && { flexDirection: 'row-reverse' }]}>
+              {MOODS.map(m => (
+                <TouchableOpacity
+                  key={m.value}
+                  style={[
+                    styles.moodChip,
+                    {
+                      backgroundColor: mood === m.value ? `${COLORS.primary}18` : COLORS.surface,
+                      borderColor: mood === m.value ? COLORS.primary : COLORS.border,
+                    },
+                  ]}
+                  onPress={() => setMood(mood === m.value ? '' : m.value)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.moodEmoji}>{m.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* Scripture Reference */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
-              {jc?.scriptureRefLabel || 'Scripture Reference (optional)'}
-            </Text>
-            <View
-              style={[
-                styles.scriptureRow,
-                { flexDirection: isRtl ? 'row-reverse' : 'row' },
-              ]}
-            >
+          <View style={[styles.fieldCard, { backgroundColor: COLORS.cardBackground }]}>
+            <View style={[styles.fieldHeader, isRtl && { flexDirection: 'row-reverse' }]}>
+              <BookOpen size={14} color={COLORS.primary} />
+              <Text style={[styles.fieldLabel, { color: COLORS.textSecondary }]}>
+                {jc?.scriptureRefLabel || 'Scripture Reference'}
+              </Text>
+            </View>
+            <View style={[styles.refRow, isRtl && { flexDirection: 'row-reverse' }]}>
               <TextInput
-                style={[
-                  styles.scriptureInput,
-                  {
-                    backgroundColor: COLORS.surface,
-                    borderColor: COLORS.border,
-                    color: COLORS.text,
-                  },
-                ]}
+                style={[styles.refInput, styles.refInputBook, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
                 value={bookName}
                 onChangeText={setBookName}
                 placeholder={jc?.bookPlaceholder || 'Book'}
                 placeholderTextColor={COLORS.muted}
               />
               <TextInput
-                style={[
-                  styles.chapterInput,
-                  {
-                    backgroundColor: COLORS.surface,
-                    borderColor: COLORS.border,
-                    color: COLORS.text,
-                  },
-                ]}
+                style={[styles.refInput, styles.refInputSmall, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
                 value={chapter}
                 onChangeText={setChapter}
-                placeholder={jc?.chapterPlaceholder || 'Ch'}
+                placeholder="Ch"
                 placeholderTextColor={COLORS.muted}
                 keyboardType="number-pad"
               />
               <TextInput
-                style={[
-                  styles.chapterInput,
-                  {
-                    backgroundColor: COLORS.surface,
-                    borderColor: COLORS.border,
-                    color: COLORS.text,
-                  },
-                ]}
+                style={[styles.refInput, styles.refInputSmall, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
                 value={verseNumber}
                 onChangeText={setVerseNumber}
-                placeholder={jc?.versePlaceholder || 'Vs'}
+                placeholder="Vs"
                 placeholderTextColor={COLORS.muted}
                 keyboardType="number-pad"
               />
             </View>
           </View>
 
-          {/* Prompt-based sections */}
           {/* Tags */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
-              {'Tags'}
-            </Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                borderWidth: 1,
-                borderRadius: 12,
-                backgroundColor: COLORS.surface,
-                borderColor: COLORS.border,
-                paddingHorizontal: SPACING.md,
-              }}
-            >
-              <Tag size={16} color={COLORS.muted} style={{ marginRight: 8 }} />
+          <View style={[styles.fieldCard, { backgroundColor: COLORS.cardBackground }]}>
+            <View style={[styles.fieldHeader, isRtl && { flexDirection: 'row-reverse' }]}>
+              <Hash size={14} color={COLORS.primary} />
+              <Text style={[styles.fieldLabel, { color: COLORS.textSecondary }]}>Tags</Text>
+            </View>
+            <View style={[styles.tagInputRow, { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}>
+              <Tag size={14} color={COLORS.muted} />
               <TextInput
-                style={[
-                  {
-                    flex: 1,
-                    paddingVertical: SPACING.md,
-                    fontSize: FONT_SIZES.md,
-                    color: COLORS.text,
-                  },
-                ]}
+                style={[styles.tagInput, { color: COLORS.text }]}
                 value={tags}
                 onChangeText={setTags}
-                placeholder={'#faith #prayer #study'}
+                placeholder="#faith #prayer #study"
                 placeholderTextColor={COLORS.muted}
                 autoCapitalize="none"
               />
             </View>
           </View>
 
+          {/* Prompt sections */}
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: COLORS.text }]}>Reflection</Text>
+          </View>
+
+          {[
+            { key: 'gratitude', label: jc?.gratitudeLabel || 'Gratitude', icon: Heart, color: '#F59E0B', value: gratitude, setter: setGratitude, placeholder: jc?.gratitudePlaceholder || 'What are you grateful for?' },
+            { key: 'learnings', label: jc?.learningsLabel || 'Learnings', icon: Lightbulb, color: '#3B82F6', value: learnings, setter: setLearnings, placeholder: jc?.learningsPlaceholder || 'What did you learn?' },
+            { key: 'application', label: jc?.applicationLabel || 'Application', icon: BookText, color: '#10B981', value: application, setter: setApplication, placeholder: jc?.applicationPlaceholder || 'How will you apply this?' },
+            { key: 'prayers', label: jc?.prayerRequestsLabel || 'Prayer Requests', icon: Heart, color: '#8B5CF6', value: prayers, setter: setPrayers, placeholder: jc?.prayerRequestsPlaceholder || 'What do you want to pray for?' },
+          ].map(section => (
+            <View key={section.key} style={[styles.fieldCard, { backgroundColor: COLORS.cardBackground }]}>
+              <View style={[styles.fieldHeader, isRtl && { flexDirection: 'row-reverse' }]}>
+                <section.icon size={14} color={section.color} />
+                <Text style={[styles.fieldLabel, { color: COLORS.textSecondary }]}>{section.label}</Text>
+              </View>
+              <TextInput
+                style={[styles.textarea, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text }]}
+                value={section.value}
+                onChangeText={section.setter}
+                placeholder={section.placeholder}
+                placeholderTextColor={COLORS.muted}
+                multiline
+                textAlignVertical="top"
+                textAlign={isRtl ? 'right' : 'left'}
+              />
+            </View>
+          ))}
+
           {/* Privacy toggle */}
-          <View style={styles.inputGroup}>
+          <View style={[styles.fieldCard, { backgroundColor: COLORS.cardBackground }]}>
             <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                paddingVertical: SPACING.sm,
-              }}
+              style={[styles.privacyRow, isRtl && { flexDirection: 'row-reverse' }]}
               onPress={() => setIsPublished(!isPublished)}
               activeOpacity={0.7}
             >
-              {isPublished ? (
-                <Globe size={18} color={COLORS.success} />
-              ) : (
-                <Lock size={18} color={COLORS.error} />
-              )}
-              <Text style={[{ color: COLORS.text, fontSize: FONT_SIZES.sm }]}>
+              <View style={[styles.privacyIcon, { backgroundColor: isPublished ? `${COLORS.success}18` : `${COLORS.error}18` }]}>
+                {isPublished ? (
+                  <Globe size={16} color={COLORS.success} />
+                ) : (
+                  <Lock size={16} color={COLORS.error} />
+                )}
+              </View>
+              <Text style={[styles.privacyText, { color: COLORS.text }]}>
                 {isPublished
                   ? 'Public — anyone can read this'
                   : 'Private — only you can see this'}
               </Text>
             </TouchableOpacity>
           </View>
-
-          {renderInput(
-            jc?.gratitudeLabel || 'Gratitude',
-            gratitude,
-            setGratitude,
-            true,
-            jc?.gratitudePlaceholder || 'What are you grateful for today?',
-          )}
-          {renderInput(
-            jc?.learningsLabel || 'Learnings',
-            learnings,
-            setLearnings,
-            true,
-            jc?.learningsPlaceholder || 'What did you learn?',
-          )}
-          {renderInput(
-            jc?.applicationLabel || 'Application',
-            application,
-            setApplication,
-            true,
-            jc?.applicationPlaceholder || 'How will you apply this?',
-          )}
-          {renderInput(
-            jc?.prayerRequestsLabel || 'Prayer Requests',
-            prayers,
-            setPrayers,
-            true,
-            jc?.prayerRequestsPlaceholder || 'What do you want to pray for?',
-          )}
 
           <View style={{ height: SPACING.xxl }} />
         </ScrollView>
@@ -666,90 +525,173 @@ const JournalEntryScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  headerTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '600',
-  },
-  saveButton: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: 8,
-  },
-  content: {
-    flex: 1,
-    padding: SPACING.md,
-  },
-  inputGroup: {
-    marginBottom: SPACING.lg,
-  },
-  inputLabel: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
-    marginBottom: SPACING.xs,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: SPACING.md,
-    fontSize: FONT_SIZES.md,
-  },
-  chipContainer: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  chip: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
-  },
-  scriptureRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  scriptureInput: {
-    flex: 2,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: SPACING.md,
-    fontSize: FONT_SIZES.md,
-  },
-  chapterInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: SPACING.md,
-    fontSize: FONT_SIZES.md,
-    textAlign: 'center',
-  },
-  offlineBanner: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+  flex: { flex: 1 },
+  center: {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  scrollView: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xxl,
+  },
+  saveBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#F59E0B',
+    paddingVertical: 6,
+    paddingHorizontal: SPACING.md,
+  },
   offlineBannerText: {
     color: '#FFFFFF',
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
+  },
+  fieldCard: {
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  fieldHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: SPACING.sm,
+  },
+  fieldLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  titleInput: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '800',
+    paddingVertical: 4,
+  },
+  contentInput: {
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    fontSize: FONT_SIZES.md,
+    minHeight: 140,
+    borderWidth: 1,
+    lineHeight: 22,
+  },
+  textarea: {
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
     fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
+    minHeight: 100,
+    borderWidth: 1,
+    lineHeight: 20,
+  },
+  sectionHeader: {
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+  },
+  sectionTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '700',
+  },
+  moodChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1,
+  },
+  moodEmoji: {
+    fontSize: 18,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: SPACING.sm,
+  },
+  refRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  refInput: {
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+  },
+  refInputBook: {
+    flex: 2,
+  },
+  refInputSmall: {
+    flex: 1,
     textAlign: 'center',
+  },
+  tagInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.md,
+  },
+  tagInput: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    fontSize: FONT_SIZES.sm,
+  },
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  privacyIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  privacyText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    flex: 1,
   },
 });
 

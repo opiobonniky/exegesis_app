@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { CheckCircle2, XCircle, Lightbulb, X } from 'lucide-react-native';
-import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import { CheckCircle2, XCircle, Lightbulb } from 'lucide-react-native';
 import {
   getColors,
   SPACING,
@@ -20,18 +19,19 @@ interface Props {
   result: TriviaAnswerResult;
   isRtl: boolean;
   isDark?: boolean;
-  onDismiss?: () => void;
+  onNext?: () => void;
 }
 
 export default function TriviaResultCard({
   result,
   isRtl,
   isDark = false,
-  onDismiss,
+  onNext,
 }: Props) {
   const COLORS = useMemo(() => getColors(isDark), [isDark]);
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
 
+  const [exiting, setExiting] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -51,17 +51,9 @@ export default function TriviaResultCard({
     ]).start();
   }, [scaleAnim, fadeAnim]);
 
-  const handleDismiss = useCallback(() => {
-    // Light haptic feedback on dismiss
-    try {
-      ReactNativeHapticFeedback.trigger('impactLight', {
-        enableVibrateFallback: true,
-        ignoreAndroidSystemSettings: false,
-      });
-    } catch {
-      // Haptic not supported — silently continue
-    }
-
+  const handleNext = useCallback(() => {
+    if (exiting) return;
+    setExiting(true);
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -74,9 +66,9 @@ export default function TriviaResultCard({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onDismiss?.();
+      onNext?.();
     });
-  }, [fadeAnim, scaleAnim, onDismiss]);
+  }, [exiting, fadeAnim, scaleAnim, onNext]);
 
   const accentColor = result.isCorrect ? COLORS.success : COLORS.error;
 
@@ -91,72 +83,43 @@ export default function TriviaResultCard({
         },
       ]}
     >
-      {/* Close button */}
-      <TouchableOpacity
-        style={[
-          styles.closeButton,
-          isRtl && { right: 'auto', left: SPACING.sm },
-        ]}
-        onPress={handleDismiss}
-        activeOpacity={0.7}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <X size={16} color={COLORS.muted} />
-      </TouchableOpacity>
-
-      {/* Icon + Result header */}
-      <View style={[styles.header, isRtl && { flexDirection: 'row-reverse' }]}>
+      {/* Icon + Result + Continue row */}
+      <View style={[styles.row, isRtl && { flexDirection: 'row-reverse' }]}>
         <View
           style={[styles.iconCircle, { backgroundColor: `${accentColor}15` }]}
         >
           {result.isCorrect ? (
-            <CheckCircle2 size={20} color={COLORS.success} />
+            <CheckCircle2 size={14} color={COLORS.success} />
           ) : (
-            <XCircle size={20} color={COLORS.error} />
+            <XCircle size={14} color={COLORS.error} />
           )}
         </View>
-        <View style={[styles.headerText, isRtl && { alignItems: 'flex-end' }]}>
+        <View style={[styles.textWrap, isRtl && { alignItems: 'flex-end' }]}>
           <Text style={[styles.title, { color: accentColor }]}>
             {result.isCorrect ? 'Correct!' : 'Incorrect'}
           </Text>
           {!result.isCorrect && (
-            <Text
-              style={[styles.correctAnswer, isRtl && { textAlign: 'right' }]}
-            >
+            <Text style={[styles.correctAnswer, isRtl && { textAlign: 'right' }]}>
               {result.correctAnswerText}
             </Text>
           )}
+          {result.explanation && (
+            <View style={[styles.explanationRow, isRtl && { flexDirection: 'row-reverse' }]}>
+              <Lightbulb size={11} color={COLORS.info} />
+              <Text style={[styles.explanationText, isRtl && { textAlign: 'right', flex: 1 }]}>
+                {result.explanation}
+              </Text>
+            </View>
+          )}
         </View>
-      </View>
-
-      {/* Explanation */}
-      {result.explanation && (
-        <View
-          style={[
-            styles.explanationBox,
-            isRtl && { flexDirection: 'row-reverse' },
-          ]}
+        <TouchableOpacity
+          style={[styles.nextBtn, { backgroundColor: accentColor }]}
+          onPress={handleNext}
+          activeOpacity={0.85}
         >
-          <Lightbulb size={14} color={COLORS.info} />
-          <Text
-            style={[
-              styles.explanationText,
-              isRtl && { textAlign: 'right', writingDirection: 'rtl', flex: 1 },
-            ]}
-          >
-            {result.explanation}
-          </Text>
-        </View>
-      )}
-
-      {/* Dismiss button */}
-      <TouchableOpacity
-        style={[styles.dismissBtn, { backgroundColor: accentColor }]}
-        onPress={handleDismiss}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.dismissBtnText}>Continue</Text>
-      </TouchableOpacity>
+          <Text style={styles.nextBtnText}>Next</Text>
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -165,74 +128,59 @@ const createStyles = (COLORS: any) =>
   StyleSheet.create({
     container: {
       backgroundColor: COLORS.surface,
-      borderRadius: BORDER_RADIUS.lg,
-      padding: SPACING.sm,
-      borderWidth: 1.5,
-      marginBottom: SPACING.sm,
+      borderRadius: BORDER_RADIUS.md,
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      borderWidth: 1,
+      marginBottom: 4,
     },
-    header: {
+    row: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: SPACING.sm,
-      marginBottom: 6,
+      gap: 6,
     },
     iconCircle: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    headerText: {
+    textWrap: {
       flex: 1,
     },
     title: {
-      fontSize: FONT_SIZES.md,
-      fontWeight: '900',
-      letterSpacing: -0.3,
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '800',
+      letterSpacing: -0.2,
     },
     correctAnswer: {
-      fontSize: FONT_SIZES.sm,
+      fontSize: 11,
       color: COLORS.textSecondary,
       fontWeight: '600',
-      marginTop: 1,
+      marginTop: 0,
     },
-    explanationBox: {
+    explanationRow: {
       flexDirection: 'row',
-      gap: SPACING.sm,
-      padding: 8,
-      borderRadius: BORDER_RADIUS.sm,
-      backgroundColor: `${COLORS.info}10`,
+      gap: 4,
       alignItems: 'flex-start',
+      marginTop: 2,
     },
     explanationText: {
-      fontSize: FONT_SIZES.sm,
+      fontSize: 11,
       color: COLORS.textSecondary,
-      lineHeight: 18,
+      lineHeight: 15,
     },
-    closeButton: {
-      position: 'absolute',
-      top: SPACING.sm,
-      right: SPACING.sm,
-      zIndex: 10,
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: `${COLORS.border}40`,
-    },
-    dismissBtn: {
-      marginTop: SPACING.sm,
-      paddingVertical: SPACING.sm,
-      paddingHorizontal: SPACING.lg,
+    nextBtn: {
+      paddingVertical: 6,
+      paddingHorizontal: 14,
       borderRadius: BORDER_RADIUS.round,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    dismissBtnText: {
+    nextBtnText: {
       color: '#FFFFFF',
-      fontSize: FONT_SIZES.sm,
+      fontSize: 11,
       fontWeight: '800',
     },
   });

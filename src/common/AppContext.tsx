@@ -114,8 +114,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     covenant_sower: 2,
   };
 
+  const isAdmin = userInfo?.userRole === 1;
+
   const hasSubscriptionAccess = useCallback(
     (minimumTier: 'legacy_sower' | 'covenant_sower'): boolean => {
+      if (isAdmin) return true;
       const order: Record<string, number> = {
         free: 0,
         legacy_sower_monthly: 1,
@@ -125,7 +128,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       };
       return (order[subscriptionTier] ?? 0) >= order[minimumTier];
     },
-    [subscriptionTier],
+    [subscriptionTier, isAdmin],
   );
 
   const fetchSubscriptionStatus = async (silent = false) => {
@@ -404,7 +407,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           bibleVersionId,
           setBibleVersion,
           isGuest,
-          isAdmin: userInfo?.userRole === 1,
+          isAdmin,
           subscriptionTier,
           accessExpiresAt,
           subscriptionLoading,

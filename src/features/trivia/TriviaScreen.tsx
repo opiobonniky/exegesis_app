@@ -12,7 +12,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Animated,
   StyleSheet,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -126,28 +125,6 @@ export default function TriviaScreen() {
     [navigation],
   );
 
-  // ── Result dismissed state — user must close result card before Next appears ──
-  const [resultDismissed, setResultDismissed] = useState(false);
-  const nextBtnOpacity = useRef(new Animated.Value(0)).current;
-
-  const handleDismissResult = useCallback(() => {
-    setResultDismissed(true);
-    // Animate the Next button in — aligned with result card's 200ms dismiss
-    Animated.timing(nextBtnOpacity, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [nextBtnOpacity]);
-
-  // Reset dismissed state + animation when a new question loads
-  useEffect(() => {
-    if (phase === 'playing') {
-      setResultDismissed(false);
-      nextBtnOpacity.setValue(0);
-    }
-  }, [phase, nextBtnOpacity]);
-
   // ── Confetti state — show on streak >= 3 ──
   const [showConfetti, setShowConfetti] = useState(false);
   const prevStreakRef = useRef(0);
@@ -212,7 +189,13 @@ export default function TriviaScreen() {
             ? `${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} questions`
             : undefined
         }
-        onPress={() => navigation.goBack()}
+        onPress={() => {
+          if (phase === 'plan') navigation.goBack();
+          else {
+            reset();
+            fetchStats();
+          }
+        }}
         rightComponent={scoreBadge}
       />
 
@@ -444,10 +427,17 @@ export default function TriviaScreen() {
             <TouchableOpacity
               style={[styles.startBtn, { backgroundColor: COLORS.accent }]}
               onPress={handleStart}
+              disabled={loading}
               activeOpacity={0.85}
             >
-              <Play size={18} color="#FFFFFF" fill="#FFFFFF" />
-              <Text style={styles.startBtnText}>Start Quiz</Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Play size={18} color="#FFFFFF" fill="#FFFFFF" />
+              )}
+              <Text style={styles.startBtnText}>
+                {loading ? 'Loading...' : 'Start Quiz'}
+              </Text>
             </TouchableOpacity>
 
             {/* Tip footer */}
@@ -461,9 +451,14 @@ export default function TriviaScreen() {
               GAME SCREEN — Playing / Answered / Finished
              ══════════════════════════════════════════════ */
           <>
-            {/* Difficulty filter chips */}
+            {/* Difficulty filter chips + back-to-menu */}
             <View style={styles.gameTopCard}>
-              <Text style={styles.gameFilterLabel}>Difficulty</Text>
+              <View style={[styles.gameFilterRow, isRtl && { flexDirection: 'row-reverse' }]}>
+                <Text style={styles.gameFilterLabel}>Difficulty</Text>
+                <TouchableOpacity onPress={handleReset} activeOpacity={0.7} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                  <Text style={[styles.gameMenuLink, { color: COLORS.muted }]}>Menu</Text>
+                </TouchableOpacity>
+              </View>
               <View
                 style={[
                   styles.filterRow,
@@ -482,6 +477,8 @@ export default function TriviaScreen() {
                           ? { bg: `${COLORS.info}18`, text: COLORS.info }
                           : { bg: `${COLORS.accent}15`, text: COLORS.accent };
 
+                  const chipLoading = loading && isActive;
+
                   return (
                     <TouchableOpacity
                       key={d}
@@ -489,83 +486,61 @@ export default function TriviaScreen() {
                         styles.filterChip,
                         isActive && { backgroundColor: chipColors.text },
                       ]}
+                      disabled={chipLoading}
                       activeOpacity={0.7}
                       onPress={() => {
                         setDifficulty(d === 'all' ? null : d);
                       }}
                     >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          { color: isActive ? '#FFFFFF' : COLORS.muted },
-                          isActive && {
-                            fontWeight: '700',
-                          },
-                        ]}
-                      >
-                        {d === 'all'
-                          ? 'All'
-                          : d.charAt(0).toUpperCase() + d.slice(1)}
-                      </Text>
+                      {chipLoading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.filterChipText,
+                            { color: isActive ? '#FFFFFF' : COLORS.muted },
+                            isActive && {
+                              fontWeight: '700',
+                            },
+                          ]}
+                        >
+                          {d === 'all'
+                            ? 'All'
+                            : d.charAt(0).toUpperCase() + d.slice(1)}
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            {/* Progress indicator: Question X of Y — full width bar */}
-            {totalCount > 0 && (
-              <View
+            {/* Question number */}
+            <View
+              style={[
+                styles.progressRow,
+                isRtl && { flexDirection: 'row-reverse' },
+              ]}
+            >
+              <Text
                 style={[
-                  styles.progressRow,
-                  isRtl && { flexDirection: 'row-reverse' },
+                  styles.progressLabel,
+                  isRtl && { textAlign: 'right' },
                 ]}
               >
-                <View style={styles.progressLabelWrap}>
-                  <Text
-                    style={[
-                      styles.progressLabel,
-                      isRtl && { textAlign: 'right' },
-                    ]}
-                  >
-                    Question {score.total + 1} of {totalCount}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.progressDifficulty,
-                      isRtl && { textAlign: 'right' },
-                    ]}
-                  >
-                    {difficulty
-                      ? difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
-                      : 'All'}
-                  </Text>
-                </View>
-                <Text
-                  style={[styles.progressPercent, { color: COLORS.accent }]}
-                >
-                  {Math.round((score.total / totalCount) * 100)}%
-                </Text>
-              </View>
-            )}
-            {totalCount > 0 && (
-              <View
+                Question {score.total + 1}
+              </Text>
+              <Text
                 style={[
-                  styles.progressBarTrack,
-                  { backgroundColor: COLORS.border },
+                  styles.progressDifficulty,
+                  isRtl && { textAlign: 'right' },
                 ]}
               >
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    {
-                      backgroundColor: COLORS.accent,
-                      width: `${(score.total / totalCount) * 100}%`,
-                    },
-                  ]}
-                />
-              </View>
-            )}
+                {difficulty
+                  ? difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
+                  : 'All'}
+              </Text>
+            </View>
 
             {/* Loading state */}
             {loading && !question && (
@@ -605,6 +580,7 @@ export default function TriviaScreen() {
                   question={question}
                   selectedAnswer={selectedAnswer}
                   disabled={false}
+                  loading={loading}
                   isRtl={isRtl}
                   isDark={isDark}
                   onSelect={handleSelect}
@@ -640,6 +616,7 @@ export default function TriviaScreen() {
                     question={question}
                     selectedAnswer={selectedAnswer}
                     disabled={true}
+                    loading={loading}
                     isRtl={isRtl}
                     isDark={isDark}
                     correctAnswerIndex={result?.correctAnswer}
@@ -673,32 +650,13 @@ export default function TriviaScreen() {
                   </View>
                 )}
 
-                {/* Result card — must be dismissed before Next appears */}
-                {!resultDismissed && (
-                  <TriviaResultCard
-                    result={result}
-                    isRtl={isRtl}
-                    isDark={isDark}
-                    onDismiss={handleDismissResult}
-                  />
-                )}
-
-                {/* Next button — fades in after result is dismissed */}
-                {resultDismissed && (
-                  <Animated.View style={{ opacity: nextBtnOpacity }}>
-                    <TouchableOpacity
-                      style={[
-                        styles.nextBtn,
-                        { backgroundColor: COLORS.accent },
-                      ]}
-                      onPress={handleNext}
-                      activeOpacity={0.85}
-                    >
-                      <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
-                      <Text style={styles.nextBtnText}>Next Question</Text>
-                    </TouchableOpacity>
-                  </Animated.View>
-                )}
+                {/* Result card — tap Next to go to next question */}
+                <TriviaResultCard
+                  result={result}
+                  isRtl={isRtl}
+                  isDark={isDark}
+                  onNext={handleNext}
+                />
               </>
             )}
 
@@ -867,11 +825,22 @@ const createStyles = (COLORS: any) =>
       borderWidth: 1,
       borderColor: COLORS.border,
     },
-    gameFilterLabel: {
+    gameFilterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       paddingHorizontal: SPACING.sm,
       paddingTop: 2,
       paddingBottom: 6,
+    },
+    gameFilterLabel: {
       color: COLORS.muted,
+      fontSize: 10,
+      fontWeight: '800',
+      textTransform: 'uppercase',
+      letterSpacing: 0.7,
+    },
+    gameMenuLink: {
       fontSize: 10,
       fontWeight: '800',
       textTransform: 'uppercase',
@@ -925,17 +894,6 @@ const createStyles = (COLORS: any) =>
       fontSize: 10,
       fontWeight: '800',
     },
-    progressBarTrack: {
-      width: '100%',
-      height: 7,
-      borderRadius: 8,
-      overflow: 'hidden',
-      marginBottom: SPACING.lg,
-    },
-    progressBarFill: {
-      height: '100%',
-      borderRadius: 2,
-    },
 
     // Loading / Error / Empty
     centerState: {
@@ -979,22 +937,6 @@ const createStyles = (COLORS: any) =>
       color: COLORS.muted,
       textAlign: 'center',
       lineHeight: 20,
-    },
-
-    // Next button
-    nextBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: SPACING.sm,
-      paddingVertical: SPACING.md,
-      borderRadius: BORDER_RADIUS.lg,
-      marginBottom: SPACING.md,
-    },
-    nextBtnText: {
-      color: '#FFFFFF',
-      fontSize: FONT_SIZES.md,
-      fontWeight: '800',
     },
 
     // ── PLAN SCREEN ──

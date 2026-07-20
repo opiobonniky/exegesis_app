@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useContext, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -25,7 +25,6 @@ import {
   Trash2,
   X,
   ScrollText,
-  Languages,
 } from 'lucide-react-native';
 import { AppContext } from '../../common/AppContext';
 import { getColors } from '../../constants/theme';
@@ -36,77 +35,97 @@ import {
 } from '../../constants/bibleBooks';
 import { showToast } from '../../helpers/Toash.helper';
 import {
-  ChapterStudyToolItem,
-  deleteAdminStudyTool,
-  getAllAdminStudyTools,
-  TOOL_TYPE_LABELS,
-  TOOL_TYPE_ORDER,
-  ToolType,
-} from '../bible/services/studyToolsApi';
+  getAllVerseExplanations,
+  deleteVerseExplanation,
+  VerseExplanationItem,
+} from '../../services/adminApi';
 
-const FILTERS = ['all', ...TOOL_TYPE_ORDER] as const;
-
-export default function AdminStudyToolsManager() {
+export default function AdminVerseExplanationsManager() {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
   const COLORS = getColors(app?.isDark ?? false);
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
-  const [items, setItems] = useState<ChapterStudyToolItem[]>([]);
+
+  const [items, setItems] = useState<VerseExplanationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [toolType, setToolType] = useState<(typeof FILTERS)[number]>('all');
-  const [showBookFilter, setShowBookFilter] = useState(false);
   const [bookFilter, setBookFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Book picker
+  const [showBookFilter, setShowBookFilter] = useState(false);
   const [covenant, setCovenant] = useState<'all' | 'ot' | 'nt'>('all');
   const [bookSearch, setBookSearch] = useState('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (pageNum = 1, append = false) => {
     try {
-      const res = await getAllAdminStudyTools({
-        page: 0,
-        pageSize: 100,
-        search: searchText.trim() || undefined,
-        toolType: toolType === 'all' ? undefined : toolType,
+      const res = await getAllVerseExplanations({
+        page: pageNum,
+        pageSize: 50,
         bookName: bookFilter || undefined,
       });
-      setItems(res.data || []);
+      if (append) {
+        setItems(prev => [...prev, ...res.explanations]);
+      } else {
+        setItems(res.explanations);
+      }
+      setTotalPages(res.totalPages);
+      setTotalCount(res.totalCount);
+      setPage(pageNum);
     } catch (error: any) {
-      showToast('error', error?.message || 'Failed to load study tools');
+      showToast('error', error?.message || 'Failed to load verse explanations');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [searchText, toolType, bookFilter]);
+  }, [bookFilter]);
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      setLoading(true);
+      load(1);
     }, [load]),
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
+    setLoading(true);
+    await load(1);
     setRefreshing(false);
   };
 
-  const confirmDelete = (item: ChapterStudyToolItem) => {
-    Alert.alert('Delete Study Tool', `Delete "${item.label}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteAdminStudyTool(Number(item.id));
-            setItems(prev => prev.filter(tool => tool.id !== item.id));
-            showToast('success', 'Study tool deleted');
-          } catch (error: any) {
-            showToast('error', error?.message || 'Failed to delete study tool');
-          }
+  const loadMore = () => {
+    if (loadingMore || page >= totalPages) return;
+    setLoadingMore(true);
+    load(page + 1, true);
+  };
+
+  const confirmDelete = (item: VerseExplanationItem) => {
+    Alert.alert(
+      'Delete Explanation',
+      `Delete explanation for ${item.bookName} ${item.chapter}:${item.verseNumber}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteVerseExplanation(item.id);
+              setItems(prev => prev.filter(i => i.id !== item.id));
+              setTotalCount(prev => prev - 1);
+              showToast('success', 'Verse explanation deleted');
+            } catch (error: any) {
+              showToast('error', error?.message || 'Failed to delete');
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const filteredBooks = useMemo(() => {
@@ -120,79 +139,56 @@ export default function AdminStudyToolsManager() {
     return books;
   }, [covenant, bookSearch]);
 
-  const renderItem = ({ item }: { item: ChapterStudyToolItem }) => {
-    const words = item.studyToolWords || [];
-    return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.titleRow}>
-            <BookOpen size={17} color={COLORS.primary} />
-            <Text style={styles.title} numberOfLines={2}>
-              {item.label}
-            </Text>
-          </View>
-          <Text style={styles.orderText}>#{item.order ?? 0}</Text>
-        </View>
-
-        <View style={styles.metaRow}>
-          <Text style={styles.referenceChip}>{item.bookName} {item.chapter}</Text>
-          <Text style={styles.metaChip}>{TOOL_TYPE_LABELS[item.toolType]}</Text>
-        </View>
-
-        {item.description ? (
-          <Text style={styles.preview} numberOfLines={3}>{item.description}</Text>
-        ) : null}
-
-        {Array.isArray(item.verseRefs) && item.verseRefs.length ? (
-          <Text style={styles.verses} numberOfLines={2}>
-            Verses: {item.verseRefs.map(ref => ref.verse).join(', ')}
+  const renderItem = ({ item }: { item: VerseExplanationItem }) => (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.titleRow}>
+          <ScrollText size={17} color={COLORS.primary} />
+          <Text style={styles.reference}>
+            {item.bookName} {item.chapter}:{item.verseNumber}
           </Text>
-        ) : null}
-
-        {/* Linked Words Section */}
-        {words.length > 0 && (
-          <View style={styles.wordsSection}>
-            <Text style={styles.wordsSectionTitle}>
-              <ScrollText size={12} color={COLORS.primary} /> Linked Words ({words.length})
-            </Text>
-            <View style={styles.wordsList}>
-              {words.map(w => (
-                <View key={w.id} style={styles.wordChip}>
-                  <Text style={styles.wordSurface}>{w.surfaceText}</Text>
-                  <Text style={styles.wordStrongs}>{w.strongsId}</Text>
-                  {w.strongs?.originalWord && (
-                    <Text style={styles.wordOriginal}>{w.strongs.originalWord}</Text>
-                  )}
-                  {w.adminExplanation ? (
-                    <View style={styles.wordHasExplanation}>
-                      <Text style={styles.wordHasExplanationDot}>●</Text>
-                    </View>
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        <View style={styles.footer}>
-          <Text style={styles.metaText}>
-            {item.strongsIds?.length ? `${item.strongsIds.length} Strong's IDs` : (words.length ? `${words.length} linked words` : 'No Strong\'s links')}
-          </Text>
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => navigation.navigate('AddStudyTool', { tool: item })}
-            >
-              <Pencil size={16} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={() => confirmDelete(item)}>
-              <Trash2 size={16} color={COLORS.error} />
-            </TouchableOpacity>
-          </View>
+        </View>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('AddVerseExplanation', { explanation: item })}
+          >
+            <Pencil size={16} color={COLORS.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => confirmDelete(item)}
+          >
+            <Trash2 size={16} color={COLORS.error} />
+          </TouchableOpacity>
         </View>
       </View>
-    );
-  };
+
+      {item.explanation ? (
+        <View style={styles.textSection}>
+          <Text style={styles.textLabel}>Explanation</Text>
+          <Text style={styles.textPreview} numberOfLines={4}>
+            {item.explanation}
+          </Text>
+        </View>
+      ) : null}
+
+      {item.learnMore ? (
+        <View style={styles.textSection}>
+          <Text style={styles.textLabel}>Learn More</Text>
+          <Text style={styles.textPreview} numberOfLines={3}>
+            {item.learnMore}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
+          {item.bibleVersion || 'No version'} · ID #{item.id}
+        </Text>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -200,8 +196,11 @@ export default function AdminStudyToolsManager() {
         <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
           <ChevronLeft size={24} color={COLORS.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Study Tools</Text>
-        <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('AddStudyTool')}>
+        <Text style={styles.headerTitle}>Verse Explanations</Text>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => navigation.navigate('AddVerseExplanation')}
+        >
           <Plus size={24} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
@@ -213,14 +212,13 @@ export default function AdminStudyToolsManager() {
             style={styles.searchInput}
             value={searchText}
             onChangeText={setSearchText}
-            onSubmitEditing={load}
-            placeholder="Search study tools"
+            onSubmitEditing={() => { setLoading(true); load(1); }}
+            placeholder="Search explanations..."
             placeholderTextColor={COLORS.muted}
             returnKeyType="search"
           />
         </View>
 
-        {/* Book Filter */}
         <TouchableOpacity
           style={[styles.bookFilterBtn, bookFilter ? styles.bookFilterBtnActive : {}]}
           onPress={() => setShowBookFilter(true)}
@@ -231,22 +229,6 @@ export default function AdminStudyToolsManager() {
           </Text>
           <ChevronDown size={12} color={bookFilter ? '#fff' : COLORS.muted} />
         </TouchableOpacity>
-
-        <View style={styles.filters}>
-          {FILTERS.map(filter => {
-            const active = toolType === filter;
-            const label = filter === 'all' ? 'All' : TOOL_TYPE_LABELS[filter as ToolType];
-            return (
-              <TouchableOpacity
-                key={filter}
-                style={[styles.filterChip, active && styles.filterChipActive]}
-                onPress={() => setToolType(filter)}
-              >
-                <Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
       </View>
 
       {loading ? (
@@ -260,16 +242,41 @@ export default function AdminStudyToolsManager() {
           renderItem={renderItem}
           contentContainerStyle={items.length ? styles.list : styles.emptyList}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator color={COLORS.primary} />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <BookOpen size={34} color={COLORS.muted} />
-              <Text style={styles.emptyTitle}>No study tools found</Text>
-              <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('AddStudyTool')}>
-                <Text style={styles.primaryButtonText}>Add Study Tool</Text>
+              <BookText size={34} color={COLORS.muted} />
+              <Text style={styles.emptyTitle}>No verse explanations found</Text>
+              <Text style={styles.emptySubtext}>
+                {bookFilter
+                  ? `No explanations for ${bookFilter}`
+                  : 'Add your first verse explanation'}
+              </Text>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={() => navigation.navigate('AddVerseExplanation')}
+              >
+                <Text style={styles.primaryButtonText}>Add Explanation</Text>
               </TouchableOpacity>
             </View>
           }
         />
+      )}
+
+      {totalCount > 0 && !loading && (
+        <View style={styles.countBar}>
+          <Text style={styles.countText}>
+            {totalCount} explanation{totalCount !== 1 ? 's' : ''} · Page {page}/{totalPages}
+          </Text>
+        </View>
       )}
 
       {/* Book Filter Modal */}
@@ -348,43 +355,28 @@ const createStyles = (COLORS: any) => StyleSheet.create({
   bookFilterBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.cardBackground, alignSelf: 'flex-start' },
   bookFilterBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   bookFilterText: { fontSize: 12, fontWeight: '700', color: COLORS.text },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  filterChip: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: COLORS.cardBackground, borderWidth: 1, borderColor: COLORS.border },
-  filterChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  filterText: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '700' },
-  filterTextActive: { color: '#fff' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 14, paddingBottom: 40 },
+  list: { padding: 14, paddingBottom: 60 },
   emptyList: { flexGrow: 1, justifyContent: 'center', padding: 20 },
   card: { backgroundColor: COLORS.cardBackground, borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, padding: 14, marginBottom: 12 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
   titleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { flex: 1, color: COLORS.text, fontSize: 15, fontWeight: '800' },
-  orderText: { color: COLORS.muted, fontSize: 12, fontWeight: '700' },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
-  referenceChip: { color: COLORS.primary, fontSize: 11, fontWeight: '800', backgroundColor: COLORS.selectedItem, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  metaChip: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '700', backgroundColor: COLORS.surface, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  preview: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 10 },
-  verses: { color: COLORS.muted, fontSize: 12, marginTop: 8 },
-  wordsSection: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
-  wordsSectionTitle: { color: COLORS.text, fontSize: 12, fontWeight: '700', marginBottom: 8 },
-  wordsList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  wordChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.selectedItem, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 },
-  wordSurface: { color: COLORS.text, fontSize: 12, fontWeight: '700' },
-  wordStrongs: { color: COLORS.primary, fontSize: 9, fontWeight: '800', backgroundColor: COLORS.primary + '18', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 },
-  wordOriginal: { color: COLORS.muted, fontSize: 10, fontStyle: 'italic' },
-  wordHasExplanation: { marginLeft: 2 },
-  wordHasExplanationDot: { color: '#22c55e', fontSize: 8 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
-  metaText: { color: COLORS.muted, fontSize: 11, fontWeight: '600' },
+  reference: { color: COLORS.text, fontSize: 16, fontWeight: '800' },
   actions: { flexDirection: 'row', gap: 8 },
   iconButton: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
-  empty: { alignItems: 'center', gap: 12 },
+  textSection: { marginTop: 12 },
+  textLabel: { color: COLORS.muted, fontSize: 11, fontWeight: '700', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  textPreview: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 19 },
+  footer: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
+  footerText: { color: COLORS.muted, fontSize: 11, fontWeight: '600' },
+  empty: { alignItems: 'center', gap: 8 },
   emptyTitle: { color: COLORS.text, fontSize: 16, fontWeight: '800' },
-  primaryButton: { backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
+  emptySubtext: { color: COLORS.textSecondary, fontSize: 13, textAlign: 'center' },
+  primaryButton: { backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, marginTop: 8 },
   primaryButtonText: { color: '#fff', fontWeight: '800' },
-
-  // Modal styles
+  countBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border, paddingVertical: 10, alignItems: 'center' },
+  countText: { fontSize: 12, fontWeight: '700', color: COLORS.muted },
+  loadingMore: { paddingVertical: 20, alignItems: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 34 },
   modalHeader2: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1 },

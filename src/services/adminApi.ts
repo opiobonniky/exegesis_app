@@ -1021,3 +1021,80 @@ export const setSiteSetting = async (
     throw new Error(response.returnMessage || 'Failed to set site setting');
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Verse Explanations (admin-only CRUD via bible module)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface VerseExplanationItem {
+  id: number;
+  bookName: string;
+  chapter: number;
+  verseNumber: number;
+  explanation: string | null;
+  learnMore: string | null;
+  bibleVersion: string | null;
+  promptIds: string | null;
+  createdOn?: string;
+  updatedOn?: string;
+}
+
+export interface AllVerseExplanationsResponse {
+  explanations: VerseExplanationItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export const getAllVerseExplanations = async (params?: {
+  page?: number;
+  pageSize?: number;
+  bookName?: string;
+}): Promise<AllVerseExplanationsResponse> => {
+  const response = await sendPostRequest<AllVerseExplanationsResponse>(
+    'bible',
+    'get-all-verses-explanation',
+    {
+      page: params?.page ?? 1,
+      pageSize: params?.pageSize ?? 50,
+      ...(params?.bookName ? { bookName: params.bookName } : {}),
+    },
+  );
+  if (response.returnCode === 200 && response.returnData) {
+    return response.returnData;
+  }
+  return { explanations: [], totalCount: 0, page: 1, pageSize: 50, totalPages: 0 };
+};
+
+export const addVerseExplanation = async (data: {
+  bookName: string;
+  chapter: number;
+  verseNumber: number;
+  explanation?: string;
+  learnMore?: string;
+  bibleVersion?: string;
+  promptIds?: string[];
+  id?: number;
+}): Promise<VerseExplanationItem> => {
+  const response = await sendPostRequest<VerseExplanationItem>(
+    'bible',
+    'add-verse-explanation',
+    data,
+  );
+  if (response.returnCode === 200 && response.returnData) {
+    return response.returnData;
+  }
+  throw new Error(response.returnMessage || 'Failed to save verse explanation');
+};
+
+export const deleteVerseExplanation = async (id: number): Promise<void> => {
+  const response = await sendPostRequest(
+    'bible',
+    'delete-verse-explanation',
+    { id },
+  );
+  if (response.returnCode !== 200) {
+    throw new Error(response.returnMessage || 'Failed to delete verse explanation');
+  }
+};

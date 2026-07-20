@@ -10,13 +10,11 @@ import {
   BookOpen,
   Brain,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Ear,
-  Lock,
   Pause,
   Play,
   RotateCcw,
+  Volume2,
 } from 'lucide-react-native';
 import { SPACING } from '../../../constants/theme';
 import { LISTEN_OPTIONS } from '../constants';
@@ -26,72 +24,53 @@ interface ListenStageProps {
   colors: any;
   passageRef: string;
   passageVersesCount: number;
-  selectedDuration: number;
-  setSelectedDuration: (value: number) => void;
-  timerRunning: boolean;
-  timerPaused: boolean;
-  timerElapsed: number;
-  timerComplete: boolean;
+  selectedRepeats: number;
+  setSelectedRepeats: (value: number) => void;
   repeatCount: number;
-  hasSavedProgress: boolean;
-  animatedValue: Animated.Value;
+  listenComplete: boolean;
+  isPlaying: boolean;
+  isPaused: boolean;
   audioStarting: boolean;
-  isTtsPlaying: boolean;
-  isTtsPaused: boolean;
   saving: boolean;
   pageIndex: number;
   stageOrder: readonly string[];
-  scrollX: Animated.Value;
+  scrollX: any;
   screenWidth: number;
   renderChangePassageActions: () => React.ReactNode;
-  onBeginTimer: () => void;
-  onResumeTimer: () => void;
-  onToggleTimer: () => void;
-  onResetTimer: () => void;
-  onReplayPassageAudio: () => void;
-  onContinue: () => void;
+  onStart: () => void;
+  onToggle: () => void;
+  onReset: () => void;
+  onReplay: () => void;
+  onAdvance: () => void;
 }
-
-const formatTimeStr = (m: number, s: number) =>
-  `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
 export default function ListenStage({
   styles,
   colors,
   passageRef,
   passageVersesCount,
-  selectedDuration,
-  setSelectedDuration,
-  timerRunning,
-  timerPaused,
-  timerElapsed,
-  timerComplete,
+  selectedRepeats,
+  setSelectedRepeats,
   repeatCount,
-  hasSavedProgress,
-  animatedValue,
+  listenComplete,
+  isPlaying,
+  isPaused,
   audioStarting,
-  isTtsPlaying,
-  isTtsPaused,
   saving,
   pageIndex,
   stageOrder,
   scrollX,
   screenWidth,
   renderChangePassageActions,
-  onBeginTimer,
-  onResumeTimer,
-  onToggleTimer,
-  onResetTimer,
-  onReplayPassageAudio,
-  onContinue,
+  onStart,
+  onToggle,
+  onReset,
+  onReplay,
+  onAdvance,
 }: ListenStageProps) {
-  const remaining = selectedDuration - timerElapsed;
-  const minutes = Math.floor(remaining / 60);
-  const seconds = remaining % 60;
-  const progress = selectedDuration > 0 ? timerElapsed / selectedDuration : 0;
-  const selectedDurationLabel =
-    LISTEN_OPTIONS.find(o => o.value === selectedDuration)?.label || '';
-  const isPreparingAudio = audioStarting && !isTtsPlaying && !isTtsPaused;
+  const isPreparingAudio = audioStarting && !isPlaying && !isPaused;
+  const selectedLabel =
+    LISTEN_OPTIONS.find(o => o.value === selectedRepeats)?.label || `${selectedRepeats}x`;
 
   return (
     <View style={styles.stageContainer}>
@@ -124,93 +103,19 @@ export default function ListenStage({
         {renderChangePassageActions()}
       </View>
 
-      {!timerComplete ? (
+      {!listenComplete ? (
         <>
-          {!timerRunning && !timerPaused && (
+          {/* Before playing — repeat selection */}
+          {!isPlaying && !audioStarting && (
             <>
-              {hasSavedProgress ? (
-                <>
-                  <View style={[styles.learnContent, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center', marginBottom: SPACING.md }]}>
-                    <Text style={[styles.learnText, { color: colors.textSecondary, textAlign: 'center' }]}>
-                      You have {formatTimeStr(Math.floor(remaining / 60), remaining % 60)} remaining
-                      {repeatCount > 0 ? ` · Read ${repeatCount}x` : ''}
-                    </Text>
-                    <TouchableOpacity
-                      style={[styles.primaryBtn, { backgroundColor: colors.accent, marginTop: SPACING.sm, marginBottom: 0 }]}
-                      onPress={onResumeTimer}
-                      disabled={isPreparingAudio}
-                      activeOpacity={0.8}
-                    >
-                      {isPreparingAudio ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <Play size={18} color="#FFFFFF" />
-                      )}
-                      <Text style={styles.primaryBtnText}>
-                        {isPreparingAudio ? 'Preparing Reader...' : 'Resume Reading'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={[styles.textareaLabel, { color: colors.textSecondary }]}>
-                    Or choose a new duration
+              {repeatCount > 0 ? (
+                <View style={[styles.learnContent, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center', marginBottom: SPACING.md }]}>
+                  <Text style={[styles.learnText, { color: colors.textSecondary, textAlign: 'center' }]}>
+                    You completed {repeatCount} of {selectedRepeats} readings
                   </Text>
-                  <View style={styles.durationRow}>
-                    {LISTEN_OPTIONS.map(opt => (
-                      <TouchableOpacity
-                        key={opt.value}
-                        style={[
-                          styles.durationChip,
-                          selectedDuration === opt.value
-                            ? { backgroundColor: colors.accent, borderColor: colors.accent }
-                            : { backgroundColor: colors.surface, borderColor: colors.border },
-                        ]}
-                        onPress={() => setSelectedDuration(opt.value)}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.durationChipText,
-                            { color: selectedDuration === opt.value ? '#FFFFFF' : colors.text },
-                          ]}
-                        >
-                          {opt.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </>
-              ) : (
-                <>
-                  <Text style={[styles.textareaLabel, { color: colors.textSecondary }]}>
-                    How long would you like to dwell in the Word?
-                  </Text>
-                  <View style={styles.durationRow}>
-                    {LISTEN_OPTIONS.map(opt => (
-                      <TouchableOpacity
-                        key={opt.value}
-                        style={[
-                          styles.durationChip,
-                          selectedDuration === opt.value
-                            ? { backgroundColor: colors.accent, borderColor: colors.accent }
-                            : { backgroundColor: colors.surface, borderColor: colors.border },
-                        ]}
-                        onPress={() => setSelectedDuration(opt.value)}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.durationChipText,
-                            { color: selectedDuration === opt.value ? '#FFFFFF' : colors.text },
-                          ]}
-                        >
-                          {opt.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
                   <TouchableOpacity
-                    style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
-                    onPress={onBeginTimer}
+                    style={[styles.primaryBtn, { backgroundColor: colors.accent, marginTop: SPACING.sm, marginBottom: 0 }]}
+                    onPress={onStart}
                     disabled={isPreparingAudio}
                     activeOpacity={0.8}
                   >
@@ -220,134 +125,171 @@ export default function ListenStage({
                       <Play size={18} color="#FFFFFF" />
                     )}
                     <Text style={styles.primaryBtnText}>
-                      {isPreparingAudio ? 'Preparing Reader...' : `Begin ${selectedDurationLabel} Reading`}
+                      {isPreparingAudio ? 'Preparing Reader...' : 'Resume Reading'}
                     </Text>
                   </TouchableOpacity>
-                </>
+                </View>
+              ) : (
+                <Text style={[styles.textareaLabel, { color: colors.textSecondary }]}>
+                  How many times would you like to hear the passage?
+                </Text>
+              )}
+
+              <View style={styles.durationRow}>
+                {LISTEN_OPTIONS.map(opt => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.durationChip,
+                      selectedRepeats === opt.value
+                        ? { backgroundColor: colors.accent, borderColor: colors.accent }
+                        : { backgroundColor: colors.surface, borderColor: colors.border },
+                    ]}
+                    onPress={() => setSelectedRepeats(opt.value)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.durationChipText,
+                        { color: selectedRepeats === opt.value ? '#FFFFFF' : colors.text },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {repeatCount === 0 && (
+                <TouchableOpacity
+                  style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
+                  onPress={onStart}
+                  disabled={isPreparingAudio}
+                  activeOpacity={0.8}
+                >
+                  {isPreparingAudio ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Play size={18} color="#FFFFFF" />
+                  )}
+                  <Text style={styles.primaryBtnText}>
+                    {isPreparingAudio ? 'Preparing Reader...' : `Begin ${selectedLabel} Reading`}
+                  </Text>
+                </TouchableOpacity>
               )}
             </>
           )}
 
-          {(timerRunning || timerPaused) && (
-            <View style={styles.timerContainer}>
-              <View style={styles.swipeHintRow}>
-                {timerRunning && !timerPaused ? (
-                  <>
-                    <Lock
-                      size={12}
-                      color={colors.muted}
-                      style={{ opacity: 0.5 }}
-                    />
+          {/* Playing / paused state */}
+          {(isPlaying || audioStarting) && (
+            <View style={{ alignItems: 'center', paddingTop: SPACING.xl }}>
+              {/* Now Playing info */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: SPACING.lg }}>
+                <Volume2 size={18} color={colors.accent} />
+                <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
+                  {isPaused ? 'Paused' : 'Now Playing'}
+                </Text>
+              </View>
+
+              {/* Repeat progress dots */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: SPACING.xl }}>
+                {Array.from({ length: selectedRepeats }, (_, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      borderWidth: 3,
+                      borderColor: i < repeatCount
+                        ? colors.accent
+                        : i === repeatCount
+                          ? colors.accent
+                          : colors.border,
+                      backgroundColor: i < repeatCount
+                        ? colors.accent
+                        : i === repeatCount
+                          ? `${colors.accent}30`
+                          : 'transparent',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     <Text
-                      style={[styles.swipeHintText, { color: colors.muted }]}
+                      style={{
+                        color: i < repeatCount ? '#FFFFFF' : i === repeatCount ? colors.text : colors.muted,
+                        fontSize: 13,
+                        fontWeight: '800',
+                      }}
                     >
-                      Focus mode — swipe locked while timer runs
+                      {i + 1}
                     </Text>
-                  </>
-                ) : (
-                  <>
-                    <ChevronLeft
-                      size={12}
-                      color={colors.muted}
-                      style={{ opacity: 0.4 }}
-                    />
-                    <Text
-                      style={[styles.swipeHintText, { color: colors.muted }]}
-                    >
-                      Swipe to explore other stages
+                  </View>
+                ))}
+              </View>
+
+              {/* Audio loading indicator */}
+              {audioStarting && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: SPACING.lg }}>
+                  <ActivityIndicator size="small" color={colors.accent} />
+                  <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
+                    Loading audio...
+                  </Text>
+                </View>
+              )}
+
+              {/* Play/Pause button */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.lg }}>
+                {!audioStarting && (
+                  <TouchableOpacity
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: 36,
+                      backgroundColor: colors.surface,
+                      borderWidth: 2,
+                      borderColor: colors.accent,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onPress={onToggle}
+                    activeOpacity={0.7}
+                  >
+                    {isPaused ? (
+                      <Play size={32} color={colors.accent} style={{ marginLeft: 3 }} />
+                    ) : (
+                      <Pause size={32} color={colors.accent} />
+                    )}
+                  </TouchableOpacity>
+                )}
+
+                {/* Reset button */}
+                {!audioStarting && (
+                  <TouchableOpacity
+                    style={{
+                      height: 44,
+                      paddingHorizontal: SPACING.lg,
+                      borderRadius: 22,
+                      borderWidth: 1.5,
+                      borderColor: colors.border,
+                      backgroundColor: colors.surface,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onPress={onReset}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ color: colors.error, fontSize: 13, fontWeight: '700' }}>
+                      Reset
                     </Text>
-                    <ChevronRight
-                      size={12}
-                      color={colors.muted}
-                      style={{ opacity: 0.4 }}
-                    />
-                  </>
+                  </TouchableOpacity>
                 )}
               </View>
 
-              <Animated.View
-                style={[
-                  styles.circleOuter,
-                  {
-                    borderColor: colors.accent,
-                    opacity: animatedValue,
-                    transform: [{ scale: animatedValue }],
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.circleInner,
-                    { backgroundColor: colors.cardBackground },
-                  ]}
-                >
-                  <Text style={[styles.timerText, { color: colors.text }]}>
-                    {formatTimeStr(minutes, seconds)}
-                  </Text>
-                  <Text style={[styles.timerLabel, { color: colors.muted }]}>
-                    remaining
-                  </Text>
-
-                  <View
-                    style={[
-                      styles.progressBarBg,
-                      { backgroundColor: colors.border },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${progress * 100}%`,
-                          backgroundColor: colors.accent,
-                        },
-                      ]}
-                    />
-                  </View>
-                  {repeatCount > 0 && (
-                    <Text style={[{ color: colors.muted, marginTop: 6, fontSize: 11, fontWeight: '600', textAlign: 'center' }]}>
-                      Read {repeatCount}x
-                    </Text>
-                  )}
-                </View>
-              </Animated.View>
-
-              <View style={styles.timerControls}>
-                <TouchableOpacity
-                  style={[
-                    styles.timerBtn,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  onPress={onToggleTimer}
-                  activeOpacity={0.7}
-                >
-                  {timerPaused || !timerRunning ? (
-                    <Play size={24} color={colors.accent} />
-                  ) : (
-                    <Pause size={24} color={colors.accent} />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.timerBtnSmall,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  onPress={onResetTimer}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[styles.timerBtnSmallText, { color: colors.error }]}
-                  >
-                    Reset
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              {/* Repeat count label */}
+              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '600', marginTop: SPACING.md }}>
+                Reading {repeatCount + 1} of {selectedRepeats}
+              </Text>
             </View>
           )}
         </>
@@ -363,12 +305,10 @@ export default function ListenStage({
           </View>
           <Text style={[styles.amenText, { color: colors.text }]}>Amen</Text>
           <Text style={[styles.amenSubtext, { color: colors.textSecondary }]}>
-            You have dwelled in the Word for{' '}
-            {formatTimeStr(
-              Math.floor(selectedDuration / 60),
-              selectedDuration % 60,
-            )}
-            .
+            You have dwelled in the Word.
+          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: SPACING.lg }}>
+            The passage was read {repeatCount} time{repeatCount !== 1 ? 's' : ''}.
           </Text>
 
           {passageVersesCount > 0 && (
@@ -381,7 +321,7 @@ export default function ListenStage({
                   paddingHorizontal: SPACING.md,
                 },
               ]}
-              onPress={onReplayPassageAudio}
+              onPress={onReplay}
               disabled={audioStarting}
               activeOpacity={0.7}
             >
@@ -398,7 +338,7 @@ export default function ListenStage({
 
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
-            onPress={onContinue}
+            onPress={onAdvance}
             disabled={saving}
             activeOpacity={0.8}
           >

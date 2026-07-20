@@ -219,7 +219,8 @@ const GoogleRegister: React.FC = () => {
         };
         await setUserInfo(info);
         showToast('success', 'Welcome! Account created successfully!');
-        navigation.replace(route.homeLogin);
+        const dashboardRoute = info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
+        navigation.replace(dashboardRoute);
       } else {
         showToast('error', returnMessage || 'Registration failed');
       }

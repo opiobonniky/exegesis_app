@@ -31,7 +31,6 @@ import {
 } from '../../constants/theme';
 import { route } from '../../component/navigations/routes';
 import { sendPostRequest } from '../../services/api';
-import { ttsService } from '../../services/ttsService';
 import ActionHeader from '../../reusable/ActionHeader';
 import { showToast } from '../../helpers/Toash.helper';
 import BookSelectorScreen from '../bible/components/BookSelectorScreen';
@@ -62,10 +61,6 @@ export default function LabFlowScreen() {
   const navigation = useNavigation<any>();
   const navRoute = useRoute<any>();
   const routeParams = navRoute.params || {};
-
-
-  console.log('LabFlowScreen routeParams:', routeParams);
-
 
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
@@ -213,25 +208,14 @@ export default function LabFlowScreen() {
   const [currentPromptIdx, setCurrentPromptIdx] = useState(0);
 
   // ── Listen stage ──────────────────────────────────────────────────────────
-  const [selectedDuration, setSelectedDuration] = useState<number>(180);
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [timerPaused, setTimerPaused] = useState(false);
-  const [timerElapsed, setTimerElapsed] = useState(0);
-  const [timerComplete, setTimerComplete] = useState(false);
+  const [selectedRepeats, setSelectedRepeats] = useState<number>(3);
   const [repeatCount, setRepeatCount] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timerPendingRef = useRef(false);
-  const timerRunningRef = useRef(false);
-  const timerCompleteRef = useRef(false);
-  const timerElapsedRef = useRef(0);
+  const [listenComplete, setListenComplete] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const repeatCountRef = useRef(0);
-  const singlePassageDurationRef = useRef(0);
-  const playLoopActiveRef = useRef(false);
-  const durationManuallySetRef = useRef(false);
-  const currentPlayOffsetBaseRef = useRef(0); // chars from fullPrepared start to current speak() text-start
-  const lastKnownCharOffsetRef = useRef(0);    // latest verseCharOffset from onProgress
-  const savedCharPositionRef = useRef(0);      // absolute position saved when stopping
-  const animatedValue = useRef(new Animated.Value(1)).current;
+  const selectedRepeatsRef = useRef(3);
+  const isLoopActiveRef = useRef(false);
 
   // ── Learn stage ───────────────────────────────────────────────────────────
   const [learnNotes, setLearnNotes] = useState('');
@@ -276,11 +260,6 @@ export default function LabFlowScreen() {
       if (state.isPlaying || state.isPaused) {
         setAudioStarting(false);
       }
-      if (state.isPlaying && timerPendingRef.current) {
-        timerPendingRef.current = false;
-        setTimerRunning(true);
-        setTimerPaused(false);
-      }
     });
     return unsub;
   }, []);
@@ -295,89 +274,25 @@ export default function LabFlowScreen() {
   const [journalEntryId, setJournalEntryId] = useState<string | null>(null);
 
   // Sync refs with state for use in async callbacks
-  useEffect(() => { timerRunningRef.current = timerRunning; }, [timerRunning]);
-  useEffect(() => { timerCompleteRef.current = timerComplete; }, [timerComplete]);
-  useEffect(() => { timerElapsedRef.current = timerElapsed; }, [timerElapsed]);
   useEffect(() => { repeatCountRef.current = repeatCount; }, [repeatCount]);
+  useEffect(() => { selectedRepeatsRef.current = selectedRepeats; }, [selectedRepeats]);
 
-  // Reset timer and progress state when a new passage is loaded
+  // Reset listen state when a new passage is loaded
   useEffect(() => {
-    // When the passage reference changes (book/chapter/verse range), clear any lingering timer state
-    setTimerRunning(false);
-    setTimerPaused(false);
-    setTimerElapsed(0);
-    setTimerComplete(false);
+    isLoopActiveRef.current = false;
     setRepeatCount(0);
-    timerPendingRef.current = false;
-    timerRunningRef.current = false;
-    timerCompleteRef.current = false;
-    timerElapsedRef.current = 0;
+    setListenComplete(false);
+    setIsPlaying(false);
+    setIsPaused(false);
     repeatCountRef.current = 0;
-    savedCharPositionRef.current = 0;
-    playLoopActiveRef.current = false;
   }, [bookName, chapter, verseStart, verseEnd]);
 
-  // Tick timer every second when running (not paused, not complete)
+  // Stop audio when listen completes
   useEffect(() => {
-    if (timerRunning && !timerPaused) {
-      timerRef.current = setInterval(() => {
-        setTimerElapsed(prev => {
-          const next = prev + 1;
-          timerElapsedRef.current = next;
-          if (next >= selectedDuration) {
-            setTimerComplete(true);
-            setTimerRunning(false);
-            clearInterval(timerRef.current!);
-            timerRef.current = null;
-          }
-          return next;
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+    if (listenComplete && isTtsPlaying) {
+      bibleTTS.stop().catch(() => {});
     }
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [timerRunning, timerPaused, selectedDuration]);
-
-  // Stop audio when timer completes and cancel play loop
-  useEffect(() => {
-    if (timerComplete) {
-      playLoopActiveRef.current = false;
-      if (isTtsPlaying) {
-        bibleTTS.stop().catch(() => {});
-      }
-    }
-  }, [timerComplete, isTtsPlaying]);
-
-  // Animated circle pulse
-  useEffect(() => {
-    if (timerRunning && !timerPaused) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(animatedValue, {
-            toValue: 0.92,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(animatedValue, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ]),
-      );
-      pulse.start();
-      return () => pulse.stop();
-    }
-  }, [animatedValue, timerRunning, timerPaused]);
+  }, [listenComplete, isTtsPlaying]);
 
   // ── Sync pageIndex → stage (when swiping) ─────────────────────────────
   useEffect(() => {
@@ -388,7 +303,7 @@ export default function LabFlowScreen() {
     }
   }, [pageIndex, stage]);
 
-  // ── Pause TTS + reset timer display when swiping away from Listen ───
+  // ── Pause TTS when swiping away from Listen ───
   const prevPageRef = useRef(pageIndex);
   useEffect(() => {
     const prev = prevPageRef.current;
@@ -397,12 +312,10 @@ export default function LabFlowScreen() {
     const currentStage = STAGE_ORDER[pageIndex];
     if (prevStage !== currentStage) {
       if (prevStage === 'listen' && isTtsPlaying) {
-        savedCharPositionRef.current =
-          currentPlayOffsetBaseRef.current + lastKnownCharOffsetRef.current;
+        isLoopActiveRef.current = false;
         bibleTTS.stop().catch(() => {});
-        setTimerRunning(false);
-        setTimerPaused(false);
-        playLoopActiveRef.current = false;
+        setIsPlaying(false);
+        setIsPaused(false);
       }
     }
   }, [pageIndex, isTtsPlaying]);
@@ -548,13 +461,11 @@ const handleChangePassage = useCallback(
         setBookPrologue(null);
         setLookNotes('');
         setLearnNotes('');
-        setTimerRunning(false);
-        setTimerPaused(false);
-        setTimerElapsed(0);
-        setTimerComplete(false);
-        singlePassageDurationRef.current = 0;
-        savedCharPositionRef.current = 0;
-        durationManuallySetRef.current = false;
+        setIsPlaying(false);
+        setIsPaused(false);
+        setRepeatCount(0);
+        setListenComplete(false);
+        isLoopActiveRef.current = false;
 
         if (nextSubStage === 'book') {
           setBookName('');
@@ -660,7 +571,7 @@ const handleChangePassage = useCallback(
     setSaving(true);
     try {
       await sendPostRequest('exegesis', `${sessionId}/listen`, {
-        duration: selectedDuration,
+        repeats: selectedRepeats,
       });
       goToStage('learn');
     } catch (e: any) {
@@ -668,7 +579,7 @@ const handleChangePassage = useCallback(
     } finally {
       setSaving(false);
     }
-  }, [sessionId, selectedDuration, goToStage]);
+  }, [sessionId, selectedRepeats, goToStage]);
 
   const saveLearn = useCallback(async () => {
     if (!sessionId) return;
@@ -760,10 +671,9 @@ const handleChangePassage = useCallback(
           body.lookNotes = lookNotes;
           break;
         case 'listen':
-          body.listenDuration = selectedDuration;
-          body.listenElapsed = timerElapsed;
+          body.listenRepeats = selectedRepeats;
           body.listenRepeatCount = repeatCount;
-          if (timerComplete) body.listenCompleted = true;
+          if (listenComplete) body.listenCompleted = true;
           break;
         case 'learn':
           body.learnNotes = learnNotes;
@@ -794,9 +704,8 @@ const handleChangePassage = useCallback(
     sessionId,
     stage,
     lookNotes,
-    selectedDuration,
-    timerElapsed,
-    timerComplete,
+    selectedRepeats,
+    listenComplete,
     repeatCount,
     learnNotes,
     reflection,
@@ -807,7 +716,7 @@ const handleChangePassage = useCallback(
   ]);
 
   // ── TTS passage playback for Listen stage ─────────────────────────────
-  const speakPassageWithPreferredVoice = useCallback(async (skipChars = 0) => {
+  const speakPassageWithPreferredVoice = useCallback(async () => {
     if (!passageVerses.length) return;
     const firstNum = passageVerses[0].verseNumber;
     const lastNum = passageVerses[passageVerses.length - 1].verseNumber;
@@ -820,37 +729,30 @@ const handleChangePassage = useCallback(
     const fullPrepared = bibleTTS.prepareText(fullRaw);
     const prefixLen = bibleTTS.prepareText(prefixRaw).length;
 
-    // Skip already-heard content when resuming mid-passage.
-    // Keep at least 20 % so the user hears a meaningful chunk before the next full loop.
-    const minRemaining = Math.max(10, Math.floor(fullPrepared.length * 0.2));
-    const safeSkip = Math.min(skipChars, fullPrepared.length - minRemaining);
-    const trimmed = safeSkip > 0 ? fullPrepared.slice(safeSkip) : fullPrepared;
-    const actualPrefixLen = safeSkip > 0 ? 0 : prefixLen;
-    currentPlayOffsetBaseRef.current = safeSkip + actualPrefixLen;
-    lastKnownCharOffsetRef.current = 0;
-
+    bibleTTS.setEdgeEnabled(false);
     await bibleTTS.init();
-    bibleTTS.setEdgeEnabled(await ttsService.isEnabled());
     await bibleTTS.stop();
-    await bibleTTS.speak(trimmed, actualPrefixLen, 0, (verseCharOffset: number) => {
-      lastKnownCharOffsetRef.current = verseCharOffset;
-    }, true);
+    await bibleTTS.speak(fullPrepared, prefixLen, 0, undefined, true);
   }, [bookName, chapter, passageVerses]);
 
   const scheduleNextPlay = useCallback(() => {
-    if (!playLoopActiveRef.current) return;
-    // Measure passage duration on first completed loop
-    if (repeatCountRef.current === 0 && singlePassageDurationRef.current === 0) {
-      singlePassageDurationRef.current = timerElapsedRef.current;
+    if (!isLoopActiveRef.current) return;
+    const nextCount = repeatCountRef.current + 1;
+    if (nextCount >= selectedRepeatsRef.current) {
+      isLoopActiveRef.current = false;
+      setRepeatCount(nextCount);
+      setListenComplete(true);
+      setIsPlaying(false);
+      return;
     }
+    setRepeatCount(nextCount);
     speakPassageWithPreferredVoice()
       .then(() => {
-        if (playLoopActiveRef.current) {
-          setRepeatCount(c => c + 1);
-          scheduleNextPlay();
-        }
+        if (isLoopActiveRef.current) scheduleNextPlay();
       })
-      .catch(() => {});
+      .catch(() => {
+        isLoopActiveRef.current = false;
+      });
   }, [speakPassageWithPreferredVoice]);
 
   const handleReplayPassageAudio = useCallback(async () => {
@@ -861,16 +763,13 @@ const handleChangePassage = useCallback(
 
     setAudioStarting(true);
     setRepeatCount(0);
-    setTimerElapsed(0);
-    setTimerRunning(true);
-    setTimerPaused(false);
-    setTimerComplete(false);
-    savedCharPositionRef.current = 0;
-    timerPendingRef.current = true;
-    playLoopActiveRef.current = true;
+    setListenComplete(false);
+    setIsPlaying(true);
+    setIsPaused(false);
+    isLoopActiveRef.current = true;
     try {
       await speakPassageWithPreferredVoice();
-      if (playLoopActiveRef.current) scheduleNextPlay();
+      if (isLoopActiveRef.current) scheduleNextPlay();
     } catch (error: any) {
       showToast('error', error?.message || 'Audio could not start');
     } finally {
@@ -878,142 +777,51 @@ const handleChangePassage = useCallback(
     }
   }, [passageVerses.length, speakPassageWithPreferredVoice, scheduleNextPlay]);
 
-  const handleBeginListenTimer = useCallback(() => {
-    if (passageVerses.length > 0 && !isTtsPlaying) {
-      setAudioStarting(true);
-      setRepeatCount(0);
-      setTimerElapsed(0);
-      setTimerRunning(true);
-      setTimerPaused(false);
-      setTimerComplete(false);
-      savedCharPositionRef.current = 0;
-      timerPendingRef.current = true;
-      playLoopActiveRef.current = true;
-      speakPassageWithPreferredVoice()
-        .then(() => {
-          if (playLoopActiveRef.current) scheduleNextPlay();
-        })
-        .catch((error: any) => {
-          showToast('error', error?.message || 'Audio could not start');
-        })
-        .finally(() => setAudioStarting(false));
+  const handleStart = useCallback(() => {
+    if (passageVerses.length === 0) {
+      showToast('error', 'No passage selected');
+      return;
     }
-  }, [isTtsPlaying, passageVerses.length, speakPassageWithPreferredVoice, scheduleNextPlay]);
+    setAudioStarting(true);
+    setRepeatCount(0);
+    setListenComplete(false);
+    setIsPlaying(true);
+    setIsPaused(false);
+    isLoopActiveRef.current = true;
 
-  const handleToggleListenTimer = useCallback(() => {
-    if (timerRunning && !timerPaused) {
-      setTimerPaused(true);
+    speakPassageWithPreferredVoice()
+      .then(() => {
+        if (isLoopActiveRef.current) scheduleNextPlay();
+      })
+      .catch((error: any) => {
+        showToast('error', error?.message || 'Audio could not start');
+      })
+      .finally(() => setAudioStarting(false));
+  }, [passageVerses.length, speakPassageWithPreferredVoice, scheduleNextPlay]);
+
+  const handleToggle = useCallback(() => {
+    if (isPlaying && !isPaused) {
+      setIsPaused(true);
       bibleTTS.pause().catch(() => {});
-    } else if (timerPaused) {
-      setTimerPaused(false);
+    } else if (isPaused) {
+      setIsPaused(false);
       if (isTtsPaused) {
-        playLoopActiveRef.current = true;
         bibleTTS.resume().catch(() => {});
       }
     }
-  }, [timerPaused, timerRunning, isTtsPaused]);
+  }, [isPlaying, isPaused, isTtsPaused]);
 
-  // ── Duration selection (tracks manual vs. auto-restore) ────────────
-  const handleSetSelectedDuration = useCallback((value: number) => {
-    durationManuallySetRef.current = true;
-    setSelectedDuration(value);
+  // ── Repeat count selection ────────────
+  const handleSetSelectedRepeats = useCallback((value: number) => {
+    setSelectedRepeats(value);
   }, []);
 
-  const handleResumeListenTimer = useCallback(() => {
-    if (passageVerses.length === 0 || isTtsPlaying) return;
-
-    // Estimate which verse the user was on when they left and build text
-    // from that verse onward for a natural mid-passage resume.
-    const verses = passageVerses;
-    const vCount = verses.length;
-
-    // Measure or estimate total passage duration (seconds)
-    const firstNum = verses[0].verseNumber;
-    const lastNum = verses[vCount - 1].verseNumber;
-    const rangeStr =
-      firstNum === lastNum
-        ? `verse ${firstNum}`
-        : `verses ${firstNum} to ${lastNum}`;
-    const prefixRaw = `${bookName}, chapter ${chapter}, ${rangeStr}. `;
-    const fullRaw = prefixRaw + verses.map(v => v.text).join(' ');
-    const totalChars = bibleTTS.prepareText(fullRaw).length;
-
-    const spd =
-      singlePassageDurationRef.current ||
-      Math.max(5, totalChars / 13);
-    const timeInCurrentLoop = Math.max(
-      0,
-      timerElapsedRef.current - repeatCountRef.current * spd,
-    );
-
-    // Determine resume verse (0-based index into verses[])
-    let resumeVerseIdx = 0;
-    if (timeInCurrentLoop > 2 && vCount > 1) {
-      const secPerVerse = spd / vCount;
-      resumeVerseIdx = Math.min(
-        vCount - 1,
-        Math.floor(timeInCurrentLoop / secPerVerse),
-      );
-    }
-
-    // Build text from resume verse onward.
-    // Include a brief "verse N" intro only when we're mid-passage.
-    let resumeText: string;
-    if (resumeVerseIdx === 0) {
-      // Near the beginning — play from the top with the announcement.
-      resumeText = fullRaw;
-    } else {
-      // Mid-passage — introduce the starting verse, then read from there.
-      const startV = verses[resumeVerseIdx].verseNumber;
-      const remainingText = verses
-        .slice(resumeVerseIdx)
-        .map(v => v.text)
-        .join(' ');
-      resumeText = `${bookName}, chapter ${chapter}, verse ${startV}. ${remainingText}`;
-    }
-
-    const prepared = bibleTTS.prepareText(resumeText);
-
-    currentPlayOffsetBaseRef.current = 0;
-    lastKnownCharOffsetRef.current = 0;
-
-    const doResume = async () => {
-      setAudioStarting(true);
-      try {
-        await bibleTTS.init();
-        bibleTTS.setEdgeEnabled(await ttsService.isEnabled());
-        await bibleTTS.stop();
-        await bibleTTS.speak(prepared, 0, 0, undefined, true);
-        if (playLoopActiveRef.current) scheduleNextPlay();
-      } catch (error: any) {
-        showToast('error', error?.message || 'Audio could not start');
-      } finally {
-        setAudioStarting(false);
-      }
-    };
-
-    playLoopActiveRef.current = true;
-    timerPendingRef.current = true;
-    setTimerRunning(true);
-    setTimerPaused(false);
-    doResume();
-  }, [
-    isTtsPlaying,
-    passageVerses,
-    bookName,
-    chapter,
-    scheduleNextPlay,
-  ]);
-
-  const handleResetListenTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    playLoopActiveRef.current = false;
+  const handleReset = useCallback(() => {
+    isLoopActiveRef.current = false;
     setRepeatCount(0);
-    setTimerRunning(false);
-    setTimerPaused(false);
-    setTimerElapsed(0);
-    savedCharPositionRef.current = 0;
-    durationManuallySetRef.current = false;
+    setListenComplete(false);
+    setIsPlaying(false);
+    setIsPaused(false);
     bibleTTS.stop().catch(() => {});
   }, []);
 
@@ -1042,14 +850,11 @@ const handleChangePassage = useCallback(
         if (data.isPublic !== undefined) setIsPublic(data.isPublic);
         if (data.journalEntryId) setJournalEntryId(data.journalEntryId);
         // Restore listen stage progress
-        if (data.listenDuration && !durationManuallySetRef.current) {
-          setSelectedDuration(Number(data.listenDuration));
+        if (data.listenRepeats) {
+          setSelectedRepeats(Number(data.listenRepeats));
         }
         if (data.listenCompleted) {
-          setTimerComplete(true);
-          setTimerElapsed(Number(data.listenDuration) || 180);
-        } else if (data.listenElapsed != null && Number(data.listenElapsed) > 0) {
-          setTimerElapsed(Number(data.listenElapsed));
+          setListenComplete(true);
         }
         // Restore book/chapter if the current stage is beyond passage selection
         if (data.bookName && !bookName) setBookName(data.bookName);
@@ -1082,13 +887,10 @@ const handleChangePassage = useCallback(
     useCallback(() => {
       loadSession();
       return () => {
-        savedCharPositionRef.current =
-          currentPlayOffsetBaseRef.current + lastKnownCharOffsetRef.current;
+        isLoopActiveRef.current = false;
         bibleTTS.stop().catch(() => {});
-        setTimerRunning(false);
-        setTimerPaused(false);
-        playLoopActiveRef.current = false;
-        if (timerRef.current) clearInterval(timerRef.current);
+        setIsPlaying(false);
+        setIsPaused(false);
       };
     }, [loadSession]),
   );
@@ -1293,30 +1095,24 @@ const handleChangePassage = useCallback(
       colors={COLORS}
       passageRef={passageRef}
       passageVersesCount={passageVerses.length}
-      selectedDuration={selectedDuration}
-      setSelectedDuration={handleSetSelectedDuration}
-      timerRunning={timerRunning}
-      timerPaused={timerPaused}
-      timerElapsed={timerElapsed}
-      timerComplete={timerComplete}
+      selectedRepeats={selectedRepeats}
+      setSelectedRepeats={handleSetSelectedRepeats}
       repeatCount={repeatCount}
-      hasSavedProgress={timerElapsed > 0}
-      animatedValue={animatedValue}
+      listenComplete={listenComplete}
+      isPlaying={isPlaying}
+      isPaused={isPaused}
       audioStarting={audioStarting}
-      isTtsPlaying={isTtsPlaying}
-      isTtsPaused={isTtsPaused}
       saving={saving}
       pageIndex={pageIndex}
       stageOrder={STAGE_ORDER}
       scrollX={scrollX}
       screenWidth={SCREEN_WIDTH}
       renderChangePassageActions={renderChangePassageActions}
-      onBeginTimer={handleBeginListenTimer}
-      onResumeTimer={handleResumeListenTimer}
-      onToggleTimer={handleToggleListenTimer}
-      onResetTimer={handleResetListenTimer}
-      onReplayPassageAudio={handleReplayPassageAudio}
-      onContinue={saveListen}
+      onStart={handleStart}
+      onToggle={handleToggle}
+      onReset={handleReset}
+      onReplay={handleReplayPassageAudio}
+      onAdvance={saveListen}
     />
   );
 
@@ -1336,9 +1132,6 @@ const handleChangePassage = useCallback(
       verseResources={verseResources}
       bookPrologue={bookPrologue}
       verseWords={verseWords}
-      selectedStrongsWord={selectedStrongsWord}
-      selectedStrongsEntry={selectedStrongsEntry}
-      strongsEntryLoading={strongsEntryLoading}
       saving={saving}
       savingProgress={savingProgress}
       pageIndex={pageIndex}
@@ -1359,7 +1152,6 @@ const handleChangePassage = useCallback(
         })
       }
       onStrongsWordPress={handleStrongsWordPress}
-      onClearStrongsSelection={clearStrongsSelection}
       onSaveProgress={saveCurrentProgress}
       onContinue={saveLearn}
     />
@@ -1419,8 +1211,8 @@ const handleChangePassage = useCallback(
       `─── Look: Observations ───`,
       lookNotes || '(No observations recorded)',
       '',
-      `─── Listen: Dwell Time ───`,
-      `${Math.floor(selectedDuration / 60)} min ${selectedDuration % 60} sec`,
+      `─── Listen: Repeat Count ───`,
+      `${repeatCount}x`,
       '',
       `─── Learn: Study Notes ───`,
       learnNotes || '(No study notes recorded)',
@@ -1459,7 +1251,7 @@ const handleChangePassage = useCallback(
     bookName,
     chapter,
     lookNotes,
-    selectedDuration,
+    repeatCount,
     learnNotes,
     reflection,
     prayer,
@@ -1484,18 +1276,18 @@ const handleChangePassage = useCallback(
     setTags('');
     setVerseWords([]);
     setPassageVerses([]);
-    setTimerComplete(false);
-    setTimerElapsed(0);
+    setListenComplete(false);
     setRepeatCount(0);
+    setIsPlaying(false);
+    setIsPaused(false);
     setCompleted(false);
-    savedCharPositionRef.current = 0;
-    singlePassageDurationRef.current = 0;
-    durationManuallySetRef.current = false;
+    isLoopActiveRef.current = false;
   }, [
     setStage, setSubStage, setSessionId, setBookName, setChapter,
     setVerseStart, setVerseEnd, setLookNotes, setLearnNotes,
     setReflection, setPrayer, setAppText, setTags, setVerseWords,
-    setPassageVerses, setTimerComplete, setTimerElapsed, setCompleted,
+    setPassageVerses, setListenComplete, setRepeatCount, setIsPlaying,
+    setIsPaused, setCompleted,
   ]);
 
   const renderCompleted = () => (
@@ -1706,7 +1498,7 @@ const handleChangePassage = useCallback(
               Vibration.vibrate(10);
             }
           }}
-          scrollEnabled={!(timerRunning && !timerPaused)}
+          scrollEnabled={!(isPlaying && !isPaused)}
           style={{ flex: 1 }}
           keyboardShouldPersistTaps="handled"
         >

@@ -3,11 +3,11 @@ import { LabStage } from './types';
 export const STAGE_ORDER: readonly LabStage[] = ['look', 'listen', 'learn', 'abide'];
 
 export const LISTEN_OPTIONS = [
-  { label: '1 min', value: 60 },
-  { label: '3 min', value: 180 },
-  { label: '5 min', value: 300 },
-  { label: '10 min', value: 600 },
-  { label: '15 min', value: 900 },
+  { label: '1x', value: 1 },
+  { label: '2x', value: 2 },
+  { label: '3x', value: 3 },
+  { label: '5x', value: 5 },
+  { label: '10x', value: 10 },
 ];
 
 export const LOOK_PROMPTS = [

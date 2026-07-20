@@ -156,26 +156,16 @@ export const submitTriviaAnswer = async (
   questionId: number,
   selectedAnswer: number,
 ): Promise<TriviaAnswerResult> => {
-  try {
-    const res = await sendPostRequest<TriviaAnswerResult>('trivia', 'submit', {
-      questionId,
-      selectedAnswer,
-    });
-    if (!res.returnData) throw new Error('No response data');
+  const res = await sendPostRequest<TriviaAnswerResult>('trivia', 'submit', {
+    questionId,
+    selectedAnswer,
+  });
+  if (!res.returnData) throw new Error(res.returnMessage || 'Failed to submit answer');
 
-    const { updateTriviaAnswer } = await import('../../../services/dbCache');
-    updateTriviaAnswer(questionId, res.returnData.correctAnswer).catch(() => {});
+  const { updateTriviaAnswer } = await import('../../../services/dbCache');
+  updateTriviaAnswer(questionId, res.returnData.correctAnswer).catch(() => {});
 
-    return res.returnData;
-  } catch {
-    const { loadAllCachedQuestions, buildOfflineAnswerResult } = await import('./triviaCache');
-    const cached = await loadAllCachedQuestions();
-    const q = cached.find(c => c.id === questionId);
-    if (q) {
-      return buildOfflineAnswerResult(q, selectedAnswer);
-    }
-    throw new Error('Cannot verify answer offline');
-  }
+  return res.returnData;
 };
 
 export const getTriviaStats = async (): Promise<TriviaStats> => {
@@ -190,6 +180,15 @@ export const getTriviaStats = async (): Promise<TriviaStats> => {
   const { getCachedStats } = await import('./triviaCache');
   const cached = await getCachedStats();
   return cached || { totalAnswered: 0, correct: 0, incorrect: 0, percentage: 0 };
+};
+
+export const getAnsweredQuestionIds = async (): Promise<number[]> => {
+  try {
+    const res = await sendPostRequest<number[]>('trivia', 'answered-ids', {});
+    return res.returnData ?? [];
+  } catch {
+    return [];
+  }
 };
 
 export const getAllTriviaQuestions = async (params?: {

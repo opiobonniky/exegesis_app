@@ -24,13 +24,12 @@ export function withSubscriptionGate<T extends object>(
 
     // Primary: tier from context state (kept fresh by fetchSubscriptionStatus).
     // Fallback: tier embedded in userInfo (restored from AsyncStorage on boot).
-    // This ensures old cached sessions — where the UserInfo was saved before
-    // the login response included subscriptionTier — still work correctly while
-    // the background fetch resolves.
+    // Admin users bypass subscription checks entirely.
     const contextTier = context?.subscriptionTier ?? 'free';
     const cachedTier = (userInfo as any)?.subscriptionTier ?? 'free';
     const effectiveTier = PAID_TIERS.has(contextTier) ? contextTier : cachedTier;
     const isPaid = PAID_TIERS.has(effectiveTier);
+    const isAdminUser = (userInfo as any)?.userRole === 1;
 
 
     useEffect(() => {
@@ -39,7 +38,7 @@ export function withSubscriptionGate<T extends object>(
 
       if (!userInfo) {
         navigation.replace('Login');
-      } else if (!isPaid) {
+      } else if (!isPaid && !isAdminUser) {
         navigation.replace('Sower');
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -53,7 +52,7 @@ export function withSubscriptionGate<T extends object>(
       );
     }
 
-    if (!userInfo || !isPaid) return null;
+    if (!userInfo || (!isPaid && !isAdminUser)) return null;
 
     return <Screen {...props} />;
   }

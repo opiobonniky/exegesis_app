@@ -1348,6 +1348,8 @@ export type JournalTranslations = {
   loadingLabel?: string;
   feelingLabel?: string;
   journalEntrySection?: string;
+  showSections?: string;
+  hideSections?: string;
 
   // Category labels
   categoryAll?: string;

@@ -41,12 +41,18 @@ import {
   ArrowLeft,
   RefreshCw,
   MailOpen,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  UserCircle,
+  Calendar,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
 
 type Step = 'details' | 'verify';
 
 const STEPS: Step[] = ['details', 'verify'];
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface PasswordReq {
   label: string;
@@ -83,7 +89,8 @@ export default function Register() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [gender, setGender] = useState('Male');
-  const [genderDropdown, setGenderDropdown] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -361,7 +368,8 @@ export default function Register() {
             'success',
             returnMessage || translations.register?.successCreated || 'Account created successfully!',
           );
-          setTimeout(() => navigation.navigate(route.homeLogin), 1500);
+          const dashboardRoute = info.userRole === 1 ? route.adminDashboardLogin : route.homeLogin;
+          setTimeout(() => navigation.navigate(dashboardRoute), 800);
         } else {
           showToast(
             'success',
@@ -401,12 +409,7 @@ export default function Register() {
       const { returnCode, returnMessage } = res;
 
       if (returnCode === 200) {
-        // Try to auto-login the user after successful verification.
-        // Some backends may return a token directly from verify-account; otherwise
-        // fall back to calling the login endpoint with the email and password
-        // the user entered during registration.
         try {
-          // If verify returned a token, use it.
           const tokenData: any = (res as any).returnData;
           if (tokenData && tokenData.token) {
             const info = {
@@ -427,8 +430,6 @@ export default function Register() {
             return;
           }
 
-          // Otherwise attempt to login with the provided credentials
-          // (password is still available in component state).
           const loginRes: any = await sendPostRequest('auth', 'login', {
             username: email.toLowerCase().trim(),
             password,
@@ -453,12 +454,9 @@ export default function Register() {
             return;
           }
 
-          // If login didn't succeed, fall back to notifying user to login.
           showToast('success', returnMessage || translations.register?.successEmailVerified || 'Email verified! Redirecting to login...');
           setTimeout(() => navigation.navigate(route.login), 1500);
         } catch (e: any) {
-          // If auto-login fails for any reason, navigate to login screen so user
-          // can sign in manually.
           showToast('success', returnMessage || translations.register?.successEmailVerified || 'Email verified! Redirecting to login...');
           setTimeout(() => navigation.navigate(route.login), 1500);
         }
@@ -498,17 +496,70 @@ export default function Register() {
     { value: 'Not Specified', label: translations.register?.genderNotSpecified || 'Not Specified' },
   ];
 
+  const stepIndicator = () => (
+    <View style={[s.stepRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+      <View style={[s.stepDot, { backgroundColor: C.primary }]}>
+        <Text style={s.stepDotText}>1</Text>
+      </View>
+      <View style={[s.stepLine, { backgroundColor: currentStep === 'verify' ? C.primary : C.border }]} />
+      <View style={[s.stepDot, { backgroundColor: currentStep === 'verify' ? C.primary : C.surface, borderColor: currentStep === 'verify' ? C.primary : C.border, borderWidth: 2 }]}>
+        <Text style={[s.stepDotText, { color: currentStep === 'verify' ? '#fff' : C.muted }]}>2</Text>
+      </View>
+    </View>
+  );
+
+  const genderChips = () => (
+    <View style={[s.genderRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+      {genders.map(g => (
+        <TouchableOpacity
+          key={g.value}
+          style={[
+            s.genderChip,
+            {
+              backgroundColor: gender === g.value ? C.primary : C.surface,
+              borderColor: gender === g.value ? C.primary : C.border,
+            },
+          ]}
+          onPress={() => setGender(g.value)}
+          activeOpacity={0.7}
+        >
+          <Text style={[s.genderChipText, { color: gender === g.value ? '#fff' : C.text }]}>
+            {g.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const pwdReqList = () => {
+    if (!password.length) return null;
+    return (
+      <View style={s.reqGrid}>
+        {pwdReqs.map((r, i) => (
+          <View key={i} style={[s.reqItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            {r.met ? (
+              <View style={[s.reqCheck, { backgroundColor: C.success }]}>
+                <Check size={10} color="#fff" strokeWidth={3} />
+              </View>
+            ) : (
+              <View style={[s.reqCircle, { borderColor: C.border }]} />
+            )}
+            <Text style={[s.reqLabel, { color: r.met ? C.success : C.muted }]}>
+              {r.label}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   return (
-    <View
-      style={[s.root, { backgroundColor: isDark ? C.background : '#F8FAFC' }]}
-    >
+    <View style={[s.root, { backgroundColor: isDark ? C.background : '#F8FAFC' }]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         translucent
         backgroundColor="transparent"
       />
-
-      {/* language selection removed from Register - language is controlled on Login */}
 
       <KeyboardAwareness>
         <ScrollView
@@ -527,6 +578,7 @@ export default function Register() {
           >
             {currentStep === 'details' && (
               <>
+                {/* Header */}
                 <View style={[s.headerSection, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <TouchableOpacity
                     style={[s.backButton, { backgroundColor: C.surface }]}
@@ -539,348 +591,240 @@ export default function Register() {
                       <ChevronLeft size={22} color={C.text} />
                     )}
                   </TouchableOpacity>
-
-                   <View style={[s.titleSection, { marginLeft: isRtl ? 0 : SPACING.md, marginRight: isRtl ? SPACING.md : 0 }]}>
-                  <Text style={[s.title, { color: C.text }]}>
-                    {googleSignUp
-                      ? translations.register?.title || 'Complete Registration'
-                      : translations.register?.title || 'Create Account'}
-                  </Text>
-                  <Text style={[s.subtitle, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                    {googleSignUp
-                      ? translations.register?.googleComplete ||
-                        'Set up your password to complete sign-up'
-                      : translations.register?.subtitle ||
-                        'Fill in your details to get started'}
-                  </Text>
-                </View>
+                  <View style={[s.titleSection, { marginLeft: isRtl ? 0 : SPACING.md, marginRight: isRtl ? SPACING.md : 0 }]}>
+                    <Text style={[s.title, { color: C.text }]}>
+                      {translations.register?.title || 'Create Account'}
+                    </Text>
+                    <Text style={[s.subtitle, { color: C.muted }]}>
+                      {translations.register?.subtitle || 'Fill in your details to get started'}
+                    </Text>
+                  </View>
                 </View>
 
-               
+                {stepIndicator()}
 
-                <View
-                  style={[s.formCard, { backgroundColor: C.cardBackground }]}
-                >
-                  <View style={s.form}>
-                    <View
-                      style={[
-                        s.nameRow,
-                        isRtl ? { flexDirection: 'row-reverse' } : {},
-                      ]}
-                    >
-                      <View style={s.halfField}>
-                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                        {translations.register?.firstName || 'FIRST NAME'}
-                      </Text>
-                        <InputField
-                          placeholder={
-                            translations.register?.firstPlaceholder || 'First'
-                          }
-                          value={firstName}
-                          onChangeText={t => {
-                            setFirstName(t);
-                            if (errors.firstName)
-                              setErrors(p => ({ ...p, firstName: '' }));
-                          }}
-                          error={errors.firstName}
-                          leftIcon={<User size={18} color={C.muted} />}
-                          textAlign={isRtl ? 'right' : 'left'}
-                          isRtl={isRtl}
-                        />
-                      </View>
-                      <View style={s.halfField}>
-                        <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                          {translations.register?.lastName || 'LAST NAME'}
-                        </Text>
-                        <InputField
-                          placeholder={
-                            translations.register?.lastPlaceholder || 'Last'
-                          }
-                          value={lastName}
-                          onChangeText={t => {
-                            setLastName(t);
-                            if (errors.lastName)
-                              setErrors(p => ({ ...p, lastName: '' }));
-                          }}
-                          error={errors.lastName}
-                          leftIcon={<User size={18} color={C.muted} />}
-                          textAlign={isRtl ? 'right' : 'left'}
-                          isRtl={isRtl}
-                        />
-                      </View>
-                    </View>
+                {/* Form Card */}
+                <View style={[s.formCard, { backgroundColor: C.cardBackground }]}>
+                  {/* Section: Personal Info */}
+                  <View style={s.sectionHead}>
+                    <UserCircle size={16} color={C.primary} />
+                    <Text style={[s.sectionTitle, { color: C.text }]}>Personal Information</Text>
+                  </View>
 
-                    <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                        {translations.register?.email || 'EMAIL'}
-                      </Text>
+                  <View style={[s.nameRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                    <View style={s.halfField}>
                       <InputField
-                        placeholder={
-                          translations.register?.emailPlaceholder ||
-                          'you@example.com'
-                        }
-                        value={email}
+                        placeholder={translations.register?.firstPlaceholder || 'First name'}
+                        value={firstName}
                         onChangeText={t => {
-                          setEmail(t);
-                          if (errors.email)
-                            setErrors(p => ({ ...p, email: '' }));
+                          setFirstName(t);
+                          if (errors.firstName) setErrors(p => ({ ...p, firstName: '' }));
                         }}
-                        error={errors.email}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        leftIcon={<Mail size={18} color={C.muted} />}
-                        textAlign={isRtl ? 'right' : 'left'}
-                        isRtl={isRtl}
-                      />
-                    </View>
-
-                    <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                        {translations.register?.username || 'USERNAME'}
-                      </Text>
-                      <InputField
-                        placeholder={
-                          translations.register?.usernamePlaceholder ||
-                          'Choose username'
-                        }
-                        value={username}
-                        onChangeText={t => {
-                          setUsername(t.replace(/\s/g, ''));
-                          if (errors.username)
-                            setErrors(p => ({ ...p, username: '' }));
-                        }}
-                        error={errors.username}
-                        autoCapitalize="none"
+                        error={errors.firstName}
                         leftIcon={<User size={18} color={C.muted} />}
                         textAlign={isRtl ? 'right' : 'left'}
                         isRtl={isRtl}
                       />
                     </View>
-
-                    <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                        {translations.register?.phone || 'PHONE'}
-                      </Text>
+                    <View style={s.halfField}>
                       <InputField
-                        placeholder={
-                          translations.register?.phonePlaceholder ||
-                          '+1 234 567 8900'
-                        }
-                        value={phoneNumber}
+                        placeholder={translations.register?.lastPlaceholder || 'Last name'}
+                        value={lastName}
                         onChangeText={t => {
-                          setPhoneNumber(t);
-                          if (errors.phoneNumber)
-                            setErrors(p => ({ ...p, phoneNumber: '' }));
+                          setLastName(t);
+                          if (errors.lastName) setErrors(p => ({ ...p, lastName: '' }));
                         }}
-                        error={errors.phoneNumber}
-                        keyboardType="phone-pad"
-                        leftIcon={<PhoneCall size={18} color={C.muted} />}
+                        error={errors.lastName}
+                        leftIcon={<User size={18} color={C.muted} />}
                         textAlign={isRtl ? 'right' : 'left'}
                         isRtl={isRtl}
                       />
                     </View>
+                  </View>
 
-                    <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                        {translations.register?.gender || 'GENDER'}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => setGenderDropdown(!genderDropdown)}
-                        style={[
-                          s.genderSelector,
-                          { borderColor: C.border, backgroundColor: C.surface },
-                        ]}
-                      >
-                        <Text style={[s.genderText, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}>
-                          {genders.find(g => g.value === gender)?.label || gender}
-                        </Text>
-                      </TouchableOpacity>
-                      {genderDropdown && (
-                        <View
-                          style={[
-                            s.genderDropdown,
-                            {
-                              backgroundColor: C.surface,
-                              borderColor: C.border,
-                            },
-                          ]}
-                        >
-                          {genders.map(g => (
-                            <TouchableOpacity
-                              key={g.value}
-                              onPress={() => {
-                                setGender(g.value);
-                                setGenderDropdown(false);
-                              }}
+                  <View style={s.fieldGap}>
+                    <InputField
+                      placeholder={translations.register?.emailPlaceholder || 'you@example.com'}
+                      value={email}
+                      onChangeText={t => {
+                        setEmail(t);
+                        if (errors.email) setErrors(p => ({ ...p, email: '' }));
+                      }}
+                      error={errors.email}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      leftIcon={<Mail size={18} color={C.muted} />}
+                      textAlign={isRtl ? 'right' : 'left'}
+                      isRtl={isRtl}
+                    />
+                  </View>
+
+                  <View style={s.fieldGap}>
+                    <InputField
+                      placeholder={translations.register?.usernamePlaceholder || 'Choose a username'}
+                      value={username}
+                      onChangeText={t => {
+                        setUsername(t.replace(/\s/g, ''));
+                        if (errors.username) setErrors(p => ({ ...p, username: '' }));
+                      }}
+                      error={errors.username}
+                      autoCapitalize="none"
+                      leftIcon={<User size={18} color={C.muted} />}
+                      textAlign={isRtl ? 'right' : 'left'}
+                      isRtl={isRtl}
+                    />
+                  </View>
+
+                  <View style={s.fieldGap}>
+                    <InputField
+                      placeholder={translations.register?.phonePlaceholder || '+1 234 567 8900'}
+                      value={phoneNumber}
+                      onChangeText={t => {
+                        setPhoneNumber(t);
+                        if (errors.phoneNumber) setErrors(p => ({ ...p, phoneNumber: '' }));
+                      }}
+                      error={errors.phoneNumber}
+                      keyboardType="phone-pad"
+                      leftIcon={<PhoneCall size={18} color={C.muted} />}
+                      textAlign={isRtl ? 'right' : 'left'}
+                      isRtl={isRtl}
+                    />
+                  </View>
+
+                  <View style={s.fieldGap}>
+                    <Text style={[s.smallLabel, { color: C.muted }]}>Gender</Text>
+                    {genderChips()}
+                  </View>
+
+                  <View style={s.fieldGap}>
+                    <Text style={[s.smallLabel, { color: C.muted }]}>Date of Birth (Optional)</Text>
+                    <DatePickerInput
+                      label=""
+                      placeholder={translations.register?.datePlaceholder || 'Select date'}
+                      value={dateOfBirth}
+                      onChangeDate={setDateOfBirth}
+                      textAlign={isRtl ? 'right' : 'left'}
+                    />
+                  </View>
+
+                  {/* Divider */}
+                  <View style={[s.divider, { backgroundColor: C.border }]} />
+
+                  {/* Section: Security */}
+                  <View style={s.sectionHead}>
+                    <ShieldCheck size={16} color={C.primary} />
+                    <Text style={[s.sectionTitle, { color: C.text }]}>Security</Text>
+                  </View>
+
+                  <View style={s.fieldGap}>
+                    <InputField
+                      placeholder={translations.register?.passwordPlaceholder || 'Create a strong password'}
+                      value={password}
+                      onChangeText={t => {
+                        checkPwdStrength(t);
+                        setPassword(t);
+                        if (errors.password) setErrors(p => ({ ...p, password: '' }));
+                      }}
+                      error={errors.password}
+                      secure={!showPassword}
+                      leftIcon={<Lock size={18} color={C.muted} />}
+                      rightIcon={
+                        <TouchableOpacity onPress={() => setShowPassword(p => !p)}>
+                          {showPassword ? <EyeOff size={18} color={C.muted} /> : <Eye size={18} color={C.muted} />}
+                        </TouchableOpacity>
+                      }
+                      textAlign={isRtl ? 'right' : 'left'}
+                      isRtl={isRtl}
+                    />
+                    {password.length > 0 && (
+                      <>
+                        <View style={s.strengthRow}>
+                          {[1, 2, 3, 4, 5].map(n => (
+                            <View
+                              key={n}
                               style={[
-                                s.genderOption,
-                                { borderBottomColor: C.border },
-                              ]}
-                            >                        <Text style={[s.genderOptionText, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}>
-                              {g.label}
-                            </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-
-                    <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                        {translations.register?.dateOfBirth ||
-                          'DATE OF BIRTH (Optional)'}
-                      </Text>
-                      <DatePickerInput
-                        label=""
-                        placeholder={
-                          translations.register?.datePlaceholder ||
-                          'Select date'
-                        }
-                        value={dateOfBirth}
-                        onChangeDate={setDateOfBirth}
-                        textAlign={isRtl ? 'right' : 'left'}
-                      />
-                    </View>
-
-                    <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                        {translations.register?.password || 'PASSWORD'}
-                      </Text>
-                      <InputField
-                        placeholder={
-                          translations.register?.passwordPlaceholder ||
-                          'Create password'
-                        }
-                        value={password}
-                        onChangeText={t => {
-                          checkPwdStrength(t);
-                          setPassword(t);
-                          if (errors.password)
-                            setErrors(p => ({ ...p, password: '' }));
-                        }}
-                        error={errors.password}
-                        secure
-                        leftIcon={<Lock size={18} color={C.muted} />}
-                        textAlign={isRtl ? 'right' : 'left'}
-                        isRtl={isRtl}
-                      />
-                      {password.length > 0 && (
-                        <View style={[s.strengthRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                          <View style={s.strengthBars}>
-                            {[1, 2, 3, 4, 5].map(n => (
-                              <View
-                                key={n}
-                                style={[
-                                  s.strengthBar,
-                                  {
-                                    backgroundColor:
-                                      n <= pwdStrength.score
-                                        ? pwdStrength.color
-                                        : C.border,
-                                  },
-                                ]}
-                              />
-                            ))}
-                          </View>
-                          {pwdStrength.text && (
-                            <Text
-                              style={[
-                                s.strengthLabel,
+                                s.strengthBar,
                                 {
-                                  color: pwdStrength.color,
-                                  marginLeft: isRtl ? 0 : SPACING.sm,
-                                  marginRight: isRtl ? SPACING.sm : 0,
+                                  backgroundColor: n <= pwdStrength.score ? pwdStrength.color : C.border,
                                 },
                               ]}
-                            >
+                            />
+                          ))}
+                          {pwdStrength.text && (
+                            <Text style={[s.strengthLabel, { color: pwdStrength.color }]}>
                               {pwdStrength.text}
                             </Text>
                           )}
                         </View>
-                      )}
-                    </View>
-
-                    <View style={s.fieldWrap}>
-                      <Text style={[s.fieldLabel, { color: C.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                        {translations.register?.confirmPassword ||
-                          'CONFIRM PASSWORD'}
-                      </Text>
-                      <InputField
-                        placeholder={
-                          translations.register?.confirmPasswordPlaceholder ||
-                          'Repeat password'
-                        }
-                        value={confirmPassword}
-                        onChangeText={t => {
-                          setConfirmPassword(t);
-                          if (errors.confirmPassword)
-                            setErrors(p => ({ ...p, confirmPassword: '' }));
-                        }}
-                        error={errors.confirmPassword}
-                        secure
-                        leftIcon={<Lock size={18} color={C.muted} />}
-                        textAlign={isRtl ? 'right' : 'left'}
-                        isRtl={isRtl}
-                      />
-                      {confirmPassword.length > 0 && (
-                        <View style={[s.matchRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                          {password === confirmPassword ? (
-                            <>
-                              <Check size={14} color={C.success} />
-                              <Text style={[s.matchText, { color: C.success }]}>
-                                {translations.passwords?.match ||
-                                  'Passwords match'}
-                              </Text>
-                            </>
-                          ) : (
-                            <>
-                              <X size={14} color={C.error} />
-                              <Text style={[s.matchText, { color: C.error }]}>
-                                {translations.passwords?.notMatch ||
-                                  'Passwords do not match'}
-                              </Text>
-                            </>
-                          )}
-                        </View>
-                      )}
-                    </View>
-
-                    <TouchableOpacity
-                      style={[
-                        s.submitButton,
-                        { backgroundColor: C.primary },
-                        loading && s.buttonDisabled,
-                      ]}
-                      onPress={handleRegister}
-                      activeOpacity={0.8}
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <>
-                          <Text style={s.submitButtonText}>
-                            {translations.register?.button || 'Create Account'}
-                          </Text>
-                          {isRtl ? (
-                            <ArrowLeft size={18} color="#FFFFFF" />
-                          ) : (
-                            <ArrowRight size={18} color="#FFFFFF" />
-                          )}
-                        </>
-                      )}
-                    </TouchableOpacity>
+                        {pwdReqList()}
+                      </>
+                    )}
                   </View>
+
+                  <View style={s.fieldGap}>
+                    <InputField
+                      placeholder={translations.register?.confirmPasswordPlaceholder || 'Confirm your password'}
+                      value={confirmPassword}
+                      onChangeText={t => {
+                        setConfirmPassword(t);
+                        if (errors.confirmPassword) setErrors(p => ({ ...p, confirmPassword: '' }));
+                      }}
+                      error={errors.confirmPassword}
+                      secure={!showConfirmPassword}
+                      leftIcon={<Lock size={18} color={C.muted} />}
+                      rightIcon={
+                        <TouchableOpacity onPress={() => setShowConfirmPassword(p => !p)}>
+                          {showConfirmPassword ? <EyeOff size={18} color={C.muted} /> : <Eye size={18} color={C.muted} />}
+                        </TouchableOpacity>
+                      }
+                      textAlign={isRtl ? 'right' : 'left'}
+                      isRtl={isRtl}
+                    />
+                    {confirmPassword.length > 0 && (
+                      <View style={[s.matchRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                        {password === confirmPassword ? (
+                          <>
+                            <Check size={14} color={C.success} />
+                            <Text style={[s.matchText, { color: C.success }]}>
+                              {translations.passwords?.match || 'Passwords match'}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <X size={14} color={C.error} />
+                            <Text style={[s.matchText, { color: C.error }]}>
+                              {translations.passwords?.notMatch || 'Passwords do not match'}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={[s.submitButton, { backgroundColor: C.primary }, loading && s.buttonDisabled]}
+                    onPress={handleRegister}
+                    activeOpacity={0.8}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Text style={s.submitButtonText}>
+                          {translations.register?.button || 'Create Account'}
+                        </Text>
+                        {isRtl ? <ArrowLeft size={18} color="#FFFFFF" /> : <ArrowRight size={18} color="#FFFFFF" />}
+                      </>
+                    )}
+                  </TouchableOpacity>
                 </View>
 
                 <View style={[s.footer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <Text style={[s.footerText, { color: C.muted }]}>
-                    {translations.footer?.alreadyHave ||
-                      'Already have an account?'}{' '}
+                    {translations.footer?.alreadyHave || 'Already have an account?'}{' '}
                   </Text>
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate(route.login)}
-                  >
+                  <TouchableOpacity onPress={() => navigation.navigate(route.login)}>
                     <Text style={[s.footerLink, { color: C.primary }]}>
                       {translations.footer?.signIn || 'Sign In'}
                     </Text>
@@ -891,8 +835,10 @@ export default function Register() {
 
             {currentStep === 'verify' && (
               <>
+                {/* Verify Step Header with back */}
+                <View style={[s.headerSection, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <TouchableOpacity
-                    style={[s.backButtonTop, { backgroundColor: C.surface, alignSelf: isRtl ? 'flex-end' : 'flex-start' }]}
+                    style={[s.backButton, { backgroundColor: C.surface }]}
                     onPress={() => goToStep('details')}
                     activeOpacity={0.7}
                   >
@@ -902,46 +848,42 @@ export default function Register() {
                       <ChevronLeft size={22} color={C.text} />
                     )}
                   </TouchableOpacity>
-
-                <View style={s.verifyContainer}>
-                  <View style={s.verifyHeader}>
-                    <View
-                      style={[
-                        s.verifyIconCircle,
-                        { backgroundColor: C.primary },
-                      ]}
-                    >
-                      <Mail size={28} color="#FFFFFF" />
-                    </View>
-                    <Text style={[s.verifyTitle, { color: C.text, textAlign: isRtl ? 'right' : 'left' }]}>
-                      {translations.verify?.title || 'Verify Your Email'}
+                  <View style={[s.titleSection, { marginLeft: isRtl ? 0 : SPACING.md, marginRight: isRtl ? SPACING.md : 0 }]}>
+                    <Text style={[s.title, { color: C.text }]}>
+                      {translations.verify?.title || 'Verify Email'}
                     </Text>
-                    <Text style={[s.verifySubtitle, { color: C.muted, textAlign: 'center' }]}>
-                      {translations.verify?.subtitle ||
-                        "We've sent a 6-digit code to"}
-                      {'\n'}
-                      <Text style={{ color: C.primary, fontWeight: '600' }}>
-                        {email}
-                      </Text>
+                    <Text style={[s.subtitle, { color: C.muted }]}>
+                      Check your inbox for the code
                     </Text>
                   </View>
+                </View>
+
+                {stepIndicator()}
+
+                <View style={[s.formCard, { backgroundColor: C.cardBackground, alignItems: 'center', paddingVertical: 24 }]}>
+                  <View style={[s.verifyIconCircle, { backgroundColor: C.primary + '20' }]}>
+                    <Mail size={32} color={C.primary} />
+                  </View>
+                  <Text style={[s.verifySent, { color: C.text }]}>
+                    We sent a code to
+                  </Text>
+                  <Text style={[s.verifyEmail, { color: C.primary }]}>
+                    {email}
+                  </Text>
 
                   <View style={s.codeRow}>
                     {verificationCode.map((digit, i) => (
                       <TextInput
                         key={i}
-                        ref={ref => {
-                          codeRefs.current[i] = ref;
-                        }}                          style={[
-                            s.codeBox,
-                            {
-                              backgroundColor: digit ? C.selectedItem : C.surface,
-                              borderColor: digit ? C.primary : C.border,
-                              color: C.text,
-                              textAlign: 'center',
-                              writingDirection: isRtl ? 'rtl' : 'ltr',
-                            },
-                          ]}
+                        ref={ref => { codeRefs.current[i] = ref; }}
+                        style={[
+                          s.codeBox,
+                          {
+                            backgroundColor: digit ? C.selectedItem : C.surface,
+                            borderColor: digit ? C.primary : C.border,
+                            color: C.text,
+                          },
+                        ]}
                         value={digit}
                         onChangeText={t => handleCodeChange(t, i)}
                         onKeyPress={e => handleCodeKeyPress(e, i)}
@@ -952,23 +894,21 @@ export default function Register() {
                     ))}
                   </View>
 
-                  <View style={s.resendContainer}>
+                  <View style={s.resendArea}>
                     {!canResend ? (
                       <Text style={[s.resendTimer, { color: C.primary }]}>
-                        {translations.verify?.resendTimerPrefix || 'Resend in'}{' '}
-                        {formatTime(resendTimer)}
+                        {translations.verify?.resendTimerPrefix || 'Resend in'} {formatTime(resendTimer)}
                       </Text>
                     ) : (
                       <TouchableOpacity
-                        style={[s.resendButton, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
+                        style={[s.resendRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                         onPress={handleResendCode}
                         disabled={loading}
                       >
                         <Text style={[s.resendText, { color: C.muted }]}>
-                          {translations.verify?.didntReceive ||
-                            "Didn't receive it?"}{' '}
+                          {translations.verify?.didntReceive || "Didn't receive it?"}{' '}
                         </Text>
-                        <Text style={{ color: C.primary, fontWeight: '600' }}>
+                        <Text style={[s.resendAction, { color: C.primary }]}>
                           {translations.verify?.resend || 'Resend'}
                         </Text>
                       </TouchableOpacity>
@@ -976,27 +916,20 @@ export default function Register() {
                   </View>
 
                   <TouchableOpacity
-                    style={[
-                      s.submitButton,
-                      { backgroundColor: C.primary },
-                      loading && s.buttonDisabled,
-                    ]}
+                    style={[s.submitButton, { backgroundColor: C.primary, alignSelf: 'stretch' }, loading && s.buttonDisabled]}
                     onPress={handleVerification}
                     activeOpacity={0.8}
                     disabled={loading}
                   >
                     {loading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />                      ) : (
-                        <>
-                          <Text style={s.submitButtonText}>
-                            {translations.verify?.button || 'Verify Email'}
-                          </Text>
-                          {isRtl ? (
-                            <ArrowLeft size={18} color="#FFFFFF" />
-                          ) : (
-                            <ArrowRight size={18} color="#FFFFFF" />
-                          )}
-                        </>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Text style={s.submitButtonText}>
+                          {translations.verify?.button || 'Verify Email'}
+                        </Text>
+                        {isRtl ? <ArrowLeft size={18} color="#FFFFFF" /> : <ArrowRight size={18} color="#FFFFFF" />}
+                      </>
                     )}
                   </TouchableOpacity>
 
@@ -1005,8 +938,7 @@ export default function Register() {
                     onPress={() => navigation.navigate(route.login)}
                   >
                     <Text style={[s.footerLink, { color: C.primary }]}>
-                      {translations.verify?.alreadyVerified ||
-                        'Already verified? Sign In'}
+                      {translations.verify?.alreadyVerified || 'Already verified? Sign In'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1020,227 +952,79 @@ export default function Register() {
 }
 
 const s = StyleSheet.create({
-  root: {
-    flex: 1,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 40,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: SPACING.lg,
-  },
-  container: {
-    flex: 1,
-  },
-  headerSection: {
-    marginBottom: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-  },
-  titleSection: {
-    marginBottom: SPACING.xl,
-    flex: 1,
-    marginLeft: SPACING.md,
-  },
-  title: {
-    fontSize: FONT_SIZES.xxxl + 2,
-    fontWeight: '800',
-    marginBottom: SPACING.xs,
-  },
-  subtitle: {
-    fontSize: FONT_SIZES.md,
-    lineHeight: 22,
-  },
-  formCard: {
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-  },
-  form: {
-    gap: SPACING.md,
-  },
-  fieldWrap: {
-    marginBottom: SPACING.xs,
-  },
-  fieldLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    marginBottom: SPACING.xs,
-    textTransform: 'uppercase',
-  },
-  nameRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  halfField: {
-    flex: 1,
-  },
-  genderSelector: {
-    height: 52,
-    borderWidth: 1,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    justifyContent: 'center',
-  },
-  genderText: {
-    fontSize: FONT_SIZES.md,
-  },
-  genderDropdown: {
-    position: 'absolute',
-    top: 52,
-    left: 0,
-    right: 0,
-    borderWidth: 1,
-    borderRadius: BORDER_RADIUS.md,
-    zIndex: 10,
-    marginTop: 4,
-  },
-  genderOption: {
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-  },
+  root: { flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 40 },
+  scrollContent: { flexGrow: 1, padding: SPACING.lg },
+  container: { flex: 1 },
 
-  strengthRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: SPACING.xs,
-  },
-  strengthBars: {
-    flexDirection: 'row',
-    gap: 4,
-    flex: 1,
-  },
-  strengthBar: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
-  },
-  strengthLabel: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '600',
-    marginLeft: SPACING.sm,
-  },
-  matchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: SPACING.xs,
-  },
-  matchText: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '600',
-  },
-  submitButton: {
-    height: 54,
-    borderRadius: BORDER_RADIUS.lg,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginTop: SPACING.md,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: FONT_SIZES.md,
-    fontWeight: '700',
-  },
-  codeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
-  },
-  codeBox: {
-    flex: 1,
-    height: 56,
-    borderWidth: 1.5,
-    borderRadius: BORDER_RADIUS.md,
-    fontSize: FONT_SIZES.xxl,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  resendContainer: {
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-    minHeight: 24,
-  },
-  resendButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  resendTimer: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '600',
-  },
-  resendText: {
-    fontSize: FONT_SIZES.sm,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: SPACING.lg,
-  },
-  footerText: {
-    fontSize: FONT_SIZES.sm,
-  },
-  footerLink: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '700',
-  },
-  genderOptionText: {
-    fontSize: FONT_SIZES.md,
-  },
-  backButtonTop: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginBottom: SPACING.lg,
-  },
+  // Header
+  headerSection: { marginBottom: SPACING.md, flexDirection: 'row', alignItems: 'center' },
+  backButton: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
+  titleSection: { marginBottom: SPACING.xl, flex: 1, marginLeft: SPACING.md },
+  title: { fontSize: FONT_SIZES.xxxl + 2, fontWeight: '800', marginBottom: SPACING.xs },
+  subtitle: { fontSize: FONT_SIZES.md, lineHeight: 22 },
 
-  verifyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  verifyHeader: {
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-  },
-  verifyIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  verifyTitle: {
-    fontSize: FONT_SIZES.xxl,
-    fontWeight: '800',
-    marginBottom: SPACING.xs,
-  },
-  verifySubtitle: {
-    fontSize: FONT_SIZES.md,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  footerLinkOnly: {
-    alignSelf: 'center',
-    marginTop: SPACING.lg,
-  },
+  // Step indicator
+  stepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingHorizontal: 40 },
+  stepDot: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  stepDotText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  stepLine: { flex: 1, height: 3, borderRadius: 2, marginHorizontal: 8 },
+
+  // Form card
+  formCard: { borderRadius: BORDER_RADIUS.xl, padding: SPACING.lg, marginBottom: SPACING.lg },
+
+  // Sections
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  sectionTitle: { fontSize: 14, fontWeight: '700' },
+  divider: { height: 1, marginVertical: 18 },
+
+  // Fields
+  nameRow: { flexDirection: 'row', gap: SPACING.sm },
+  halfField: { flex: 1 },
+  fieldGap: { marginBottom: 12 },
+  smallLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 6, textTransform: 'uppercase' },
+  fieldLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: SPACING.xs, textTransform: 'uppercase' },
+
+  // Gender chips
+  genderRow: { flexDirection: 'row', gap: 8 },
+  genderChip: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  genderChipText: { fontSize: 13, fontWeight: '700' },
+
+  // Password strength
+  strengthRow: { flexDirection: 'row', gap: 4, marginTop: 8, alignItems: 'center' },
+  strengthBar: { flex: 1, height: 4, borderRadius: 2 },
+  strengthLabel: { fontSize: FONT_SIZES.sm, fontWeight: '600', marginLeft: 8 },
+
+  // Password requirements checklist
+  reqGrid: { marginTop: 10, gap: 6 },
+  reqItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  reqCheck: { width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  reqCircle: { width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
+  reqLabel: { fontSize: 12, fontWeight: '500' },
+
+  // Password match
+  matchRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  matchText: { fontSize: FONT_SIZES.sm, fontWeight: '600' },
+
+  // Submit
+  submitButton: { height: 54, borderRadius: BORDER_RADIUS.lg, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: SPACING.sm, marginTop: 8 },
+  buttonDisabled: { opacity: 0.6 },
+  submitButtonText: { color: '#FFFFFF', fontSize: FONT_SIZES.md, fontWeight: '700' },
+
+  // Footer
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: SPACING.lg },
+  footerText: { fontSize: FONT_SIZES.sm },
+  footerLink: { fontSize: FONT_SIZES.sm, fontWeight: '700' },
+  footerLinkOnly: { alignSelf: 'center', marginTop: SPACING.lg },
+
+  // Verify step
+  verifyIconCircle: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  verifySent: { fontSize: 14, color: '#888', marginBottom: 4 },
+  verifyEmail: { fontSize: 15, fontWeight: '700', marginBottom: 20 },
+  codeRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 20, width: '100%' },
+  codeBox: { flex: 1, height: 56, borderWidth: 1.5, borderRadius: BORDER_RADIUS.md, fontSize: FONT_SIZES.xxl, fontWeight: '700', textAlign: 'center' },
+  resendArea: { marginBottom: 20, minHeight: 24, alignItems: 'center' },
+  resendRow: { flexDirection: 'row', alignItems: 'center' },
+  resendTimer: { fontSize: FONT_SIZES.sm, fontWeight: '600' },
+  resendText: { fontSize: FONT_SIZES.sm },
+  resendAction: { fontWeight: '700' },
 });

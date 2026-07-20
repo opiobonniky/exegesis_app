@@ -224,8 +224,8 @@ export default function BottomTab({
       [route.ledgerDetail]: 'ledger',
       [route.ledgerEntry]: 'ledger',
       [route.journal]: 'ledger',
-      [route.lab]: 'lab',
-      [route.labFlow]: 'lab',
+      [route.studyBible]: 'studyBible',
+      [route.bibleStudy]: 'studyBible',
       [route.adminDashboard]: 'adminDashboard',
       [route.adminUsers]: 'adminUsers',
       [route.adminDailyVerse]: 'adminVerse',
@@ -238,16 +238,16 @@ export default function BottomTab({
 
   const tabs: TabItem[] = isUserAdmin
     ? [
-        { id: 'adminDashboard', label: translations?.bottomTab?.dashboard || 'Dashboard', icon: ShieldIcon, onPress: () => navigation.navigate(route.adminDashboard) },
-        { id: 'adminUsers',     label: translations?.bottomTab?.users     || 'Users',     icon: User,       onPress: () => navigation.navigate(route.adminUsers) },
-        { id: 'adminVerse',     label: translations?.bottomTab?.verse     || 'Verse',     icon: BookOpen,   onPress: () => navigation.navigate(route.adminDailyVerse) },
-        { id: 'adminDevotion',  label: translations?.bottomTab?.devotion  || 'Devotion',  icon: Lightbulb,  onPress: () => navigation.navigate(route.adminDailyDevotion) },
+        { id: 'adminDashboard', label: translations?.bottomTab?.dashboard || 'DASHBOARD', icon: ShieldIcon, onPress: () => navigation.navigate(route.adminDashboard) },
+        { id: 'adminUsers',     label: translations?.bottomTab?.users     || 'USERS',     icon: User,       onPress: () => navigation.navigate(route.adminUsers) },
+        { id: 'adminVerse',     label: translations?.bottomTab?.verse     || 'VERSE',     icon: BookOpen,   onPress: () => navigation.navigate(route.adminDailyVerse) },
+        { id: 'adminDevotion',  label: translations?.bottomTab?.devotion  || 'DEVOTION',  icon: Lightbulb,  onPress: () => navigation.navigate(route.adminDailyDevotion) },
       ]
     : [
-        { id: 'home',   label: translations?.bottomTab?.home   || 'Home',   icon: Home,     onPress: () => navigation.navigate(route.home) },
-        { id: 'bible',  label: translations?.bottomTab?.bible  || 'Bible',  icon: BookOpen, onPress: () => navigation.navigate(route.bible) },
-        { id: 'lab',    label: translations?.bottomTab?.lab    || 'Lab',    icon: hasAccess('legacy_sower') ? Beaker : Lock, onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.lab) : navigation.navigate(route.sower) },
-        { id: 'ledger', label: translations?.bottomTab?.ledger || 'Ledger', icon: hasAccess('legacy_sower') ? BookText : Lock, onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.legacyLedger) : navigation.navigate(route.sower) },
+        { id: 'home',   label: translations?.bottomTab?.home   || 'HOME',   icon: Home,     onPress: () => navigation.navigate(route.home) },
+        { id: 'bible',  label: translations?.bottomTab?.bible  || 'BIBLE',  icon: BookOpen, onPress: () => navigation.navigate(route.bible) },
+        { id: 'studyBible', label: 'LAB', icon: hasAccess('legacy_sower') ? BookText : Lock, onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.studyBible) : navigation.navigate(route.sower) },
+        { id: 'ledger', label: translations?.bottomTab?.ledger || 'JOURNAL', icon: hasAccess('legacy_sower') ? BookText : Lock, onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.legacyLedger) : navigation.navigate(route.sower) },
       ];
 
   const activeIndex = Math.max(0, tabs.findIndex(t => t.id === activeTab));

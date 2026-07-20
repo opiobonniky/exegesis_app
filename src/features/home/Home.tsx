@@ -158,7 +158,7 @@ export default function Home() {
         id: 'study',
         label: 'Bible Study',
         icon: GraduationCap,
-        onPress: () => navigation.navigate(route.bible),
+        onPress: () => navigation.navigate(route.lab),
       },
       {
         id: 'lordsbook',
@@ -170,7 +170,7 @@ export default function Home() {
         id: 'resources',
         label: 'Resources',
         icon: Globe,
-        onPress: () => navigation.navigate(route.home),
+        onPress: () => navigation.navigate(route.verseResources),
       },
       {
         id: 'support',
@@ -742,7 +742,7 @@ export default function Home() {
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() =>
-                    navigation.navigate(route.labFlow, {
+                    navigation.navigate(route.bibleStudy, {
                       sessionId: activeSession.id,
                       stage: activeSession.currentStage,
                       passageRef: activeSession.passageRef,

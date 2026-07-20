@@ -129,7 +129,7 @@ export default function LabHomeScreen() {
             style={[styles.activeCard, { backgroundColor: COLORS.accent }]}
             activeOpacity={0.85}
             onPress={() =>
-              navigation.navigate('LabFlow', {
+              navigation.navigate(route.bibleStudy, {
                 sessionId: activeSession.id,
                 stage: activeSession.currentStage,
                 passageRef: activeSession.passageRef,
@@ -158,7 +158,7 @@ export default function LabHomeScreen() {
         <TouchableOpacity
           style={[styles.newStudyCard, { backgroundColor: COLORS.cardBackground }]}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('LabFlow', {})}
+          onPress={() => navigation.navigate(route.bibleStudy, {})}
         >
           <View style={[styles.newStudyIcon, { backgroundColor: `${COLORS.accent}20` }]}>
             <BookOpen size={28} color={COLORS.accent} />
@@ -170,7 +170,7 @@ export default function LabHomeScreen() {
           <TouchableOpacity
             style={[styles.startBtn, { backgroundColor: COLORS.accent }]}
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('LabFlow', {})}
+            onPress={() => navigation.navigate(route.bibleStudy, {})}
           >
             <Play size={16} color="#FFFFFF" />
             <Text style={styles.startBtnText}>Begin</Text>
@@ -223,7 +223,7 @@ export default function LabHomeScreen() {
                     isActive && { borderLeftWidth: 3, borderLeftColor: COLORS.accent },
                   ]}
                   activeOpacity={0.7}
-                  onPress={() => navigation.navigate('LabFlow', {
+                  onPress={() => navigation.navigate(route.bibleStudy, {
                     sessionId: session.id,
                     stage: session.currentStage,
                     passageRef: session.passageRef,
@@ -274,10 +274,33 @@ export default function LabHomeScreen() {
             </Text>
           </View>
         )}
+
+        {/* ── Tools ── */}
+        <Text style={[styles.sectionTitle, { color: COLORS.text, marginTop: SPACING.lg }]}>Tools</Text>
+        <TouchableOpacity
+          style={[styles.newStudyCard, { backgroundColor: COLORS.cardBackground }]}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate(route.strongsDictionary)}
+        >
+          <View style={[styles.newStudyIcon, { backgroundColor: `${COLORS.primary}20` }]}>
+            <BookOpen size={28} color={COLORS.primary} />
+          </View>
+          <Text style={[styles.newStudyTitle, { color: COLORS.text }]}>Strong's Dictionary</Text>
+          <Text style={[styles.newStudySubtitle, { color: COLORS.textSecondary }]}>
+            Search, browse, and study Strong's Concordance entries
+          </Text>
+          <TouchableOpacity
+            style={[styles.startBtn, { backgroundColor: COLORS.primary }]}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate(route.studyBible, { initialTab: 'strongs' })}
+          >
+            <BookOpen size={16} color="#FFFFFF" />
+            <Text style={styles.startBtnText}>Open</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </ScrollView>
       )}
 
-      <BottomTab activeTab="lab" setActiveTab={() => {}} />
     </View>
   );
 }

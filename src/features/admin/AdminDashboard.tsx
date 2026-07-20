@@ -325,6 +325,12 @@ const Drawer: React.FC<{
       routeKey: 'adminJournalModeration',
     },
     {
+      id: 'adminVerseExplanations',
+      label: 'Verse Explanations',
+      icon: ScrollText,
+      routeKey: 'adminVerseExplanations',
+    },
+    {
       id: 'adminActivity',
       label: ac?.activity || 'Activity',
       icon: Activity,

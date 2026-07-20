@@ -111,13 +111,13 @@ export default function ProfileScreen() {
 
   const requireAccess = useCallback(
     (minimumTier: 'legacy_sower' | 'covenant_sower', featureName: string, onGranted: () => void) => {
-      if (hasSubscriptionAccess(minimumTier)) {
+      if (app?.isAdmin || hasSubscriptionAccess(minimumTier)) {
         onGranted();
       } else {
         setGateModal({ visible: true, featureName });
       }
     },
-    [hasSubscriptionAccess],
+    [hasSubscriptionAccess, app?.isAdmin],
   );
 
   const displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || 'Reader';
@@ -284,7 +284,7 @@ export default function ProfileScreen() {
         icon: BookOpen,
         color: COLORS.primary,
         requiredTier: 'legacy_sower' as const,
-        onPress: () => navigation.navigate(route.lab),
+        onPress: () => navigation.navigate(route.studyBible),
       },
       {
         label: 'Community Feed',

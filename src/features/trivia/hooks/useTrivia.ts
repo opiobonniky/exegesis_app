@@ -4,11 +4,18 @@ import {
   getRandomQuestion,
   submitTriviaAnswer,
   getTriviaStats,
+  getAnsweredQuestionIds,
   TriviaQuestionResponse,
   TriviaAnswerResult,
   TriviaStats,
 } from '../services/triviaApi';
-import { preFetchTriviaQuestions } from '../services/triviaCache';
+import {
+  preFetchTriviaQuestions,
+  getCachedRandomQuestion,
+  getCachedCount,
+  ensureCacheFresh,
+  saveCachedStats,
+} from '../services/triviaCache';
 
 export type TriviaPhase = 'plan' | 'playing' | 'answered' | 'finished';
 export type DifficultyFilter = 'easy' | 'medium' | 'hard' | null;
@@ -46,6 +53,7 @@ export function useTrivia() {
 
   const stateRef = useRef(state);
   stateRef.current = state;
+  const answeredIdsRef = useRef<number[]>([]);
 
   const update = useCallback((partial: Partial<TriviaState>) => {
     setState(prev => {
@@ -57,18 +65,47 @@ export function useTrivia() {
 
   useEffect(() => {
     preFetchTriviaQuestions();
-  }, []);
+    getAnsweredQuestionIds().then(ids => {
+      answeredIdsRef.current = ids;
+      update({ questionIdsSeen: ids });
+    }).catch(() => {});
+  }, [update]);
 
-  /** Fetch a random question, excluding ones already seen, filtered by difficulty */
+  /** Fetch a random question — try cache first for instant response, API fallback */
   const fetchQuestion = useCallback(async () => {
+    const seen = stateRef.current.questionIdsSeen;
+    const diff = stateRef.current.difficulty;
+
+    // Try cache first (instant — no loading flash)
+    const cachedQ = await getCachedRandomQuestion(seen, diff);
+    if (cachedQ) {
+      // Fire background API fetch to keep totalCount accurate + refill cache
+      getRandomQuestion(seen, diff).then(apiQ => {
+        if (apiQ?.totalRemaining !== undefined) {
+          const answeredSoFar = stateRef.current.score.total;
+          update({ totalCount: answeredSoFar + 1 + apiQ.totalRemaining });
+        }
+      }).catch(() => {});
+      ensureCacheFresh(diff);
+
+      update({
+        question: cachedQ,
+        loading: false,
+        error: null,
+        selectedAnswer: null,
+        result: null,
+        phase: 'playing',
+        totalCount: Math.max(stateRef.current.totalCount, seen.length + 1),
+        questionIdsSeen: [...seen, cachedQ.id],
+      });
+      return;
+    }
+
+    // Cache miss — fetch from API with loading indicator
     update({ loading: true, error: null, selectedAnswer: null, result: null, phase: 'playing' });
     try {
-      const question = await getRandomQuestion(
-        stateRef.current.questionIdsSeen,
-        stateRef.current.difficulty,
-      );
+      const question = await getRandomQuestion(seen, diff);
       if (!question) {
-        // No more questions available — show final score
         update({ loading: false, phase: 'finished', question: null });
         return;
       }
@@ -78,7 +115,7 @@ export function useTrivia() {
         question,
         loading: false,
         totalCount,
-        questionIdsSeen: [...stateRef.current.questionIdsSeen, question.id],
+        questionIdsSeen: [...seen, question.id],
       });
     } catch (e: any) {
       update({ loading: false, error: e?.message || 'Failed to load question' });
@@ -109,6 +146,29 @@ export function useTrivia() {
         total: stateRef.current.score.total + 1,
       };
       const newStreak = result.isCorrect ? stateRef.current.streak + 1 : 0;
+
+      // Update local stats instantly so the plan screen reflects latest performance
+      const prevStats = stateRef.current.stats;
+      if (prevStats) {
+        const newStats = {
+          totalAnswered: prevStats.totalAnswered + 1,
+          correct: prevStats.correct + (result.isCorrect ? 1 : 0),
+          incorrect: prevStats.incorrect + (result.isCorrect ? 0 : 1),
+          percentage: Math.round(
+            ((prevStats.correct + (result.isCorrect ? 1 : 0)) /
+              (prevStats.totalAnswered + 1)) *
+              100,
+          ),
+        };
+        saveCachedStats(newStats);
+        update({ stats: newStats });
+      }
+
+      // On the 10th answer submission, pre-fetch next batch in background
+      if (newScore.total === 10) {
+        ensureCacheFresh(stateRef.current.difficulty);
+      }
+
       update({
         result,
         score: newScore,
@@ -143,7 +203,7 @@ export function useTrivia() {
 
   /** Set difficulty filter and refetch */
   const setDifficulty = useCallback((difficulty: DifficultyFilter) => {
-    update({ difficulty, questionIdsSeen: [] });
+    update({ difficulty, questionIdsSeen: [...answeredIdsRef.current] });
   }, [update]);
 
   /** Reset the game — return to plan screen */
@@ -157,7 +217,7 @@ export function useTrivia() {
       stats: stateRef.current.stats,
       loading: false,
       error: null,
-      questionIdsSeen: [],
+      questionIdsSeen: [...answeredIdsRef.current],
       difficulty: stateRef.current.difficulty,
       totalCount: 0,
       streak: 0,

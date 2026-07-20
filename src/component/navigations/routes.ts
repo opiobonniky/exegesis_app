@@ -51,8 +51,9 @@ export const route = {
   verseResources: 'VerseResources',
   wordStudy: 'WordStudy',
   search: 'Search',
+  studyBible: 'StudyBible',
+  bibleStudy: 'BibleStudy',
   lab: 'Lab',
-  labFlow: 'LabFlow',
 
   // Legacy Ledger (Phase 5+)
   legacyLedger: 'LegacyLedger',
@@ -65,4 +66,7 @@ export const route = {
   adminTriviaUserDetail: 'AdminTriviaUserDetail',
   sower: 'Sower',
   adminSubscriptions: 'AdminSubscriptions',
+  strongsDictionary: 'StrongsDictionary',
+  adminVerseExplanations: 'AdminVerseExplanations',
+  addVerseExplanation: 'AddVerseExplanation',
 };

@@ -65,11 +65,11 @@ const GatedLedgerEntry = gate(
   require('../../features/journal/JournalEntry').default,
   'legacy_sower',
 );
-const GatedLab = gate(
-  require('../../features/lab/LabHomeScreen').default,
+const GatedStudyBible = gate(
+  require('../../features/strongs-dictionary/StrongsDictionaryScreen').default,
   'legacy_sower',
 );
-const GatedLabFlow = gate(
+const GatedBibleStudy = gate(
   require('../../features/lab/LabFlowScreen').default,
   'legacy_sower',
 );
@@ -78,6 +78,10 @@ const GatedTrivia = gate(
   'legacy_sower',
 );
 
+const getLabHomeScreen = gate(
+  require('../../features/lab/LabHomeScreen').default,
+  'legacy_sower'
+);
 
 const ANIMATIONS = [
   'slide_from_right',
@@ -576,14 +580,16 @@ const AppNavigation = () => {
           }
         />
 
-        {/* ── Exegesis Lab ─────────────────────────────────────────────────── */}
+        {/* ── Study Bible ─────────────────────────────────────────────────── */}
         <Stack.Screen
-          name={route.lab}
-          getComponent={() => GatedLab}
+          name={route.studyBible}
+          getComponent={() => GatedStudyBible}
         />
+
+        {/* ── Bible Study (4-stage study flow) ────────────────────────────── */}
         <Stack.Screen
-          name={route.labFlow}
-          getComponent={() => GatedLabFlow}
+          name={route.bibleStudy}
+          getComponent={() => GatedBibleStudy}
         />
 
         {/* ── Subscription / Sower ────────────────────────────────────────── */}
@@ -604,6 +610,24 @@ const AppNavigation = () => {
         <Stack.Screen
           name={route.trivia}
           getComponent={() => GatedTrivia}
+          />
+          <Stack.Screen
+          name={route.lab}
+          getComponent={() => getLabHomeScreen}
+        />  
+
+        {/* ── Admin Verse Explanations ────────────────────────────────────── */}
+        <Stack.Screen
+          name={route.adminVerseExplanations}
+          getComponent={() =>
+            require('../../features/admin/AdminVerseExplanationsManager').default
+          }
+        />
+        <Stack.Screen
+          name={route.addVerseExplanation}
+          getComponent={() =>
+            require('../../features/admin/AddVerseExplanation').default
+          }
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -293,7 +293,7 @@ export default function SearchScreen() {
         return;
       }
       Keyboard.dismiss();
-      navigation.navigate(route.labFlow, {
+      navigation.navigate(route.bibleStudy, {
         bookName: item.book_name,
         chapter: item.chapter,
         verseStart: item.verse,

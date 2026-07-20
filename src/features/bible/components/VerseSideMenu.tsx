@@ -263,7 +263,7 @@ export default function VerseSideMenu({
     }
     guard('Study this verse requires a free account.', () => {
       const verses = sortedVerses.length > 0 ? sortedVerses : [verseNumber];
-      navigation?.navigate('LabFlow', {
+      navigation?.navigate(route.bibleStudy, {
         bookName: currentBook,
         chapter: currentChapter,
         verseStart: verses[0],

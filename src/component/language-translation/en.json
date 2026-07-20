@@ -161,14 +161,14 @@
   },
   "appTagline": "Your Daily Spiritual Companion",
   "bottomTab": {
-    "home": "Home",
-    "bible": "Bible",
-    "plan": "Plan",
-    "profile": "Profile",
-    "dashboard": "Dashboard",
-    "users": "Users",
-    "verse": "Verse",
-    "devotion": "Devotion"
+    "home": "HOME",
+    "bible": "BIBLE",
+    "plan": "PLAN",
+    "profile": "PROFILE",
+    "dashboard": "DASHBOARD",
+    "users": "USERS",
+    "verse": "VERSE",
+    "devotion": "DEVOTION"
   },
   "readingSettings": {
     "title": "Reading Settings",
@@ -400,7 +400,7 @@
     "readingPlan": "Reading Plan",
     "bookmarks": "Bookmarks",
     "highlights": "Highlights",
-    "audioBible": "Audio Bible",
+    "audioBible": "Listen to Audio5",
     "notes": "Notes",
     "settings": "Settings",
     "bookmark": "Bookmark",

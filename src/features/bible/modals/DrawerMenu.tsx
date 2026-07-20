@@ -468,6 +468,7 @@ export default function DrawerMenu({
               { label: bc?.readingHistory || 'History', icon: Clock, routeKey: 'readHistory' as NavRouteKey, color: '#8B5CF6' },
               { label: bc?.favorites || 'Favorites', icon: Star, routeKey: 'favorites' as NavRouteKey, color: '#EC4899' },
               { label: bc?.journal || 'Journal', icon: BookText, routeKey: 'journal' as NavRouteKey, color: '#10B981' },
+              { label: "Strong's Dictionary", icon: BookOpen, routeKey: 'strongsDictionary' as NavRouteKey, color: '#6366F1' },
             ].map(({ label, icon: Icon, routeKey, color }) => (
               <Pressable
                 key={routeKey}

@@ -1178,7 +1178,7 @@ export default function Bible() {
         }}
         onOpenInLab={(bookName, chapter, verseRefs) => {
           if (!hasAccess('legacy_sower')) { navigation.navigate(route.sower); return; }
-          navigation.navigate('LabFlow', {
+          navigation.navigate(route.bibleStudy, {
             bookName,
             chapter,
             verseStart: verseRefs[0]?.verse ?? 1,
@@ -1187,7 +1187,7 @@ export default function Bible() {
         }}
         onOpenBookContext={(bookName) => {
           if (!hasAccess('legacy_sower')) { navigation.navigate(route.sower); return; }
-          navigation.navigate('LabFlow', {
+          navigation.navigate(route.bibleStudy, {
             bookName,
             chapter: currentChapter,
             verseStart: 1,

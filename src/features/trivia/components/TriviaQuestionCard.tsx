@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Check, X, BookOpen, ExternalLink } from 'lucide-react-native';
 import {
   getColors,
@@ -13,6 +13,7 @@ interface Props {
   question: TriviaQuestionResponse;
   selectedAnswer: number | null;
   disabled: boolean;
+  loading?: boolean;
   isRtl: boolean;
   isDark?: boolean;
   correctAnswerIndex?: number | null;
@@ -28,6 +29,7 @@ export default function TriviaQuestionCard({
   question,
   selectedAnswer,
   disabled,
+  loading = false,
   isRtl,
   isDark = false,
   correctAnswerIndex,
@@ -209,6 +211,7 @@ export default function TriviaQuestionCard({
 
           const optionLetters = isRtl ? 'א,ב,ג,ד,ה,ו,ז,ח' : 'A,B,C,D,E,F,G,H';
           const letter = optionLetters.split(',')[index] || `${index + 1}`;
+          const showLoader = loading && isSelected;
 
           return (
             <TouchableOpacity
@@ -222,7 +225,7 @@ export default function TriviaQuestionCard({
                 },
               ]}
               activeOpacity={0.7}
-              disabled={disabled}
+              disabled={disabled || loading}
               onPress={() => onSelect(index)}
             >
               <View
@@ -234,11 +237,15 @@ export default function TriviaQuestionCard({
                   },
                 ]}
               >
-                <Text
-                  style={[styles.optionLetterText, { color: letterTextColor }]}
-                >
-                  {letter}
-                </Text>
+                {showLoader ? (
+                  <ActivityIndicator size="small" color={letterTextColor} />
+                ) : (
+                  <Text
+                    style={[styles.optionLetterText, { color: letterTextColor }]}
+                  >
+                    {letter}
+                  </Text>
+                )}
               </View>
               <Text
                 style={[
@@ -256,6 +263,11 @@ export default function TriviaQuestionCard({
               </Text>
               {statusIcon && (
                 <View style={styles.statusIconContainer}>{statusIcon}</View>
+              )}
+              {showLoader && (
+                <View style={styles.statusIconContainer}>
+                  <ActivityIndicator size="small" color={optionTextColor} />
+                </View>
               )}
             </TouchableOpacity>
           );

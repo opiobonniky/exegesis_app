@@ -9,12 +9,23 @@ import {
 import { TriviaQuestionResponse, TriviaAnswerResult, parseOptions } from './triviaApi';
 
 const MAX_CACHED = 15;
+const REFILL_THRESHOLD = 5;
 
-export async function preFetchTriviaQuestions(): Promise<void> {
+export async function getCachedCount(difficulty?: string | null): Promise<number> {
+  const { queryFirst } = await import('../../../db/database');
+  const diffFilter = difficulty ? 'AND difficulty = ?' : '';
+  const params: any[] = [];
+  if (difficulty) params.push(difficulty);
+  const row = await queryFirst<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM trivia_questions WHERE correct_answer IS NOT NULL ${diffFilter}`,
+    params,
+  );
+  return row?.count ?? 0;
+}
+
+export async function refillCache(difficulty?: string | null): Promise<void> {
   try {
-    const { queryFirst } = await import('../../../db/database');
-    const row = await queryFirst<{ count: number }>('SELECT COUNT(*) AS count FROM trivia_questions');
-    const existing = row?.count ?? 0;
+    const existing = await getCachedCount(difficulty);
     if (existing >= MAX_CACHED) return;
     const needed = MAX_CACHED - existing;
     const res = await sendPostRequest<{ data: TriviaQuestionResponse[] }>(
@@ -27,6 +38,17 @@ export async function preFetchTriviaQuestions(): Promise<void> {
     }
   } catch {
     // silent — pre-fetch is best-effort
+  }
+}
+
+export async function preFetchTriviaQuestions(): Promise<void> {
+  return refillCache();
+}
+
+export async function ensureCacheFresh(difficulty?: string | null): Promise<void> {
+  const count = await getCachedCount(difficulty);
+  if (count <= REFILL_THRESHOLD) {
+    refillCache(difficulty);
   }
 }
 
