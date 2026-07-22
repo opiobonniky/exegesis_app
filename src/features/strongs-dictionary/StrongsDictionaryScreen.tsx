@@ -561,9 +561,8 @@ export default function StrongsDictionaryScreen() {
             opacity: tabBarAnimation,
           },
         ]}
-      >
-        <BottomTab activeTab="home" setActiveTab={() => {}} />
-      </Animated.View>
+      ></Animated.View>
+      <BottomTab activeTab="home" setActiveTab={() => {}} />
     </SafeAreaView>
   );
 }
