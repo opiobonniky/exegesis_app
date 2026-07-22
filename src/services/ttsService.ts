@@ -9,7 +9,7 @@ export interface TTSVoice {
   category?: string;
 }
 
-const DEFAULT_VOICE_ID = 'en-US-EmmaNeural';;
+const DEFAULT_VOICE_ID = 'en-GB-RyanNeural';
 
 export const ttsService = {
   isEnabled: async (): Promise<boolean> => {
@@ -73,20 +73,59 @@ export const ttsService = {
     // Convert base64 → ArrayBuffer so the rest of bibleTTS is unchanged
     const bytes = toByteArray(base64);
     return bytes.buffer as ArrayBuffer;
-
-
   },
 };
 
 function getEdgeVoices(): TTSVoice[] {
   return [
-    { name: 'Aria (Female)',  voiceId: 'en-US-AriaNeural',  source: 'edge', category: 'Neural' },
-    { name: 'Emma (Female)',  voiceId: 'en-US-EmmaNeural',  source: 'edge', category: 'Neural' },
-    { name: 'Jenny (Female)', voiceId: 'en-US-JennyNeural', source: 'edge', category: 'Neural' },
-    { name: 'Guy (Male)',     voiceId: 'en-US-GuyNeural',   source: 'edge', category: 'Neural' },
-    { name: 'Davis (Male)',   voiceId: 'en-US-DavisNeural', source: 'edge', category: 'Neural' },
-    { name: 'Brian (Male)',   voiceId: 'en-US-BrianNeural', source: 'edge', category: 'Neural' },
-    { name: 'Sonia (Female)', voiceId: 'en-GB-SoniaNeural', source: 'edge', category: 'Neural' },
-    { name: 'Ryan (Male)',    voiceId: 'en-GB-RyanNeural',  source: 'edge', category: 'Neural' },
+    {
+      name: 'Ryan (Male)',
+      voiceId: 'en-GB-RyanNeural',
+      source: 'edge',
+      category: 'Neural',
+    },
+
+    {
+      name: 'Aria (Female)',
+      voiceId: 'en-US-AriaNeural',
+      source: 'edge',
+      category: 'Neural',
+    },
+    {
+      name: 'Emma (Female)',
+      voiceId: 'en-US-EmmaNeural',
+      source: 'edge',
+      category: 'Neural',
+    },
+    {
+      name: 'Jenny (Female)',
+      voiceId: 'en-US-JennyNeural',
+      source: 'edge',
+      category: 'Neural',
+    },
+    {
+      name: 'Guy (Male)',
+      voiceId: 'en-US-GuyNeural',
+      source: 'edge',
+      category: 'Neural',
+    },
+    {
+      name: 'Davis (Male)',
+      voiceId: 'en-US-DavisNeural',
+      source: 'edge',
+      category: 'Neural',
+    },
+    {
+      name: 'Brian (Male)',
+      voiceId: 'en-US-BrianNeural',
+      source: 'edge',
+      category: 'Neural',
+    },
+    {
+      name: 'Sonia (Female)',
+      voiceId: 'en-GB-SoniaNeural',
+      source: 'edge',
+      category: 'Neural',
+    },
   ];
 }

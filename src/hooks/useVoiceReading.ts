@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Animated } from 'react-native';
-import { bibleTTS, DeviceVoice } from '../utilits/bibleTTS';
+import { bibleTTS } from '../utilits/bibleTTS';
+import { ttsService, TTSVoice } from '../services/ttsService';
 import { computeWordMap, WordSpan } from '../utilits/bibleUtils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -29,6 +30,9 @@ export interface VoiceReadingResult {
   speechRate: number;
   sleepTimerRemaining: number;
   activeVerseWordMap: WordSpan[] | null;
+  currentVoiceId: string;
+  voiceList: TTSVoice[];
+  edgeEnabled: boolean;
 
   // ── Callbacks ────────────────────────────────────────────────────────────
   startReadingChapter: () => void;
@@ -44,6 +48,7 @@ export interface VoiceReadingResult {
   handleAfterPlayChange: (
     behaviour: 'stop' | 'repeat_one' | 'repeat' | 'continue',
   ) => void;
+  onVoiceSelect: (voiceId: string) => void;
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -73,6 +78,10 @@ export function useVoiceReading({
   >('continue');
   const [speechRate, setSpeechRate] = useState<number>(1.0);
   const [sleepTimerRemaining, setSleepTimerRemaining] = useState<number>(0);
+  const [currentVoiceId, setCurrentVoiceId] = useState<string>(
+    bibleTTS.edgeVoiceId,
+  );
+  const [voiceList, setVoiceList] = useState<TTSVoice[]>([]);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const audioPlaylistRef = useRef<Array<{ num: number; text: string }>>([]);
@@ -105,6 +114,24 @@ export function useVoiceReading({
   useEffect(() => {
     afterPlayBehaviourRef.current = afterPlayBehaviour;
   }, [afterPlayBehaviour]);
+
+  // ── Voice list + selection ─────────────────────────────────────────────────
+  useEffect(() => {
+    ttsService.getVoices().then(list => {
+      if (list.length > 0) {
+        setVoiceList(list);
+        const saved = bibleTTS.edgeVoiceId;
+        if (!list.find(v => v.voiceId === saved)) {
+          setCurrentVoiceId(list[0].voiceId);
+        }
+      }
+    });
+  }, []);
+
+  const onVoiceSelect = useCallback((voiceId: string) => {
+    setCurrentVoiceId(voiceId);
+    bibleTTS.setEdgeVoice(voiceId);
+  }, []);
 
   // ── Active verse word map (for word-level highlighting) ────────────────────
   const activeVerseWordMap = useMemo((): WordSpan[] | null => {
@@ -182,7 +209,7 @@ export function useVoiceReading({
       });
 
       try {
-        await bibleTTS.speakVerses(
+        const speakPromise = bibleTTS.speakVerses(
           [verse],
           currentBookRef.current,
           currentChapterRef.current,
@@ -191,6 +218,15 @@ export function useVoiceReading({
               index === 0 && audioScopeRef.current === 'chapter',
           },
         );
+
+        // Prefetch the next verse while current one plays (eliminates transition gap)
+        const nextIndex = index + 1;
+        if (nextIndex < playlist.length && bibleTTS.edgeEnabled) {
+          const nextVerse = playlist[nextIndex];
+          bibleTTS.prefetchAudio(nextVerse.text).catch(() => {});
+        }
+
+        await speakPromise;
       } catch (err) {
         console.warn('[useVoiceReading] speakVerses error:', err);
       }
@@ -454,9 +490,7 @@ export function useVoiceReading({
   }, [speakVerseAtIndex]);
 
   // ── Sleep timer ──────────────────────────────────────────────────────────────
-  const sleepTimerValues = [
-    0, 300, 600, 900, 1800, 60,
-  ]; // 0 = off, then 5min, 10min, 15min, 30min, 1min
+  const sleepTimerValues = [0, 300, 600, 900, 1800, 60]; // 0 = off, then 5min, 10min, 15min, 30min, 1min
 
   const onSleepTimerToggle = useCallback(() => {
     setSleepTimerRemaining(prev => {
@@ -494,9 +528,7 @@ export function useVoiceReading({
   );
 
   const handleAfterPlayChange = useCallback(
-    (
-      behaviour: 'stop' | 'repeat_one' | 'repeat' | 'continue',
-    ) => {
+    (behaviour: 'stop' | 'repeat_one' | 'repeat' | 'continue') => {
       afterPlayBehaviourRef.current = behaviour;
       setAfterPlayBehaviour(behaviour);
     },
@@ -515,6 +547,9 @@ export function useVoiceReading({
     speechRate,
     sleepTimerRemaining,
     activeVerseWordMap,
+    currentVoiceId,
+    voiceList,
+    edgeEnabled: bibleTTS.edgeEnabled,
     startReadingChapter,
     startReadingSelectedVerses,
     handleAudioStop,
@@ -526,5 +561,6 @@ export function useVoiceReading({
     onSleepTimerToggle,
     handleAudioScopeChange,
     handleAfterPlayChange,
+    onVoiceSelect,
   };
 }

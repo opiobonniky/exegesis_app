@@ -105,7 +105,10 @@ export const useBible = () => {
   >({});
   const [explainingVerse, setExplainingVerse] = useState<number | null>(null);
   const [dailyVerseRefMap, setDailyVerseRefMap] = useState<
-    Record<number, { reflection?: string; explanation?: string; learnMore?: string }>
+    Record<
+      number,
+      { reflection?: string; explanation?: string; learnMore?: string }
+    >
   >({});
   const [noteText, setNoteText] = useState<string>('');
   const [noteSaving, setNoteSaving] = useState<boolean>(false);
@@ -175,6 +178,9 @@ export const useBible = () => {
     speechRate,
     sleepTimerRemaining,
     activeVerseWordMap,
+    currentVoiceId,
+    voiceList,
+    edgeEnabled,
     startReadingChapter,
     startReadingSelectedVerses,
     handleAudioStop,
@@ -186,6 +192,7 @@ export const useBible = () => {
     onSleepTimerToggle,
     handleAudioScopeChange,
     handleAfterPlayChange,
+    onVoiceSelect,
   } = useVoiceReading({
     verses,
     versesArray,
@@ -238,7 +245,11 @@ export const useBible = () => {
 
   // ─── Get verse text async (from backend with local fallback) ─────────────────────
   const getVerseTextAsync = useCallback(
-    async (bookName: string, chapter: number, verseNumber: number): Promise<string | null> => {
+    async (
+      bookName: string,
+      chapter: number,
+      verseNumber: number,
+    ): Promise<string | null> => {
       try {
         const result = await bibleApi.getVerse(
           activeVersionId,
@@ -477,7 +488,8 @@ export const useBible = () => {
         // Normalize input to an array (accepts Array, Set, or single number)
         let versesArr: number[] = [];
         if (Array.isArray(versesToFav)) versesArr = versesToFav.slice();
-        else if (versesToFav instanceof Set) versesArr = Array.from(versesToFav);
+        else if (versesToFav instanceof Set)
+          versesArr = Array.from(versesToFav);
         else if (typeof versesToFav === 'number') versesArr = [versesToFav];
 
         if (!versesArr || versesArr.length === 0) return;
@@ -489,7 +501,13 @@ export const useBible = () => {
         // Always send an array for consistency with backend expectations
         body.verseNumbers = versesArr;
 
-        const response = await sendPostRequest<any>('bible', 'add-favorite', body, undefined, true);
+        const response = await sendPostRequest<any>(
+          'bible',
+          'add-favorite',
+          body,
+          undefined,
+          true,
+        );
 
         if (response.returnCode === 200) {
           setFavorites(prev => new Set([...Array.from(prev), ...versesArr]));
@@ -539,7 +557,13 @@ export const useBible = () => {
         // Always send array key
         body.verseNumbers = versesArr;
 
-        const hlRes = await sendPostRequest('bible', 'add-highlight', body, undefined, true);
+        const hlRes = await sendPostRequest(
+          'bible',
+          'add-highlight',
+          body,
+          undefined,
+          true,
+        );
         pendingVersesRef.current = [];
         setSelectedVerses([]);
 
@@ -551,7 +575,7 @@ export const useBible = () => {
           });
           return next;
         });
-      } catch (err:any) {
+      } catch (err: any) {
         console.warn('Failed to highlight', err);
         showToast('error', 'Failed to highlight');
       }
@@ -569,11 +593,17 @@ export const useBible = () => {
           chapter: currentChapter,
           verseNumber,
         });
-        if (res.returnCode === 200 && res.returnData && res.returnData.highlights) {
+        if (
+          res.returnCode === 200 &&
+          res.returnData &&
+          res.returnData.highlights
+        ) {
           const hs: any[] = res.returnData.highlights;
           for (const h of hs) {
             try {
-              await sendPostRequest('bible', 'delete-highlight', { highlightId: h.id });
+              await sendPostRequest('bible', 'delete-highlight', {
+                highlightId: h.id,
+              });
             } catch (e) {
               console.warn('Failed to delete highlight id', h.id, e);
             }
@@ -585,7 +615,7 @@ export const useBible = () => {
           delete next[highlightKey];
           return next;
         });
-      } catch (err:any) {
+      } catch (err: any) {
         console.warn('Failed to remove highlight', err);
       }
     },
@@ -643,7 +673,11 @@ export const useBible = () => {
 
   // ─── Explanation / Notes ────────────────────────────────────────────────────
   const getverseExplanation = useCallback(
-    async (verseNumbers: number[], bookName: string, chapter: number): Promise<boolean> => {
+    async (
+      verseNumbers: number[],
+      bookName: string,
+      chapter: number,
+    ): Promise<boolean> => {
       try {
         if (!verseNumbers || verseNumbers.length === 0) return false;
 
@@ -663,7 +697,10 @@ export const useBible = () => {
           ),
         );
 
-        const explanations: Record<number, { explanation: string; learnMore: string }> = {};
+        const explanations: Record<
+          number,
+          { explanation: string; learnMore: string }
+        > = {};
         results.forEach((result, idx) => {
           if (result.status === 'fulfilled' && result.value) {
             const res = result.value;
@@ -706,11 +743,15 @@ export const useBible = () => {
   const getDailyVerseRef = useCallback(
     async (verseNumber: number, bookName: string, chapter: number) => {
       try {
-        const res = await sendPostRequest<any>('bible', 'get-daily-verse-by-ref', {
-          bookName,
-          chapter,
-          verseNumber,
-        });
+        const res = await sendPostRequest<any>(
+          'bible',
+          'get-daily-verse-by-ref',
+          {
+            bookName,
+            chapter,
+            verseNumber,
+          },
+        );
         if (res.returnCode === 200 && res.returnData) {
           const dv = res.returnData;
           setDailyVerseRefMap(prev => ({
@@ -775,12 +816,23 @@ export const useBible = () => {
         // Always send array key
         body.verseNumbers = versesArr;
 
-        const noteRes = await sendPostRequest('bible', 'add-verse-note', body, undefined, true);
+        const noteRes = await sendPostRequest(
+          'bible',
+          'add-verse-note',
+          body,
+          undefined,
+          true,
+        );
         pendingVersesRef.current = [];
         setSelectedVerses([]);
-        showToast('success', noteRes.returnCode === 202 ? 'Saved offline — will sync' : 'Note saved');
+        showToast(
+          'success',
+          noteRes.returnCode === 202
+            ? 'Saved offline — will sync'
+            : 'Note saved',
+        );
         closeNoteModal();
-      } catch (err:any) {
+      } catch (err: any) {
         console.warn('Failed to save note', err);
         showToast('error', 'Failed to save note');
       } finally {
@@ -903,6 +955,10 @@ export const useBible = () => {
     onSleepTimerToggle,
     handleAudioScopeChange,
     handleAfterPlayChange,
+    currentVoiceId,
+    voiceList,
+    edgeEnabled,
+    onVoiceSelect,
     goToNextSelectedVerse,
     goToPreviousSelectedVerse,
     handleAudioTogglePlayPause,

@@ -291,6 +291,9 @@ export default function Bible() {
     clearDailyVerseRef,
     explainingVerse,
     isOnline,
+    currentVoiceId,
+    voiceList,
+    onVoiceSelect,
   } = useBible();
 
   const { language, translations } = useLanguage();
@@ -311,28 +314,31 @@ export default function Bible() {
     useState<StrongsEntry | null>(null);
   const [wordStudyLoading, setWordStudyLoading] = useState(false);
 
-  const handleWordPress = useCallback(async (word: StrongsWordData) => {
-    if (!hasAccess('legacy_sower')) {
-      showToast('warning', 'Word Study requires a Legacy Sower subscription');
-      setTimeout(() => navigation.navigate(route.sower), 1200);
-      return;
-    }
-    setSelectedWord(word);
-    setShowWordStudy(true);
-    setWordStudyLoading(true);
-    setSelectedWordEntry(null);
-    if (word.strongsId && word.hasData) {
-      try {
-        const res = await getStrongsEntry(word.strongsId);
-        if (res?.returnData) {
-          setSelectedWordEntry(res.returnData);
-        }
-      } catch (e) {
-        console.error('Failed to fetch Strongs entry:', e);
+  const handleWordPress = useCallback(
+    async (word: StrongsWordData) => {
+      if (!hasAccess('legacy_sower')) {
+        showToast('warning', 'Word Study requires a Legacy Sower subscription');
+        setTimeout(() => navigation.navigate(route.sower), 1200);
+        return;
       }
-    }
-    setWordStudyLoading(false);
-  }, [hasAccess, navigation]);
+      setSelectedWord(word);
+      setShowWordStudy(true);
+      setWordStudyLoading(true);
+      setSelectedWordEntry(null);
+      if (word.strongsId && word.hasData) {
+        try {
+          const res = await getStrongsEntry(word.strongsId);
+          if (res?.returnData) {
+            setSelectedWordEntry(res.returnData);
+          }
+        } catch (e) {
+          console.error('Failed to fetch Strongs entry:', e);
+        }
+      }
+      setWordStudyLoading(false);
+    },
+    [hasAccess, navigation],
+  );
 
   // Fetch Strong's word data when chapter changes
   useEffect(() => {
@@ -359,7 +365,9 @@ export default function Bible() {
       }
     };
     fetchVerseWords();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [currentBook, currentChapter, activeVersion?.id]);
 
   // ── Entry flow: book → chapter → reader ──────────────────────────────
@@ -411,23 +419,17 @@ export default function Bible() {
     ).catch(() => {});
   }, [currentBook, currentChapter, initialLoading]);
 
-  const handleEntrySelectBook = useCallback(
-    (bookName: string) => {
-      setCurrentBook(bookName);
-      setCurrentChapter(1);
-      setSelectionStage('chapter');
-    },
-    [],
-  );
+  const handleEntrySelectBook = useCallback((bookName: string) => {
+    setCurrentBook(bookName);
+    setCurrentChapter(1);
+    setSelectionStage('chapter');
+  }, []);
 
-  const handleEntrySelectChapter = useCallback(
-    (chapter: number) => {
-      setCurrentChapter(chapter);
-      setSelectionStage('reading');
-      hasEnteredReadingRef.current = true;
-    },
-    [],
-  );
+  const handleEntrySelectChapter = useCallback((chapter: number) => {
+    setCurrentChapter(chapter);
+    setSelectionStage('reading');
+    hasEnteredReadingRef.current = true;
+  }, []);
 
   const handleEntryBackFromBooks = useCallback(() => {
     setSelectionStage('reading');
@@ -467,8 +469,6 @@ export default function Bible() {
       loadChapterPrompts();
     }
   }, [currentBook, currentChapter, isGuest]);
-
-
 
   const COLORS = getColors(isDark);
   const styles = useMemo(
@@ -527,8 +527,12 @@ export default function Bible() {
 
   // ── Study Tools state ──────────────────────────────────────────────────────
   const [showStudyTools, setShowStudyTools] = useState(false);
-  const [studyToolsSelectedVerses, setStudyToolsSelectedVerses] = useState<number[]>([]);
-  const [studyToolHighlights, setStudyToolHighlights] = useState<Record<number, { label: string; color: string }>>({});
+  const [studyToolsSelectedVerses, setStudyToolsSelectedVerses] = useState<
+    number[]
+  >([]);
+  const [studyToolHighlights, setStudyToolHighlights] = useState<
+    Record<number, { label: string; color: string }>
+  >({});
 
   useEffect(() => {
     setStudyToolHighlights({});
@@ -553,46 +557,47 @@ export default function Bible() {
   return (
     <View style={styles.container}>
       {/* Offline banner */}
-      
 
       {initialLoading ? (
         <>
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <BibleHeader
-        book={currentBook}
-        chapter={currentChapter}
-        version={activeVersion}
-        isDark={isDark}
-        isRtl={isRtl}
-        onMenuPress={() => {}}
-        onBookPress={() => {}}
-        onSearchPress={() => {}}
-        onVersionPress={() => {}}
-        onStudyToolsPress={() => {}}
-      />
+          {/* ── Header ──────────────────────────────────────────────────────── */}
+          <BibleHeader
+            book={currentBook}
+            chapter={currentChapter}
+            version={activeVersion}
+            isDark={isDark}
+            isRtl={isRtl}
+            onMenuPress={() => {}}
+            onBookPress={() => {}}
+            onSearchPress={() => {}}
+            onVersionPress={() => {}}
+            onStudyToolsPress={() => {}}
+          />
 
-      {/* ── Chapter Navigation ───────────────────────────────────────────── */}
-      <ChapterNavigation
-        currentChapter={currentChapter}
-        maxChapters={maxChapters}
-        isDark={isDark}
-        isAudioPlaying={false}
-        onPrev={() => {}}
-        onNext={() => {}}
-        onSelectChapter={() => {}}
-        onAudioChapter={() => {}}
-      />
+          {/* ── Chapter Navigation ───────────────────────────────────────────── */}
+          <ChapterNavigation
+            currentChapter={currentChapter}
+            maxChapters={maxChapters}
+            isDark={isDark}
+            isAudioPlaying={false}
+            onPrev={() => {}}
+            onNext={() => {}}
+            onSelectChapter={() => {}}
+            onAudioChapter={() => {}}
+          />
 
-      <View style={{ flex: 1 }}>
-        <SkeletonLoader colors={COLORS} />
-      </View>
+          <View style={{ flex: 1 }}>
+            <SkeletonLoader colors={COLORS} />
+          </View>
         </>
       ) : selectionStage === 'book' ? (
         <BookSelectorScreen
           books={books}
           isDark={isDark}
           onSelectBook={handleEntrySelectBook}
-          onBack={hasEnteredReadingRef.current ? handleEntryBackFromBooks : undefined}
+          onBack={
+            hasEnteredReadingRef.current ? handleEntryBackFromBooks : undefined
+          }
         />
       ) : selectionStage === 'chapter' ? (
         <ChapterSelectorScreen
@@ -604,669 +609,696 @@ export default function Bible() {
         />
       ) : (
         <>
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <BibleHeader
-        book={currentBook}
-        chapter={currentChapter}
-        version={activeVersion}
-        isDark={isDark}
-        isRtl={isRtl}
-        onMenuPress={() => {
-          clearSelection();
-          setShowDrawer(true);
-        }}
-        onBookPress={() => {
-          clearSelection();
-          setSelectionStage('book');
-        }}
-        onSearchPress={() => navigation.navigate(route.search)}
-        onVersionPress={() => setShowTranslationPicker(true)}
-        onStudyToolsPress={() => {
-          setStudyToolsSelectedVerses([]);
-          setShowStudyTools(true);
-        }}
-      />
+          {/* ── Header ──────────────────────────────────────────────────────── */}
+          <BibleHeader
+            book={currentBook}
+            chapter={currentChapter}
+            version={activeVersion}
+            isDark={isDark}
+            isRtl={isRtl}
+            onMenuPress={() => {
+              clearSelection();
+              setShowDrawer(true);
+            }}
+            onBookPress={() => {
+              clearSelection();
+              setSelectionStage('book');
+            }}
+            onSearchPress={() => navigation.navigate(route.search)}
+            onVersionPress={() => setShowTranslationPicker(true)}
+            onStudyToolsPress={() => {
+              setStudyToolsSelectedVerses([]);
+              setShowStudyTools(true);
+            }}
+          />
 
-      {/* ── Chapter Navigation ───────────────────────────────────────────── */}
-      <ChapterNavigation
-        currentChapter={currentChapter}
-        maxChapters={maxChapters}
-        isDark={isDark}
-        isAudioPlaying={showAudioPlayer}
-        onPrev={() => goToChapter('prev')}
-        onNext={() => goToChapter('next')}
-        onSelectChapter={() => setSelectionStage('chapter')}
-        onAudioChapter={() =>
-          guard('Audio narration requires a free account.', () => {
-            if (showAudioPlayer) handleAudioStop();
-            else startReadingChapter();
-          })
-        }
-      />
+          {/* ── Chapter Navigation ───────────────────────────────────────────── */}
+          <ChapterNavigation
+            currentChapter={currentChapter}
+            maxChapters={maxChapters}
+            isDark={isDark}
+            isAudioPlaying={showAudioPlayer}
+            onPrev={() => goToChapter('prev')}
+            onNext={() => goToChapter('next')}
+            onSelectChapter={() => setSelectionStage('chapter')}
+            onAudioChapter={() =>
+              guard('Audio narration requires a free account.', () => {
+                if (showAudioPlayer) handleAudioStop();
+                else startReadingChapter();
+              })
+            }
+          />
 
-      {/* ── Chapter Journal Prompts ───────────────────────────────────────── */}
-      {chapterJournalPrompts.length > 0 && !isGuest && (
-        <View
-          style={[
-            styles.chapterPromptsContainer,
-            { backgroundColor: COLORS.surface },
-          ]}
-        >
-          <View style={styles.chapterPromptsHeader}>
-            <Text
-              style={[styles.chapterPromptsTitle, { color: COLORS.primary }]}
-            >
-              {translations?.bible?.chapterReflections || 'Chapter Reflections'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                navigation.navigate(route.journalEntry, {
-                  bookName: currentBook,
-                  chapter: currentChapter,
-                });
-              }}
+          {/* ── Chapter Journal Prompts ───────────────────────────────────────── */}
+          {chapterJournalPrompts.length > 0 && !isGuest && (
+            <View
               style={[
-                styles.addJournalBtn,
-                { backgroundColor: COLORS.primary },
+                styles.chapterPromptsContainer,
+                { backgroundColor: COLORS.surface },
               ]}
             >
-              <Text style={styles.addJournalBtnText}>
-                + {translations?.bible?.add || 'Add'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.promptsScroll}
-          >
-            {chapterJournalPrompts.map((prompt, idx) => (
+              <View style={styles.chapterPromptsHeader}>
+                <Text
+                  style={[
+                    styles.chapterPromptsTitle,
+                    { color: COLORS.primary },
+                  ]}
+                >
+                  {translations?.bible?.chapterReflections ||
+                    'Chapter Reflections'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    navigation.navigate(route.journalEntry, {
+                      bookName: currentBook,
+                      chapter: currentChapter,
+                    });
+                  }}
+                  style={[
+                    styles.addJournalBtn,
+                    { backgroundColor: COLORS.primary },
+                  ]}
+                >
+                  <Text style={styles.addJournalBtnText}>
+                    + {translations?.bible?.add || 'Add'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.promptsScroll}
+              >
+                {chapterJournalPrompts.map((prompt, idx) => (
+                  <TouchableOpacity
+                    key={prompt.id || idx}
+                    style={[
+                      styles.chapterPromptChip,
+                      { borderColor: COLORS.border },
+                    ]}
+                    onPress={() => {
+                      navigation.navigate(route.journalEntry, {
+                        bookName: currentBook,
+                        chapter: currentChapter,
+                        promptText: prompt.prompt,
+                      });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[styles.chapterPromptText, { color: COLORS.text }]}
+                      numberOfLines={2}
+                    >
+                      {prompt.prompt}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* ── Verses List ──────────────────────────────────────────────────── */}
+          {isFromReadingPlan ? (
+            <View
+              style={{ flex: 1, marginBottom: -80 }}
+              {...panResponder.panHandlers}
+            >
+              <VerseList
+                versesArray={versesArray}
+                selectedVerses={selectedVerses}
+                highlights={highlights}
+                favorites={favorites}
+                highlightedVerse={highlightedVerse}
+                activeAudioVerse={activeAudioVerse}
+                activeVerseWordMap={activeVerseWordMap}
+                highlightAnim={highlightAnim}
+                fadeAnim={fadeAnim}
+                fontSize={fontSize}
+                currentBook={currentBook}
+                currentChapter={currentChapter}
+                colors={COLORS}
+                styles={styles}
+                flatListRef={flatListRef as React.RefObject<any>}
+                loading={loading}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                onVersePress={verseNumber => {
+                  if (isGuest || showAudioPlayer) return;
+                  //make it handle the strong words when tapple to open the word study bottom sheet apply on word not the verse
+                }}
+                onRemoveHighlight={removeHighlight}
+                onExplain={async vn => {
+                  if (isGuest) {
+                    showGate('Sign in to see explanations.');
+                    return;
+                  }
+                  const found = await getverseExplanation(
+                    [vn],
+                    currentBook,
+                    currentChapter,
+                  );
+                  if (found) clearSelection();
+                }}
+                onShare={vn => shareVerses([vn])}
+                onCopy={vn => copyVerses([vn])}
+                onDoubleTap={verseNumber => {
+                  openVerseMenu(verseNumber);
+                }}
+                onLongPress={vn =>
+                  guard(
+                    'Highlights are saved to your account. Sign in to use this feature.',
+                    () => {
+                      setPendingVerses([vn]);
+                      toggleVerseSelection(vn);
+                      setShowHighlightPicker(true);
+                    },
+                  )
+                }
+                onCloseExplanation={vn => {
+                  clearVerseExplanationForVerse(vn);
+                }}
+                explanationMap={verseExplanationMap}
+                onDailyVerse={vn => {
+                  getDailyVerseRef(vn, currentBook, currentChapter);
+                }}
+                onCloseDailyVerse={vn => {
+                  clearDailyVerseRef(vn);
+                }}
+                dailyVerseRefMap={dailyVerseRefMap}
+                verseJournalPrompts={verseJournalPrompts}
+                explainingVerse={explainingVerse}
+                navigation={navigation}
+                verseWordMap={verseWordMap}
+                onWordPress={handleWordPress}
+                studyToolHighlights={studyToolHighlights}
+              />
+            </View>
+          ) : (
+            <VerseList
+              versesArray={versesArray}
+              selectedVerses={selectedVerses}
+              highlights={highlights}
+              favorites={favorites}
+              highlightedVerse={highlightedVerse}
+              activeAudioVerse={activeAudioVerse}
+              activeVerseWordMap={activeVerseWordMap}
+              highlightAnim={highlightAnim}
+              fadeAnim={fadeAnim}
+              fontSize={fontSize}
+              navigation={navigation}
+              currentBook={currentBook}
+              currentChapter={currentChapter}
+              colors={COLORS}
+              styles={styles}
+              flatListRef={flatListRef as React.RefObject<any>}
+              loading={loading}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              onVersePress={verseNumber => {
+                if (isGuest || showAudioPlayer) return;
+                toggleVerseSelection(verseNumber);
+                addReadHistory(verseNumber);
+              }}
+              onRemoveHighlight={removeHighlight}
+              onExplain={async vn => {
+                if (isGuest) {
+                  showGate('Sign in to see explanations.');
+                  return;
+                }
+                const found = await getverseExplanation(
+                  [vn],
+                  currentBook,
+                  currentChapter,
+                );
+                if (found) clearSelection();
+              }}
+              onShare={vn => shareVerses([vn])}
+              onCopy={vn => copyVerses([vn])}
+              onDoubleTap={verseNumber => {
+                openVerseMenu(verseNumber);
+              }}
+              onCloseExplanation={vn => {
+                clearVerseExplanationForVerse(vn);
+              }}
+              explanationMap={verseExplanationMap}
+              onDailyVerse={vn => {
+                getDailyVerseRef(vn, currentBook, currentChapter);
+              }}
+              onCloseDailyVerse={vn => {
+                clearDailyVerseRef(vn);
+              }}
+              dailyVerseRefMap={dailyVerseRefMap}
+              verseJournalPrompts={verseJournalPrompts}
+              explainingVerse={explainingVerse}
+              verseWordMap={verseWordMap}
+              onWordPress={handleWordPress}
+              studyToolHighlights={studyToolHighlights}
+            />
+          )}
+
+          {/* ── Reflection Questions Panel (from Reading Plan) ──────────────── */}
+          {isFromReadingPlan && rpStyles && (
+            <View style={rpStyles.wrapper}>
+              {/* Toggle bar */}
               <TouchableOpacity
-                key={prompt.id || idx}
+                activeOpacity={0.85}
+                onPress={toggleReflection}
                 style={[
-                  styles.chapterPromptChip,
-                  { borderColor: COLORS.border },
+                  rpStyles.toggleButton,
+                  reflectionOpen && {
+                    borderTopLeftRadius: 0,
+                    borderTopRightRadius: 0,
+                  },
                 ]}
-                onPress={() => {
+              >
+                <View style={rpStyles.toggleLeft}>
+                  <View style={rpStyles.iconCircle}>
+                    <Lightbulb size={18} color="#FFFFFF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={rpStyles.toggleTitle}>
+                      {planTitle ||
+                        translations?.bible?.readingPlan ||
+                        'Reading Plan'}{' '}
+                      — {translations?.bible?.reflections || 'Reflections'}
+                    </Text>
+                    <Text style={rpStyles.toggleSubtitle}>
+                      {dayTitle ||
+                        `${translations?.bible?.day || 'Day'} ${routeParams.day || ''}`}
+                    </Text>
+                  </View>
+                </View>
+                <View style={rpStyles.toggleArrow}>
+                  {reflectionOpen ? (
+                    <ChevronDown size={20} color="#FFFFFF" />
+                  ) : (
+                    <ChevronUp size={20} color="#FFFFFF" />
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              {/* Expanded reflection cards */}
+              {reflectionOpen && (
+                <ScrollView
+                  style={rpStyles.listContent}
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                >
+                  {reflectionQuestions.map((q: string, idx: number) => (
+                    <View
+                      key={idx}
+                      style={[
+                        rpStyles.card,
+                        {
+                          backgroundColor: COLORS.cardBackground,
+                          borderColor: COLORS.border,
+                        },
+                      ]}
+                    >
+                      <View style={rpStyles.cardTopRow}>
+                        <View style={rpStyles.numBadge}>
+                          <Text style={rpStyles.numText}>{idx + 1}</Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => {
+                            navigation.navigate(route.journalEntry, {
+                              bookName: currentBook,
+                              chapter: currentChapter,
+                              promptText: q,
+                            });
+                          }}
+                          style={[
+                            rpStyles.journalLink,
+                            { backgroundColor: COLORS.primary + '20' },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              rpStyles.journalLinkText,
+                              { color: COLORS.primary },
+                            ]}
+                          >
+                            {translations?.bible?.journal || 'Journal'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text
+                        style={[
+                          rpStyles.questionText,
+                          { color: COLORS.textSecondary },
+                        ]}
+                      >
+                        {q}
+                      </Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          )}
+
+          {/* ── Modals ──────────────────────────────────────────────────────── */}
+
+          <HighlightPickerModal
+            visible={showHighlightPicker}
+            onClose={() => {
+              setShowHighlightPicker(false);
+              setPendingVerses([]);
+              clearSelection();
+            }}
+            isDark={isDark}
+            selectedVerses={selectedVerses}
+            totalVerses={Object.keys(verses).length}
+            onSelectColor={(colorId, color, rangeStart, rangeEnd) => {
+              setShowHighlightPicker(false);
+              highlightVerses(colorId, color, rangeStart, rangeEnd);
+              setPendingVerses([]);
+              clearSelection();
+            }}
+          />
+
+          {/* DrawerMenu — guests can only change version; nav items are gated inside */}
+          <DrawerMenu
+            visible={showDrawer}
+            onClose={() => setShowDrawer(false)}
+            fontSize={fontSize}
+            onFontSizeChange={setFontSize}
+            bibleVersionId={bibleVersionId}
+            onVersionChange={handleVersionChange}
+            showVersionPicker={showVersionPicker}
+            onToggleVersionPicker={() => setShowVersionPicker(v => !v)}
+            navigation={navigation}
+            isDark={isDark}
+            isGuest={isGuest}
+            onGuestNavPress={() => {
+              setShowDrawer(false);
+              setTimeout(
+                () =>
+                  showGate(
+                    'My Highlights, Notes, History and Favourites require a free account.',
+                  ),
+                300,
+              );
+            }}
+          />
+
+          <NoteModal
+            visible={showNoteModal}
+            onClose={closeNoteModal}
+            onSave={(rangeStart, rangeEnd) => saveNote(rangeStart, rangeEnd)}
+            noteText={noteText}
+            onNoteChange={setNoteText}
+            saving={noteSaving}
+            selectedVerses={selectedVerses}
+            totalVerses={Object.keys(verses).length}
+            currentBook={currentBook}
+            currentChapter={currentChapter}
+            isDark={isDark}
+          />
+
+          {/* ── Verse Side Menu ──────────────────────────────────────────────── */}
+          <VerseSideMenu
+            visible={verseMenuVisible}
+            verseNumber={verseMenuVerse ?? 0}
+            verseText={verseMenuVerse ? (verses[verseMenuVerse] ?? '') : ''}
+            navigation={navigation}
+            currentBook={currentBook}
+            currentChapter={currentChapter}
+            isDark={isDark}
+            isRtl={isRtl}
+            isGuest={isGuest}
+            onClose={closeVerseMenu}
+            onGuestAction={handleVerseMenuGuestAction}
+            selectedCount={selectedVerses.length}
+            selectedVerses={selectedVerses}
+            totalVerses={Object.keys(verses).length}
+            onRangeChange={(start, end) => setVerseRangeSelection(start, end)}
+            onListen={() =>
+              guard('Audio narration requires a free account.', () => {
+                const current = getVerseMenuSelection();
+                clearSelection();
+                startReadingSelectedVerses(current);
+              })
+            }
+            onJournal={() =>
+              guard(
+                'Journal entries are saved to your account. Sign in to use this feature.',
+                () => {
+                  const verses = getVerseMenuSelection();
+                  const v = verses[0] ?? 1;
+                  clearSelection();
                   navigation.navigate(route.journalEntry, {
                     bookName: currentBook,
                     chapter: currentChapter,
-                    promptText: prompt.prompt,
+                    verseStart: v,
+                    verseEnd: v,
                   });
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[styles.chapterPromptText, { color: COLORS.text }]}
-                  numberOfLines={2}
-                >
-                  {prompt.prompt}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* ── Verses List ──────────────────────────────────────────────────── */}
-      {isFromReadingPlan ? (
-        <View
-          style={{ flex: 1, marginBottom: -80 }}
-          {...panResponder.panHandlers}
-        >
-          <VerseList
-            versesArray={versesArray}
-            selectedVerses={selectedVerses}
-            highlights={highlights}
-            favorites={favorites}
-            highlightedVerse={highlightedVerse}
-            activeAudioVerse={activeAudioVerse}
-            activeVerseWordMap={activeVerseWordMap}
-            highlightAnim={highlightAnim}
-            fadeAnim={fadeAnim}
-            fontSize={fontSize}
-            currentBook={currentBook}
-            currentChapter={currentChapter}
-            colors={COLORS}
-            styles={styles}
-            flatListRef={flatListRef as React.RefObject<any>}
-            loading={loading}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            onVersePress={verseNumber => {
-              if (isGuest || showAudioPlayer) return;
-              //make it handle the strong words when tapple to open the word study bottom sheet apply on word not the verse
-            }}
-            onRemoveHighlight={removeHighlight}
-            onExplain={async vn => {
-              if (isGuest) {
-                showGate('Sign in to see explanations.');
-                return;
+                },
+              )
+            }
+            onExplain={async () => {
+              const verses = getVerseMenuSelection();
+              if (verses.length > 0) {
+                await getverseExplanation(verses, currentBook, currentChapter);
               }
-              const found = await getverseExplanation(
-                [vn],
-                currentBook,
-                currentChapter,
-              );
-              if (found) clearSelection();
             }}
-            onShare={vn => shareVerses([vn])}
-            onCopy={vn => copyVerses([vn])}
-            onDoubleTap={verseNumber => {
-              openVerseMenu(verseNumber);
-            }}
-            onLongPress={vn =>
+            onHighlight={() =>
               guard(
                 'Highlights are saved to your account. Sign in to use this feature.',
                 () => {
-                  setPendingVerses([vn]);
-                  toggleVerseSelection(vn);
+                  const verses = getVerseMenuSelection();
+                  setPendingVerses(verses);
+                  if (verses.length === 1)
+                    setVerseRangeSelection(verses[0], verses[0]);
                   setShowHighlightPicker(true);
                 },
               )
             }
-            onCloseExplanation={vn => {
-              clearVerseExplanationForVerse(vn);
-            }}
-            explanationMap={verseExplanationMap}
-            onDailyVerse={vn => {
-              getDailyVerseRef(vn, currentBook, currentChapter);
-            }}
-            onCloseDailyVerse={vn => {
-              clearDailyVerseRef(vn);
-            }}
-            dailyVerseRefMap={dailyVerseRefMap}
-            verseJournalPrompts={verseJournalPrompts}
-            explainingVerse={explainingVerse}
-            navigation={navigation}
-            verseWordMap={verseWordMap}
-            onWordPress={handleWordPress}
-            studyToolHighlights={studyToolHighlights}
-        />
-      </View>
-    ) : (
-      <VerseList
-          versesArray={versesArray}
-          selectedVerses={selectedVerses}
-          highlights={highlights}
-          favorites={favorites}
-          highlightedVerse={highlightedVerse}
-          activeAudioVerse={activeAudioVerse}
-          activeVerseWordMap={activeVerseWordMap}
-          highlightAnim={highlightAnim}
-          fadeAnim={fadeAnim}
-          fontSize={fontSize}
-          navigation={navigation}
-          currentBook={currentBook}
-          currentChapter={currentChapter}
-          colors={COLORS}
-          styles={styles}
-          flatListRef={flatListRef as React.RefObject<any>}
-          loading={loading}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          onVersePress={verseNumber => {
-            if (isGuest || showAudioPlayer) return;
-            toggleVerseSelection(verseNumber);
-            addReadHistory(verseNumber);
-          }}
-          onRemoveHighlight={removeHighlight}
-          onExplain={async vn => {
-            if (isGuest) {
-              showGate('Sign in to see explanations.');
-              return;
+            onNote={() =>
+              guard(
+                'Notes are saved to your account. Sign in to use this feature.',
+                () => {
+                  const verses = getVerseMenuSelection();
+                  setPendingVerses(verses);
+                  if (verses.length === 1)
+                    setVerseRangeSelection(verses[0], verses[0]);
+                  openNoteModal();
+                },
+              )
             }
-            const found = await getverseExplanation(
-              [vn],
-              currentBook,
-              currentChapter,
-            );
-            if (found) clearSelection();
-          }}
-          onShare={vn => shareVerses([vn])}
-          onCopy={vn => copyVerses([vn])}
-          onDoubleTap={verseNumber => {
-            openVerseMenu(verseNumber);
-          }}
-          onCloseExplanation={vn => {
-            clearVerseExplanationForVerse(vn);
-          }}
-          explanationMap={verseExplanationMap}
-          onDailyVerse={vn => {
-            getDailyVerseRef(vn, currentBook, currentChapter);
-          }}
-          onCloseDailyVerse={vn => {
-            clearDailyVerseRef(vn);
-          }}
-          dailyVerseRefMap={dailyVerseRefMap}
-          verseJournalPrompts={verseJournalPrompts}
-          explainingVerse={explainingVerse}
-          verseWordMap={verseWordMap}
-          onWordPress={handleWordPress}
-          studyToolHighlights={studyToolHighlights}
-        />
-      )}
+            onFavorite={() =>
+              guard(
+                'Favourites are saved to your account. Sign in to use this feature.',
+                () => {
+                  const verses = getVerseMenuSelection();
+                  clearSelection();
+                  addFavorite(verses);
+                },
+              )
+            }
+            onShare={() =>
+              guard('Sharing requires a free account.', () => {
+                const verses = getVerseMenuSelection();
+                clearSelection();
+                shareVerses(verses);
+              })
+            }
+            onCopy={() =>
+              guard('Copying requires a free account.', () => {
+                const verses = getVerseMenuSelection();
+                clearSelection();
+                copyVerses(verses);
+              })
+            }
+            onOpenNoteModal={verseNumber => {
+              guard(
+                'Notes are saved to your account. Sign in to use this feature.',
+                () => {
+                  setPendingVerses([verseNumber]);
+                  setVerseRangeSelection(verseNumber, verseNumber);
+                  openNoteModal();
+                },
+              );
+            }}
+            onOpenHighlightPicker={verseNumber => {
+              guard(
+                'Highlights are saved to your account. Sign in to use this feature.',
+                () => {
+                  setPendingVerses([verseNumber]);
+                  setVerseRangeSelection(verseNumber, verseNumber);
+                  setShowHighlightPicker(true);
+                },
+              );
+            }}
+            onOpenWordStudy={verseNumber => {
+              const words = verseWordMap[verseNumber];
+              if (words && words.length > 0) {
+                handleWordPress(words[0]);
+              }
+            }}
+            onOpenStudyTools={verses => {
+              setStudyToolsSelectedVerses(verses);
+              setShowStudyTools(true);
+            }}
+          />
 
-      {/* ── Reflection Questions Panel (from Reading Plan) ──────────────── */}
-      {isFromReadingPlan && rpStyles && (
-        <View style={rpStyles.wrapper}>
-          {/* Toggle bar */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={toggleReflection}
-            style={[
-              rpStyles.toggleButton,
-              reflectionOpen && {
-                borderTopLeftRadius: 0,
-                borderTopRightRadius: 0,
-              },
-            ]}
-          >
-            <View style={rpStyles.toggleLeft}>
-              <View style={rpStyles.iconCircle}>
-                <Lightbulb size={18} color="#FFFFFF" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={rpStyles.toggleTitle}>
-                  {planTitle ||
-                    translations?.bible?.readingPlan ||
-                    'Reading Plan'}{' '}
-                  — {translations?.bible?.reflections || 'Reflections'}
-                </Text>
-                <Text style={rpStyles.toggleSubtitle}>
-                  {dayTitle ||
-                    `${translations?.bible?.day || 'Day'} ${routeParams.day || ''}`}
-                </Text>
-              </View>
-            </View>
-            <View style={rpStyles.toggleArrow}>
-              {reflectionOpen ? (
-                <ChevronDown size={20} color="#FFFFFF" />
-              ) : (
-                <ChevronUp size={20} color="#FFFFFF" />
-              )}
-            </View>
-          </TouchableOpacity>
+          {/* ── Word Study Bottom Sheet (Strong's Concordance) ──────────────── */}
+          <WordStudyBottomSheet
+            visible={showWordStudy}
+            word={selectedWord}
+            entry={selectedWordEntry}
+            loading={wordStudyLoading}
+            isDark={isDark}
+            onClose={() => setShowWordStudy(false)}
+            onSearchAllUses={(strongsId, word) => {
+              setShowWordStudy(false);
+              const englishWord = (word ?? strongsId ?? '').trim();
+              if (englishWord.length > 0) {
+                navigation.navigate(route.search, {
+                  word: englishWord,
+                  scope: 'bible',
+                  strongsId: strongsId || undefined,
+                });
+              } else if (strongsId) {
+                navigation.navigate(route.search, {
+                  strongsId,
+                  scope: 'strongs',
+                });
+              }
+            }}
+            onSaveWord={entry => {
+              // Future: persist saved word to user account
+              setShowWordStudy(false);
+            }}
+          />
 
-          {/* Expanded reflection cards */}
-          {reflectionOpen && (
-            <ScrollView
-              style={rpStyles.listContent}
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-            >
-              {reflectionQuestions.map((q: string, idx: number) => (
-                <View
-                  key={idx}
-                  style={[
-                    rpStyles.card,
-                    {
-                      backgroundColor: COLORS.cardBackground,
-                      borderColor: COLORS.border,
-                    },
-                  ]}
-                >
-                  <View style={rpStyles.cardTopRow}>
-                    <View style={rpStyles.numBadge}>
-                      <Text style={rpStyles.numText}>{idx + 1}</Text>
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => {
-                        navigation.navigate(route.journalEntry, {
-                          bookName: currentBook,
-                          chapter: currentChapter,
-                          promptText: q,
-                        });
-                      }}
-                      style={[
-                        rpStyles.journalLink,
-                        { backgroundColor: COLORS.primary + '20' },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          rpStyles.journalLinkText,
-                          { color: COLORS.primary },
-                        ]}
-                      >
-                        {translations?.bible?.journal || 'Journal'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                  <Text
-                    style={[
-                      rpStyles.questionText,
-                      { color: COLORS.textSecondary },
-                    ]}
-                  >
-                    {q}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-      )}
-
-      {/* ── Modals ──────────────────────────────────────────────────────── */}
-
-      <HighlightPickerModal
-        visible={showHighlightPicker}
-        onClose={() => {
-          setShowHighlightPicker(false);
-          setPendingVerses([]);
-          clearSelection();
-        }}
-        isDark={isDark}
-        selectedVerses={selectedVerses}
-        totalVerses={Object.keys(verses).length}
-        onSelectColor={(colorId, color, rangeStart, rangeEnd) => {
-          setShowHighlightPicker(false);
-          highlightVerses(colorId, color, rangeStart, rangeEnd);
-          setPendingVerses([]);
-          clearSelection();
-        }}
-      />
-
-      {/* DrawerMenu — guests can only change version; nav items are gated inside */}
-      <DrawerMenu
-        visible={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        fontSize={fontSize}
-        onFontSizeChange={setFontSize}
-        bibleVersionId={bibleVersionId}
-        onVersionChange={handleVersionChange}
-        showVersionPicker={showVersionPicker}
-        onToggleVersionPicker={() => setShowVersionPicker(v => !v)}
-        navigation={navigation}
-        isDark={isDark}
-        isGuest={isGuest}
-        onGuestNavPress={() => {
-          setShowDrawer(false);
-          setTimeout(
-            () =>
-              showGate(
-                'My Highlights, Notes, History and Favourites require a free account.',
-              ),
-            300,
-          );
-        }}
-      />
-
-      <NoteModal
-        visible={showNoteModal}
-        onClose={closeNoteModal}
-        onSave={(rangeStart, rangeEnd) => saveNote(rangeStart, rangeEnd)}
-        noteText={noteText}
-        onNoteChange={setNoteText}
-        saving={noteSaving}
-        selectedVerses={selectedVerses}
-        totalVerses={Object.keys(verses).length}
-        currentBook={currentBook}
-        currentChapter={currentChapter}
-        isDark={isDark}
-      />
-
-      {/* ── Verse Side Menu ──────────────────────────────────────────────── */}
-      <VerseSideMenu
-        visible={verseMenuVisible}
-        verseNumber={verseMenuVerse ?? 0}
-        verseText={verseMenuVerse ? verses[verseMenuVerse] ?? '' : ''}
-        navigation={navigation}
-        currentBook={currentBook}
-        currentChapter={currentChapter}
-        isDark={isDark}
-        isRtl={isRtl}
-        isGuest={isGuest}
-        onClose={closeVerseMenu}
-        onGuestAction={handleVerseMenuGuestAction}
-        selectedCount={selectedVerses.length}
-        selectedVerses={selectedVerses}
-        totalVerses={Object.keys(verses).length}
-        onRangeChange={(start, end) => setVerseRangeSelection(start, end)}
-        onListen={() =>
-          guard('Audio narration requires a free account.', () => {
-            const current = getVerseMenuSelection();
-            clearSelection();
-            startReadingSelectedVerses(current);
-          })
-        }
-        onJournal={() =>
-          guard(
-            'Journal entries are saved to your account. Sign in to use this feature.',
-            () => {
-              const verses = getVerseMenuSelection();
-              const v = verses[0] ?? 1;
-              clearSelection();
-              navigation.navigate(route.journalEntry, {
-                bookName: currentBook,
-                chapter: currentChapter,
-                verseStart: v,
-                verseEnd: v,
+          {/* ── Chapter Study Tools Sheet ───────────────────────────────────── */}
+          <ChapterStudyToolsSheet
+            visible={showStudyTools}
+            onClose={() => setShowStudyTools(false)}
+            bookName={currentBook}
+            chapter={currentChapter}
+            selectedVerses={studyToolsSelectedVerses}
+            onScrollToVerse={verse => {
+              flatListRef.current?.scrollToIndex({
+                index: Math.max(0, verse - 1),
+                animated: true,
               });
-            },
-          )
-        }
-        onExplain={async () => {
-          const verses = getVerseMenuSelection();
-          if (verses.length > 0) {
-            await getverseExplanation(verses, currentBook, currentChapter);
-          }
-        }}
-        onHighlight={() =>
-          guard(
-            'Highlights are saved to your account. Sign in to use this feature.',
-            () => {
-              const verses = getVerseMenuSelection();
-              setPendingVerses(verses);
-              if (verses.length === 1) setVerseRangeSelection(verses[0], verses[0]);
-              setShowHighlightPicker(true);
-            },
-          )
-        }
-        onNote={() =>
-          guard(
-            'Notes are saved to your account. Sign in to use this feature.',
-            () => {
-              const verses = getVerseMenuSelection();
-              setPendingVerses(verses);
-              if (verses.length === 1) setVerseRangeSelection(verses[0], verses[0]);
-              openNoteModal();
-            },
-          )
-        }
-        onFavorite={() =>
-          guard(
-            'Favourites are saved to your account. Sign in to use this feature.',
-            () => {
-              const verses = getVerseMenuSelection();
-              clearSelection();
-              addFavorite(verses);
-            },
-          )
-        }
-        onShare={() =>
-          guard('Sharing requires a free account.', () => {
-            const verses = getVerseMenuSelection();
-            clearSelection();
-            shareVerses(verses);
-          })
-        }
-        onCopy={() =>
-          guard('Copying requires a free account.', () => {
-            const verses = getVerseMenuSelection();
-            clearSelection();
-            copyVerses(verses);
-          })
-        }
-        onOpenNoteModal={(verseNumber) => {
-          guard(
-            'Notes are saved to your account. Sign in to use this feature.',
-            () => {
-              setPendingVerses([verseNumber]);
-              setVerseRangeSelection(verseNumber, verseNumber);
-              openNoteModal();
-            },
-          );
-        }}
-        onOpenHighlightPicker={(verseNumber) => {
-          guard(
-            'Highlights are saved to your account. Sign in to use this feature.',
-            () => {
-              setPendingVerses([verseNumber]);
-              setVerseRangeSelection(verseNumber, verseNumber);
-              setShowHighlightPicker(true);
-            },
-          );
-        }}
-        onOpenWordStudy={(verseNumber) => {
-          const words = verseWordMap[verseNumber];
-          if (words && words.length > 0) {
-            handleWordPress(words[0]);
-          }
-        }}
-        onOpenStudyTools={(verses) => {
-          setStudyToolsSelectedVerses(verses);
-          setShowStudyTools(true);
-        }}
-      />
+            }}
+            onOpenInLab={(bookName, chapter, verseRefs) => {
+              if (!hasAccess('legacy_sower')) {
+                navigation.navigate(route.sower);
+                return;
+              }
+              navigation.navigate(route.bibleStudy, {
+                bookName,
+                chapter,
+                verseStart: verseRefs[0]?.verse ?? 1,
+                verseEnd: verseRefs[verseRefs.length - 1]?.verse ?? 1,
+              });
+            }}
+            onOpenBookContext={bookName => {
+              if (!hasAccess('legacy_sower')) {
+                navigation.navigate(route.sower);
+                return;
+              }
+              navigation.navigate(route.bibleStudy, {
+                bookName,
+                chapter: currentChapter,
+                verseStart: 1,
+                verseEnd: 1,
+                stage: 'learn',
+                learnTab: 'prologue',
+              });
+            }}
+            onShowInReader={(label, color, verseRefs) => {
+              const next = verseRefs.reduce(
+                (acc, ref) => {
+                  acc[ref.verse] = { label, color };
+                  return acc;
+                },
+                {} as Record<number, { label: string; color: string }>,
+              );
+              setStudyToolHighlights(next);
+              const first = verseRefs[0]?.verse;
+              if (first) {
+                flatListRef.current?.scrollToIndex({
+                  index: Math.max(0, first - 1),
+                  animated: true,
+                });
+              }
+            }}
+          />
 
-      {/* ── Word Study Bottom Sheet (Strong's Concordance) ──────────────── */}
-      <WordStudyBottomSheet
-        visible={showWordStudy}
-        word={selectedWord}
-        entry={selectedWordEntry}
-        loading={wordStudyLoading}
-        isDark={isDark}
-        onClose={() => setShowWordStudy(false)}
-        onSearchAllUses={(strongsId, word) => {
-          setShowWordStudy(false);
-          const englishWord = (word ?? strongsId ?? '').trim();
-          if (englishWord.length > 0) {
-            navigation.navigate(route.search, { word: englishWord, scope: 'bible', strongsId: strongsId || undefined });
-          } else if (strongsId) {
-            navigation.navigate(route.search, { strongsId, scope: 'strongs' });
-          }
-        }}
-        onSaveWord={entry => {
-          // Future: persist saved word to user account
-          setShowWordStudy(false);
-        }}
-      />
+          {/* ── Translation Picker ──────────────────────────────────────────── */}
+          <TranslationPickerModal
+            visible={showTranslationPicker}
+            onClose={() => setShowTranslationPicker(false)}
+            currentVersionId={bibleVersionId}
+            onSelectVersion={handleVersionChange}
+            isDark={isDark}
+            freeTranslationsOnly={freeTranslationsOnly}
+          />
 
-      {/* ── Chapter Study Tools Sheet ───────────────────────────────────── */}
-      <ChapterStudyToolsSheet
-        visible={showStudyTools}
-        onClose={() => setShowStudyTools(false)}
-        bookName={currentBook}
-        chapter={currentChapter}
-        selectedVerses={studyToolsSelectedVerses}
-        onScrollToVerse={(verse) => {
-          flatListRef.current?.scrollToIndex({
-            index: Math.max(0, verse - 1),
-            animated: true,
-          });
-        }}
-        onOpenInLab={(bookName, chapter, verseRefs) => {
-          if (!hasAccess('legacy_sower')) { navigation.navigate(route.sower); return; }
-          navigation.navigate(route.bibleStudy, {
-            bookName,
-            chapter,
-            verseStart: verseRefs[0]?.verse ?? 1,
-            verseEnd: verseRefs[verseRefs.length - 1]?.verse ?? 1,
-          });
-        }}
-        onOpenBookContext={(bookName) => {
-          if (!hasAccess('legacy_sower')) { navigation.navigate(route.sower); return; }
-          navigation.navigate(route.bibleStudy, {
-            bookName,
-            chapter: currentChapter,
-            verseStart: 1,
-            verseEnd: 1,
-            stage: 'learn',
-            learnTab: 'prologue',
-          });
-        }}
-        onShowInReader={(label, color, verseRefs) => {
-          const next = verseRefs.reduce((acc, ref) => {
-            acc[ref.verse] = { label, color };
-            return acc;
-          }, {} as Record<number, { label: string; color: string }>);
-          setStudyToolHighlights(next);
-          const first = verseRefs[0]?.verse;
-          if (first) {
-            flatListRef.current?.scrollToIndex({
-              index: Math.max(0, first - 1),
-              animated: true,
-            });
-          }
-        }}
-      />
+          {/* ── Guest banner (auto nudge + gated action trigger) ────────────── */}
+          <GuestBanner
+            triggered={gateVisible}
+            triggerMessage={gateMessage}
+            onTriggeredDismiss={hideGate}
+          />
 
-      {/* ── Translation Picker ──────────────────────────────────────────── */}
-      <TranslationPickerModal
-        visible={showTranslationPicker}
-        onClose={() => setShowTranslationPicker(false)}
-        currentVersionId={bibleVersionId}
-        onSelectVersion={handleVersionChange}
-        isDark={isDark}
-        freeTranslationsOnly={freeTranslationsOnly}
-      />
+          {/* ── AudioControlBar ───────────────────────────────────────────────── */}
+          <AudioControlBar
+            isPlaying={showAudioPlayer}
+            isPaused={isAudioPaused}
+            nowPlayingLabel={`${currentBook} ${currentChapter}:${activeAudioVerse ?? ''}`}
+            scope={audioScope}
+            afterPlay={afterPlayBehaviour}
+            isRepeat={
+              afterPlayBehaviour === 'repeat' ||
+              afterPlayBehaviour === 'repeat_one'
+            }
+            verseIndex={audioVerseIndex}
+            verseCount={audioPlaylist.length}
+            isDark={isDark}
+            speechRate={speechRate}
+            sleepTimerRemaining={sleepTimerRemaining}
+            onSpeedToggle={onSpeedToggle}
+            onSpeedReset={onSpeedReset}
+            onSleepTimerToggle={onSleepTimerToggle}
+            onPrev={goToPreviousSelectedVerse}
+            onNext={goToNextSelectedVerse}
+            onRepeatToggle={() => {
+              // Cycle through: stop → repeat_one → repeat → continue → stop
+              const current = afterPlayBehaviour;
+              if (current === 'stop') handleAfterPlayChange('repeat_one');
+              else if (current === 'repeat_one')
+                handleAfterPlayChange('repeat');
+              else if (current === 'repeat') handleAfterPlayChange('continue');
+              else handleAfterPlayChange('stop');
+            }}
+            onPlayPause={handleAudioTogglePlayPause}
+            onStop={handleAudioStop}
+            onScopeChange={handleAudioScopeChange}
+            onAfterPlayChange={handleAfterPlayChange}
+            currentVoiceId={currentVoiceId}
+            voiceList={voiceList}
+            onVoiceSelect={onVoiceSelect}
+          />
 
-      {/* ── Guest banner (auto nudge + gated action trigger) ────────────── */}
-      <GuestBanner
-        triggered={gateVisible}
-        triggerMessage={gateMessage}
-        onTriggeredDismiss={hideGate}
-      />
-
-      {/* ── AudioControlBar ───────────────────────────────────────────────── */}
-      <AudioControlBar
-        isPlaying={showAudioPlayer}
-        isPaused={isAudioPaused}
-        nowPlayingLabel={`${currentBook} ${currentChapter}:${activeAudioVerse ?? ''}`}
-        scope={audioScope}
-        afterPlay={afterPlayBehaviour}
-        isRepeat={
-          afterPlayBehaviour === 'repeat' || afterPlayBehaviour === 'repeat_one'
-        }
-        verseIndex={audioVerseIndex}
-        verseCount={audioPlaylist.length}
-        isDark={isDark}
-        speechRate={speechRate}
-        sleepTimerRemaining={sleepTimerRemaining}
-        onSpeedToggle={onSpeedToggle}
-        onSpeedReset={onSpeedReset}
-        onSleepTimerToggle={onSleepTimerToggle}
-        onPrev={goToPreviousSelectedVerse}
-        onNext={goToNextSelectedVerse}
-        onRepeatToggle={() => {
-          // Cycle through: stop → repeat_one → repeat → continue → stop
-          const current = afterPlayBehaviour;
-          if (current === 'stop') handleAfterPlayChange('repeat_one');
-          else if (current === 'repeat_one') handleAfterPlayChange('repeat');
-          else if (current === 'repeat') handleAfterPlayChange('continue');
-          else handleAfterPlayChange('stop');
-        }}
-        onPlayPause={handleAudioTogglePlayPause}
-        onStop={handleAudioStop}
-        onScopeChange={handleAudioScopeChange}
-        onAfterPlayChange={handleAfterPlayChange}
-      />
-
-      {/* ── App feedback modal ───────────────────────────────────────────── */}
-      <ActionModal
-        visible={modal.status}
-        title={modal.title}
-        message={modal.message}
-        severity={modal?.severity}
-        onConfirm={dismissModal}
-      />
-      </>
+          {/* ── App feedback modal ───────────────────────────────────────────── */}
+          <ActionModal
+            visible={modal.status}
+            title={modal.title}
+            message={modal.message}
+            severity={modal?.severity}
+            onConfirm={dismissModal}
+          />
+        </>
       )}
 
       {/* ── Bottom Tab — navigation gated for guests ─────────────────────── */}
@@ -1300,7 +1332,6 @@ export default function Bible() {
           />
         </Animated.View>
       )}
-
     </View>
   );
 }
@@ -1411,14 +1442,31 @@ function BibleSkeleton({ isDark }: { isDark: boolean }) {
 
   const skeletonLine = (h: number, w: string | number, style?: any) => (
     <View
-      style={[{ height: h, width: w as any, borderRadius: 6, backgroundColor: mutedBg, opacity: 0.5 }, style]}
+      style={[
+        {
+          height: h,
+          width: w as any,
+          borderRadius: 6,
+          backgroundColor: mutedBg,
+          opacity: 0.5,
+        },
+        style,
+      ]}
     />
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background, paddingTop: 50 }}>
       {/* Header skeleton */}
-      <View style={{ paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {skeletonLine(32, 32, { borderRadius: 8 })}
           <View style={{ gap: 4 }}>
@@ -1433,7 +1481,15 @@ function BibleSkeleton({ isDark }: { isDark: boolean }) {
       </View>
 
       {/* Chapter nav skeleton */}
-      <View style={{ paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
         {skeletonLine(28, 28, { borderRadius: 14 })}
         <View style={{ alignItems: 'center', gap: 3 }}>
           {skeletonLine(12, 100)}
