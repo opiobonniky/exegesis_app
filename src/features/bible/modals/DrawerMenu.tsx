@@ -1,4 +1,3 @@
-// DrawerMenu.tsx — minimal, task-first layout
 import React, {
   useCallback,
   useContext,
@@ -34,7 +33,9 @@ import {
   ChevronRight,
   ChevronLeft,
   Lock,
+  Headphones,
   BookText,
+  BookMarked,
 } from 'lucide-react-native';
 import { DrawerMenuProps } from '../types';
 import { getColors, FONT_SIZES } from '../../../constants/theme';
@@ -47,13 +48,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage, isRtlLanguage } from '../../../component/language-translation/LanguageProvider';
 
 type NavRouteKey = keyof typeof route;
-type IconType = React.ComponentType<{
-  size?: number;
-  color?: string;
-  strokeWidth?: number;
-}>;
 
-
+const LIBRARY_ITEMS: { label: string; routeKey: NavRouteKey; icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>; color: string }[] = [
+  { label: 'Highlights', routeKey: 'Highlights' as NavRouteKey, icon: Edit3, color: '#F59E0B' },
+  { label: 'Notes', routeKey: 'notes' as NavRouteKey, icon: FileText, color: '#3B82F6' },
+  { label: 'History', routeKey: 'readHistory' as NavRouteKey, icon: Clock, color: '#8B5CF6' },
+  { label: 'Favorites', routeKey: 'favorites' as NavRouteKey, icon: Star, color: '#EC4899' },
+  { label: 'Journal', routeKey: 'journal' as NavRouteKey, icon: BookText, color: '#10B981' },
+  { label: "Strong's", routeKey: 'strongsDictionary' as NavRouteKey, icon: BookOpen, color: '#6366F1' },
+];
 
 export default function DrawerMenu({
   visible,
@@ -63,9 +66,6 @@ export default function DrawerMenu({
   fontSize,
   onFontSizeChange,
   bibleVersionId,
-  onVersionChange,
-  showVersionPicker,
-  onToggleVersionPicker,
   navigation,
   isDark,
 }: DrawerMenuProps) {
@@ -78,7 +78,7 @@ export default function DrawerMenu({
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const drawerWidth = useMemo(
-    () => Math.min(windowWidth * 0.78, 320),
+    () => Math.min(windowWidth * 0.82, 340),
     [windowWidth],
   );
 
@@ -92,7 +92,6 @@ export default function DrawerMenu({
 
   useEffect(() => {
     progressAnim.stopAnimation();
-
     if (visible) {
       setMounted(true);
       Animated.spring(progressAnim, {
@@ -103,7 +102,6 @@ export default function DrawerMenu({
       }).start();
       return;
     }
-
     Animated.timing(progressAnim, {
       toValue: 0,
       duration: 180,
@@ -115,9 +113,8 @@ export default function DrawerMenu({
   }, [progressAnim, visible]);
 
   const handleClose = useCallback(() => {
-    if (showVersionPicker) onToggleVersionPicker();
     onClose();
-  }, [onClose, onToggleVersionPicker, showVersionPicker]);
+  }, [onClose]);
 
   const go = useCallback(
     (routeName: string) => {
@@ -140,19 +137,9 @@ export default function DrawerMenu({
     }
     handleClose();
     navigation.navigate(route.readingSettings, { fontSize, onFontSizeChange });
-  }, [
-    fontSize,
-    handleClose,
-    isGuest,
-    navigation,
-    onFontSizeChange,
-    onGuestNavPress,
-  ]);
+  }, [fontSize, handleClose, isGuest, navigation, onFontSizeChange, onGuestNavPress]);
 
-  const clampFontSize = useCallback(
-    (size: number) => Math.max(12, Math.min(28, size)),
-    [],
-  );
+  const clampFontSize = useCallback((size: number) => Math.max(12, Math.min(28, size)), []);
   const canDecreaseFont = fontSize > 12;
   const canIncreaseFont = fontSize < 28;
 
@@ -177,12 +164,11 @@ export default function DrawerMenu({
   const userInfo = app?.userInfo ?? null;
   const displayName = useMemo(() => {
     if (!userInfo) return bc?.guestName || 'Guest';
-    const full =
-      `${userInfo.firstName ?? ''} ${userInfo.lastName ?? ''}`.trim();
+    const full = `${userInfo.firstName ?? ''} ${userInfo.lastName ?? ''}`.trim();
     return full || userInfo.username || userInfo.email || 'Account';
   }, [userInfo]);
   const displaySub = useMemo(() => {
-    if (!userInfo) return bc?.guestSubtitle || 'Sign in to sync highlights, notes & favourites';
+    if (!userInfo) return bc?.guestSubtitle || 'Sign in to sync';
     return userInfo.email || userInfo.username || 'Signed in';
   }, [userInfo]);
   const initials = useMemo(() => {
@@ -204,12 +190,8 @@ export default function DrawerMenu({
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      {/* Backdrop */}
       <Animated.View
-        style={[
-          s.backdrop,
-          { opacity: backdropOpacity, backgroundColor: overlay },
-        ]}
+        style={[s.backdrop, { opacity: backdropOpacity, backgroundColor: overlay }]}
       >
         <Pressable
           onPress={handleClose}
@@ -219,7 +201,6 @@ export default function DrawerMenu({
         />
       </Animated.View>
 
-      {/* Panel */}
       <Animated.View
         style={[
           s.panel,
@@ -233,248 +214,102 @@ export default function DrawerMenu({
           },
         ]}
       >
-        {/* ── Top bar ─────────────────────────────────────────────────────── */}
-        <View
-          style={[
-            s.topBar,
-            {
-              paddingTop: insets.top + 14,
-              borderBottomColor: border,
-              flexDirection: isRtl ? 'row-reverse' : 'row',
-            },
-          ]}
-        >
-          <View style={[s.topLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-            <View
-              style={[
-                s.appIconWrap,
-                { backgroundColor: `${COLORS.primary}18` },
-              ]}
+        <View style={{ paddingTop: insets.top + 8, flex: 1 }}>
+          <View style={[s.header, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Pressable
+              onPress={() => go(route.profile)}
+              style={[s.profileBadge, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
             >
-              <BookOpen size={16} color={COLORS.primary} strokeWidth={2.2} />
-            </View>
-            <Text style={[s.appName, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
-              {bc?.bibleReader || 'Bible Reader'}
-            </Text>
-          </View>
-          <Pressable
-            onPress={handleClose}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityRole="button"
-            accessibilityLabel="Close menu"
-          >
-            <X size={18} color={COLORS.muted} strokeWidth={2.5} />
-          </Pressable>
-        </View>
-
-        <ScrollView
-          style={s.body}
-          contentContainerStyle={[
-            s.bodyContent,
-            { paddingBottom: Math.max(insets.bottom, 14) },
-          ]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* ── Account ─────────────────────────────────────────────────── */}
-          <Text style={[s.sectionTitle, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>{bc?.sectionAccount || 'Account'}</Text>
-          <Pressable
-            onPress={() => go(route.profile)}
-            style={({ pressed }) => [
-              s.accountCard,
-              {
-                backgroundColor: surface,
-                borderColor: border,
-                opacity: pressed ? 0.88 : 1,
-                flexDirection: isRtl ? 'row-reverse' : 'row',
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={userInfo ? 'Open profile' : 'Sign in'}
-            accessibilityHint={
-              userInfo ? 'Opens your profile' : 'Sign in required'
-            }
-          >
-            <View
-              style={[
-                s.avatar,
-                { backgroundColor: `${COLORS.primary}18`, borderColor: border },
-              ]}
-            >
-              <Text style={[s.avatarText, { color: COLORS.primary }]}>
-                {initials}
-              </Text>
-            </View>
-            <View style={s.accountText}>
-              <Text
-                style={[s.accountName, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
-                numberOfLines={1}
-              >
-                {displayName}
-              </Text>
-              <Text
-                style={[s.accountSub, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}
-                numberOfLines={1}
-              >
-                {displaySub}
-              </Text>
-            </View>
-            <View style={[s.accountRight, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-              {isGuest ? (
-                <View
-                  style={[
-                    s.pill,
-                    {
-                      backgroundColor: `${COLORS.primary}14`,
-                      borderColor: `${COLORS.primary}33`,
-                    },
-                  ]}
-                >
-                  <Text style={[s.pillText, { color: COLORS.primary }]}>
-                    {bc?.signInBtn || 'Sign in'}
-                  </Text>
-                </View>
-              ) : null}
-              {isRtl ? (
-                <ChevronLeft size={18} color={COLORS.muted} strokeWidth={2.5} />
-              ) : (
-                <ChevronRight size={18} color={COLORS.muted} strokeWidth={2.5} />
-              )}
-            </View>
-          </Pressable>
-
-          {/* ── Reading ─────────────────────────────────────────────────── */}
-          <Text style={[s.sectionTitle, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>{bc?.sectionReading || 'Reading'}</Text>
-
-          {/* Version */}
-          <Pressable
-            onPress={goReadingSettings}
-            style={[s.versionRow, { backgroundColor: COLORS.primary, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
-            accessibilityRole="button"
-            accessibilityLabel="Bible version"
-            accessibilityHint="Opens version picker"
-          >
-            <View style={s.versionBadge}>
-              <Text style={s.versionAbbr}>{activeVersion.abbreviation}</Text>
-            </View>
-            <View style={s.versionTextWrap}>
-              <Text style={[s.versionName, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={1}>
-                {activeVersion.name}
-              </Text>
-              <Text style={[s.versionDesc, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={1}>
-                {activeVersion.description}
-              </Text>
-            </View>
-            <View style={[s.changeChip, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-              <Text style={s.changeText}>
-                {showVersionPicker ? (bc?.hideVersion || 'Hide') : (bc?.change || 'Change')}
-              </Text>
-              <View
-                style={[s.chevWrap, showVersionPicker ? s.chevDown : undefined]}
-              >
-                {isRtl ? (
-                  <ChevronLeft
-                    size={12}
-                    color="rgba(255,255,255,0.85)"
-                    strokeWidth={3}
-                  />
-                ) : (
-                  <ChevronRight
-                    size={12}
-                    color="rgba(255,255,255,0.85)"
-                    strokeWidth={3}
-                  />
-                )}
+              <View style={[s.initialsCircle, { backgroundColor: `${COLORS.primary}18` }]}>
+                <Text style={[s.initialsText, { color: COLORS.primary }]}>{initials}</Text>
               </View>
-            </View>
-          </Pressable>
-
-          {/* ── Font size ────────────────────────────────────────────────── */}
-          <View
-            style={[
-              s.fontRow,
-              { backgroundColor: surface, borderColor: border, flexDirection: isRtl ? 'row-reverse' : 'row' },
-            ]}
-          >
-            <Pressable
-              onPress={() => onFontSizeChange(clampFontSize(fontSize - 2))}
-              disabled={!canDecreaseFont}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={({ pressed }) => [
-                s.fontBtn,
-                { opacity: !canDecreaseFont ? 0.45 : pressed ? 0.75 : 1 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Decrease font size"
-              accessibilityState={{ disabled: !canDecreaseFont }}
-            >
-              <Minus size={16} color={COLORS.text} strokeWidth={2.5} />
+              <View style={s.profileInfo}>
+                <Text style={[s.profileName, { color: COLORS.text }]} numberOfLines={1}>
+                  {displayName}
+                </Text>
+                <Text style={[s.profileSub, { color: COLORS.muted }]} numberOfLines={1}>
+                  {displaySub}
+                </Text>
+              </View>
+              {isRtl ? (
+                <ChevronLeft size={14} color={COLORS.muted} strokeWidth={2.5} />
+              ) : (
+                <ChevronRight size={14} color={COLORS.muted} strokeWidth={2.5} />
+              )}
             </Pressable>
-
-            <View style={[s.fontMid, { borderColor: border }]}>
-              <Text style={[s.fontVal, { color: COLORS.primary }]}>
-                {fontSize}
-              </Text>
-              <Text style={[s.fontPt, { color: COLORS.muted }]}>pt</Text>
-            </View>
-
             <Pressable
-              onPress={() => onFontSizeChange(clampFontSize(fontSize + 2))}
-              disabled={!canIncreaseFont}
+              onPress={handleClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={({ pressed }) => [
-                s.fontBtn,
-                { opacity: !canIncreaseFont ? 0.45 : pressed ? 0.75 : 1 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Increase font size"
-              accessibilityState={{ disabled: !canIncreaseFont }}
+              style={[s.closeBtn, { backgroundColor: `${COLORS.muted}12` }]}
             >
-              <Plus size={16} color={COLORS.text} strokeWidth={2.5} />
+              <X size={15} color={COLORS.muted} strokeWidth={2.5} />
             </Pressable>
           </View>
 
-          <Pressable
-            onPress={goReadingSettings}
-            style={({ pressed }) => [
-              s.inlineAction,
-              {
-                backgroundColor: surface,
-                borderColor: border,
-                opacity: pressed ? 0.85 : 1,
-                flexDirection: isRtl ? 'row-reverse' : 'row',
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Open reading settings"
+          <ScrollView
+            style={s.body}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: Math.max(insets.bottom, 14) }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <Settings2 size={16} color={COLORS.muted} strokeWidth={2} />
-            <Text style={[s.inlineActionText, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left', [isRtl ? 'marginRight' : 'marginLeft']: 10 }]}>
-              {bc?.readingSettingsLabel || 'Reading settings'}
-            </Text>
-            {isRtl ? (
-              <ChevronLeft size={16} color={COLORS.muted} strokeWidth={2.5} />
-            ) : (
-              <ChevronRight size={16} color={COLORS.muted} strokeWidth={2.5} />
-            )}
-          </Pressable>
+            <View style={s.scrollInner}>
+              <View style={[s.controlsCard, { backgroundColor: surface, borderColor: border }]}>
+                <Pressable
+                  onPress={goReadingSettings}
+                  style={[s.versionStrip, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
+                >
+                  <View style={[s.versionIcon, { backgroundColor: `${COLORS.primary}14` }]}>
+                    <BookMarked size={16} color={COLORS.primary} strokeWidth={2} />
+                  </View>
+                  <View style={s.versionInfo}>
+                    <Text style={[s.versionAbbr, { color: COLORS.text }]}>
+                      {activeVersion.abbreviation}
+                    </Text>
+                    <Text style={[s.versionName, { color: COLORS.muted }]} numberOfLines={1}>
+                      {activeVersion.name}
+                    </Text>
+                  </View>
+                  <View style={[s.versionArrow, { backgroundColor: `${COLORS.muted}12` }]}>
+                    {isRtl ? (
+                      <ChevronLeft size={12} color={COLORS.muted} strokeWidth={2.5} />
+                    ) : (
+                      <ChevronRight size={12} color={COLORS.muted} strokeWidth={2.5} />
+                    )}
+                  </View>
+                </Pressable>
 
-          {/* ── 2×2 library grid ─────────────────────────────────────────── */}
-          <Text style={[s.sectionTitle, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>{bc?.sectionLibrary || 'Library'}</Text>
-          <View style={[s.grid, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-            {[
-              { label: bc?.highlights || 'Highlights', icon: Edit3, routeKey: 'Highlights' as NavRouteKey, color: '#F59E0B' },
-              { label: bc?.notes || 'Notes', icon: FileText, routeKey: 'notes' as NavRouteKey, color: '#3B82F6' },
-              { label: bc?.readingHistory || 'History', icon: Clock, routeKey: 'readHistory' as NavRouteKey, color: '#8B5CF6' },
-              { label: bc?.favorites || 'Favorites', icon: Star, routeKey: 'favorites' as NavRouteKey, color: '#EC4899' },
-              { label: bc?.journal || 'Journal', icon: BookText, routeKey: 'journal' as NavRouteKey, color: '#10B981' },
-              { label: "Strong's Dictionary", icon: BookOpen, routeKey: 'strongsDictionary' as NavRouteKey, color: '#6366F1' },
-            ].map(({ label, icon: Icon, routeKey, color }) => (
+                <View style={[s.divider, { backgroundColor: border }]} />
+
+                <View style={[s.fontStrip, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                  <Pressable
+                    onPress={() => onFontSizeChange(clampFontSize(fontSize - 2))}
+                    disabled={!canDecreaseFont}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={[s.fontBtn, { opacity: !canDecreaseFont ? 0.35 : 1 }]}
+                  >
+                    <Minus size={16} color={COLORS.text} strokeWidth={2.5} />
+                  </Pressable>
+                  <Pressable onPress={goReadingSettings} style={s.fontCenter}>
+                    <Text style={[s.fontSizeLabel, { color: COLORS.primary }]}>
+                      {fontSize}<Text style={[s.fontUnitLabel, { color: COLORS.muted }]}> pt</Text>
+                    </Text>
+                    <Text style={[s.fontHint, { color: COLORS.muted }]}>Text size</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => onFontSizeChange(clampFontSize(fontSize + 2))}
+                    disabled={!canIncreaseFont}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={[s.fontBtn, { opacity: !canIncreaseFont ? 0.35 : 1 }]}
+                  >
+                    <Plus size={16} color={COLORS.text} strokeWidth={2.5} />
+                  </Pressable>
+                </View>
+              </View>
+
               <Pressable
-                key={routeKey}
-                onPress={() => go(route[routeKey])}
+                onPress={goReadingSettings}
                 style={({ pressed }) => [
-                  s.gridCell,
+                  s.settingsLink,
                   {
                     backgroundColor: surface,
                     borderColor: border,
@@ -482,81 +317,108 @@ export default function DrawerMenu({
                     flexDirection: isRtl ? 'row-reverse' : 'row',
                   },
                 ]}
-                accessibilityRole="button"
-                accessibilityLabel={label}
-                accessibilityHint={isGuest ? 'Sign in required' : undefined}
               >
-                <View style={[s.gridIcon, { backgroundColor: `${color}18` }]}>
-                  <Icon size={18} color={color} strokeWidth={2} />
-                </View>
-                <View style={[s.gridText, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
-                  <Text style={[s.gridLabel, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
-                    {label}
-                  </Text>
-                  {isGuest ? (
-                    <View style={[s.lockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                      <Lock size={12} color={COLORS.muted} strokeWidth={2} />
-                      <Text style={[s.lockText, { color: COLORS.muted }]}>
-                        {bc?.signInBtn || 'Sign in'}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
+                <Settings2 size={16} color={COLORS.primary} strokeWidth={2} />
+                <Text style={[s.settingsLabel, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {bc?.readingSettingsLabel || 'All reading settings'}
+                </Text>
+                {isRtl ? (
+                  <ChevronLeft size={16} color={COLORS.muted} strokeWidth={2.5} />
+                ) : (
+                  <ChevronRight size={16} color={COLORS.muted} strokeWidth={2.5} />
+                )}
               </Pressable>
-            ))}
-          </View>
 
-          {/* ── Appearance ──────────────────────────────────────────────── */}
-          <Text style={[s.sectionTitle, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-            {bc?.sectionAppearance || 'Appearance'}
-          </Text>
-          <View
-            style={[
-              s.themeRow,
-              {
-                backgroundColor: surface,
-                borderColor: border,
-                flexDirection: isRtl ? 'row-reverse' : 'row',
-              },
-            ]}
-            accessibilityRole="adjustable"
-            accessibilityLabel="Theme"
-          >
-            <View style={[s.themeLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-              {isDark ? (
-                <Moon size={16} color={COLORS.accent} strokeWidth={2} />
-              ) : (
-                <Sun size={16} color={COLORS.accent} strokeWidth={2} />
-              )}
-              <View style={s.themeText}>
-                <Text style={[s.themeTitle, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
-                  {bc?.darkModeLabel || 'Dark mode'}
+              <Pressable
+                onPress={() => go(route.voiceSettings)}
+                style={({ pressed }) => [
+                  s.settingsLink,
+                  {
+                    backgroundColor: surface,
+                    borderColor: border,
+                    opacity: pressed ? 0.85 : 1,
+                    flexDirection: isRtl ? 'row-reverse' : 'row',
+                  },
+                ]}
+              >
+                <Headphones size={16} color={COLORS.primary} strokeWidth={2} />
+                <Text style={[s.settingsLabel, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                  {bc?.voiceSettingsLabel || 'Voice reading'}
                 </Text>
-                <Text style={[s.themeSub, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
-                  {bc?.switchAppearance || 'Switch appearance'}
-                </Text>
+                {isRtl ? (
+                  <ChevronLeft size={16} color={COLORS.muted} strokeWidth={2.5} />
+                ) : (
+                  <ChevronRight size={16} color={COLORS.muted} strokeWidth={2.5} />
+                )}
+              </Pressable>
+
+              <View style={[s.libraryCard, { backgroundColor: surface, borderColor: border }]}>
+                <View style={s.libraryGrid}>
+                  {LIBRARY_ITEMS.map(({ label, routeKey, icon: Icon, color }) => (
+                    <Pressable
+                      key={routeKey}
+                      onPress={() => go(route[routeKey])}
+                      style={({ pressed }) => [
+                        s.libCell,
+                        { opacity: pressed ? 0.8 : 1 },
+                      ]}
+                    >
+                      <View style={[s.libIconBg, { backgroundColor: `${color}14` }]}>
+                        <Icon size={20} color={color} strokeWidth={2} />
+                      </View>
+                      <Text style={[s.libLabel, { color: COLORS.text }]} numberOfLines={1}>
+                        {label}
+                      </Text>
+                      {isGuest && (
+                        <View style={[s.libLockBg, { backgroundColor: `${COLORS.muted}20` }]}>
+                          <Lock size={10} color={COLORS.muted} strokeWidth={2.5} />
+                        </View>
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              <View style={{ flex: 1 }} />
+
+              <View
+                style={[s.themeRow, { backgroundColor: surface, borderColor: border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}
+              >
+                <View style={[s.themeIconBg, { backgroundColor: `${COLORS.accent}14` }]}>
+                  {isDark ? (
+                    <Moon size={16} color={COLORS.accent} strokeWidth={2} />
+                  ) : (
+                    <Sun size={16} color={COLORS.accent} strokeWidth={2} />
+                  )}
+                </View>
+                <View style={s.themeInfo}>
+                  <Text style={[s.themeTitle, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
+                    {bc?.darkModeLabel || 'Dark mode'}
+                  </Text>
+                  <Text style={[s.themeSub, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+                    {bc?.switchAppearance || 'Switch appearance'}
+                  </Text>
+                </View>
+                <Switch
+                  value={isDark}
+                  onValueChange={app?.toggleTheme ?? (() => {})}
+                  disabled={!app?.toggleTheme}
+                  trackColor={{ false: border, true: COLORS.primary }}
+                  thumbColor={COLORS.white}
+                  ios_backgroundColor={border}
+                  style={{ transform: [{ scaleX: 0.78 }, { scaleY: 0.78 }] }}
+                />
               </View>
             </View>
-            <Switch
-              value={isDark}
-              onValueChange={app?.toggleTheme ?? (() => {})}
-              disabled={!app?.toggleTheme}
-              trackColor={{ false: border, true: COLORS.primary }}
-              thumbColor={COLORS.white}
-              ios_backgroundColor={border}
-              style={{ transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }] }}
-            />
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </View>
       </Animated.View>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  backdrop: { ...StyleSheet.absoluteFillObject },
   panel: {
     position: 'absolute',
     top: 0,
@@ -568,231 +430,168 @@ const s = StyleSheet.create({
     elevation: 16,
   },
 
-  // Top bar
-  topBar: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
   },
-  topLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  appIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  appName: { fontSize: FONT_SIZES.md, fontWeight: '700', letterSpacing: -0.2 },
-
-  // Body
-  body: { flex: 1 },
-  bodyContent: { padding: 14, gap: 10 },
-
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    marginTop: 6,
-  },
-
-  // Account
-  accountCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: 14, fontWeight: '900', letterSpacing: 0.6 },
-  accountText: { flex: 1, minWidth: 0 },
-  accountName: { fontSize: 14, fontWeight: '800' },
-  accountSub: { fontSize: 12, fontWeight: '600', marginTop: 2 },
-  accountRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  pill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  pillText: { fontSize: 12, fontWeight: '800' },
-
-  // Version
-  versionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderRadius: 13,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-  },
-  versionBadge: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  versionAbbr: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#fff',
-    letterSpacing: 0.3,
-  },
-  versionTextWrap: { flex: 1, minWidth: 0 },
-  versionName: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  versionDesc: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.86)',
-  },
-  changeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 999,
-  },
-  changeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.92)',
-  },
-  chevWrap: { transform: [{ rotate: '0deg' }] },
-  chevDown: { transform: [{ rotate: '90deg' }] },
-
-  versionPicker: {
-    borderWidth: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  versionOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-  },
-  versionOptionLeft: {
+  profileBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     flex: 1,
     minWidth: 0,
   },
-  versionOptionText: { flex: 1, minWidth: 0 },
-  versionOptName: { fontSize: 13, fontWeight: '700' },
-  versionOptDesc: { fontSize: 12, fontWeight: '500' },
-  versionYear: { fontSize: 12, fontWeight: '600', marginLeft: 10 },
-  radioOuter: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    alignItems: 'center',
+  initialsCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: 'center',
-  },
-  radioInner: { width: 8, height: 8, borderRadius: 4 },
-
-  // Font size
-  fontRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+  },
+  initialsText: { fontSize: 13, fontWeight: '900' },
+  profileInfo: { flex: 1, minWidth: 0 },
+  profileName: { fontSize: 14, fontWeight: '800' },
+  profileSub: { fontSize: 11, fontWeight: '500', marginTop: 1 },
+  closeBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+
+  body: { flex: 1 },
+  scrollInner: { gap: 10 },
+
+  controlsCard: {
+    marginHorizontal: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    height: 46,
     overflow: 'hidden',
   },
-  fontBtn: {
-    width: 46,
-    height: 46,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fontMid: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'baseline',
-    gap: 3,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    height: 46,
-  },
-  fontVal: { fontSize: 20, fontWeight: '800' },
-  fontPt: { fontSize: 11, fontWeight: '500', marginBottom: 1 },
-
-  inlineAction: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  inlineActionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    flex: 1,
-    marginLeft: 10,
-  },
-
-  // 2×2 grid
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  gridCell: {
-    width: '47.5%',
+  versionStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 12,
-    paddingVertical: 13,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingVertical: 11,
   },
-  gridIcon: {
+  versionIcon: {
     width: 32,
     height: 32,
     borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  gridText: { flex: 1, minWidth: 0 },
-  gridLabel: { fontSize: FONT_SIZES.sm, fontWeight: '700' },
-  lockRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  lockText: { fontSize: 12, fontWeight: '600' },
+  versionInfo: { flex: 1, minWidth: 0 },
+  versionAbbr: { fontSize: 14, fontWeight: '800' },
+  versionName: { fontSize: 11, fontWeight: '500', marginTop: 1 },
+  versionArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
-  // Theme
+  divider: { height: 1 },
+
+  fontStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    height: 48,
+  },
+  fontBtn: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fontCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fontSizeLabel: { fontSize: 20, fontWeight: '800' },
+  fontUnitLabel: { fontSize: 13, fontWeight: '500' },
+  fontHint: { fontSize: 9, fontWeight: '600', marginTop: 1, letterSpacing: 0.3 },
+
+  settingsLink: {
+    marginHorizontal: 14,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  settingsLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+  },
+
+  libraryCard: {
+    marginHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 10,
+  },
+  libraryGrid: {
+    gap: 2,
+  },
+  libCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    gap: 12,
+    position: 'relative',
+    borderRadius: 10,
+  },
+  libIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  libLabel: { fontSize: 14, fontWeight: '700', textAlign: 'left', flex: 1 },
+  libLockBg: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   themeRow: {
+    marginHorizontal: 14,
     borderWidth: 1,
     borderRadius: 14,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  themeLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  themeText: { flex: 1, minWidth: 0 },
-  themeTitle: { fontSize: 14, fontWeight: '800' },
-  themeSub: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  themeIconBg: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  themeInfo: { flex: 1, minWidth: 0, marginHorizontal: 10 },
+  themeTitle: { fontSize: 13, fontWeight: '800' },
+  themeSub: { fontSize: 11, fontWeight: '600', marginTop: 1 },
 });

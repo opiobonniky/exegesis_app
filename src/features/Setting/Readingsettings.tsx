@@ -1,8 +1,6 @@
 import React, {
   useCallback,
   useContext,
-  useMemo,
-  useRef,
   useState,
 } from 'react';
 import {
@@ -11,24 +9,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Switch,
-  Animated,
 } from 'react-native';
-import {
-  ChevronRight,
-  Volume2,
-  Minus,
-  Plus,
-  Check,
-  Moon,
-  Sun,
-  Search,
-  BookMarked,
-  Type,
-  Palette,
-  Loader,
-} from 'lucide-react-native';
+import { ChevronRight, Volume2, Minus, Plus, Moon, Sun, Type, Palette } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { AppContext } from '../../common/AppContext';
@@ -41,11 +24,8 @@ import {
 } from '../../constants/theme';
 import { route } from '../../component/navigations/routes';
 import ActionHeader from '../../reusable/ActionHeader';
-import useBible from '../../features/bible/hooks/useBible';
-import { bibleApi } from '../../services/bibleApi';
-import { isLocalTranslation } from '../../assets/bibleVersion/json/bibleVersions';
 
-// ─────────────────────────────────────────────────────────────────────────────
+const FONT_PRESETS = [12, 14, 16, 18, 20, 24, 28];
 
 export default function ReadingSettingsScreen() {
   const app = useContext(AppContext);
@@ -58,16 +38,10 @@ export default function ReadingSettingsScreen() {
   if (!app) return null;
   const { isDark, toggleTheme, bibleVersionId, setBibleVersion } = app;
   const COLORS = getColors(isDark);
-  // expose the translations object as `translation` for easier developer access
   const { translations: translation, language } = useLanguage();
   const isRtl = isRtlLanguage(language);
 
-  // Bible hook for connection status
-  const { isOnline } = useBible();
-
-  // ── Font size — kept in local state and synced back via param callback ─────
   const [fontSize, setFontSizeLocal] = useState<number>(params.fontSize ?? 16);
-
   const handleFontChange = useCallback(
     (size: number) => {
       setFontSizeLocal(size);
@@ -76,86 +50,8 @@ export default function ReadingSettingsScreen() {
     [params.onFontSizeChange],
   );
 
-  // ── Version search ────────────────────────────────────────────────────────
-  const [query, setQuery] = useState('');
-  const [allTranslations, setAllTranslations] = useState<any>([]);
-  const [loadingTranslations, setLoadingTranslations] = useState(true);
-
-  // Fetch translations on mount and when coming online
-  const fetchTranslations = useCallback(async () => {
-    setLoadingTranslations(true);
-    try {
-      console.log('Fetching translations, isOnline:', isOnline);
-      const translations = await bibleApi.getAvailableTranslationsWithMapping();
-      console.log('Fetched translations:', translations?.length, translations);
-
-      if (translations && translations.length > 0) {
-        setAllTranslations(translations);
-      } else {
-        console.log('No translations available, using local fallback');
-        setAllTranslations([]);
-      }
-    } catch (error: any) {
-      console.error('Failed to fetch translations:', error?.message || error);
-      setAllTranslations([]);
-    } finally {
-      setLoadingTranslations(false);
-    }
-  }, []);
-
-  // Fetch translations on mount
-  React.useEffect(() => {
-    fetchTranslations();
-  }, [fetchTranslations]);
-
-  // Refetch when coming online
-  React.useEffect(() => {
-    if (isOnline === true) {
-      fetchTranslations();
-    }
-  }, [isOnline, fetchTranslations]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return allTranslations;
-    return allTranslations.filter((v: any) => {
-      const hay = `${v.name} ${v.shortName} ${v.year ?? ''}`.toLowerCase();
-      return hay.includes(q);
-    });
-  }, [allTranslations, query]);
-
-  // ── Version row flash animation on selection ──────────────────────────────
-  const flashAnim = useRef(new Animated.Value(1)).current;
-  const handleSelectVersion = (frontendId: string) => {
-   try {
-     setBibleVersion(frontendId);
-     Animated.sequence([
-       Animated.timing(flashAnim, {
-         toValue: 0.4,
-         duration: 80,
-         useNativeDriver: true,
-       }),
-       Animated.timing(flashAnim, {
-         toValue: 1,
-         duration: 180,
-         useNativeDriver: true,
-       }),
-     ]).start();
-   } catch (error:any) {
-    console.error('❌ Error selecting Bible version:', error.message || error);
-   }
-  };
-
-  // ── Theme tokens ──────────────────────────────────────────────────────────
   const surface = COLORS.cardBackground;
   const border = COLORS.border;
-
-  const statusLabel =
-    isOnline === null
-      ? (translation?.readingSettings?.status?.checking || 'Checking...')
-      : isOnline
-        ? (translation?.readingSettings?.status?.online || 'Online')
-        : (translation?.readingSettings?.status?.offline || 'Offline');
 
   return (
     <View style={[s.root, { backgroundColor: COLORS.background }]}>
@@ -169,241 +65,13 @@ export default function ReadingSettingsScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ═══════════════════════════════════════════════════════════════════
-            BIBLE TRANSLATION
-        ═══════════════════════════════════════════════════════════════════ */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-            <SectionHeader
-              icon={
-                <BookMarked size={15} color={COLORS.primary} strokeWidth={2} />
-              }
-              label={translation?.readingSettings?.bibleTranslation || 'Bible Translation'}
-              COLORS={COLORS}
-              isRtl={isRtl}
-            />
-            <Text style={{ fontSize: 10, color: isOnline ? '#10B981' : '#888' }}>
-              {statusLabel}
-            </Text>
-        </View>
-
-        {/* Loading indicator for translations */}
-        {loadingTranslations && allTranslations.length === 0 && (
-          <View style={[s.loadingContainer, { backgroundColor: surface }]}>
-            <Loader size={20} color={COLORS.primary} />
-              <Text
-                style={[s.loadingText, { color: COLORS.muted, marginTop: 8 }]}
-              >
-                {translation?.readingSettings?.loadingTranslations || 'Loading translations…'}
-              </Text>
-            </View>
-          )}
-
-        {/* Show offline indicator when using local data */}
-        {!loadingTranslations && isOnline === false && (
-          <View
-            style={[
-              s.loadingContainer,
-              { backgroundColor: surface, marginBottom: 8 },
-            ]}
-          >
-            <Text style={[s.loadingText, { color: '#F59E0B' }]}>
-              {translation?.readingSettings?.offlineFallback || 'Using offline translations (connect to internet for more)'}
-            </Text>
-          </View>
-        )}
-
-        {/* Search bar */}
-        <View
-          style={[
-            s.searchBar,
-            isRtl && s.searchBarRtl,
-            { backgroundColor: surface, borderColor: border },
-          ]}
-        >
-          <Search size={15} color={COLORS.muted} strokeWidth={2} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder={translation?.readingSettings?.searchPlaceholder || 'Search translations — NIV, KJV, ESV…'}
-              placeholderTextColor={COLORS.muted}
-              style={[s.searchInput, { color: COLORS.text }]}
-              autoCorrect={false}
-              autoCapitalize="none"
-              returnKeyType="search"
-              selectionColor={COLORS.primary}
-            />
-          {query.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setQuery('')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text
-                style={{ color: COLORS.muted, fontSize: 13, fontWeight: '600' }}
-              >
-                ✕
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Version list */}
-        <View
-          style={[
-            s.versionList,
-            { backgroundColor: surface, borderColor: border },
-          ]}
-        >
-          {filtered.length === 0 ? (
-            <View style={s.emptyWrap}>
-                <Text style={[s.emptyTitle, { color: COLORS.text }]}>
-                  {translation?.readingSettings?.noResults || 'No results'}
-                </Text>
-                 <Text style={[s.emptySub, { color: COLORS.muted }]}>
-                   {translation?.readingSettings?.trySuggestions || 'Try "NIV", "KJV", "ESV"…'}
-                </Text>
-              </View>
-          ) : (
-            filtered.map((v: any, i: number) => {
-              const frontendId = v.frontendId || v.id;
-              const isActive = frontendId === bibleVersionId;
-              const isLast = i === filtered.length - 1;
-              return (
-                <Animated.View
-                  key={frontendId}
-                  style={isActive ? { opacity: flashAnim } : undefined}
-                >
-                  <TouchableOpacity
-                    onPress={() => handleSelectVersion(frontendId)}
-                    activeOpacity={0.7}
-                    style={[
-                      s.versionRow,
-                      isRtl && s.versionRowRtl,
-                      !isLast && {
-                        borderBottomWidth: 1,
-                        borderBottomColor: border,
-                      },
-                      isActive && { backgroundColor: `${COLORS.primary}0D` },
-                    ]}
-                  >
-                    {/* Abbreviation badge */}
-                    <View
-                      style={[
-                        s.rowBadge,
-                        {
-                          backgroundColor: isActive
-                            ? `${COLORS.primary}20`
-                            : `${COLORS.muted}14`,
-                          borderColor: isActive ? COLORS.primary : border,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          s.rowBadgeText,
-                          { color: isActive ? COLORS.primary : COLORS.muted },
-                        ]}
-                      >
-                        {v.shortName}
-                      </Text>
-                    </View>
-
-                    {/* Name + year */}
-                    <View style={{ flex: 1 }}>
-                      <View style={[s.rowTitleRow, isRtl && s.rowTitleRowRtl]}>
-                        <Text
-                          style={[
-                            s.rowName,
-                            {
-                              color: COLORS.text,
-                              fontWeight: isActive ? '800' : '600',
-                            },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {v.name}
-                        </Text>
-                        {!!v.year && (
-                          <View
-                            style={[
-                              s.yearPill,
-                              { backgroundColor: `${COLORS.muted}16` },
-                            ]}
-                          >
-                            <Text style={[s.yearText, { color: COLORS.muted }]}>
-                              {v.year}
-                            </Text>
-                          </View>
-                        )}
-                        <View
-                          style={[
-                            s.offlinePill,
-                            {
-                              backgroundColor: isLocalTranslation(v.id)
-                                ? `${COLORS.primary}16`
-                                : '#F59E0B16',
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              s.offlinePillText,
-                              {
-                                color: isLocalTranslation(v.id)
-                                  ? COLORS.primary
-                                  : '#F59E0B',
-                              },
-                            ]}
-                          >
-                            {isLocalTranslation(v.id) ? 'Local' : 'Online'}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text
-                        style={[s.rowDesc, { color: COLORS.muted }]}
-                        numberOfLines={1}
-                      >
-                        {v.shortName}
-                      </Text>
-                    </View>
-
-                    {/* Check / empty ring */}
-                    {isActive ? (
-                      <View
-                        style={[
-                          s.checkDot,
-                          { backgroundColor: COLORS.primary },
-                        ]}
-                      >
-                        <Check size={11} color="#fff" strokeWidth={3} />
-                      </View>
-                    ) : (
-                      <View style={[s.checkEmpty, { borderColor: border }]} />
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })
-          )}
-        </View>
-
-        {/* ═════════════════════════════════════════════════════════════════
-            TEXT SIZE
-        ══════════════════════════════════════════════════════════════════ */}
         <SectionHeader
           icon={<Type size={15} color={COLORS.primary} strokeWidth={2} />}
           label={translation?.readingSettings?.textSize || 'Text Size'}
           COLORS={COLORS}
           isRtl={isRtl}
-          style={{ marginTop: SPACING.xl }}
         />
 
-        {/* Stepper */}
         <View
           style={[
             s.fontCard,
@@ -420,10 +88,7 @@ export default function ReadingSettingsScreen() {
           </TouchableOpacity>
 
           <View style={s.fontCenter}>
-            {/* Animated size display */}
-            <Text style={[s.fontValue, { color: COLORS.primary }]}>
-              {fontSize}
-            </Text>
+            <Text style={[s.fontValue, { color: COLORS.primary }]}>{fontSize}</Text>
             <Text style={[s.fontUnit, { color: COLORS.muted }]}>pt</Text>
           </View>
 
@@ -436,9 +101,8 @@ export default function ReadingSettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Size scale row */}
         <View style={s.sizeScale}>
-          {[11, 12, 14, 16, 18, 20, 24, 28].map(sz => {
+          {FONT_PRESETS.map(sz => {
             const active = fontSize === sz;
             return (
               <TouchableOpacity
@@ -447,20 +111,13 @@ export default function ReadingSettingsScreen() {
                 style={[
                   s.scaleDot,
                   {
-                    backgroundColor: active
-                      ? COLORS.primary
-                      : `${COLORS.muted}22`,
+                    backgroundColor: active ? COLORS.primary : `${COLORS.muted}22`,
                     borderColor: active ? COLORS.primary : 'transparent',
                   },
                 ]}
                 hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
               >
-                <Text
-                  style={[
-                    s.scaleLabel,
-                    { color: active ? '#fff' : COLORS.muted },
-                  ]}
-                >
+                <Text style={[s.scaleLabel, { color: active ? '#fff' : COLORS.muted }]}>
                   {sz}
                 </Text>
               </TouchableOpacity>
@@ -468,14 +125,15 @@ export default function ReadingSettingsScreen() {
           })}
         </View>
 
-        {/* Live preview */}
         <View
           style={[
             s.previewCard,
             { backgroundColor: surface, borderColor: border },
           ]}
         >
-          <Text style={[s.previewHint, { color: COLORS.muted }]}>{translation?.readingSettings?.previewLabel || 'PREVIEW'}</Text>
+          <Text style={[s.previewHint, { color: COLORS.muted }]}>
+            {translation?.readingSettings?.previewLabel || 'PREVIEW'}
+          </Text>
           <Text
             style={{
               color: COLORS.text,
@@ -485,22 +143,15 @@ export default function ReadingSettingsScreen() {
             }}
             numberOfLines={4}
           >
-            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>
-              {'"'}
-            </Text>
-            {
-              'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.'
-            }
-            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>
-              {'"'}
-            </Text>
+            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>{'"'}</Text>
+            For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.
+            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>{'"'}</Text>
           </Text>
-          <Text style={[s.previewRef, isRtl && s.previewRefRtl, { color: COLORS.muted }]}> {translation?.readingSettings?.preview?.ref || '— John 3:16'}</Text>
+          <Text style={[s.previewRef, isRtl && s.previewRefRtl, { color: COLORS.muted }]}>
+            {translation?.readingSettings?.preview?.ref || '— John 3:16'}
+          </Text>
         </View>
 
-        {/* ═════════════════════════════════════════════════════════════════
-            READING VOICE
-        ══════════════════════════════════════════════════════════════════ */}
         <SectionHeader
           icon={<Volume2 size={15} color="#10B981" strokeWidth={2} />}
           label={translation?.readingSettings?.readingVoice || 'Reading Voice'}
@@ -517,16 +168,21 @@ export default function ReadingSettingsScreen() {
           <View style={[s.linkIcon, { backgroundColor: '#10B98118' }]}>
             <Volume2 size={18} color="#10B981" strokeWidth={2} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.linkLabel, { color: COLORS.text }]}>{translation?.readingSettings?.voiceSettings?.label || 'Voice Settings'}</Text>
-            <Text style={[s.linkSub, { color: COLORS.muted }]}>{translation?.readingSettings?.voiceSettings?.subtitle || 'Speed, pitch, narrator voice'}</Text>
+          <View style={s.linkInfo}>
+            <Text style={[s.linkLabel, { color: COLORS.text }]}>
+              {translation?.readingSettings?.voiceSettings?.label || 'Voice Settings'}
+            </Text>
+            <Text style={[s.linkSub, { color: COLORS.muted }]}>
+              {translation?.readingSettings?.voiceSettings?.subtitle || 'Speed, pitch, narrator voice'}
+            </Text>
           </View>
-          {isRtl ? <ChevronRight size={16} color={COLORS.muted} strokeWidth={2} style={{ transform: [{ scaleX: -1 }] }} /> : <ChevronRight size={16} color={COLORS.muted} strokeWidth={2} />}
+          {isRtl ? (
+            <ChevronRight size={16} color={COLORS.muted} strokeWidth={2} style={{ transform: [{ scaleX: -1 }] }} />
+          ) : (
+            <ChevronRight size={16} color={COLORS.muted} strokeWidth={2} />
+          )}
         </TouchableOpacity>
 
-        {/* ══════════════════════════════════════════════════════════════════
-            APPEARANCE
-        ══════════════════════════════════════════════════════════════════ */}
         <SectionHeader
           icon={<Palette size={15} color={COLORS.accent} strokeWidth={2} />}
           label={translation?.readingSettings?.appearance?.label || 'Appearance'}
@@ -545,9 +201,11 @@ export default function ReadingSettingsScreen() {
               <Sun size={18} color={COLORS.accent} strokeWidth={2} />
             )}
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={s.linkInfo}>
             <Text style={[s.linkLabel, { color: COLORS.text }]}>
-              {isDark ? (translation?.readingSettings?.appearance?.lightMode || 'Light Mode') : (translation?.readingSettings?.appearance?.darkMode || 'Dark Mode')}
+              {isDark
+                ? (translation?.readingSettings?.appearance?.lightMode || 'Light Mode')
+                : (translation?.readingSettings?.appearance?.darkMode || 'Dark Mode')}
             </Text>
             <Text style={[s.linkSub, { color: COLORS.muted }]}>
               {isDark
@@ -570,7 +228,6 @@ export default function ReadingSettingsScreen() {
   );
 }
 
-// ─── SectionHeader ────────────────────────────────────────────────────────────
 function SectionHeader({
   icon,
   label,
@@ -586,12 +243,10 @@ function SectionHeader({
 }) {
   return (
     <View style={[sh.row, isRtl && sh.rowRtl, style]}>
-      <View style={[sh.iconWrap, isRtl && sh.iconWrapRtl, { backgroundColor: `${COLORS.primary}12` }]}>
+      <View style={[sh.iconWrap, { backgroundColor: `${COLORS.primary}12` }]}>
         {icon}
       </View>
-      <Text style={[sh.label, { color: COLORS.muted }]}>
-        {label.toUpperCase()}
-      </Text>
+      <Text style={[sh.label, { color: COLORS.muted }]}>{label.toUpperCase()}</Text>
     </View>
   );
 }
@@ -603,19 +258,13 @@ const sh = StyleSheet.create({
     gap: 8,
     marginBottom: SPACING.sm,
   },
-  rowRtl: {
-    flexDirection: 'row-reverse',
-  },
+  rowRtl: { flexDirection: 'row-reverse' },
   iconWrap: {
     width: 26,
     height: 26,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  iconWrapRtl: {
-    marginRight: 0,
-    marginLeft: 8,
   },
   label: {
     fontSize: 10,
@@ -624,7 +273,6 @@ const sh = StyleSheet.create({
   },
 });
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root: { flex: 1 },
   scroll: {
@@ -633,180 +281,6 @@ const s = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // Loading
-  loadingContainer: {
-    padding: SPACING.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    color: '#888888',
-    fontSize: FONT_SIZES.sm,
-  },
-
-  // ── Active version hero ──────────────────────────────────────────────────
-  activeVersionHero: {
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  heroOrb: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    top: -30,
-    right: -30,
-  },
-  heroContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  heroBadgeWrap: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
-  },
-  heroBadgeText: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '900',
-    color: '#fff',
-    letterSpacing: 0.5,
-  },
-  heroName: {
-    fontSize: FONT_SIZES.md,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.2,
-  },
-  heroMeta: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.68)',
-    marginTop: 2,
-  },
-  activeTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-  },
-  activeTagText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.9)',
-  },
-
-  // ── Search ───────────────────────────────────────────────────────────────
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: SPACING.md,
-    height: 44,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    marginBottom: SPACING.sm,
-  },
-  searchBarRtl: {
-    flexDirection: 'row-reverse',
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '600',
-    paddingVertical: 0, // prevent Android extra padding
-  },
-
-  // ── Version list ─────────────────────────────────────────────────────────
-  versionList: {
-    borderRadius: BORDER_RADIUS.xl,
-    borderWidth: 1,
-    overflow: 'hidden',
-    marginBottom: SPACING.sm,
-  },
-  versionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: SPACING.md,
-    gap: 12,
-  },
-  versionRowRtl: {
-    flexDirection: 'row-reverse',
-  },
-  rowBadge: {
-    width: 46,
-    height: 28,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  rowBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.4,
-  },
-  rowTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'nowrap',
-  },
-  rowTitleRowRtl: {
-    flexDirection: 'row-reverse',
-  },
-  rowName: { fontSize: FONT_SIZES.sm },
-  yearPill: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 999,
-  },
-  yearText: { fontSize: 10, fontWeight: '800' },
-  offlinePill: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 999,
-    marginLeft: 5,
-  },
-  offlinePillText: { fontSize: 9, fontWeight: '700' },
-  rowDesc: { fontSize: 11, marginTop: 2 },
-
-  checkDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkEmpty: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-  },
-
-  emptyWrap: { padding: SPACING.lg, alignItems: 'center' },
-  emptyTitle: { fontSize: FONT_SIZES.md, fontWeight: '700', marginBottom: 4 },
-  emptySub: { fontSize: FONT_SIZES.sm, fontWeight: '500' },
-
-  // ── Font size ────────────────────────────────────────────────────────────
   fontCard: {
     flexDirection: 'row',
     borderRadius: BORDER_RADIUS.lg,
@@ -815,9 +289,7 @@ const s = StyleSheet.create({
     height: 56,
     marginBottom: SPACING.sm,
   },
-  fontCardRtl: {
-    flexDirection: 'row-reverse',
-  },
+  fontCardRtl: { flexDirection: 'row-reverse' },
   fontBtn: {
     width: 56,
     justifyContent: 'center',
@@ -835,12 +307,10 @@ const s = StyleSheet.create({
   fontValue: { fontSize: 26, fontWeight: '900', letterSpacing: -0.5 },
   fontUnit: { fontSize: 13, fontWeight: '500', marginBottom: 3 },
 
-  // Quick-select dots
   sizeScale: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: SPACING.md,
-    paddingHorizontal: 2,
   },
   scaleDot: {
     paddingHorizontal: 9,
@@ -852,7 +322,6 @@ const s = StyleSheet.create({
   },
   scaleLabel: { fontSize: 11, fontWeight: '700' },
 
-  // Preview card
   previewCard: {
     borderRadius: BORDER_RADIUS.xl,
     borderWidth: 1,
@@ -871,11 +340,8 @@ const s = StyleSheet.create({
     marginTop: SPACING.sm,
     textAlign: 'right',
   },
-  previewRefRtl: {
-    textAlign: 'left',
-  },
+  previewRefRtl: { textAlign: 'left' },
 
-  // ── Link row (Voice / Appearance) ────────────────────────────────────────
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -886,9 +352,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
   },
-  linkRowRtl: {
-    flexDirection: 'row-reverse',
-  },
+  linkRowRtl: { flexDirection: 'row-reverse' },
   linkIcon: {
     width: 40,
     height: 40,
@@ -896,6 +360,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  linkInfo: { flex: 1 },
   linkLabel: { fontSize: FONT_SIZES.md, fontWeight: '700' },
   linkSub: { fontSize: 11, fontWeight: '500', marginTop: 2 },
 });

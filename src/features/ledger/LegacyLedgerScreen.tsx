@@ -857,13 +857,7 @@ const LegacyLedgerScreen = () => {
         </View>
 
         {/* ── Offline Banner ── */}
-        {isOnline === false && (
-          <View style={[styles.offlineBanner, { backgroundColor: '#F59E0B' }]}>
-            <Text style={styles.offlineBannerText}>
-              You are offline — showing cached content
-            </Text>
-          </View>
-        )}
+       
 
         {/* ── Search Bar ── */}
         <View style={styles.searchContainer}>

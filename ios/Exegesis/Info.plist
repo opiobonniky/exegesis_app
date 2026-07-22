@@ -30,7 +30,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.270479211517-f0rnvklms45eqdjrorund65balbr0s4f</string>
-				<string>exegesis</string> 
+				<string>exegesis</string>
 			</array>
 		</dict>
 	</array>
@@ -51,12 +51,12 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs access to your camera to take photos for your profile and content.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app needs local network access during development to connect to the Exegesis backend running on your Mac.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>We need your location to provide location-based features and services.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We need your location to provide location-based features and services.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>This app needs local network access during development to connect to the Exegesis backend running on your Mac.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to your microphone for audio features.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
@@ -81,6 +81,8 @@
 	<array>
 		<string>arm64</string>
 	</array>
+	<key>UIStatusBarStyle</key>
+	<string></string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

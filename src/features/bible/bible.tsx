@@ -335,31 +335,32 @@ export default function Bible() {
   }, [hasAccess, navigation]);
 
   // Fetch Strong's word data when chapter changes
-  const fetchVerseWords = useCallback(async () => {
-    if (!currentBook || !currentChapter) return;
-    try {
-      const res = await getVerseWords(
-        currentBook,
-        currentChapter,
-        undefined,
-        activeVersion.id,
-      );
-
-      if (!res?.returnData) return;
-      const grouped: Record<number, StrongsWordData[]> = {};
-      for (const w of res.returnData) {
-        if (!grouped[w.verseNumber!]) grouped[w.verseNumber!] = [];
-        grouped[w.verseNumber!].push(w);
-      }
-      setVerseWordMap(grouped);
-    } catch (e) {
-      console.error('Failed to fetch verse word data:', e);
-    }
-  }, [currentBook, currentChapter, activeVersion?.id]);
-
   useEffect(() => {
+    setVerseWordMap({});
+    let ignore = false;
+    const fetchVerseWords = async () => {
+      if (!currentBook || !currentChapter) return;
+      try {
+        const res = await getVerseWords(
+          currentBook,
+          currentChapter,
+          undefined,
+          activeVersion.id,
+        );
+        if (ignore || !res?.returnData) return;
+        const grouped: Record<number, StrongsWordData[]> = {};
+        for (const w of res.returnData) {
+          if (!grouped[w.verseNumber!]) grouped[w.verseNumber!] = [];
+          grouped[w.verseNumber!].push(w);
+        }
+        setVerseWordMap(grouped);
+      } catch (e) {
+        if (!ignore) console.error('Failed to fetch verse word data:', e);
+      }
+    };
     fetchVerseWords();
-  }, [fetchVerseWords]);
+    return () => { ignore = true; };
+  }, [currentBook, currentChapter, activeVersion?.id]);
 
   // ── Entry flow: book → chapter → reader ──────────────────────────────
   const [selectionStage, setSelectionStage] = useState<
@@ -552,13 +553,7 @@ export default function Bible() {
   return (
     <View style={styles.container}>
       {/* Offline banner */}
-      {isOnline === false && (
-        <View style={{ backgroundColor: '#F59E0B', paddingVertical: 6, paddingHorizontal: 16 }}>
-          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
-            You are offline — showing cached or local content
-          </Text>
-        </View>
-      )}
+      
 
       {initialLoading ? (
         <>

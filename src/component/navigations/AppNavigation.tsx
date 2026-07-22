@@ -106,6 +106,7 @@ const FORCED_ANIMATIONS: Record<string, AnimationType> = {
   CreateReadingPlan: 'slide_from_bottom',
   EditReadingPlan: 'slide_from_bottom',
   journalEntry: 'slide_from_bottom',
+  LabHomeScreen: 'slide_from_bottom',
 };
 
 
@@ -569,6 +570,12 @@ const AppNavigation = () => {
           name={route.verseResources}
           getComponent={() =>
             require('../../features/bible/VerseResourcesScreen').default
+          }
+        />
+        <Stack.Screen
+          name={route.studyGuide}
+          getComponent={() =>
+            require('../../features/bible/modals/StudyGuideModal').default
           }
         />
 

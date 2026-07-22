@@ -30,6 +30,25 @@ export const getBookPrologue = async (bookName: string): Promise<BookPrologue | 
   }
 };
 
+export const getBookProloguesPage = async (params?: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+}): Promise<AdminBookProloguesResponse> => {
+  const res = await sendPostRequest<AdminBookProloguesResponse>('book-prologues', 'get-all', {
+    page: params?.page ?? 0,
+    pageSize: params?.pageSize ?? 12,
+    search: params?.search || undefined,
+  });
+  if (res.returnCode !== 200) throw new Error(res.returnMessage || 'Failed to fetch book prologues');
+  return res.returnData ?? { data: [], total: 0, hasNext: false };
+};
+
+export const getAllBookPrologues = async (): Promise<BookPrologue[]> => {
+  const res = await getBookProloguesPage({ page: 0, pageSize: 100 });
+  return res.data;
+};
+
 export const getAllAdminBookPrologues = async (params?: {
   page?: number;
   pageSize?: number;

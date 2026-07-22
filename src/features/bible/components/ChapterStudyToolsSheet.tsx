@@ -27,7 +27,7 @@ import {
   X,
 } from 'lucide-react-native';
 import { AppContext } from '../../../common/AppContext';
-import { getColors, SPACING } from '../../../constants/theme';
+import { getColors } from '../../../constants/theme';
 import {
   ChapterStudyToolItem,
   getChapterStudyTools,
@@ -96,7 +96,7 @@ export default function ChapterStudyToolsSheet({
   const [prologueLoading, setPrologueLoading] = useState(false);
   const [strongsWords, setStrongsWords] = useState<StrongsWordData[]>([]);
   const [strongsLoading, setStrongsLoading] = useState(false);
-  const [expandedPrologue, setExpandedPrologue] = useState(false);
+  const [expandedPrologue, setExpandedPrologue] = useState(true);
   const [expandedStrongs, setExpandedStrongs] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -154,6 +154,7 @@ export default function ChapterStudyToolsSheet({
 
   useEffect(() => {
     if (visible) {
+      setExpandedPrologue(true);
       Animated.spring(slideAnim, {
         toValue: 1,
         friction: 9,
@@ -272,23 +273,35 @@ export default function ChapterStudyToolsSheet({
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
             >
-              {/* Info button */}
-              <TouchableOpacity style={styles.infoRow} onPress={() => setShowGuide(true)}>
-                <Info size={14} color={COLORS.primary} />
-                <Text style={styles.infoText}>How do I study this?</Text>
-              </TouchableOpacity>
+              {/* Quick actions */}
+              <View style={styles.quickActions}>
+                <TouchableOpacity
+                  style={[styles.quickActionCard, { backgroundColor: `${COLORS.primary}10` }]}
+                  onPress={() => setShowGuide(true)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.quickActionIcon, { backgroundColor: `${COLORS.primary}18` }]}>
+                    <Info size={18} color={COLORS.primary} />
+                  </View>
+                  <Text style={[styles.quickActionTitle, { color: COLORS.primary }]}>How Do I Study This?</Text>
+                  <Text style={[styles.quickActionSub, { color: COLORS.textSecondary }]}>5-step guide</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.contextRow}
-                onPress={() => {
-                  onClose();
-                  setTimeout(() => onOpenBookContext?.(bookName), 350);
-                }}
-                activeOpacity={0.75}
-              >
-                <BookMarked size={14} color={COLORS.primary} />
-                <Text style={styles.contextText}>Open Book Context</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.quickActionCard, { backgroundColor: '#6366f110' }]}
+                  onPress={() => {
+                    onClose();
+                    setTimeout(() => onOpenBookContext?.(bookName), 350);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.quickActionIcon, { backgroundColor: '#6366f118' }]}>
+                    <BookMarked size={18} color="#6366f1" />
+                  </View>
+                  <Text style={[styles.quickActionTitle, { color: '#6366f1' }]}>Book Context</Text>
+                  <Text style={[styles.quickActionSub, { color: COLORS.textSecondary }]}>Author, audience, theme</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Overview strip */}
               <View style={styles.overview}>
@@ -690,34 +703,34 @@ const createStyles = (COLORS: any) =>
     },
     scroll: { flexGrow: 0 },
     scrollContent: { paddingBottom: 32 },
-    infoRow: {
+    quickActions: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
+      gap: 8,
       paddingHorizontal: 18,
-      paddingVertical: 6,
+      paddingBottom: 14,
     },
-  infoText: {
-      color: COLORS.primary,
-      fontSize: 12,
-    fontWeight: '700',
-  },
-  contextRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(99,102,241,0.10)',
-    marginBottom: SPACING.sm,
-  },
-  contextText: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
+    quickActionCard: {
+      flex: 1,
+      borderRadius: 14,
+      padding: 14,
+      gap: 6,
+    },
+    quickActionIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 2,
+    },
+    quickActionTitle: {
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    quickActionSub: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
     overview: {
       flexDirection: 'row',
       flexWrap: 'wrap',

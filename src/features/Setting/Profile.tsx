@@ -570,8 +570,8 @@ export default function ProfileScreen() {
                     style={[styles.manageButtonText, { color: COLORS.primary }]}
                   >
                     {subscriptionTier === 'free'
-                      ? 'Become a Sower'
-                      : 'Manage Sowing'}
+                      ? 'Subscribe'
+                      : 'Manage Subscription'}
                   </Text>
                 </View>
               </View>
@@ -866,21 +866,7 @@ export default function ProfileScreen() {
         </>
       )}
 
-      <Animated.View
-        style={{
-          transform: [
-            {
-              translateY: tabBarAnimation.interpolate({
-                inputRange: [0, 1],
-                outputRange: [100, 0],
-              }),
-            },
-          ],
-          opacity: tabBarAnimation,
-        }}
-      >
-        <BottomTab activeTab="profile" setActiveTab={tab => console.log(tab)} />
-      </Animated.View>
+     
     </View>
   );
 }

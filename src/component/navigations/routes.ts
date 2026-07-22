@@ -54,13 +54,10 @@ export const route = {
   studyBible: 'StudyBible',
   bibleStudy: 'BibleStudy',
   lab: 'Lab',
-
-  // Legacy Ledger (Phase 5+)
+  studyGuide: 'StudyGuide',
   legacyLedger: 'LegacyLedger',
   ledgerDetail: 'LedgerDetail',
   ledgerEntry: 'LedgerEntry',
-
-  // Bible Trivia
   trivia: 'Trivia',
   adminTriviaPerformance: 'AdminTriviaPerformance',
   adminTriviaUserDetail: 'AdminTriviaUserDetail',
@@ -69,4 +66,53 @@ export const route = {
   strongsDictionary: 'StrongsDictionary',
   adminVerseExplanations: 'AdminVerseExplanations',
   addVerseExplanation: 'AddVerseExplanation',
+} as const;
+
+export type RouteName = (typeof route)[keyof typeof route];
+
+export type RootStackParamList = {
+  [route.bible]: { bookName: string; chapter: number; verseNumber?: number } | undefined;
+  [route.bibleGuest]: { bookName: string; chapter: number; verseNumber?: number } | undefined;
+  [route.fullVerseExplanation]: { bookName: string; chapter: number; verse: number };
+  [route.verseResources]: { bookName: string; chapter: number; verse: number };
+  [route.wordStudy]: { strongsId?: string; word?: string };
+  [route.journalEntry]: { entryId?: string };
+  [route.journalDetail]: { entryId: string };
+  [route.planDetail]: { planId: string };
+  [route.dailyReading]: { planId: string; day?: number };
+  [route.planBible]: { planId: string; bookName?: string; chapter?: number };
+  [route.search]: { query?: string; scope?: string; word?: string; strongsId?: string } | undefined;
+  [route.strongsDictionary]: undefined;
+  [route.studyBible]: { bookName?: string; chapter?: number; verseStart?: number; verseEnd?: number; stage?: string; learnTab?: string };
+  [route.dailyDevotional]: undefined;
+  [route.dailyDevotions]: undefined;
+  [route.dailyExegesis]: undefined;
+  [route.dailyVerse]: undefined;
+  [route.home]: undefined;
+  [route.homeLogin]: undefined;
+  [route.Highlights]: undefined;
+  [route.readHistory]: undefined;
+  [route.profile]: undefined;
+  [route.editProfile]: undefined;
+  [route.extendedProfile]: undefined;
+  [route.favorites]: undefined;
+  [route.notes]: undefined;
+  [route.readingPlan]: undefined;
+  [route.voiceSettings]: undefined;
+  [route.notificationSettings]: undefined;
+  [route.readingSettings]: undefined;
+  [route.bibleStudy]: { bookName: string; chapter: number; verseStart: number; verseEnd: number; stage?: string; learnTab?: string };
+  [route.lab]: undefined;
+  [route.studyGuide]: undefined;
+  [route.legacyLedger]: undefined;
+  [route.trivia]: undefined;
+  [route.sower]: undefined;
+  [route.strongsDictionary]: undefined;
+  [route.ledgerDetail]: { ledgerId: string };
+  [route.ledgerEntry]: { ledgerId?: string };
+  [route.adminTriviaPerformance]: { triviaId: string };
+  [route.adminTriviaUserDetail]: { userId: string };
+  [route.adminReadingPlanDetail]: { planId: string };
+  [route.notLogined]: { screen?: string } | undefined;
+  [route.addVerseExplanation]: { verseId?: string } | undefined;
 };

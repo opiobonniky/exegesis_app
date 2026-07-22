@@ -23,6 +23,8 @@ export function useStrongsDictionary() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [resultTotal, setResultTotal] = useState(0);
+  const [searchHasNext, setSearchHasNext] = useState(false);
+  const searchOffsetRef = useRef(0);
 
   // Browse by Book
   const [selectedBook, setSelectedBook] = useState('');
@@ -40,7 +42,6 @@ export function useStrongsDictionary() {
   const [verseWords, setVerseWords] = useState<VerseUniqueWord[]>([]);
   const [verseWordsLoading, setVerseWordsLoading] = useState(false);
   const [verseWordsLoaded, setVerseWordsLoaded] = useState(false);
-  const [verseWordsTotal, setVerseWordsTotal] = useState(0);
 
   // Language filter
   const [langFilter, setLangFilter] = useState<LangFilter>('all');
@@ -54,21 +55,34 @@ export function useStrongsDictionary() {
 
   // ── Search ──
 
-  const executeSearch = useCallback(async (query: string) => {
-    if (query.trim().length < 2) return;
+  const executeSearch = useCallback(async (query: string, append = false) => {
+    if (query.trim().length < 1) return;
     setSearchLoading(true);
-    setSearched(true);
+    if (!append) setSearched(true);
+    const offset = append ? searchOffsetRef.current : 0;
     try {
-      const res = await strongsDictionaryApi.search(query.trim(), { limit: 50, offset: 0 });
-      setResults(res.data);
+      const res = await strongsDictionaryApi.search(query.trim(), { limit: 50, offset });
+      setResults(prev => (append ? [...prev, ...res.data] : res.data));
       setResultTotal(res.total);
+      const newOffset = offset + res.data.length;
+      searchOffsetRef.current = newOffset;
+      setSearchHasNext(newOffset < res.total);
     } catch {
-      setResults([]);
-      setResultTotal(0);
+      if (!append) {
+        setResults([]);
+        setResultTotal(0);
+      }
+      setSearchHasNext(false);
     } finally {
       setSearchLoading(false);
     }
   }, []);
+
+  const loadMoreSearch = useCallback(() => {
+    if (searchHasNext && !searchLoading) {
+      executeSearch(searchQuery, true);
+    }
+  }, [searchHasNext, searchLoading, executeSearch, searchQuery]);
 
   // ── Browse by Book ──
 
@@ -114,10 +128,8 @@ export function useStrongsDictionary() {
     try {
       const res = await strongsDictionaryApi.getVerseUniqueWords(book, chapter, verse);
       setVerseWords(res.data);
-      setVerseWordsTotal(res.total);
     } catch {
       setVerseWords([]);
-      setVerseWordsTotal(0);
     } finally {
       setVerseWordsLoading(false);
       setVerseWordsLoaded(true);
@@ -143,13 +155,13 @@ export function useStrongsDictionary() {
   }, []);
 
   return {
-    // State
     mode,
     searchQuery,
     results,
     searchLoading,
     searched,
     resultTotal,
+    searchHasNext,
     selectedBook,
     browseWords,
     browseLoading,
@@ -162,13 +174,11 @@ export function useStrongsDictionary() {
     verseWords,
     verseWordsLoading,
     verseWordsLoaded,
-    verseWordsTotal,
     langFilter,
     selectedWord,
     detailVisible,
     detailLoading,
 
-    // Setters
     setSearchQuery,
     setSearched,
     setSelectedBook,
@@ -178,8 +188,8 @@ export function useStrongsDictionary() {
     setLangFilter,
     setDetailLoading,
 
-    // Actions
     executeSearch,
+    loadMoreSearch,
     loadBookWords,
     loadMoreBrowse,
     loadVerseWords,

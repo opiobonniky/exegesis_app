@@ -5,7 +5,7 @@ import { getColors, SPACING, FONT_SIZES } from '../constants/theme';
 import { WifiOff } from 'lucide-react-native';
 import { AppContext } from '../common/AppContext';
 
-const BANNER_HEIGHT = 32;
+const BANNER_HEIGHT = 20;
 const BOTTOM_INSET = Platform.OS === 'ios' ? 34 : 0;
 
 const OfflineBanner = () => {
@@ -61,7 +61,7 @@ const OfflineBanner = () => {
         <View style={styles.inner}>
           <WifiOff size={12} color="#FFFFFF" />
           <Text style={styles.text}>
-            You are offline — showing cached content
+            No internet connection. 
           </Text>
         </View>
       </Animated.View>
@@ -85,13 +85,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: SPACING.xs,
-    paddingVertical: 6,
     paddingHorizontal: SPACING.lg,
-    height: BANNER_HEIGHT,
+    // height: BANNER_HEIGHT,
   },
   text: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     textAlign: 'center',
   },

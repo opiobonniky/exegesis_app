@@ -33,7 +33,6 @@ import {
   Edit3,
   Trash2,
   BookOpen,
-  Calendar,
   Heart,
   Lightbulb,
   Sparkles,
@@ -277,33 +276,23 @@ const JournalDetail = () => {
           )}
         </View>
 
-        {/* Date & Scripture info */}
-        <View style={[styles.infoRow, isRtl && { flexDirection: 'row-reverse' }]}>
-          <View style={[styles.infoItem, isRtl && { flexDirection: 'row-reverse' }]}>
-            <Calendar size={14} color={COLORS.muted} />
-            <Text style={[styles.infoText, { color: COLORS.muted }]}>
-              {formatDate(entry.createdOn, language)}
-            </Text>
-          </View>
-          {entry.bookName && (
-            <View style={[styles.infoItem, isRtl && { flexDirection: 'row-reverse' }]}>
-              <BookOpen size={14} color={COLORS.muted} />
-              <Text style={[styles.infoText, { color: COLORS.muted }]}>
-                {entry.bookName} {entry.chapter}:{entry.verseNumber}
-              </Text>
-            </View>
-          )}
-        </View>
+        {/* Date & Scripture reference */}
+        <Text style={[styles.dateText, { color: COLORS.muted, textAlign: isRtl ? 'right' : 'left' }]}>
+          {formatDate(entry.createdOn, language)}
+        </Text>
+        {entry.bookName && (
+          <Text style={[styles.bookRef, { color: COLORS.primary, textAlign: isRtl ? 'right' : 'left' }]}>
+            {entry.bookName} {entry.chapter}:{entry.verseNumber}
+          </Text>
+        )}
 
         {/* Main Content */}
-        <View style={[styles.card, { backgroundColor: COLORS.cardBackground }]}>
-          <Text style={[styles.sectionTitle, { color: COLORS.text }]}>
-            {jc?.journalEntrySection || 'Journal Entry'}
-          </Text>
-          <Text style={[styles.bodyText, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
-            {entry.content}
-          </Text>
-        </View>
+        <Text style={[styles.sectionTitle, { color: COLORS.text, marginTop: SPACING.lg, textAlign: isRtl ? 'right' : 'left' }]}>
+          {jc?.journalEntrySection || 'Journal Entry'}
+        </Text>
+        <Text style={[styles.bodyText, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
+          {entry.content}
+        </Text>
 
         {/* Expandable sections: Gratitude, Learnings, Application, Prayers */}
         {hasExpandableContent && (
@@ -326,7 +315,7 @@ const JournalDetail = () => {
             </TouchableOpacity>
 
             {showAllSections && expandableSections.map(section => (
-              <View key={section.key} style={[styles.card, { backgroundColor: COLORS.cardBackground }]}>
+              <View key={section.key} style={styles.sectionBlock}>
                 <View style={[styles.sectionHeader, isRtl && { flexDirection: 'row-reverse' }]}>
                   <section.icon size={16} color={section.color} />
                   <Text style={[styles.sectionTitle, { color: COLORS.text }]}>{section.label}</Text>
@@ -341,7 +330,7 @@ const JournalDetail = () => {
 
         {/* Tags */}
         {entry.tags && (
-          <View style={[styles.card, { backgroundColor: COLORS.cardBackground }]}>
+          <View style={styles.sectionBlock}>
             <View style={[styles.sectionHeader, isRtl && { flexDirection: 'row-reverse' }]}>
               <Hash size={16} color={COLORS.muted} />
               <Text style={[styles.sectionTitle, { color: COLORS.text }]}>Tags</Text>
@@ -370,7 +359,7 @@ const JournalDetail = () => {
           } catch {}
           if (words.length === 0) return null;
           return (
-            <View style={[styles.card, { backgroundColor: COLORS.cardBackground }]}>
+            <View style={styles.sectionBlock}>
               <View style={[styles.sectionHeader, isRtl && { flexDirection: 'row-reverse' }]}>
                 <BookOpen size={16} color={COLORS.primary} />
                 <Text style={[styles.sectionTitle, { color: COLORS.text }]}>
@@ -567,26 +556,17 @@ const createStyles = (COLORS: any) => StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     fontWeight: '700',
   },
-  infoRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.lg,
+  dateText: {
+    fontSize: FONT_SIZES.sm,
+    marginBottom: SPACING.xs,
+  },
+  bookRef: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '700',
     marginBottom: SPACING.lg,
   },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  infoText: {
-    fontSize: FONT_SIZES.sm,
-  },
-  card: {
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  sectionBlock: {
+    marginTop: SPACING.lg,
   },
   sectionHeader: {
     flexDirection: 'row',

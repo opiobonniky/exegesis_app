@@ -49,12 +49,8 @@ import { ttsService, TTSVoice } from '../../services/ttsService';
 import { showToast } from '../../helpers/Toash.helper';
 import { useNavigation } from '@react-navigation/native';
 
-// ─── Preview text ─────────────────────────────────────────────────────────────
-
 const PREVIEW_TEXT =
   'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.';
-
-// ─── Snap points ──────────────────────────────────────────────────────────────
 
 const RATE_SNAPS = [
   { key: 'slow', value: 0.35 },
@@ -84,8 +80,6 @@ const FALLBACK_PITCH_LABELS: Record<string, string> = {
   high: 'High',
 };
 
-// ─── VoiceSettingsScreen ──────────────────────────────────────────────────────
-
 export default function VoiceSettingsScreen() {
   const app = useContext(AppContext);
   const { translations: translation, language } = useLanguage();
@@ -95,11 +89,10 @@ export default function VoiceSettingsScreen() {
   const COLORS = getColors(isDark);
   const navigation = useNavigation();
 
-  // ── TTS state ──────────────────────────────────────────────────────────────
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(() => bibleTTS.getState().isPlaying);
+  const [isPaused, setIsPaused] = useState(() => bibleTTS.getState().isPaused);
+  const isPlayingRef = useRef(isPlaying);
 
-  // ── Voice picker ───────────────────────────────────────────────────────────
   const [deviceVoices, setDeviceVoices] = useState<DeviceVoice[]>([]);
   const [deviceVoiceId, setDeviceVoiceId] = useState<string>(
     bibleTTS.getCurrentVoiceId() ?? '',
@@ -107,15 +100,12 @@ export default function VoiceSettingsScreen() {
   const [deviceLoading, setDeviceLoading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  // ── Edge TTS ──────────────────────────────────────────────────────────────
   const [edgeVoices, setEdgeVoices] = useState<TTSVoice[]>([]);
   const [edgeVoiceId, setEdgeVoiceId] = useState<string>(
     bibleTTS.edgeVoiceId,
   );
   const [edgeEnabled, setEdgeEnabled] = useState<boolean>(bibleTTS.edgeEnabled);
 
-  // ── Sliders ────────────────────────────────────────────────────────────────
-  // `null` means "using device default — not yet customised by user"
   const [rate, setRateLocal] = useState<number | null>(
     bibleTTS.isRateCustomized() ? bibleTTS.getCurrentRate() : null,
   );
@@ -123,32 +113,26 @@ export default function VoiceSettingsScreen() {
     bibleTTS.isPitchCustomized() ? bibleTTS.getCurrentPitch() : null,
   );
 
-  // Display value (slider needs a number even in device-default mode)
-  const rateDisplay = rate ?? 0.65; // midpoint shown when device-default
+  const rateDisplay = rate ?? 0.65;
   const pitchDisplay = pitch ?? 1.0;
-
-  const rateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pitchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const previewActiveRef = useRef(false);
 
-  // ── Waveform animation ─────────────────────────────────────────────────────
   const waveAnims = useRef(
     Array.from({ length: 7 }, () => new Animated.Value(0.3)),
   ).current;
   const waveLoop = useRef<Animated.CompositeAnimation | null>(null);
 
-  // ── Subscribe ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const unsub = bibleTTS.subscribe(s => {
       setIsPlaying(s.isPlaying);
       setIsPaused(s.isPaused);
+      isPlayingRef.current = s.isPlaying;
       if (!s.isPlaying && !s.isPaused) previewActiveRef.current = false;
     });
     return () => unsub();
   }, []);
 
-  // ── Waveform ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isPlaying) {
       const anims = waveAnims.map((a, i) =>
@@ -187,10 +171,8 @@ export default function VoiceSettingsScreen() {
     };
   }, [isPlaying]);
 
-  // ── Load voices (device + edge) ──────────────────────────────────────────
   useEffect(() => {
     (async () => {
-      // Load Edge TTS voices
       try {
         const voices = await ttsService.getVoices();
         setEdgeVoices(voices);
@@ -198,7 +180,6 @@ export default function VoiceSettingsScreen() {
         setEdgeVoices([]);
       }
 
-      // Load device TTS voices
       setDeviceLoading(true);
       try {
         const voices = await bibleTTS.getDeviceVoices();
@@ -215,7 +196,6 @@ export default function VoiceSettingsScreen() {
     })();
   }, []);
 
-  // ── Derived labels ─────────────────────────────────────────────────────────
   const currentEdgeVoice = useMemo(
     () => edgeVoices.find(v => v.voiceId === edgeVoiceId),
     [edgeVoices, edgeVoiceId],
@@ -238,7 +218,8 @@ export default function VoiceSettingsScreen() {
     );
   }, [currentEdgeVoice, currentDeviceVoice, deviceVoiceId, deviceLoading, isUsingEdge, translation]);
 
-  const voiceQuality = useMemo(() => {      if (isUsingEdge && currentEdgeVoice) {
+  const voiceQuality = useMemo(() => {
+    if (isUsingEdge && currentEdgeVoice) {
       return translation?.voiceSettings?.edgeNeuralLabel || 'Edge Neural';
     }
     if (!currentDeviceVoice) return null;
@@ -267,19 +248,14 @@ export default function VoiceSettingsScreen() {
     );
   }, [pitchDisplay, translation]);
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-
   const handleRateChange = (v: number) =>
     setRateLocal(Math.round(v * 100) / 100);
 
   const handleRateCommit = useCallback(async (v: number) => {
     const r = Math.round(v * 100) / 100;
     setRateLocal(r);
-    if (rateTimer.current) clearTimeout(rateTimer.current);
-    rateTimer.current = setTimeout(async () => {
-      await bibleTTS.setRate(r);
-      if (previewActiveRef.current) await restartPreview();
-    }, 80);
+    await bibleTTS.setRate(r);
+    if (previewActiveRef.current) await restartPreview();
   }, []);
 
   const handleRateReset = async () => {
@@ -295,11 +271,8 @@ export default function VoiceSettingsScreen() {
   const handlePitchCommit = useCallback(async (v: number) => {
     const p = Math.round(v * 100) / 100;
     setPitchLocal(p);
-    if (pitchTimer.current) clearTimeout(pitchTimer.current);
-    pitchTimer.current = setTimeout(async () => {
-      await bibleTTS.setPitch(p);
-      if (previewActiveRef.current) await restartPreview();
-    }, 80);
+    await bibleTTS.setPitch(p);
+    if (previewActiveRef.current) await restartPreview();
   }, []);
 
   const handlePitchReset = async () => {
@@ -340,36 +313,33 @@ export default function VoiceSettingsScreen() {
 
   const restartPreview = async () => {
     await bibleTTS.stop();
-    await new Promise((r: any) => setTimeout(r, 100));
     await bibleTTS.speakVerses([{ num: 16, text: PREVIEW_TEXT }], 'John', 3);
   };
 
   const handlePreview = async () => {
-    if (isPlaying || isPaused) {
+    const state = bibleTTS.getState();
+    if (state.isPlaying || state.isPaused) {
       previewActiveRef.current = false;
       await bibleTTS.stop();
       return;
     }
     previewActiveRef.current = true;
-      try {
-        await bibleTTS.speakVerses([{ num: 16, text: PREVIEW_TEXT }], 'John', 3);
-      } catch {
-        previewActiveRef.current = false;
-        showToast('error', translation?.voiceSettings?.previewFailed || 'Preview failed: Check TTS language packs.');
-      }
+    try {
+      await bibleTTS.speakVerses([{ num: 16, text: PREVIEW_TEXT }], 'John', 3);
+    } catch {
+      previewActiveRef.current = false;
+      showToast('error', translation?.voiceSettings?.previewFailed || 'Preview failed: Check TTS language packs.');
+    }
   };
 
-  // ── Theme tokens ───────────────────────────────────────────────────────────
-  const gold = '#C9A84C';
-  const goldDim = '#C9A84C30';
-  const surface = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.035)';
-  const border = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
+  const accent = COLORS.accent;
+  const accentDim = isDark ? 'rgba(240, 180, 41, 0.12)' : 'rgba(232, 163, 23, 0.10)';
+  const accentBorder = isDark ? 'rgba(240, 180, 41, 0.25)' : 'rgba(232, 163, 23, 0.20)';
 
   return (
     <View style={[styles.root, { backgroundColor: COLORS.background }]}>
       <ActionHeader
         title={translation?.voiceSettings?.title || 'Reading Voice'}
-        rightComponent={<Volume2 size={24} color={COLORS.white} />}
         onPress={() => navigation.goBack()}
       />
 
@@ -381,46 +351,41 @@ export default function VoiceSettingsScreen() {
         <LinearGradient
           colors={
             isDark
-              ? ['#1A1208', '#2C1F06', '#1A1208']
-              : ['#FDF6E3', '#F5E6C0', '#FDF6E3']
+              ? [COLORS.background, '#111827', COLORS.background]
+              : ['#FEF7E6', '#FDF2D8', '#FEF7E6']
           }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.hero, { borderColor: gold + '28' }]}
+          style={[styles.hero, { borderColor: accentBorder }]}
         >
-          <View          style={[styles.heroBubble, isRtl ? { left: -45 } : { right: -45 }, { borderColor: gold + '14' }]} />
+          <View style={[styles.heroBubble, isRtl ? { left: -45 } : { right: -45 }, { borderColor: accentBorder }]} />
           <View style={[styles.heroInner, isRtl && { flexDirection: 'row-reverse' }]}>
             <View
               style={[
                 styles.heroRing,
-                { borderColor: gold + '55', backgroundColor: goldDim },
+                { borderColor: accent, backgroundColor: accentDim },
               ]}
             >
-              <Waves size={21} color={gold} />
+              <Waves size={21} color={accent} />
             </View>
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={[styles.heroTitle, { color: gold }]}>
+              <Text style={[styles.heroTitle, { color: accent }]}>
                 {translation?.voiceSettings?.title || 'Voice & Narration'}
               </Text>
               <Text
                 style={[
                   styles.heroSub,
-                  {
-                    color: isDark
-                      ? 'rgba(255,255,255,0.50)'
-                      : 'rgba(0,0,0,0.45)',
-                  },
+                  { color: COLORS.muted },
                 ]}
               >
                 {translation?.voiceSettings?.heroSubPrefix || 'Configure your reading voice. Sliders marked '}
-                <Text style={{ color: gold, fontWeight: '700' }}>
+                <Text style={{ color: accent, fontWeight: '700' }}>
                   {translation?.voiceSettings?.deviceDefaultBadge || 'Device default'}
                 </Text>{' '}
                 {translation?.voiceSettings?.heroSubSuffix || 'inherit your system TTS settings.'}
               </Text>
             </View>
           </View>
-          {/* Live waveform */}
           <View style={styles.waveRow}>
             {waveAnims.map((anim, i) => (
               <Animated.View
@@ -428,7 +393,7 @@ export default function VoiceSettingsScreen() {
                 style={[
                   styles.waveBar,
                   {
-                    backgroundColor: isPlaying ? gold : gold + '45',
+                    backgroundColor: isPlaying ? accent : COLORS.muted + '55',
                     height: 7 + (i % 3) * 5,
                     transform: [{ scaleY: anim }],
                   },
@@ -441,13 +406,12 @@ export default function VoiceSettingsScreen() {
         {/* ── Narrator voice ──────────────────────────────────────────── */}
         <SectionLabel text={(translation?.voiceSettings?.narratorLabel || 'NARRATOR VOICE').toUpperCase()} isDark={isDark} isRtl={isRtl} />
 
-        {/* Provider toggle: Edge Neural / Device */}
         {edgeVoices.length > 0 && (
           <View
             style={[
               styles.providerRow,
               isRtl && { flexDirection: 'row-reverse' },
-              { backgroundColor: surface, borderColor: border },
+              { backgroundColor: COLORS.surface, borderColor: COLORS.border },
             ]}
           >
             <TouchableOpacity
@@ -457,16 +421,16 @@ export default function VoiceSettingsScreen() {
                 styles.providerChip,
                 edgeEnabled && styles.providerChipActive,
                 {
-                  backgroundColor: edgeEnabled ? gold + '18' : 'transparent',
-                  borderColor: edgeEnabled ? gold + '55' : 'transparent',
+                  backgroundColor: edgeEnabled ? accentDim : 'transparent',
+                  borderColor: edgeEnabled ? accentBorder : COLORS.border,
                 },
               ]}
             >
-              <Waves size={14} color={edgeEnabled ? gold : (isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)')} />
+              <Waves size={14} color={edgeEnabled ? accent : COLORS.muted} />
               <Text
                 style={[
                   styles.providerChipText,
-                  { color: edgeEnabled ? gold : (isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)') },
+                  { color: edgeEnabled ? accent : COLORS.muted },
                 ]}
               >
                 Edge Neural
@@ -479,16 +443,16 @@ export default function VoiceSettingsScreen() {
                 styles.providerChip,
                 !edgeEnabled && styles.providerChipActive,
                 {
-                  backgroundColor: !edgeEnabled ? gold + '18' : 'transparent',
-                  borderColor: !edgeEnabled ? gold + '55' : 'transparent',
+                  backgroundColor: !edgeEnabled ? accentDim : 'transparent',
+                  borderColor: !edgeEnabled ? accentBorder : COLORS.border,
                 },
               ]}
             >
-              <Mic2 size={14} color={!edgeEnabled ? gold : (isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)')} />
+              <Mic2 size={14} color={!edgeEnabled ? accent : COLORS.muted} />
               <Text
                 style={[
                   styles.providerChipText,
-                  { color: !edgeEnabled ? gold : (isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)') },
+                  { color: !edgeEnabled ? accent : COLORS.muted },
                 ]}
               >
                 Device
@@ -503,19 +467,19 @@ export default function VoiceSettingsScreen() {
           style={[
             styles.voiceBtn,
             isRtl && { flexDirection: 'row-reverse' },
-            { backgroundColor: surface, borderColor: border },
+            { backgroundColor: COLORS.surface, borderColor: COLORS.border },
           ]}
         >
           <View
             style={[
               styles.voiceIcon,
-              { backgroundColor: goldDim, borderColor: gold + '55' },
+              { backgroundColor: accentDim, borderColor: accentBorder },
             ]}
           >
             {isUsingEdge ? (
-              <Waves size={18} color={gold} />
+              <Waves size={18} color={accent} />
             ) : (
-              <Mic2 size={18} color={gold} />
+              <Mic2 size={18} color={accent} />
             )}
           </View>
           <View style={{ flex: 1 }}>
@@ -526,15 +490,15 @@ export default function VoiceSettingsScreen() {
               {voiceLabel}
             </Text>
             {voiceQuality && (
-              <Text style={[styles.voiceTagText, { color: gold }]}>
+              <Text style={[styles.voiceTagText, { color: accent }]}>
                 {voiceQuality}{isUsingEdge ? '' : (' · ' + (currentDeviceVoice?.language ?? ''))}
               </Text>
             )}
           </View>
           {deviceLoading ? (
-            <ActivityIndicator size="small" color={gold} />
+            <ActivityIndicator size="small" color={accent} />
           ) : (
-            <ChevronDown size={17} color={gold} />
+            <ChevronDown size={17} color={accent} />
           )}
         </TouchableOpacity>
 
@@ -545,19 +509,17 @@ export default function VoiceSettingsScreen() {
             styles.previewCard,
             isRtl && { flexDirection: 'row-reverse' },
             {
-              backgroundColor: surface,
-              borderColor: isPlaying ? gold + '65' : border,
+              backgroundColor: COLORS.surface,
+              borderColor: isPlaying ? accent : COLORS.border,
             },
           ]}
         >
           <View style={{ flex: 1 }}>
-            <Text style={[styles.previewRef, { color: gold }]}>{translation?.voiceSettings?.previewRef || 'John 3:16'}</Text>
+            <Text style={[styles.previewRef, { color: accent }]}>{translation?.voiceSettings?.previewRef || 'John 3:16'}</Text>
             <Text
               style={[
                 styles.previewSnip,
-                {
-                  color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.42)',
-                },
+                { color: COLORS.muted },
               ]}
               numberOfLines={2}
             >
@@ -571,38 +533,37 @@ export default function VoiceSettingsScreen() {
               styles.playBtn,
               isRtl && { flexDirection: 'row-reverse' },
               {
-                backgroundColor: isPlaying ? '#C0392B18' : gold,
-                borderColor: isPlaying ? '#C0392B55' : 'transparent',
+                backgroundColor: isPlaying ? COLORS.error + '15' : accent,
+                borderColor: isPlaying ? COLORS.error + '45' : 'transparent',
               },
             ]}
           >
             {isPlaying ? (
-              <Square size={14} color="#C0392B" />
+              <Square size={14} color={COLORS.error} />
             ) : (
-              <Play size={14} color="#1A1208" />
+              <Play size={14} color={COLORS.white} />
             )}
-              <Text
-                style={[
-                  styles.playBtnTxt,
-                  { color: isPlaying ? '#C0392B' : '#1A1208' },
-                ]}
-              >
-                {isPlaying ? (translation?.voiceSettings?.stop || 'Stop') : (translation?.voiceSettings?.play || 'Play')}
-              </Text>
-            </TouchableOpacity>
-          </View>
+            <Text
+              style={[
+                styles.playBtnTxt,
+                { color: isPlaying ? COLORS.error : COLORS.white },
+              ]}
+            >
+              {isPlaying ? (translation?.voiceSettings?.stop || 'Stop') : (translation?.voiceSettings?.play || 'Play')}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* ── Speech controls ──────────────────────────────────────────── */}
         <SectionLabel text={(translation?.voiceSettings?.speechControlsLabel || 'SPEECH CONTROLS').toUpperCase()} isDark={isDark} isRtl={isRtl} />
         <View
           style={[
             styles.controlCard,
-            { backgroundColor: surface, borderColor: border },
+            { backgroundColor: COLORS.surface, borderColor: COLORS.border },
           ]}
         >
-          {/* Reading Speed */}
           <SliderBlock
-            icon={<Gauge size={15} color={gold} />}
+            icon={<Gauge size={15} color={accent} />}
             label={translation?.voiceSettings?.readingSpeed || 'Reading Speed'}
             snapLabel={nearestRateLabel}
             value={rateDisplay}
@@ -613,7 +574,7 @@ export default function VoiceSettingsScreen() {
             onValueChange={handleRateChange}
             onSlidingComplete={handleRateCommit}
             onReset={handleRateReset}
-            trackColor={gold}
+            trackColor={accent}
             isDark={isDark}
             COLORS={COLORS}
             deviceDefaultLabel={translation?.voiceSettings?.deviceDefaultBadge || 'Device default'}
@@ -622,9 +583,8 @@ export default function VoiceSettingsScreen() {
             isRtl={isRtl}
           />
 
-          <View style={[styles.divider, { backgroundColor: border }]} />
+          <View style={[styles.divider, { backgroundColor: COLORS.border }]} />
 
-          {/* Voice Pitch */}
           <SliderBlock
             icon={<Music2 size={15} color={COLORS.primary} />}
             label={translation?.voiceSettings?.voicePitch || 'Voice Pitch'}
@@ -657,50 +617,38 @@ export default function VoiceSettingsScreen() {
         transparent
         onRequestClose={() => setPickerOpen(false)}
       >
-        <View style={styles.sheetBg}>
+        <View style={[styles.sheetBg, { backgroundColor: COLORS.overlay }]}>
           <View
             style={[
               styles.sheet,
               {
-                backgroundColor: isDark ? '#141006' : '#FFFDF6',
-                borderColor: gold + '22',
+                backgroundColor: COLORS.cardBackground,
+                borderColor: accentBorder,
               },
             ]}
           >
-            <View style={[styles.handle, { backgroundColor: gold + '40' }]} />
+            <View style={[styles.handle, { backgroundColor: accent + '45' }]} />
             <View
               style={[
                 styles.sheetHead,
                 isRtl && { flexDirection: 'row-reverse' },
               ]}
             >
-              <Text style={[styles.sheetTitle, { color: COLORS.text }]}> 
+              <Text style={[styles.sheetTitle, { color: COLORS.text }]}>
                 {translation?.voiceSettings?.selectVoice || 'Select Voice'}
               </Text>
               <TouchableOpacity
                 onPress={() => setPickerOpen(false)}
                 style={styles.sheetClose}
               >
-                <X
-                  size={20}
-                  color={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.38)'}
-                />
+                <X size={20} color={COLORS.muted} />
               </TouchableOpacity>
             </View>
 
             {deviceLoading ? (
-              <View
-                style={{ paddingVertical: 32, alignItems: 'center', gap: 12 }}
-              >
-                <ActivityIndicator color={gold} />
-                <Text
-                  style={{
-                    color: isDark
-                      ? 'rgba(255,255,255,0.38)'
-                      : 'rgba(0,0,0,0.38)',
-                    fontSize: 13,
-                  }}
-                >
+              <View style={{ paddingVertical: 32, alignItems: 'center', gap: 12 }}>
+                <ActivityIndicator color={accent} />
+                <Text style={{ color: COLORS.muted, fontSize: 13 }}>
                   {translation?.voiceSettings?.loadingVoices || 'Loading voices…'}
                 </Text>
               </View>
@@ -709,14 +657,13 @@ export default function VoiceSettingsScreen() {
                 style={{ maxHeight: 500 }}
                 showsVerticalScrollIndicator={false}
               >
-                {/* ── Edge Neural Voices ────────────────────────────────── */}
                 {edgeVoices.length > 0 && (
                   <View>
                     <Text
                       style={[
                         styles.groupLbl,
                         isRtl && styles.groupLblRtl,
-                        { color: gold },
+                        { color: accent },
                       ]}
                     >
                       {translation?.voiceSettings?.edgeNeuralHeading || 'Edge Neural (back-end)'}
@@ -732,20 +679,13 @@ export default function VoiceSettingsScreen() {
                             styles.voiceRow,
                             isRtl && { flexDirection: 'row-reverse' },
                             {
-                              backgroundColor: sel
-                                ? gold + '14'
-                                : 'transparent',
-                              borderColor: sel
-                                ? gold + '55'
-                                : isDark
-                                  ? 'rgba(255,255,255,0.07)'
-                                  : 'rgba(0,0,0,0.07)',
-                              borderStyle: sel ? 'solid' : 'dashed',
+                              backgroundColor: sel ? accentDim : COLORS.surface,
+                              borderColor: sel ? accent : COLORS.border,
                             },
                           ]}
                         >
-                          <View style={[styles.voiceRowIcon, { backgroundColor: goldDim, borderColor: gold + '55' }]}>
-                            <Waves size={14} color={gold} />
+                          <View style={[styles.voiceRowIcon, { backgroundColor: accentDim, borderColor: accentBorder }]}>
+                            <Waves size={14} color={accent} />
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text
@@ -760,37 +700,19 @@ export default function VoiceSettingsScreen() {
                             <Text
                               style={[
                                 styles.voiceRowMeta,
-                                {
-                                  color: isDark
-                                    ? 'rgba(255,255,255,0.35)'
-                                    : 'rgba(0,0,0,0.35)',
-                                },
+                                { color: COLORS.muted },
                               ]}
                             >
-                              {v.category || v.voiceId.split('-').slice(0,2).join('-')}
+                              {v.category || v.voiceId.split('-').slice(0, 2).join('-')}
                             </Text>
                           </View>
                           {sel ? (
-                            <CheckCircle size={17} color={gold} />
+                            <CheckCircle size={17} color={accent} />
                           ) : (
                             isRtl ? (
-                              <ChevronDown
-                                size={15}
-                                color={
-                                  isDark
-                                    ? 'rgba(255,255,255,0.22)'
-                                    : 'rgba(0,0,0,0.20)'
-                                }
-                              />
+                              <ChevronDown size={15} color={COLORS.muted} />
                             ) : (
-                              <ChevronRight
-                                size={15}
-                                color={
-                                  isDark
-                                    ? 'rgba(255,255,255,0.22)'
-                                    : 'rgba(0,0,0,0.20)'
-                                }
-                              />
+                              <ChevronRight size={15} color={COLORS.muted} />
                             )
                           )}
                         </TouchableOpacity>
@@ -800,16 +722,11 @@ export default function VoiceSettingsScreen() {
                   </View>
                 )}
 
-                {/* ── Device voices ─────────────────────────────────────── */}
                 {deviceVoices.length === 0 ? (
                   <Text
                     style={[
                       styles.emptyTxt,
-                      {
-                        color: isDark
-                          ? 'rgba(255,255,255,0.38)'
-                          : 'rgba(0,0,0,0.38)',
-                      },
+                      { color: COLORS.muted },
                     ]}
                   >
                     {translation?.voiceSettings?.noVoicesFound || 'No voices found.\nInstall a TTS language pack in device settings.'}
@@ -830,7 +747,7 @@ export default function VoiceSettingsScreen() {
                           style={[
                             styles.groupLbl,
                             isRtl && styles.groupLblRtl,
-                            { color: gold },
+                            { color: accent },
                           ]}
                         >
                           {heading}
@@ -846,14 +763,8 @@ export default function VoiceSettingsScreen() {
                                 styles.voiceRow,
                                 isRtl && { flexDirection: 'row-reverse' },
                                 {
-                                  backgroundColor: sel
-                                    ? gold + '14'
-                                    : 'transparent',
-                                  borderColor: sel
-                                    ? gold + '55'
-                                    : isDark
-                                      ? 'rgba(255,255,255,0.07)'
-                                      : 'rgba(0,0,0,0.07)',
+                                  backgroundColor: sel ? accentDim : COLORS.surface,
+                                  borderColor: sel ? accent : COLORS.border,
                                 },
                               ]}
                             >
@@ -870,37 +781,19 @@ export default function VoiceSettingsScreen() {
                                 <Text
                                   style={[
                                     styles.voiceRowMeta,
-                                    {
-                                      color: isDark
-                                        ? 'rgba(255,255,255,0.35)'
-                                        : 'rgba(0,0,0,0.35)',
-                                    },
+                                    { color: COLORS.muted },
                                   ]}
                                 >
                                   {v.language}
                                 </Text>
                               </View>
                               {sel ? (
-                                <CheckCircle size={17} color={gold} />
+                                <CheckCircle size={17} color={accent} />
                               ) : (
                                 isRtl ? (
-                                  <ChevronDown
-                                    size={15}
-                                    color={
-                                      isDark
-                                        ? 'rgba(255,255,255,0.22)'
-                                        : 'rgba(0,0,0,0.20)'
-                                    }
-                                  />
+                                  <ChevronDown size={15} color={COLORS.muted} />
                                 ) : (
-                                  <ChevronRight
-                                    size={15}
-                                    color={
-                                      isDark
-                                        ? 'rgba(255,255,255,0.22)'
-                                        : 'rgba(0,0,0,0.20)'
-                                    }
-                                  />
+                                  <ChevronRight size={15} color={COLORS.muted} />
                                 )
                               )}
                             </TouchableOpacity>
@@ -919,8 +812,6 @@ export default function VoiceSettingsScreen() {
     </View>
   );
 }
-
-// ─── SliderBlock ──────────────────────────────────────────────────────────────
 
 function SliderBlock({
   icon,
@@ -961,11 +852,10 @@ function SliderBlock({
   deviceHintLabel?: string;
   isRtl?: boolean;
 }) {
-  const mutedTrack = isDark ? 'rgba(255,255,255,0.11)' : 'rgba(0,0,0,0.09)';
+  const mutedTrack = COLORS.border;
 
   return (
     <View style={sliderStyles.block}>
-      {/* Header row */}
       <View style={[sliderStyles.header, isRtl && { flexDirection: 'row-reverse' }]}>
         {icon}
         <Text style={[sliderStyles.label, { color: COLORS.text }]}>
@@ -973,7 +863,6 @@ function SliderBlock({
         </Text>
 
         {isDeviceDefault ? (
-          /* Device-default badge — no reset needed, already at default */
           <View
             style={[
               sliderStyles.defaultBadge,
@@ -983,12 +872,11 @@ function SliderBlock({
               },
             ]}
           >
-            <Text style={[sliderStyles.defaultBadgeTxt, { color: trackColor }]}> 
+            <Text style={[sliderStyles.defaultBadgeTxt, { color: trackColor }]}>
               {deviceDefaultLabel || 'Device default'}
             </Text>
-            </View>
+          </View>
         ) : (
-          /* Custom value badge + reset button */
           <View style={[sliderStyles.customRow, isRtl && { flexDirection: 'row-reverse' }]}>
             <View
               style={[
@@ -1009,27 +897,11 @@ function SliderBlock({
               style={[
                 sliderStyles.resetBtn,
                 isRtl && { flexDirection: 'row-reverse' },
-                {
-                  borderColor: isDark
-                    ? 'rgba(255,255,255,0.14)'
-                    : 'rgba(0,0,0,0.12)',
-                },
+                { borderColor: COLORS.border },
               ]}
             >
-              <RotateCcw
-                size={12}
-                color={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.40)'}
-              />
-                <Text
-                  style={[
-                    sliderStyles.resetTxt,
-                    {
-                      color: isDark
-                        ? 'rgba(255,255,255,0.45)'
-                        : 'rgba(0,0,0,0.40)',
-                    },
-                  ]}
-                >
+              <RotateCcw size={12} color={COLORS.muted} />
+              <Text style={[sliderStyles.resetTxt, { color: COLORS.muted }]}>
                 {resetLabel || 'Reset'}
               </Text>
             </TouchableOpacity>
@@ -1037,17 +909,11 @@ function SliderBlock({
         )}
       </View>
 
-      {/* Hint shown only when device default is active */}
-        {isDeviceDefault && (
-          <Text
-            style={[
-              sliderStyles.deviceHint,
-              { color: isDark ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.32)' },
-            ]}
-          >
-            {deviceHintLabel || 'Move the slider to override your device setting'}
-          </Text>
-        )}
+      {isDeviceDefault && (
+        <Text style={[sliderStyles.deviceHint, { color: COLORS.muted }]}>
+          {deviceHintLabel || 'Move the slider to override your device setting'}
+        </Text>
+      )}
 
       <Slider
         style={sliderStyles.slider}
@@ -1061,9 +927,7 @@ function SliderBlock({
         maximumTrackTintColor={mutedTrack}
         thumbTintColor={
           isDeviceDefault
-            ? isDark
-              ? 'rgba(255,255,255,0.35)'
-              : 'rgba(0,0,0,0.28)'
+            ? COLORS.muted
             : trackColor
         }
       />
@@ -1081,11 +945,7 @@ function SliderBlock({
                 style={[
                   sliderStyles.snapTick,
                   {
-                    color: active
-                      ? trackColor
-                      : isDark
-                        ? 'rgba(255,255,255,0.25)'
-                        : 'rgba(0,0,0,0.25)',
+                    color: active ? trackColor : COLORS.muted,
                     fontWeight: active ? '800' : '500',
                   },
                 ]}
@@ -1100,23 +960,20 @@ function SliderBlock({
   );
 }
 
-// ─── SectionLabel ─────────────────────────────────────────────────────────────
-
 function SectionLabel({ text, isDark, isRtl }: { text: string; isDark: boolean; isRtl?: boolean }) {
+  const COLORS = getColors(isDark);
   return (
     <Text
       style={[
         styles.sectionLbl,
         isRtl && styles.sectionLblRtl,
-        { color: isDark ? 'rgba(255,255,255,0.27)' : 'rgba(0,0,0,0.28)' },
+        { color: COLORS.muted },
       ]}
     >
       {text}
     </Text>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
@@ -1135,7 +992,6 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
 
-  // Hero
   hero: {
     borderRadius: BORDER_RADIUS.xxl,
     borderWidth: 1,
@@ -1171,8 +1027,6 @@ const styles = StyleSheet.create({
   waveRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 26 },
   waveBar: { width: 5, borderRadius: 3 },
 
-  // Voice button
-  // Provider toggle
   providerRow: {
     flexDirection: 'row',
     gap: 8,
@@ -1219,7 +1073,6 @@ const styles = StyleSheet.create({
   voiceName: { fontSize: FONT_SIZES.md, fontWeight: '700' },
   voiceTagText: { fontSize: FONT_SIZES.xs, fontWeight: '600', marginTop: 2 },
 
-  // Preview
   previewCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1247,7 +1100,6 @@ const styles = StyleSheet.create({
   },
   playBtnTxt: { fontSize: FONT_SIZES.sm, fontWeight: '800' },
 
-  // Control card
   controlCard: {
     borderRadius: BORDER_RADIUS.xl,
     borderWidth: 1,
@@ -1256,10 +1108,8 @@ const styles = StyleSheet.create({
   },
   divider: { height: 1, marginHorizontal: SPACING.lg },
 
-  // Sheet
   sheetBg: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.52)',
     justifyContent: 'flex-end',
   },
   sheet: {

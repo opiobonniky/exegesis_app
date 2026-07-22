@@ -5,3 +5,4 @@ export { default as NoteModal } from './NoteModal';
 export { default as ExplanationModal } from './ExplanationModal';
 export { default as HighlightPickerModal } from './HighlightPickerModal';
 export { default as TranslationPickerModal } from './TranslationPickerModal';
+export { default as StudyGuideModal } from './StudyGuideModal';

@@ -442,21 +442,30 @@ export const useBible = () => {
   const addReadHistory = useCallback(
     async (verseNumber: number) => {
       try {
-        const key = 'read_history';
-        const existing = await AsyncStorage.getItem(key);
-        const history = existing ? JSON.parse(existing) : [];
-        const entry = {
+        await sendPostRequest('bible', 'add-read-history', {
           bookName: currentBook,
           chapter: currentChapter,
           verseNumber,
-          timestamp: new Date().toISOString(),
-        };
-        await AsyncStorage.setItem(
-          key,
-          JSON.stringify([entry, ...history].slice(0, 100)),
-        );
+        });
       } catch {
-        console.warn('Failed to save read history');
+        // Offline fallback: save locally
+        try {
+          const key = 'read_history';
+          const existing = await AsyncStorage.getItem(key);
+          const history = existing ? JSON.parse(existing) : [];
+          const entry = {
+            bookName: currentBook,
+            chapter: currentChapter,
+            verseNumber,
+            timestamp: new Date().toISOString(),
+          };
+          await AsyncStorage.setItem(
+            key,
+            JSON.stringify([entry, ...history].slice(0, 100)),
+          );
+        } catch {
+          console.warn('Failed to save read history');
+        }
       }
     },
     [currentBook, currentChapter],

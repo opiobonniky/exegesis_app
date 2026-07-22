@@ -1,6 +1,7 @@
-import React, { use, useEffect, useState } from 'react';
-import { Alert, Linking, Platform, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Linking, Platform, StyleSheet, View } from 'react-native';
 import AppNavigation from './src/component/navigations/AppNavigation';
+import ErrorBoundary from './src/common/ErrorBoundary';
 import { AppProvider } from './src/common/AppContext';
 import { initializeNotifications } from './src/utilits/firebaseService';
 import { initBibleTTS } from './src/utilits/bibleTTS';
@@ -64,12 +65,14 @@ const App = () => {
       <AppProvider>
         <ConnectivityProvider>
         <View style={styles.root}>
-          <SocketProvider
-            topics={['notifications', 'daily-verse']}
-            debug={__DEV__}
-          >
-            <AppNavigation />
-          </SocketProvider>
+          <ErrorBoundary>
+            <SocketProvider
+              topics={['notifications', 'daily-verse']}
+              debug={__DEV__}
+            >
+              <AppNavigation />
+            </SocketProvider>
+          </ErrorBoundary>
           <OfflineBanner />
           <Toast config={toastConfig} />
         </View>

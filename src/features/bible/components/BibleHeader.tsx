@@ -249,10 +249,10 @@ const localStyles = StyleSheet.create({
   },
 
   container: {
-    height: 56,
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
+    gap: 6,
     position: 'relative',
   },
   containerRtl: {
@@ -261,19 +261,12 @@ const localStyles = StyleSheet.create({
 
   // ── Icon Buttons ──────────────────────────────────────────────────────
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: BORDER_RADIUS.lg,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   iconButtonInner: {
     width: '100%',
@@ -297,12 +290,12 @@ const localStyles = StyleSheet.create({
     paddingVertical: SPACING.xs,
   },
   bookTitle: {
-    fontSize: FONT_SIZES.xl,
+    fontSize: FONT_SIZES.lg,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.3,
     textAlign: 'center',
-    maxWidth: 140,
+    maxWidth: 120,
   },
   chapterBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

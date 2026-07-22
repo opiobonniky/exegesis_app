@@ -1296,4 +1296,10 @@ const activityStyles = StyleSheet.create({
   },
   activityTime: { fontSize: 11 },
   activityVerse: { fontSize: 14, fontWeight: '500' },
+  bottomTabWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
 });

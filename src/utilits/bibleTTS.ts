@@ -1237,11 +1237,12 @@ class BibleTTSManager {
           this._edgeSound.release();
         } catch {}
         this._edgeSound = null;
+        const edgeResolve = this._edgePendingResolve;
+        this._edgePendingResolve = null;
+        edgeResolve?.();
       }
-      const edgeResolve = this._edgePendingResolve;
-      this._edgePendingResolve = null;
-      edgeResolve?.();
 
+      // Resolve any pending device-TTS promise
       const resolve = this._pendingResolve;
       this._pendingResolve = null;
       this._utteranceStarted = false;

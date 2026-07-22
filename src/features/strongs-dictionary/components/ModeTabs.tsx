@@ -5,8 +5,8 @@ import type { DictionaryMode } from '../hooks/useStrongsDictionary';
 
 const MODE_TABS: { key: DictionaryMode; label: string; icon: React.ElementType }[] = [
   { key: 'search', label: 'Search', icon: Search },
-  { key: 'browse', label: 'Browse by Book', icon: LibraryBig },
-  { key: 'verse', label: 'By Verse', icon: BookText },
+  { key: 'browse', label: 'Browse', icon: LibraryBig },
+  { key: 'verse', label: 'Verse', icon: BookText },
 ];
 
 interface Props {
@@ -28,7 +28,7 @@ export default function ModeTabs({ mode, onSelect, colors }: Props) {
             onPress={() => onSelect(tab.key)}
             activeOpacity={0.7}
           >
-            <Icon size={14} color={active ? '#fff' : colors.primary} />
+            <Icon size={15} color={active ? '#fff' : colors.primary} />
             <Text style={[styles(colors).modeTabText, active && styles(colors).modeTabTextActive]}>
               {tab.label}
             </Text>
@@ -42,11 +42,9 @@ export default function ModeTabs({ mode, onSelect, colors }: Props) {
 const styles = (c: any) => StyleSheet.create({
   modeTabs: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: c.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
   },
   modeTab: {
     flex: 1,
@@ -54,8 +52,8 @@ const styles = (c: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: c.border,
     backgroundColor: c.cardBackground,
@@ -65,7 +63,7 @@ const styles = (c: any) => StyleSheet.create({
     borderColor: c.primary,
   },
   modeTabText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: c.text,
   },
