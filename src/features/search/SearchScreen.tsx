@@ -52,7 +52,6 @@ import { useSubscription } from '../../hooks/useSubscription';
 
 const SUGGESTIONS: Record<SearchScope, string[]> = {
   bible: ['love', 'faith', 'hope', 'peace', 'joy', 'grace', 'mercy', 'truth'],
-  strongs: ['G26', 'G3056', 'G4102', 'G25', 'G1515', 'G5485'],
   journal: ['prayer', 'thanksgiving', 'healing', 'wisdom', 'faith', 'peace'],
   topics: [
     'love',
@@ -78,7 +77,6 @@ const SUGGESTIONS: Record<SearchScope, string[]> = {
 
 const SCOPE_LABELS: Record<SearchScope, string> = {
   bible: 'Bible',
-  strongs: "Strong's",
   journal: 'Journal',
   topics: 'Topics',
   lemma: 'Lemma',
@@ -256,8 +254,6 @@ export default function SearchScreen() {
       setPrefillStrongsId(strongsId);
       if (scopeParam === 'strongs' && strongsId) {
         setSearchContext(null);
-        searchImmediate(strongsId, 'strongs');
-        switchScope('strongs');
       } else if (scopeParam === 'bible' && word) {
         setSearchContext(`All uses of “${word}”`);
         searchImmediate(word, 'bible');
@@ -608,7 +604,6 @@ export default function SearchScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
-      if (scope === 'strongs') return renderStrongsResult({ item });
       if (scope === 'journal') return renderJournalResult({ item });
       if (scope === 'topics') return renderTopicResult({ item });
       if (scope === 'lemma') return renderLemmaResult({ item });
@@ -626,7 +621,6 @@ export default function SearchScreen() {
 
   const scopes: SearchScope[] = [
     'bible',
-    'strongs',
     'journal',
     'topics',
     'lemma',
@@ -648,12 +642,10 @@ export default function SearchScreen() {
           placeholder={
             scope === 'bible'
               ? translation?.search?.placeholder || 'Search the Bible...'
-              : scope === 'strongs'
-                ? "Search Strong's numbers or words..."
-                : scope === 'journal'
-                  ? 'Search your journal...'
-                  : scope === 'topics'
-                    ? 'Search Bible topics...'
+              : scope === 'journal'
+                ? 'Search your journal...'
+                : scope === 'topics'
+                  ? 'Search Bible topics...'
                     : 'Search Greek/Hebrew lemmas...'
           }
           placeholderTextColor={COLORS.muted}
@@ -693,7 +685,6 @@ export default function SearchScreen() {
                 activeOpacity={0.7}
               >
                 {s === 'bible' && <BookOpen size={14} color={iconColor} />}
-                {s === 'strongs' && <BookText size={14} color={iconColor} />}
                 {s === 'journal' && <FileText size={14} color={iconColor} />}
                 {s === 'topics' && (
                   <BookmarkCheck size={14} color={iconColor} />
@@ -936,9 +927,7 @@ export default function SearchScreen() {
                   style={styles.emptyIcon}
                 />
                 <Text style={styles.emptySubtitle}>
-                  {scope === 'strongs'
-                    ? `No Strong's entries found for "${query}"`
-                    : scope === 'journal'
+                  { scope === 'journal'
                       ? `No journal entries found for "${query}"`
                       : scope === 'topics'
                         ? `No topics found for "${query}"`
@@ -1035,9 +1024,7 @@ export default function SearchScreen() {
                   <Text style={styles.emptyTitle}>
                     {scope === 'bible'
                       ? translation?.search?.title || 'Search the Bible'
-                      : scope === 'strongs'
-                        ? "Search Strong's Concordance"
-                        : scope === 'journal'
+                      :  scope === 'journal'
                           ? 'Search Your Journal'
                           : scope === 'topics'
                             ? 'Explore Bible topics and themes'
@@ -1047,9 +1034,7 @@ export default function SearchScreen() {
                     {scope === 'bible'
                       ? translation?.search?.subtitle ||
                         'Find verses across all books and chapters'
-                      : scope === 'strongs'
-                        ? 'Find Greek & Hebrew word studies'
-                        : scope === 'journal'
+                      :  scope === 'journal'
                           ? 'Find reflections, prayers, and notes'
                           : scope === 'topics'
                             ? 'Explore Bible topics and themes'

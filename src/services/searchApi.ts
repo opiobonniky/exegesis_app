@@ -84,7 +84,7 @@ export interface PopularSearchItem {
   count: number;
 }
 
-export type SearchScope = 'bible' | 'strongs' | 'journal' | 'topics' | 'lemma';
+export type SearchScope = 'bible' | 'journal' | 'topics' | 'lemma';
 
 export const searchApi = {
   search: async (
