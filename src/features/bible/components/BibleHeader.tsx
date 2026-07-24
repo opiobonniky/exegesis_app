@@ -161,7 +161,7 @@ export default function BibleHeader({
             </TouchableOpacity>
 
             {/* ── Version Badge ────────────────────────────────────────── */}
-            {onVersionPress && (
+            {onVersionPress && version?.abbreviation && (
               <TouchableOpacity
                 onPress={onVersionPress}
                 activeOpacity={0.75}

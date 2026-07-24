@@ -3,7 +3,6 @@ import { Linking, Platform, StyleSheet, View } from 'react-native';
 import AppNavigation from './src/component/navigations/AppNavigation';
 import ErrorBoundary from './src/common/ErrorBoundary';
 import { AppProvider } from './src/common/AppContext';
-import { initializeNotifications } from './src/utilits/firebaseService';
 import { initBibleTTS } from './src/utilits/bibleTTS';
 import SocketProvider from './src/services/socket/SocketProvider';
 import { ConnectivityProvider } from './src/providers/ConnectivityProvider';
