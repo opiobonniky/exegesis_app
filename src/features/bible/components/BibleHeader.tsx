@@ -22,7 +22,7 @@ import {
   View,
   Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { Menu, ScrollText, Search, ChevronDown } from 'lucide-react-native';
 import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
@@ -60,6 +60,7 @@ export default function BibleHeader({
   onVersionPress,
   onStudyToolsPress,
 }: BibleHeaderProps) {
+  const insets = useSafeAreaInsets();
   const COLORS = getColors(isDark);
 
   // Animated values for press feedback
@@ -91,13 +92,13 @@ export default function BibleHeader({
         colors={[COLORS.primary, COLORS.primaryDark || COLORS.primary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={localStyles.gradient}
+        style={[localStyles.gradient, { paddingTop: insets.top }]}
       >
         {/* Subtle inner glow overlay */}
         <View style={localStyles.glowOverlay} />
 
         {/* Safe area inset */}
-        <SafeAreaView edges={['top']} style={localStyles.safeArea}>
+        <View style={localStyles.safeArea}>
           <View
             style={[
               localStyles.container,
@@ -217,7 +218,7 @@ export default function BibleHeader({
               </Animated.View>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
+        </View>
 
         {/* Bottom separator with subtle shadow */}
         <View style={localStyles.bottomBorder} />

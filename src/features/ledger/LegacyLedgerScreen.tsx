@@ -7,7 +7,6 @@
  *   - Public/private filter + badge
  *   - "Exegesis Lab" source badge
  *   - Strong's word filter
- *   - Bulk export (.txt/.json)
  *   - Date range + book filters
  */
 
@@ -24,6 +23,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   RefreshControl,
   TextInput,
@@ -33,7 +33,6 @@ import {
   ActionSheetIOS,
   StatusBar,
   ActivityIndicator,
-  Share,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -52,9 +51,7 @@ import {
   getJournalStats,
   toggleJournalFavorite,
   deleteJournalEntry,
-  exportAllJournalEntries,
 } from '../../services/api';
-import ReactNativeBlobUtil from 'react-native-blob-util';
 import {
   cacheJournalEntry,
   cacheJournalEntryList,
@@ -74,11 +71,11 @@ import {
   MessageSquareQuote,
   Clock,
   BookText,
-  Download,
   Users,
   Globe,
   Calendar,
   X,
+  Filter,
 } from 'lucide-react-native';
 import { showToast } from '../../helpers/Toash.helper';
 import BottomTab from '../../component/navigations/BottomTab';
@@ -297,186 +294,6 @@ const VersePreview = ({
   );
 };
 
-// ── Export Modal Content ─────────────────────────────────────────────────────
-
-const ExportModal = ({
-  onClose,
-  colors,
-  jc,
-}: {
-  onClose: () => void;
-  colors: ReturnType<typeof getColors>;
-  jc: any;
-}) => {
-  const [exporting, setExporting] = useState(false);
-  const [format, setFormat] = useState<'txt' | 'json' | 'pdf'>('txt');
-
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      const res = await exportAllJournalEntries(format);
-      if (res.returnCode === 200 && res.returnData) {
-        const data = res.returnData!;
-
-        if (format === 'pdf') {
-          const filename = data.filename || 'legacy-ledger-export.pdf';
-          const pdfPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${filename}`;
-          await ReactNativeBlobUtil.fs.writeFile(pdfPath, data.content!, 'base64');
-          if (Platform.OS === 'android') {
-            await (ReactNativeBlobUtil.fs as any).actionViewIntent(pdfPath, 'application/pdf');
-          } else {
-            await Share.share({
-              url: `file://${pdfPath}`,
-              title: filename,
-            });
-          }
-        } else {
-          const decoded = decodeURIComponent(escape(atob(data.content || '')));
-          await Share.share({
-            message: decoded,
-            title: data.filename || 'legacy-ledger-export',
-          });
-        }
-        showToast('success', `Exported ${data.entryCount} entries`);
-        onClose();
-      }
-    } catch (e: any) {
-      showToast('error', e?.message || 'Failed to export');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  return (
-    <View style={[styles.exportModal, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-      <Text style={[styles.exportModalTitle, { color: colors.text }]}>
-        {jc?.exportLabel || 'Export Legacy Ledger'}
-      </Text>
-      <Text style={[styles.exportModalSubtitle, { color: colors.textSecondary }]}>
-        {jc?.exportSubtitle || 'Choose a format to export all your entries.'}
-      </Text>
-
-      {/* Format selector */}
-      <View style={styles.exportFormatRow}>
-        <TouchableOpacity
-          style={[
-            styles.exportFormatBtn,
-            {
-              backgroundColor: format === 'txt' ? colors.primary : colors.surface,
-              borderColor: format === 'txt' ? colors.primary : colors.border,
-            },
-          ]}
-          onPress={() => setFormat('txt')}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.exportFormatText,
-              { color: format === 'txt' ? '#FFFFFF' : colors.text },
-            ]}
-          >
-            .txt
-          </Text>
-          <Text
-            style={[
-              styles.exportFormatDesc,
-              { color: format === 'txt' ? '#FFFFFFCC' : colors.textSecondary },
-            ]}
-          >
-            {jc?.txtFormat || 'Plain Text'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.exportFormatBtn,
-            {
-              backgroundColor: format === 'json' ? colors.primary : colors.surface,
-              borderColor: format === 'json' ? colors.primary : colors.border,
-            },
-          ]}
-          onPress={() => setFormat('json')}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.exportFormatText,
-              { color: format === 'json' ? '#FFFFFF' : colors.text },
-            ]}
-          >
-            .json
-          </Text>
-          <Text
-            style={[
-              styles.exportFormatDesc,
-              { color: format === 'json' ? '#FFFFFFCC' : colors.textSecondary },
-            ]}
-          >
-            {jc?.jsonFormat || 'Structured Data'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.exportFormatBtn,
-            {
-              backgroundColor: format === 'pdf' ? colors.primary : colors.surface,
-              borderColor: format === 'pdf' ? colors.primary : colors.border,
-            },
-          ]}
-          onPress={() => setFormat('pdf')}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.exportFormatText,
-              { color: format === 'pdf' ? '#FFFFFF' : colors.text },
-            ]}
-          >
-            .pdf
-          </Text>
-          <Text
-            style={[
-              styles.exportFormatDesc,
-              { color: format === 'pdf' ? '#FFFFFFCC' : colors.textSecondary },
-            ]}
-          >
-            {jc?.pdfFormat || 'Formatted Document'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Action buttons */}
-      <View style={styles.exportActions}>
-        <TouchableOpacity
-          style={[styles.exportCancelBtn, { borderColor: colors.border }]}
-          onPress={onClose}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.exportCancelText, { color: colors.text }]}>
-            {jc?.cancelLabel || 'Cancel'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.exportSubmitBtn, { backgroundColor: colors.primary, opacity: exporting ? 0.6 : 1 }]}
-          onPress={handleExport}
-          disabled={exporting}
-          activeOpacity={0.8}
-        >
-          {exporting ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <>
-              <Download size={16} color="#FFFFFF" />
-              <Text style={styles.exportSubmitText}>
-                {jc?.exportAction || 'Export'}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
-
 const LegacyLedgerScreen = () => {
   const navigation = useNavigation<any>();
   const app = useContext(AppContext);
@@ -498,9 +315,9 @@ const LegacyLedgerScreen = () => {
   const [hasMore, setHasMore] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'my' | 'discover'>('my');
-  const [showExportModal, setShowExportModal] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
@@ -795,76 +612,56 @@ const LegacyLedgerScreen = () => {
 
   const hasActiveFilters = search.length > 0 || category !== 'all' || startDate.length > 0 || endDate.length > 0;
 
-  const renderExportModal = () => {
-    if (!showExportModal) return null;
-    return (
-      <View style={styles.exportOverlay}>
-        <TouchableOpacity style={styles.exportOverlayBg} activeOpacity={1} onPress={() => setShowExportModal(false)} />
-        <ExportModal onClose={() => setShowExportModal(false)} colors={COLORS} jc={jc} />
-      </View>
-    );
-  };
-
   return (
     <GestureHandlerRootView style={[styles.container, { backgroundColor: COLORS.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView edges={['top']} style={styles.safeArea}>
-        {/* ── Header ── */}
+        {/* ── Compact Header ── */}
         <View style={[styles.header, { backgroundColor: COLORS.surface, borderBottomColor: COLORS.border }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.backButton} activeOpacity={0.7}>
-            {isRtl ? <ChevronRight size={24} color={COLORS.text} /> : <ChevronLeft size={24} color={COLORS.text} />}
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.backButton} activeOpacity={0.7}>
+            {isRtl ? <ChevronRight size={22} color={COLORS.text} /> : <ChevronLeft size={22} color={COLORS.text} />}
           </TouchableOpacity>
           <View style={styles.headerTitleGroup}>
-            <Text style={[styles.headerTitle, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}>
-              Legacy Ledger
-            </Text>
+            <Text style={[styles.headerTitle, { color: COLORS.text }]}>Legacy Ledger</Text>
             {stats && (
-              <Text style={[styles.headerSubtitle, { color: COLORS.textSecondary, textAlign: isRtl ? 'right' : 'left' }]}>
-                {stats.totalEntries} {stats.totalEntries === 1 ? 'entry' : 'entries'} · {stats.entriesThisWeek} this week
+              <Text style={[styles.headerSubtitle, { color: COLORS.textSecondary }]}>
+                {stats.totalEntries} entry{stats.totalEntries !== 1 ? 'ies' : 'y'} · {stats.entriesThisWeek} this week
               </Text>
             )}
           </View>
-          {viewMode === 'my' && (
-            <TouchableOpacity style={[styles.exportHeaderBtn, { borderColor: COLORS.border }]} onPress={() => setShowExportModal(true)} activeOpacity={0.7}>
-              <Download size={18} color={COLORS.primary} />
-            </TouchableOpacity>
-          )}
-          {viewMode === 'my' && (
-            <TouchableOpacity style={[styles.addButton, { backgroundColor: COLORS.primary }]} onPress={handleCreateNew} activeOpacity={0.8}>
-              <Plus size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-          )}
+          <View style={styles.headerRight}>
+            <View style={[styles.segmentCompact, { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}>
+              <TouchableOpacity
+                style={[styles.segmentCompactBtn, viewMode === 'my' && { backgroundColor: COLORS.primary }]}
+                onPress={() => setViewMode('my')}
+                activeOpacity={0.7}
+              >
+                <BookText size={12} color={viewMode === 'my' ? '#FFFFFF' : COLORS.text} />
+                <Text style={[styles.segmentCompactText, { color: viewMode === 'my' ? '#FFFFFF' : COLORS.text }]}>My</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.segmentCompactBtn, viewMode === 'discover' && { backgroundColor: COLORS.primary }]}
+                onPress={() => setViewMode('discover')}
+                activeOpacity={0.7}
+              >
+                <Globe size={12} color={viewMode === 'discover' ? '#FFFFFF' : COLORS.text} />
+                <Text style={[styles.segmentCompactText, { color: viewMode === 'discover' ? '#FFFFFF' : COLORS.text }]}>Community</Text>
+              </TouchableOpacity>
+            </View>
+            {viewMode === 'my' && (
+              <TouchableOpacity style={[styles.addButton, { backgroundColor: COLORS.primary }]} onPress={handleCreateNew} activeOpacity={0.8}>
+                <Plus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {/* ── Segment Control ── */}
-        <View style={[styles.segmentContainer, { backgroundColor: COLORS.surface, borderBottomColor: COLORS.border }]}>
-          <TouchableOpacity
-            style={[styles.segmentBtn, viewMode === 'my' ? { backgroundColor: COLORS.primary, borderColor: COLORS.primary } : { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}
-            onPress={() => setViewMode('my')}
-            activeOpacity={0.7}
-          >
-            <BookText size={14} color={viewMode === 'my' ? '#FFFFFF' : COLORS.text} />
-            <Text style={[styles.segmentBtnText, { color: viewMode === 'my' ? '#FFFFFF' : COLORS.text }]}>My Ledger</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.segmentBtn, viewMode === 'discover' ? { backgroundColor: COLORS.primary, borderColor: COLORS.primary } : { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}
-            onPress={() => setViewMode('discover')}
-            activeOpacity={0.7}
-          >
-            <Globe size={14} color={viewMode === 'discover' ? '#FFFFFF' : COLORS.text} />
-            <Text style={[styles.segmentBtnText, { color: viewMode === 'discover' ? '#FFFFFF' : COLORS.text }]}>Community</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Offline Banner ── */}
-       
-
-        {/* ── Search Bar ── */}
-        <View style={styles.searchContainer}>
-          <View style={[styles.searchBar, { backgroundColor: COLORS.surface, borderColor: COLORS.border, flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+        {/* ── Search + Filter Toggle ── */}
+        <View style={[styles.searchRow, { backgroundColor: COLORS.surface, borderBottomColor: COLORS.border }]}>
+          <View style={[styles.searchBar, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border }]}>
             <Search size={16} color={COLORS.muted} />
             <TextInput
-              style={[styles.searchInput, { color: COLORS.text, textAlign: isRtl ? 'right' : 'left' }]}
+              style={[styles.searchInput, { color: COLORS.text }]}
               placeholder={jc?.searchEntriesPlaceholder || 'Search entries...'}
               placeholderTextColor={COLORS.muted}
               value={search}
@@ -873,134 +670,81 @@ const LegacyLedgerScreen = () => {
             />
             {search.length > 0 && (
               <TouchableOpacity onPress={() => { setSearch(''); setSearchDebounced(''); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <View style={[styles.clearButton, { backgroundColor: COLORS.muted + '30' }]}>
-                  <Text style={[styles.clearButtonText, { color: COLORS.muted }]}>✕</Text>
-                </View>
+                <X size={14} color={COLORS.muted} />
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              onPress={() => setShowFilters(!showFilters)}
+              style={[styles.filterToggle, showFilters && { backgroundColor: COLORS.primary + '15' }]}
+              activeOpacity={0.7}
+            >
+              <Filter size={16} color={showFilters ? COLORS.primary : COLORS.muted} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* ── Category filter ── */}
-        <View style={styles.categoryContainer}>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={CATEGORIES}
-            keyExtractor={item => item.value}
-            contentContainerStyle={styles.categoryList}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.categoryChip,
-                  {
-                    backgroundColor: category === item.value ? COLORS.primary : COLORS.surface,
-                    borderColor: category === item.value ? COLORS.primary : COLORS.border,
-                  },
-                ]}
-                onPress={() => {
-                  setCategory(item.value);
-                  setPage(0);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    { color: category === item.value ? '#FFFFFF' : COLORS.text },
-                  ]}
-                >
-                  {getCategoryLabel(item.value, jc)}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-
-        {/* ── Date Range Filter ── */}
-        {viewMode === 'my' && (
-          <View style={styles.dateFilterContainer}>
-            <View style={styles.dateFilterRow}>
-              <TouchableOpacity
-                style={[
-                  styles.dateFilterChip,
-                  {
-                    backgroundColor: startDate ? COLORS.primary + '15' : COLORS.surface,
-                    borderColor: startDate ? COLORS.primary : COLORS.border,
-                  },
-                ]}
-                onPress={() => setShowStartDatePicker(true)}
-                activeOpacity={0.7}
-              >
-                <Calendar size={12} color={startDate ? COLORS.primary : COLORS.muted} />
-                <Text
-                  style={[
-                    styles.dateFilterChipText,
-                    { color: startDate ? COLORS.primary : COLORS.muted },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {startDate
-                    ? new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                    : (jc?.startDateLabel || 'Start Date')}
-                </Text>
-                {startDate && (
+        {/* ── Expandable Filters ── */}
+        {showFilters && (
+          <View style={[styles.filtersPanel, { backgroundColor: COLORS.surface, borderBottomColor: COLORS.border }]}>
+            {/* Category chips */}
+            <View style={styles.filterSection}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChipsRow}>
+                {CATEGORIES.map(cat => (
                   <TouchableOpacity
-                    onPress={() => { setStartDate(''); setPage(0); }}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    key={cat.value}
+                    style={[styles.categoryChip, { backgroundColor: category === cat.value ? COLORS.primary : COLORS.cardBackground, borderColor: category === cat.value ? COLORS.primary : COLORS.border }]}
+                    onPress={() => { setCategory(cat.value); setPage(0); }}
+                    activeOpacity={0.7}
                   >
-                    <X size={12} color={COLORS.primary} />
+                    <Text style={[styles.categoryChipText, { color: category === cat.value ? '#FFFFFF' : COLORS.text }]}>
+                      {getCategoryLabel(cat.value, jc)}
+                    </Text>
                   </TouchableOpacity>
-                )}
-              </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
 
-              <Text style={[styles.dateFilterSeparator, { color: COLORS.muted }]}>→</Text>
-
-              <TouchableOpacity
-                style={[
-                  styles.dateFilterChip,
-                  {
-                    backgroundColor: endDate ? COLORS.primary + '15' : COLORS.surface,
-                    borderColor: endDate ? COLORS.primary : COLORS.border,
-                  },
-                ]}
-                onPress={() => setShowEndDatePicker(true)}
-                activeOpacity={0.7}
-              >
-                <Calendar size={12} color={endDate ? COLORS.primary : COLORS.muted} />
-                <Text
-                  style={[
-                    styles.dateFilterChipText,
-                    { color: endDate ? COLORS.primary : COLORS.muted },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {endDate
-                    ? new Date(endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                    : (jc?.endDateLabel || 'End Date')}
-                </Text>
-                {endDate && (
-                  <TouchableOpacity
-                    onPress={() => { setEndDate(''); setPage(0); }}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <X size={12} color={COLORS.primary} />
-                  </TouchableOpacity>
-                )}
-              </TouchableOpacity>
-
-              {(startDate || endDate) && (
+            {/* Date range (my entries only) */}
+            {viewMode === 'my' && (
+              <View style={styles.dateFilterRow}>
                 <TouchableOpacity
-                  style={styles.dateFilterClearBtn}
-                  onPress={() => { setStartDate(''); setEndDate(''); setPage(0); }}
+                  style={[styles.dateFilterChip, { backgroundColor: startDate ? COLORS.primary + '15' : COLORS.cardBackground, borderColor: startDate ? COLORS.primary : COLORS.border }]}
+                  onPress={() => setShowStartDatePicker(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.dateFilterClearText, { color: COLORS.error || '#EF4444' }]}>
-                    {jc?.clearFilterLabel || 'Clear'}
+                  <Calendar size={12} color={startDate ? COLORS.primary : COLORS.muted} />
+                  <Text style={[styles.dateFilterChipText, { color: startDate ? COLORS.primary : COLORS.muted }]} numberOfLines={1}>
+                    {startDate ? new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (jc?.startDateLabel || 'Start Date')}
                   </Text>
+                  {startDate && (
+                    <TouchableOpacity onPress={() => { setStartDate(''); setPage(0); }} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                      <X size={12} color={COLORS.primary} />
+                    </TouchableOpacity>
+                  )}
                 </TouchableOpacity>
-              )}
-            </View>
+                <Text style={[styles.dateFilterSeparator, { color: COLORS.muted }]}>→</Text>
+                <TouchableOpacity
+                  style={[styles.dateFilterChip, { backgroundColor: endDate ? COLORS.primary + '15' : COLORS.cardBackground, borderColor: endDate ? COLORS.primary : COLORS.border }]}
+                  onPress={() => setShowEndDatePicker(true)}
+                  activeOpacity={0.7}
+                >
+                  <Calendar size={12} color={endDate ? COLORS.primary : COLORS.muted} />
+                  <Text style={[styles.dateFilterChipText, { color: endDate ? COLORS.primary : COLORS.muted }]} numberOfLines={1}>
+                    {endDate ? new Date(endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (jc?.endDateLabel || 'End Date')}
+                  </Text>
+                  {endDate && (
+                    <TouchableOpacity onPress={() => { setEndDate(''); setPage(0); }} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                      <X size={12} color={COLORS.primary} />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+                {(startDate || endDate) && (
+                  <TouchableOpacity style={styles.dateFilterClearBtn} onPress={() => { setStartDate(''); setEndDate(''); setPage(0); }} activeOpacity={0.7}>
+                    <Text style={[styles.dateFilterClearText, { color: COLORS.error || '#EF4444' }]}>{jc?.clearFilterLabel || 'Clear'}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         )}
 
@@ -1101,8 +845,6 @@ const LegacyLedgerScreen = () => {
           }
         />
 
-        {/* ── Export modal ── */}
-        {renderExportModal()}
       </SafeAreaView>
 
       <BottomTab activeTab="ledger" setActiveTab={tab => console.log(tab)} />
@@ -1114,25 +856,47 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
 
-  // ── Segment Control ──
-  segmentContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    gap: SPACING.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  segmentBtn: {
-    flex: 1,
+  // ── Header ──
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+    paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-    borderRadius: 10,
-    borderWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  segmentBtnText: { fontSize: FONT_SIZES.sm, fontWeight: '600' },
+  backButton: { marginRight: SPACING.sm },
+  headerTitleGroup: { flex: 1 },
+  headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700' },
+  headerSubtitle: { fontSize: FONT_SIZES.xs, marginTop: 1 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  segmentCompact: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 2,
+    gap: 2,
+  },
+  segmentCompactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  segmentCompactText: { fontSize: FONT_SIZES.xs, fontWeight: '700' },
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
 
   // ── Author badge (discover mode) ──
   authorBadge: {
@@ -1145,63 +909,41 @@ const styles = StyleSheet.create({
     maxWidth: 120,
   },
   authorBadgeText: { fontSize: 9, fontWeight: '700' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // ── Search ──
+  searchRow: {
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backButton: { marginRight: SPACING.sm },
-  headerTitleGroup: { flex: 1 },
-  headerTitle: { fontSize: FONT_SIZES.xl, fontWeight: '700' },
-  headerSubtitle: { fontSize: FONT_SIZES.xs, marginTop: 2 },
-  exportHeaderBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SPACING.sm,
-  },
-  addButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  searchContainer: { paddingHorizontal: SPACING.md, paddingTop: SPACING.xs, paddingBottom: 0 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: Platform.OS === 'ios' ? SPACING.sm : SPACING.xs,
-    borderRadius: 12,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    borderRadius: 10,
     borderWidth: 1,
     gap: SPACING.sm,
   },
-  searchInput: { flex: 1, fontSize: FONT_SIZES.md, paddingVertical: Platform.OS === 'ios' ? 4 : 0 },
+  searchInput: { flex: 1, fontSize: FONT_SIZES.sm, paddingVertical: 0 },
   clearButton: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   clearButtonText: { fontSize: 12, fontWeight: '700' },
+  filterToggle: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
 
-  // ── Category filter ──
-  categoryContainer: { paddingVertical: SPACING.xs },
-  categoryList: { paddingHorizontal: SPACING.md },
-  categoryChip: {
+  // ── Filters Panel ──
+  filtersPanel: {
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: 20,
-    marginRight: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filterSection: { marginBottom: SPACING.xs },
+  filterChipsRow: { gap: SPACING.sm },
+  categoryChip: {
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: SPACING.xs,
+    borderRadius: 16,
     borderWidth: 1,
   },
-  categoryChipText: { fontSize: FONT_SIZES.sm, fontWeight: '600' },
+  categoryChipText: { fontSize: FONT_SIZES.xs, fontWeight: '600' },
 
   // ── Stats ──
   statsContainer: {
@@ -1279,10 +1021,6 @@ const styles = StyleSheet.create({
   dateFull: { fontSize: FONT_SIZES.xs, flex: 1 },
 
   // ── Date Range Filter ──
-  dateFilterContainer: {
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.xs,
-  },
   dateFilterRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1378,60 +1116,6 @@ const styles = StyleSheet.create({
   loadingContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: SPACING.xxl + 20 },
   footerLoader: { alignItems: 'center', paddingVertical: SPACING.md },
 
-  // ── Export modal ──
-  exportOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  exportOverlayBg: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  exportModal: {
-    width: '85%',
-    maxWidth: 360,
-    padding: SPACING.lg,
-    borderRadius: 16,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  exportModalTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
-  exportModalSubtitle: { fontSize: FONT_SIZES.sm, textAlign: 'center', marginBottom: SPACING.lg },
-  exportFormatRow: { flexDirection: 'row', gap: SPACING.md, marginBottom: SPACING.lg },
-  exportFormatBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  exportFormatText: { fontSize: FONT_SIZES.lg, fontWeight: '700' },
-  exportFormatDesc: { fontSize: FONT_SIZES.xs, marginTop: 2 },
-  exportActions: { flexDirection: 'row', gap: SPACING.md },
-  exportCancelBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  exportCancelText: { fontSize: FONT_SIZES.sm, fontWeight: '600' },
-  exportSubmitBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-  exportSubmitText: { color: '#FFFFFF', fontWeight: '600', fontSize: FONT_SIZES.sm },
   offlineBanner: {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,

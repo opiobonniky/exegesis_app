@@ -9,6 +9,7 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, BookOpen, Layers } from 'lucide-react-native';
 import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
@@ -36,6 +37,7 @@ export default function ChapterSelectorScreen({
   onSelectChapter,
   onBack,
 }: ChapterSelectorScreenProps) {
+  const insets = useSafeAreaInsets();
   const { translations } = useLanguage();
   const bc = translations?.bible;
   const COLORS = getColors(isDark);
@@ -55,7 +57,7 @@ export default function ChapterSelectorScreen({
   }, [chapters]);
 
   return (
-    <View style={[s.container, { backgroundColor: COLORS.background }]}>
+    <View style={[s.container, { backgroundColor: COLORS.background, paddingTop: insets.top + 4 }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header with back */}
@@ -140,7 +142,6 @@ export default function ChapterSelectorScreen({
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 18 : 10,
   },
   header: {
     flexDirection: 'row',

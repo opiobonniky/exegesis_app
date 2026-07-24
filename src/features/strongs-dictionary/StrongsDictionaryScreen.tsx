@@ -31,7 +31,6 @@ import { useNavigation } from '@react-navigation/native';
 import {
   BookOpen,
   BookText,
-  Hash,
   LibraryBig,
   ArrowLeft,
   ChevronDown,
@@ -85,8 +84,18 @@ export default function StrongsDictionaryScreen() {
 
   // ── Debounced auto-fetch on search typing ──
 
+  const initialSearchDone = useRef(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tabBarAnimation = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (initialSearchDone.current) return;
+    if (hook.mode === 'search' && !hook.searched) {
+      initialSearchDone.current = true;
+      hook.setSearchQuery('love');
+      hook.executeSearch('love');
+    }
+  }, [hook.mode, hook.searched, hook.executeSearch, hook.setSearchQuery]);
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -97,7 +106,7 @@ export default function StrongsDictionaryScreen() {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
-  }, [hook.searchQuery]);
+  }, [hook.searchQuery, hook.executeSearch]);
 
   // ── Debounced auto-fetch on verse input change ──
 
@@ -148,9 +157,9 @@ export default function StrongsDictionaryScreen() {
         hook.setSelectedBook(book);
         hook.loadBookWords(book, 0, false);
       }
-      if (mode === 'search' && !hook.searched) {
-        hook.setSearchQuery('a');
-        hook.executeSearch('a');
+      if (mode === 'search' && !hook.searched && !hook.results.length) {
+        hook.setSearchQuery('love');
+        hook.executeSearch('love');
       }
     },
     [hook],
@@ -232,26 +241,21 @@ export default function StrongsDictionaryScreen() {
         <View style={styles.centered}>
           <ActivityIndicator color={COLORS.primary} size="large" />
         </View>
-      ) : !hook.searched ? (
-        <View style={styles.emptyState}>
-          <Hash size={48} color={COLORS.muted} />
-          <Text style={styles.emptyTitle}>Strong's Concordance</Text>
-          <Text style={styles.emptySubtext}>
-            Search by English word, Strong's number, or original language text
-          </Text>
-        </View>
       ) : (
-        <SectionHeader
-          count={searchCount}
-          label="results"
-          subtitle={hook.searchQuery ? `for "${hook.searchQuery}"` : ''}
-          colors={COLORS}
-        >
+        <View style={styles.resultsSection}>
+          {filteredSearchResults.length > 0 && (
+            <Text style={[styles.resultsCount, { color: COLORS.muted }]}>
+              {searchCount} result{searchCount !== 1 ? 's' : ''} for "{hook.searchQuery}"
+            </Text>
+          )}
           <FlatList
             data={filteredSearchResults}
             keyExtractor={item => item.strongsId}
-            renderItem={({ item }) => (
-              <WordCard item={item} onPress={openDetail} colors={COLORS} />
+            renderItem={({ item, index }) => (
+              <View>
+                {index > 0 && <View style={[styles.divider, { backgroundColor: COLORS.border }]} />}
+                <WordCard item={item} onPress={openDetail} colors={COLORS} />
+              </View>
             )}
             contentContainerStyle={
               filteredSearchResults.length
@@ -283,7 +287,7 @@ export default function StrongsDictionaryScreen() {
             }
             showsVerticalScrollIndicator={false}
           />
-        </SectionHeader>
+        </View>
       )}
     </View>
   );
@@ -646,12 +650,10 @@ const sectionStyles = (c: any) =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      paddingVertical: 16,
+      paddingVertical: 14,
       marginTop: 6,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: c.border,
-      backgroundColor: c.cardBackground,
+      borderRadius: 12,
+      backgroundColor: c.surface,
     },
     loadMoreText: { fontSize: 14, fontWeight: '800', color: c.primary },
   });
@@ -696,12 +698,10 @@ const createStyles = (COLORS: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      borderRadius: 999,
-      paddingHorizontal: 18,
-      height: 56,
-      backgroundColor: COLORS.cardBackground,
+      paddingHorizontal: 16,
+      height: 52,
+      backgroundColor: COLORS.surface,
+      borderRadius: 12,
       marginBottom: 14,
     },
     searchInput: {
@@ -732,12 +732,9 @@ const createStyles = (COLORS: any) =>
       paddingVertical: 8,
       borderRadius: 999,
       backgroundColor: COLORS.cardBackground,
-      borderWidth: 1,
-      borderColor: COLORS.border,
     },
     filterChipActive: {
       backgroundColor: COLORS.primary,
-      borderColor: COLORS.primary,
     },
     filterChipText: {
       fontSize: 13,
@@ -752,12 +749,10 @@ const createStyles = (COLORS: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      borderRadius: 999,
-      paddingHorizontal: 18,
-      height: 56,
-      backgroundColor: COLORS.cardBackground,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      height: 52,
+      backgroundColor: COLORS.surface,
       marginBottom: 14,
     },
     pillButtonText: {
@@ -777,23 +772,35 @@ const createStyles = (COLORS: any) =>
 
     verseInputRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
     verseInputField: {
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      borderRadius: 999,
-      paddingHorizontal: 18,
-      height: 56,
-      backgroundColor: COLORS.cardBackground,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      height: 52,
+      backgroundColor: COLORS.surface,
       color: COLORS.text,
       fontSize: 15,
       fontWeight: '700',
     },
     goButton: {
-      width: 56,
-      height: 56,
-      borderRadius: 999,
+      width: 52,
+      height: 52,
+      borderRadius: 12,
       backgroundColor: COLORS.primary,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+
+    // ── Results section ──
+
+    resultsSection: { flex: 1 },
+    resultsCount: {
+      fontSize: 12,
+      fontWeight: '600',
+      marginBottom: 6,
+      paddingHorizontal: 4,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: 4,
     },
 
     // ── Loading / empty ──

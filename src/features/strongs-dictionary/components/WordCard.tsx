@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
 import type { StrongsWordEntry } from '../services/strongsDictionaryApi';
 
 interface Props {
@@ -11,95 +10,102 @@ interface Props {
 
 export default function WordCard({ item, onPress, colors }: Props) {
   const isGreek = item.language === 'Greek';
-  const langColor = isGreek ? '#e53e3e' : '#2563eb';
-  const langLetter = isGreek ? 'G' : 'H';
+  const langColor = isGreek ? '#b91c1c' : '#1d4ed8';
+  const langLabel = isGreek ? 'Gk' : 'Hb';
 
   return (
     <TouchableOpacity
-      style={styles(colors).card}
+      style={styles.wrapper}
       onPress={() => onPress(item)}
-      activeOpacity={0.7}
+      activeOpacity={0.6}
     >
-      <View style={[styles(colors).langBadge, { backgroundColor: langColor + '18' }]}>
-        <Text style={[styles(colors).langLetter, { color: langColor }]}>{langLetter}</Text>
-      </View>
-
-      <View style={styles(colors).body}>
-        <Text style={styles(colors).definition} numberOfLines={1}>
-          {item.shortDefinition || '(no definition)'}
+      <View style={styles.headwordRow}>
+        <Text style={[styles.langTag, { color: langColor }]}>{langLabel}</Text>
+        {item.originalWord && (
+          <Text style={[styles.originalWord, { color: colors.text }]}>
+            {item.originalWord}
+          </Text>
+        )}
+        {item.transliteration && (
+          <Text style={[styles.translit, { color: colors.textSecondary }]}>
+            ({item.transliteration})
+          </Text>
+        )}
+        <Text style={[styles.strongsId, { color: colors.muted }]}>
+          {item.strongsId}
         </Text>
-        <View style={styles(colors).originalRow}>
-          {item.originalWord && (
-            <Text style={styles(colors).originalWord}>{item.originalWord}</Text>
-          )}
-          {item.transliteration && (
-            <Text style={styles(colors).translit}>{item.transliteration}</Text>
-          )}
-        </View>
-        <View style={styles(colors).metaRow}>
-          <View style={[styles(colors).metaBadge, { backgroundColor: colors.primary + '12' }]}>
-            <Text style={[styles(colors).metaBadgeText, { color: colors.primary }]}>
-              {item.strongsId}
-            </Text>
-          </View>
-          {item.partOfSpeech && (
-            <View style={styles(colors).posBadge}>
-              <Text style={styles(colors).posBadgeText}>{item.partOfSpeech}</Text>
-            </View>
-          )}
-          {item.usageCount != null && (
-            <Text style={styles(colors).usageCount}>{item.usageCount}×</Text>
-          )}
-        </View>
       </View>
 
-      <ChevronRight size={16} color={colors.muted} />
+      <View style={styles.metaRow}>
+        {item.partOfSpeech && (
+          <Text style={[styles.pos, { color: colors.muted }]}>
+            {item.partOfSpeech}
+          </Text>
+        )}
+        {item.usageCount != null && (
+          <Text style={[styles.usage, { color: colors.muted }]}>
+            {item.usageCount}×
+          </Text>
+        )}
+      </View>
+
+      <Text style={[styles.definition, { color: colors.text }]} numberOfLines={3}>
+        {item.fullDefinition || item.shortDefinition || '(no definition)'}
+      </Text>
     </TouchableOpacity>
   );
 }
 
-const styles = (c: any) => StyleSheet.create({
-  card: {
+const styles = StyleSheet.create({
+  wrapper: {
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+  },
+  headwordRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: c.cardBackground,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: c.border,
-    gap: 12,
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    gap: 6,
   },
-  langBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  langTag: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
-  langLetter: { fontSize: 16, fontWeight: '900' },
-  body: { flex: 1, gap: 4 },
-  definition: { fontSize: 16, fontWeight: '800', color: c.text },
-  originalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
-  originalWord: { fontSize: 14, fontWeight: '600', color: c.text, fontStyle: 'italic' },
-  translit: { fontSize: 13, color: c.muted },
+  originalWord: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  translit: {
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  strongsId: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    alignItems: 'center',
-    marginTop: 2,
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 2,
   },
-  metaBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  metaBadgeText: { fontSize: 11, fontWeight: '800' },
-  posBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.border,
+  pos: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  posBadgeText: { fontSize: 11, fontWeight: '700', color: c.textSecondary },
-  usageCount: { fontSize: 11, fontWeight: '700', color: c.textSecondary },
+  usage: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  definition: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 4,
+  },
 });

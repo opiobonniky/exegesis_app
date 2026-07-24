@@ -95,7 +95,7 @@ const JournalDetail = () => {
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
-  const [showAllSections, setShowAllSections] = useState(false);
+  const [showAllSections, setShowAllSections] = useState(true);
   const { isOnline } = useConnectivity();
 
   useEffect(() => {
