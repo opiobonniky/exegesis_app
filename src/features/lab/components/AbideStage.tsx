@@ -16,12 +16,16 @@ import {
   Lock,
   Save,
   Tag,
+  Timer,
 } from 'lucide-react-native';
 
 interface AbideStageProps {
   styles: any;
   colors: any;
   passageRef: string;
+  bookName: string;
+  chapter: string;
+  verseStart: string;
   reflection: string;
   setReflection: (value: string) => void;
   prayer: string;
@@ -48,6 +52,9 @@ export default function AbideStage({
   styles,
   colors,
   passageRef,
+  bookName,
+  chapter,
+  verseStart,
   reflection,
   setReflection,
   prayer,
@@ -80,6 +87,12 @@ export default function AbideStage({
         <Text style={[styles.stageSubtitle, { color: colors.textSecondary }]}>
           Record what the Lord has shown you
         </Text>
+        <View style={[styles.passageChip, { backgroundColor: `${colors.accent}10`, marginTop: 6, marginBottom: 4 }]}>
+          <Timer size={10} color={colors.accent} />
+          <Text style={{ fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 0.5 }}>
+            8–12 min
+          </Text>
+        </View>
         {passageRef && (
           <View style={[styles.passageChip, { backgroundColor: `${colors.primary}15` }]}>
             <BookOpen size={12} color={colors.primary} />
@@ -90,9 +103,11 @@ export default function AbideStage({
         )}
       </View>
 
-      <Text style={[styles.textareaLabel, { color: colors.textSecondary }]}>
-        <FileText size={14} color={colors.textSecondary} /> My Reflection
-      </Text>
+      <View style={styles.abideFieldRow}>
+        <Text style={[styles.textareaLabel, { color: colors.textSecondary }]}>
+          <FileText size={14} color={colors.textSecondary} /> My Reflection
+        </Text>
+      </View>
       <TextInput
         style={[
           styles.textareaLarge,
@@ -110,9 +125,11 @@ export default function AbideStage({
         textAlignVertical="top"
       />
 
-      <Text style={[styles.textareaLabel, { color: colors.textSecondary }]}>
-        <Heart size={14} color={colors.textSecondary} /> My Prayer
-      </Text>
+      <View style={styles.abideFieldRow}>
+        <Text style={[styles.textareaLabel, { color: colors.textSecondary }]}>
+          <Heart size={14} color={colors.textSecondary} /> My Prayer
+        </Text>
+      </View>
       <TextInput
         style={[
           styles.textareaLarge,
@@ -130,9 +147,11 @@ export default function AbideStage({
         textAlignVertical="top"
       />
 
-      <Text style={[styles.textareaLabel, { color: colors.textSecondary }]}>
-        <BookMarked size={14} color={colors.textSecondary} /> Practical Step
-      </Text>
+      <View style={styles.abideFieldRow}>
+        <Text style={[styles.textareaLabel, { color: colors.textSecondary }]}>
+          <BookMarked size={14} color={colors.textSecondary} /> Practical Step
+        </Text>
+      </View>
       <TextInput
         style={[
           styles.textarea,

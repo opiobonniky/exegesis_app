@@ -19,6 +19,7 @@ import {
   Dimensions,
   Share,
   Vibration,
+  Clipboard,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,6 +32,7 @@ import {
 } from '../../constants/theme';
 import { route } from '../../component/navigations/routes';
 import { sendPostRequest } from '../../services/api';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import ActionHeader from '../../reusable/ActionHeader';
 import { showToast } from '../../helpers/Toash.helper';
 import BookSelectorScreen from '../bible/components/BookSelectorScreen';
@@ -221,7 +223,7 @@ export default function LabFlowScreen() {
   const [learnNotes, setLearnNotes] = useState('');
   const [learnTab, setLearnTab] = useState<
     'exegesis' | 'language' | 'history' | 'prologue'
-  >(routeParams.learnTab || 'exegesis');
+  >(routeParams.learnTab || 'prologue');
   const [verseWords, setVerseWords] = useState<StrongsWordData[]>([]);
   const {
     learnDataLoading,
@@ -229,6 +231,8 @@ export default function LabFlowScreen() {
     setVerseResources,
     bookPrologue,
     setBookPrologue,
+    translations,
+    translationsLoading,
   } = useLabLearnData({
     stage,
     bookName,
@@ -244,7 +248,6 @@ export default function LabFlowScreen() {
     visible: showStrongsModal,
     openWord: handleStrongsWordPress,
     close: closeStrongsModal,
-    clearSelection: clearStrongsSelection,
   } = useStrongsWordModal();
 
   // ── TTS audio state ──────────────────────────────────────────────────────
@@ -610,7 +613,7 @@ const handleChangePassage = useCallback(
         }));
 
       // Save abide progress to session before navigating
-      const progressRes = await sendPostRequest('exegesis', `${sessionId}/progress`, {
+      await sendPostRequest('exegesis', `${sessionId}/progress`, {
         abideReflection: reflection,
         abidePrayer: prayer,
         abideApplication: appText,
@@ -1071,6 +1074,7 @@ const handleChangePassage = useCallback(
       passageRef={passageRef}
       bookName={bookName}
       chapter={chapter}
+      verseStart={verseStart}
       passageVerses={passageVerses}
       passageVersesLoading={passageVersesLoading}
       lookNotes={lookNotes}
@@ -1094,6 +1098,10 @@ const handleChangePassage = useCallback(
       styles={styles}
       colors={COLORS}
       passageRef={passageRef}
+      bookName={bookName}
+      chapter={chapter}
+      verseStart={verseStart}
+      passageVerses={passageVerses}
       passageVersesCount={passageVerses.length}
       selectedRepeats={selectedRepeats}
       setSelectedRepeats={handleSetSelectedRepeats}
@@ -1124,6 +1132,7 @@ const handleChangePassage = useCallback(
       passageRef={passageRef}
       bookName={bookName}
       chapter={chapter}
+      verseStart={verseStart}
       learnTab={learnTab}
       setLearnTab={setLearnTab}
       learnNotes={learnNotes}
@@ -1132,6 +1141,10 @@ const handleChangePassage = useCallback(
       verseResources={verseResources}
       bookPrologue={bookPrologue}
       verseWords={verseWords}
+      translations={translations}
+      translationsLoading={translationsLoading}
+      isPublic={isPublic}
+      setIsPublic={setIsPublic}
       saving={saving}
       savingProgress={savingProgress}
       pageIndex={pageIndex}
@@ -1151,6 +1164,16 @@ const handleChangePassage = useCallback(
           chapter: parseInt(chapter, 10),
         })
       }
+      onOpenCrossReference={(ref: string) => {
+        // Parse "Book 3:16" / "Book 3:16-17" style references.
+        const match = ref.match(/^(.+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
+        if (!match) return;
+        navigation.navigate(route.bible, {
+          bookName: match[1].trim(),
+          chapter: Number(match[2]),
+          verseNumber: match[3] ? Number(match[3]) : undefined,
+        });
+      }}
       onStrongsWordPress={handleStrongsWordPress}
       onSaveProgress={saveCurrentProgress}
       onContinue={saveLearn}
@@ -1163,6 +1186,9 @@ const handleChangePassage = useCallback(
       styles={styles}
       colors={COLORS}
       passageRef={passageRef}
+      bookName={bookName}
+      chapter={chapter}
+      verseStart={verseStart}
       reflection={reflection}
       setReflection={setReflection}
       prayer={prayer}
@@ -1186,8 +1212,8 @@ const handleChangePassage = useCallback(
     />
   );
 
-  // ── Handle download / share entry ─────────────────────────────────────
-  const handleDownloadEntry = useCallback(async () => {
+  // ── Format study as text ────────────────────────────────────────────
+  const formatStudyAsText = useCallback(() => {
     const passageVerseText = passageVerses
       .map(v => `${v.verseNumber}. ${v.text}`)
       .join('\n');
@@ -1200,10 +1226,10 @@ const handleChangePassage = useCallback(
       )
       .join('\n');
 
-    const entryText = [
-      `═══ EXEGESIS STUDY ═══`,
-      `Passage: ${passageRef || `${bookName} ${chapter}`}`,
-      `Date: ${new Date().toLocaleDateString()}`,
+    const passageTitle = passageRef || `${bookName} ${chapter}`;
+    return [
+      `📖 Bible Study: ${passageTitle}`,
+      `─`.repeat(50),
       '',
       `─── Passage Text ───`,
       passageVerseText || '(Passage text unavailable)',
@@ -1211,53 +1237,87 @@ const handleChangePassage = useCallback(
       `─── Look: Observations ───`,
       lookNotes || '(No observations recorded)',
       '',
-      `─── Listen: Repeat Count ───`,
-      `${repeatCount}x`,
-      '',
       `─── Learn: Study Notes ───`,
       learnNotes || '(No study notes recorded)',
       '',
       strongsList ? `─── Strong's Words Studied ───\n${strongsList}\n` : '',
-      `─── Abide: Reflection ───`,
+      `─── Reflection ───`,
       reflection || '(No reflection recorded)',
       '',
-      `─── Abide: Prayer ───`,
+      `─── Prayer ───`,
       prayer || '(No prayer recorded)',
       '',
-      `─── Abide: Application ───`,
+      `─── Application ───`,
       appText || '(No application recorded)',
       '',
-      tags ? `Tags: ${tags}` : '',
+      tags ? `🏷️ Tags: ${tags}` : '',
       '',
-      '— Saved from Exegesis Lab',
+      `─`.repeat(50),
+      'Created with Exegesis Bible App',
     ]
       .filter(Boolean)
       .join('\n');
+  }, [passageVerses, verseWords, passageRef, bookName, chapter, lookNotes, learnNotes, reflection, prayer, appText, tags]);
+
+  // ── Handle copy entry to clipboard ───────────────────────────────
+  const handleCopyEntry = useCallback(async () => {
+    try {
+      Clipboard.setString(formatStudyAsText());
+      showToast('success', 'Study copied to clipboard');
+    } catch (e: any) {
+      if (e?.message !== 'User did not share') {
+        console.error('Clipboard failed:', e);
+        showToast('error', 'Could not copy to clipboard');
+      }
+    }
+  }, [formatStudyAsText]);
+
+  // ── Handle download / share entry ─────────────────────────────────────
+  // Prefers the backend-generated PDF (POST /exegesis/:id/pdf); falls back
+  // to sharing the study as plain text when no session or network error.
+  const handleDownloadEntry = useCallback(async () => {
+    const shareTextFallback = async () => {
+      await Share.share({
+        message: formatStudyAsText(),
+        title: `Exegesis: ${passageRef || `${bookName} ${chapter}`}`,
+      });
+    };
+
+    if (sessionId) {
+      try {
+        const res = await sendPostRequest('exegesis', `${sessionId}/pdf`, {}, true);
+        if (res.returnCode === 200 && res.returnData?.content) {
+          const { content, filename, mimeType } = res.returnData;
+          const safeName =
+            filename || `exegesis-study-${sessionId}.pdf`;
+          const pdfPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${safeName}`;
+          await ReactNativeBlobUtil.fs.writeFile(pdfPath, content, 'base64');
+          if (Platform.OS === 'android') {
+            await ReactNativeBlobUtil.android.actionViewIntent(
+              pdfPath,
+              mimeType || 'application/pdf',
+            );
+          } else {
+            await Share.share({
+              url: `file://${pdfPath}`,
+              title: safeName,
+            });
+          }
+          return;
+        }
+      } catch (e: any) {
+        console.error('PDF export failed, falling back to text share:', e);
+      }
+    }
 
     try {
-      await Share.share({
-        message: entryText,
-        title: `Exegesis: ${passageRef}`,
-      });
+      await shareTextFallback();
     } catch (e: any) {
       if (e?.message !== 'User did not share') {
         console.error('Share failed:', e);
       }
     }
-  }, [
-    passageVerses,
-    verseWords,
-    passageRef,
-    bookName,
-    chapter,
-    lookNotes,
-    repeatCount,
-    learnNotes,
-    reflection,
-    prayer,
-    appText,
-    tags,
-  ]);
+  }, [sessionId, formatStudyAsText, passageRef, bookName, chapter]);
 
   // ── Render Completed state ────────────────────────────────────────────────
   const handleStartNewStudy = useCallback(() => {
@@ -1296,6 +1356,7 @@ const handleChangePassage = useCallback(
       colors={COLORS}
       onViewLegacyLedger={() => navigation.navigate(route.legacyLedger)}
       onDownloadEntry={handleDownloadEntry}
+      onCopyEntry={handleCopyEntry}
       onStartNewStudy={handleStartNewStudy}
     />
   );
@@ -1805,6 +1866,34 @@ const createStyles = (COLORS: any) =>
       fontWeight: '700',
       textTransform: 'uppercase',
       letterSpacing: 0.5,
+      flexShrink: 1,
+    },
+    passageTextHeaderRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginLeft: 'auto',
+    },
+    verseRangeChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: SPACING.sm + 2,
+      paddingVertical: 3,
+      borderRadius: BORDER_RADIUS.round,
+      borderWidth: 1,
+    },
+    verseRangeChipText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+      letterSpacing: 0.3,
+    },
+    copyPassageBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: BORDER_RADIUS.sm,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     passageVerseRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
     passageVerseNum: {
@@ -2070,6 +2159,64 @@ const createStyles = (COLORS: any) =>
       borderWidth: 1,
     },
     topicPillText: { fontSize: FONT_SIZES.xs, fontWeight: '600' },
+    topicWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+
+    // Learn stage - translation comparison
+    translationBadge: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: SPACING.sm,
+      paddingVertical: 2,
+      borderRadius: BORDER_RADIUS.sm,
+      marginBottom: 4,
+    },
+    translationBadgeText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+    },
+    translationText: {
+      fontSize: FONT_SIZES.md,
+      fontStyle: 'italic',
+      lineHeight: 23,
+      marginTop: 4,
+    },
+
+    // Learn stage - commentary copy + cross-ref tap
+    commentaryHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: SPACING.sm,
+    },
+    commentaryCopyBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: BORDER_RADIUS.sm,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    crossRefTapHint: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+      marginTop: 6,
+    },
+
+    // Learn stage - word studies
+    wordStudyHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginBottom: 4,
+    },
+
+    // Abide stage
+    abideFieldRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: SPACING.sm,
+    },
 
     // Abide stage
     privacyRow: {
@@ -2084,13 +2231,37 @@ const createStyles = (COLORS: any) =>
 
     // Completed
     completedContainer: { alignItems: 'center', paddingTop: SPACING.xxl * 2 },
-    completedIcon: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
+    completedBadgeWrap: {
+      width: 128,
+      height: 128,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: SPACING.xl,
+      marginBottom: SPACING.lg,
+    },
+    completedBadgeOuter: {
+      width: 116,
+      height: 116,
+      borderRadius: 58,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    completedBadgeInner: {
+      width: 92,
+      height: 92,
+      borderRadius: 46,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    completedSparkle: {
+      position: 'absolute',
+      top: 4,
+      right: 8,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     completedTitle: {
       fontSize: FONT_SIZES.xxl,
@@ -2104,6 +2275,42 @@ const createStyles = (COLORS: any) =>
       paddingHorizontal: SPACING.xl,
       marginBottom: SPACING.xl,
     },
+    completedSavedCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.md,
+      width: '100%',
+      borderRadius: BORDER_RADIUS.md,
+      borderWidth: 1,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.md,
+      marginBottom: SPACING.lg,
+    },
+    completedSavedIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    completedSavedTextWrap: { flex: 1 },
+    completedSavedTitle: {
+      fontSize: FONT_SIZES.md,
+      fontWeight: '800',
+    },
+    completedSavedSubtitle: {
+      fontSize: FONT_SIZES.xs,
+      marginTop: 2,
+      lineHeight: 16,
+    },
+    completedActionsRow: {
+      flexDirection: 'row',
+      gap: SPACING.sm,
+      width: '100%',
+      marginBottom: SPACING.sm,
+    },
+    completedActionBtn: { flex: 1 },
+    completedPrimaryBtn: { width: '100%' },
 
     // Progress bar (at top)
     progressBar: {
@@ -2129,4 +2336,100 @@ const createStyles = (COLORS: any) =>
       marginBottom: SPACING.sm,
     },
     pageDot: { height: 8, borderRadius: 4 },
+
+    // ── Look prompt header ───────────────────────────────────────────────
+    promptHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: SPACING.xs,
+    },
+    promptHeaderActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.sm,
+    },
+
+    // ── Look observations row ────────────────────────────────────────────
+    textareaLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: SPACING.sm,
+    },
+
+    // Look stage - answered-count badge + saved flash
+    answeredBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: SPACING.sm + 2,
+      paddingVertical: 3,
+      borderRadius: BORDER_RADIUS.round,
+      borderWidth: 1,
+    },
+    answeredBadgeText: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '800',
+      letterSpacing: 0.3,
+    },
+    savedFlash: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: SPACING.sm,
+      paddingVertical: 3,
+      borderRadius: BORDER_RADIUS.sm,
+      marginRight: SPACING.xs,
+    },
+    textareaWrap: { position: 'relative' },
+    promptTagRow: {
+      alignItems: 'flex-end',
+      marginTop: -SPACING.xs,
+      marginBottom: SPACING.md,
+    },
+    promptTag: {
+      fontSize: 9,
+      fontWeight: '600',
+      backgroundColor: 'rgba(128,128,128,0.12)',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: BORDER_RADIUS.round,
+    },
+
+    aiTipText: {
+      fontSize: FONT_SIZES.sm,
+      lineHeight: 20,
+    },
+
+    // Listen stage - translations & commentary expandable section
+    listenStudySection: {
+      borderTopWidth: 1,
+      marginTop: SPACING.sm,
+      paddingTop: SPACING.sm,
+    },
+    listenStudyHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: SPACING.xs,
+    },
+    listenStudyLabel: {
+      flex: 1,
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '700',
+      letterSpacing: 0.3,
+    },
+    listenStudyBody: {
+      borderTopWidth: 1,
+      paddingTop: SPACING.sm,
+      marginTop: SPACING.xs,
+    },
+    listenStudyEmpty: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.sm,
+      paddingVertical: SPACING.sm,
+    },
+
   });

@@ -9,6 +9,7 @@ import {
   Image,
   Alert,
   Share,
+  Clipboard,
 } from 'react-native';
 import { AppContext } from '../../common/AppContext';
 import {
@@ -32,6 +33,7 @@ import {
 import { sendPostRequest } from '../../services/api';
 import { getVersionById } from '../../assets/bibleVersion/json/bibleVersions';
 import ActionHeader from '../../reusable/ActionHeader';
+import RichText from '../../reusable/RichText';
 import { useNavigation } from '@react-navigation/native';
 import useBible from '../../features/bible/hooks/useBible';
 import { useLanguage } from '../../component/language-translation/LanguageProvider';
@@ -85,6 +87,7 @@ function ExpandableContent({
   const lines = content.split('\n').filter(p => p.trim());
   const visibleLines = expanded ? lines : lines.slice(0, INITIAL_LINES);
   const hasMore = lines.length > INITIAL_LINES;
+  const hasRichMarkers = /(\*\*|^#{1,3}\s|^[•\-]\s|^\d+\.\s)/m.test(content);
 
   return (
     <View style={styles.sectionContainer}>
@@ -93,12 +96,21 @@ function ExpandableContent({
         <Text style={[styles.sectionLabel, { color: accent }]}>{label}</Text>
       </View>
       <View style={styles.sectionContent}>
-        {visibleLines.map((line, idx) => (
-          <Text key={idx} style={styles.sectionParagraph}>
-            {line}
-          </Text>
-        ))}
-        {hasMore && (
+        {hasRichMarkers ? (
+          <RichText
+            text={content}
+            textStyle={[styles.sectionParagraph, { color: '#666' }]}
+            accentColor={accent}
+            paragraphGap={8}
+          />
+        ) : (
+          visibleLines.map((line, idx) => (
+            <Text key={idx} style={styles.sectionParagraph}>
+              {line}
+            </Text>
+          ))
+        )}
+        {hasMore && !hasRichMarkers && (
           <TouchableOpacity
             style={styles.expandBtn}
             onPress={() => setExpanded(e => !e)}
@@ -285,7 +297,6 @@ export default function DailyVerseScreen() {
     const ref = `${dailyVerse.bookName} ${dailyVerse.chapter}:${dailyVerse.verseNumber}`;
     const text = `"${verseText}" — ${ref}`;
     try {
-      const Clipboard = require('@react-native-clipboard/clipboard').default;
       Clipboard.setString(text);
       Alert.alert(
         translations?.bible?.verseCopiedTitle || 'Copied',

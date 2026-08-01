@@ -173,7 +173,7 @@ function fireSoundPlayComplete(success: boolean) {
  * `new Sound()`, then resolve any pending device-TTS promise.
  */
 async function completeDeviceTts(): Promise<void> {
-  await new Promise(resolve => setTimeout(resolve, 50));
+  await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
   resolveDeviceTtsPromise();
 }
 
@@ -249,7 +249,7 @@ describe('Edge TTS — success path', () => {
     const speakPromise = bibleTTS.speak('Hello world', 0, 0, undefined, false, 1);
 
     // Yield so _speakViaBackend reaches new Sound()
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
     fireSoundLoaded(null);
     mockNow += 1000;
     fireSoundPlayComplete(true);
@@ -299,7 +299,7 @@ describe('Edge TTS → device TTS fallback', () => {
     const speakPromise = bibleTTS.speak('The Lord is my shepherd', 0, 0, undefined, false, 1);
 
     // Yield so _speakViaBackend reaches new Sound()
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
     fireSoundLoaded('Could not load file');
     await completeDeviceTts();
 
@@ -314,7 +314,7 @@ describe('Edge TTS → device TTS fallback', () => {
     const speakPromise = bibleTTS.speak('Create in me a clean heart', 0, 0, undefined, false, 1);
 
     // Yield so _speakViaBackend reaches new Sound()
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
     fireSoundLoaded(null);
     // Do NOT advance mockNow → playDuration ~ 0 ms → triggers silent detection
     fireSoundPlayComplete(true);
@@ -331,7 +331,7 @@ describe('Edge TTS → device TTS fallback', () => {
     const speakPromise = bibleTTS.speak('He leadeth me beside the still waters', 0, 0, undefined, false, 1);
 
     // Yield so _speakViaBackend reaches new Sound()
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
     fireSoundLoaded(null);
     mockNow += 1000;
     fireSoundPlayComplete(false);
@@ -352,7 +352,7 @@ describe('Edge TTS state management', () => {
   });
 
   it('setEdgeVoice / edgeVoiceId getter', () => {
-    expect(bibleTTS.edgeVoiceId).toBe('en-US-AriaNeural');
+    expect(bibleTTS.edgeVoiceId).toBe('en-GB-RyanNeural');
     bibleTTS.setEdgeVoice('en-US-JennyNeural');
     expect(bibleTTS.edgeVoiceId).toBe('en-US-JennyNeural');
   });
@@ -380,7 +380,7 @@ describe('Edge TTS takes priority when both are available', () => {
   it('does NOT call Tts.speak when Edge TTS succeeds', async () => {
     const speakPromise = bibleTTS.speak('Test text', 0, 0, undefined, false, 1);
 
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
     fireSoundLoaded(null);
     mockNow += 1000;
     fireSoundPlayComplete(true);
@@ -419,9 +419,9 @@ describe('getDeviceVoices', () => {
 
   it('filters non-English voices', async () => {
     jest.mocked(Tts.voices).mockResolvedValue([
-      { id: 'fr-FR-Thomas', language: 'fr-FR', name: 'Thomas' },
-      { id: 'en-US-Samantha', language: 'en-US', name: 'Samantha', notInstalled: false },
-      { id: 'de-DE-Hanna', language: 'de-DE', name: 'Hanna' },
+      { id: 'fr-FR-Thomas', language: 'fr-FR', name: 'Thomas', quality: 3, latency: 3, networkConnectionRequired: false, notInstalled: false },
+      { id: 'en-US-Samantha', language: 'en-US', name: 'Samantha', quality: 4, latency: 4, networkConnectionRequired: false, notInstalled: false },
+      { id: 'de-DE-Hanna', language: 'de-DE', name: 'Hanna', quality: 3, latency: 3, networkConnectionRequired: false, notInstalled: false },
     ]);
     const voices = await bibleTTS.getDeviceVoices();
     expect(voices).toHaveLength(1);
@@ -430,8 +430,8 @@ describe('getDeviceVoices', () => {
 
   it('excludes uninstalled voices', async () => {
     jest.mocked(Tts.voices).mockResolvedValue([
-      { id: 'en-US-Installed', language: 'en-US', name: 'Installed', notInstalled: false },
-      { id: 'en-US-NotInstalled', language: 'en-US', name: 'Not Installed', notInstalled: true },
+      { id: 'en-US-Installed', language: 'en-US', name: 'Installed', quality: 4, latency: 4, networkConnectionRequired: false, notInstalled: false },
+      { id: 'en-US-NotInstalled', language: 'en-US', name: 'Not Installed', quality: 3, latency: 3, networkConnectionRequired: false, notInstalled: true },
     ]);
     const voices = await bibleTTS.getDeviceVoices();
     expect(voices).toHaveLength(1);

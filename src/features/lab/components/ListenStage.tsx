@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Clipboard,
   Text,
   TouchableOpacity,
   View,
@@ -9,20 +10,43 @@ import {
 import {
   BookOpen,
   Brain,
+  Check,
   CheckCircle2,
+  ChevronDown,
+  Copy,
   Ear,
+  Languages,
   Pause,
   Play,
   RotateCcw,
+  ScrollText,
   Volume2,
+  Timer,
 } from 'lucide-react-native';
 import { SPACING } from '../../../constants/theme';
 import { LISTEN_OPTIONS } from '../constants';
+import WaveformAnimation from '../../../components/WaveformAnimation';
+import { showToast } from '../../../helpers/Toash.helper';
+import {
+  getTranslationComparison,
+  getVerseResources,
+  TranslationComparisonEntry,
+  VerseResourceData,
+} from '../../../services/verseResourcesApi';
+
+interface PassageVerse {
+  verseNumber: number;
+  text: string;
+}
 
 interface ListenStageProps {
   styles: any;
   colors: any;
   passageRef: string;
+  bookName: string;
+  chapter: string;
+  verseStart: string;
+  passageVerses: PassageVerse[];
   passageVersesCount: number;
   selectedRepeats: number;
   setSelectedRepeats: (value: number) => void;
@@ -48,6 +72,10 @@ export default function ListenStage({
   styles,
   colors,
   passageRef,
+  bookName,
+  chapter,
+  verseStart,
+  passageVerses,
   passageVersesCount,
   selectedRepeats,
   setSelectedRepeats,
@@ -71,6 +99,109 @@ export default function ListenStage({
   const isPreparingAudio = audioStarting && !isPlaying && !isPaused;
   const selectedLabel =
     LISTEN_OPTIONS.find(o => o.value === selectedRepeats)?.label || `${selectedRepeats}x`;
+  const [copied, setCopied] = useState(false);
+
+  const parsedVerse =
+    passageVerses.length > 0 ? passageVerses[0].verseNumber : Number(verseStart) || 1;
+
+  const verseRange =
+    passageVerses.length === 0
+      ? null
+      : passageVerses[0].verseNumber ===
+        passageVerses[passageVerses.length - 1].verseNumber
+        ? `v. ${passageVerses[0].verseNumber}`
+        : `vv. ${passageVerses[0].verseNumber}–${passageVerses[passageVerses.length - 1].verseNumber}`;
+
+  const handleCopyPassage = () => {
+    const text = passageVerses.map(v => `${v.verseNumber} ${v.text}`).join('\n');
+    if (!text) return;
+    try {
+      Clipboard.setString(text);
+      setCopied(true);
+      showToast('success', 'Passage copied to clipboard');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.error('Copy failed:', e);
+      showToast('error', 'Could not copy passage');
+    }
+  };
+
+  // ── Translations + commentary (expandable, lazy-loaded) ─────────────────
+  const [studyExpanded, setStudyExpanded] = useState(false);
+  const [translations, setTranslations] = useState<
+    TranslationComparisonEntry[] | null
+  >(null);
+  const [verseResources, setVerseResources] = useState<VerseResourceData | null>(
+    null,
+  );
+  const [studyLoading, setStudyLoading] = useState(false);
+  const [copiedCommentary, setCopiedCommentary] = useState(false);
+  const copiedCommentaryTimerRef = useRef<number>(0);
+
+  useEffect(() => {
+    return () => clearTimeout(copiedCommentaryTimerRef.current);
+  }, []);
+
+  // Reset the expandable study-tools state when the passage changes so a
+  // new passage never shows the previous passage's translations/commentary.
+  useEffect(() => {
+    setStudyExpanded(false);
+    setTranslations(null);
+    setVerseResources(null);
+    setStudyLoading(false);
+    setCopiedCommentary(false);
+  }, [bookName, chapter, verseStart]);
+
+  const toggleStudyTools = () => {
+    setStudyExpanded(!studyExpanded);
+    if (
+      !translations &&
+      !verseResources &&
+      !studyLoading &&
+      bookName &&
+      chapter
+    ) {
+      setStudyLoading(true);
+      const ch = Number(chapter);
+      const vs = parsedVerse;
+      Promise.allSettled([
+        getTranslationComparison(bookName, ch, vs),
+        getVerseResources(bookName, ch, vs),
+      ])
+        .then(([tRes, rRes]) => {
+          if (tRes.status === 'fulfilled' && tRes.value?.returnData) {
+            setTranslations(tRes.value.returnData);
+          }
+          if (rRes.status === 'fulfilled' && rRes.value?.returnData) {
+            setVerseResources(rRes.value.returnData);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setStudyLoading(false));
+    }
+  };
+
+  const handleCopyCommentary = (
+    text: string,
+    author: string,
+    title: string,
+  ) => {
+    const ref = passageRef || `${bookName} ${chapter}:${verseStart}`;
+    const attribution = `${text}\n\n— ${author}, ${title} (commentary on ${ref})`;
+    try {
+      Clipboard.setString(attribution);
+      setCopiedCommentary(true);
+      showToast('success', 'Commentary copied with attribution');
+      clearTimeout(copiedCommentaryTimerRef.current);
+      copiedCommentaryTimerRef.current = setTimeout(
+        () => setCopiedCommentary(false),
+        2000,
+      );
+    } catch (e) {
+      console.error('Copy failed:', e);
+      showToast('error', 'Could not copy commentary');
+    }
+  };
 
   return (
     <View style={styles.stageContainer}>
@@ -87,6 +218,12 @@ export default function ListenStage({
         <Text style={[styles.stageSubtitle, { color: colors.textSecondary }]}>
           Be still and dwell in the Word
         </Text>
+        <View style={[styles.passageChip, { backgroundColor: `${colors.accent}10`, marginTop: 6, marginBottom: 4 }]}>
+          <Timer size={10} color={colors.accent} />
+          <Text style={{ fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 0.5 }}>
+            5–15 min
+          </Text>
+        </View>
         {passageRef && (
           <View
             style={[
@@ -102,6 +239,227 @@ export default function ListenStage({
         )}
         {renderChangePassageActions()}
       </View>
+
+      {/* Passage text (follow-along display) */}
+      {passageVerses.length > 0 && (
+        <View
+          style={[
+            styles.passageTextCard,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderLeftColor: colors.primary,
+            },
+          ]}
+        >
+          <View style={[styles.passageTextHeader, { borderBottomColor: colors.border }]}>
+            <BookOpen size={14} color={colors.primary} />
+            <Text style={[styles.passageTextLabel, { color: colors.primary }]}>
+              {passageRef || 'Passage'}
+            </Text>
+            <View style={styles.passageTextHeaderRight}>
+              {verseRange && (
+                <View
+                  style={[
+                    styles.verseRangeChip,
+                    {
+                      backgroundColor: `${colors.primary}15`,
+                      borderColor: `${colors.primary}30`,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.verseRangeChipText, { color: colors.primary }]}>
+                    {verseRange}
+                  </Text>
+                </View>
+              )}
+              <TouchableOpacity
+                onPress={handleCopyPassage}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Copy passage text"
+                style={[
+                  styles.copyPassageBtn,
+                  {
+                    backgroundColor: copied ? 'rgba(34,197,94,0.12)' : `${colors.surface}`,
+                    borderColor: copied ? 'rgba(34,197,94,0.4)' : colors.border,
+                  },
+                ]}
+              >
+                {copied ? (
+                  <Check size={14} color="#22C55E" strokeWidth={2.5} />
+                ) : (
+                  <Copy size={14} color={colors.primary} strokeWidth={2.5} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+          {passageVerses.map(v => (
+            <View key={v.verseNumber} style={styles.passageVerseRow}>
+              <Text style={[styles.passageVerseNum, { color: colors.muted }]}>
+                {v.verseNumber}
+              </Text>
+              <Text style={[styles.passageVerseText, { color: colors.text, flex: 1 }]}>
+                {v.text}
+              </Text>
+            </View>
+          ))}
+
+          {/* ── Translations + Commentary (expandable, lazy-loaded) ── */}
+          <View
+            style={[
+              styles.listenStudySection,
+              { borderTopColor: colors.border },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={toggleStudyTools}
+              activeOpacity={0.7}
+              style={styles.listenStudyHeader}
+            >
+              <Languages size={14} color={colors.primary} strokeWidth={2.5} />
+              <Text style={[styles.listenStudyLabel, { color: colors.primary }]}>
+                Translations & Commentary
+              </Text>
+              {studyLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <ChevronDown
+                  size={15}
+                  color={colors.primary}
+                  style={{
+                    transform: [
+                      { rotate: studyExpanded ? '180deg' : '0deg' },
+                    ],
+                  }}
+                />
+              )}
+            </TouchableOpacity>
+            {studyExpanded && (
+              <View
+                style={[
+                  styles.listenStudyBody,
+                  { borderTopColor: colors.border },
+                ]}
+              >
+                {studyLoading ? (
+                  <Text style={[styles.aiTipText, { color: colors.muted, fontStyle: 'italic' }]}>
+                    Loading translations...
+                  </Text>
+                ) : (
+                  <>
+                    {translations && translations.length > 0 && (
+                      <View style={{ marginBottom: SPACING.md }}>
+                        <Text style={[styles.learnSectionTitle, { color: colors.text }]}>
+                          Translation Comparison
+                        </Text>
+                        {translations.map((t, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.resourceCard,
+                              {
+                                backgroundColor: colors.surface,
+                                borderColor: colors.border,
+                                borderLeftColor: colors.primary,
+                              },
+                            ]}
+                          >
+                            <View
+                              style={[
+                                styles.translationBadge,
+                                { backgroundColor: `${colors.primary}15` },
+                              ]}
+                            >
+                              <Text style={[styles.translationBadgeText, { color: colors.primary }]}>
+                                {t.abbreviation}
+                              </Text>
+                            </View>
+                            <Text style={[styles.resourceCardLabel, { color: colors.muted }]}>
+                              {t.version}
+                            </Text>
+                            <Text style={[styles.translationText, { color: colors.textSecondary }]}>
+                              “{t.text}”
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    {verseResources && verseResources.commentaries.length > 0 && (
+                      <View>
+                        <Text style={[styles.learnSectionTitle, { color: colors.text }]}>
+                          Commentary
+                        </Text>
+                        {verseResources.commentaries.map((c, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.resourceCard,
+                              {
+                                backgroundColor: colors.surface,
+                                borderColor: colors.border,
+                                borderLeftColor: colors.accent,
+                              },
+                            ]}
+                          >
+                            <View style={styles.commentaryHeaderRow}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.resourceCardAuthor, { color: colors.text }]}>
+                                  {c.author}
+                                </Text>
+                                <Text style={[styles.resourceCardTitle, { color: colors.textSecondary }]}>
+                                  {c.title}
+                                </Text>
+                              </View>
+                              <TouchableOpacity
+                                onPress={() =>
+                                  handleCopyCommentary(c.text, c.author, c.title)
+                                }
+                                activeOpacity={0.7}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                accessibilityLabel="Copy commentary with attribution"
+                                style={[
+                                  styles.commentaryCopyBtn,
+                                  {
+                                    backgroundColor:
+                                      copiedCommentary ? 'rgba(34,197,94,0.12)' : colors.surface,
+                                    borderColor:
+                                      copiedCommentary ? 'rgba(34,197,94,0.4)' : colors.border,
+                                  },
+                                ]}
+                              >
+                                {copiedCommentary ? (
+                                  <Check size={13} color="#22C55E" strokeWidth={2.5} />
+                                ) : (
+                                  <Copy size={13} color={colors.muted} strokeWidth={2.5} />
+                                )}
+                              </TouchableOpacity>
+                            </View>
+                            <View style={[styles.dividerThin, { backgroundColor: colors.border }]} />
+                            <Text style={[styles.resourceCardText, { color: colors.textSecondary }]}>
+                              {c.text}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    {(!translations || translations.length === 0) &&
+                      (!verseResources ||
+                        verseResources.commentaries.length === 0) && (
+                        <View style={styles.listenStudyEmpty}>
+                          <ScrollText size={18} color={colors.muted} />
+                          <Text style={[styles.aiTipText, { color: colors.muted, fontStyle: 'italic' }]}>
+                            No translations or commentary available for this passage.
+                          </Text>
+                        </View>
+                      )}
+                  </>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+      )}
 
       {!listenComplete ? (
         <>
@@ -190,6 +548,10 @@ export default function ListenStage({
                   {isPaused ? 'Paused' : 'Now Playing'}
                 </Text>
               </View>
+
+              {/* Waveform animation bars (visual feedback) */}
+              <WaveformAnimation active={!isPaused} barCount={10} size={16} color={colors.accent} mutedColor={colors.muted} />
+
 
               {/* Repeat progress dots */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: SPACING.xl }}>

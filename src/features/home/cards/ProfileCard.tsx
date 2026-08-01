@@ -26,18 +26,10 @@ export default function ProfileCard({ greeting, userName, profilePhotoUrl, onPro
       style={[
         styles.card,
         isRtl && styles.cardRtl,
-        { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border },
+        { backgroundColor: COLORS.background, borderColor: COLORS.border },
       ]}
     >
-      <View style={styles.picWrap}>
-        {profilePhotoUrl ? (
-          <Image source={{ uri: profilePhotoUrl }} style={styles.picImage} />
-        ) : (
-          <View style={[styles.picPlaceholder, { backgroundColor: COLORS.primary + '20' }]}>
-            <User size={26} color={COLORS.primary} />
-          </View>
-        )}
-      </View>
+     
 
       <View style={[styles.infoWrap, isRtl && styles.infoWrapRtl]}>
         <Text style={[styles.greeting, { color: COLORS.muted }]} numberOfLines={1}>
@@ -48,11 +40,13 @@ export default function ProfileCard({ greeting, userName, profilePhotoUrl, onPro
         </Text>
       </View>
 
-      <View style={[styles.arrow, { backgroundColor: COLORS.surface }]}>
-        {isRtl ? (
-          <ChevronLeft size={18} color={COLORS.muted} strokeWidth={2} />
+       <View style={styles.picWrap}>
+        {profilePhotoUrl ? (
+          <Image source={{ uri: profilePhotoUrl }} style={styles.picImage} />
         ) : (
-          <ChevronRight size={18} color={COLORS.muted} strokeWidth={2} />
+          <View style={[styles.picPlaceholder, { backgroundColor: COLORS.primary + '20' }]}>
+            <User size={20} color={COLORS.primary} />
+          </View>
         )}
       </View>
     </TouchableOpacity>
@@ -63,7 +57,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 5,
     paddingHorizontal: 16,
     gap: 12,
   },
@@ -71,19 +65,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
   },
   picWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   picImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   picPlaceholder: {
-    width: 60,
-    height: 60,
+    width: 40,
+    height: 40,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',

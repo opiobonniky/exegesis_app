@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  Clipboard,
 } from 'react-native';
 import {
   BookOpen,
@@ -16,9 +17,19 @@ import {
   Bookmark,
   Hash,
   Languages,
+  Copy,
+  Check,
+  Edit2,
+  ExternalLink,
 } from 'lucide-react-native';
 import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
 import { StrongsWordData, StrongsEntry } from '../../../services/strongsService';
+
+const copyToClipboard = (text: string) => {
+  try {
+    Clipboard.setString(text);
+  } catch {}
+};
 
 interface WordStudyBottomSheetProps {
   visible: boolean;
@@ -29,6 +40,10 @@ interface WordStudyBottomSheetProps {
   onClose: () => void;
   onSearchAllUses?: (strongsId: string, word?: string) => void;
   onSaveWord?: (entry: StrongsEntry) => void;
+  /** Navigate to a Bible reference (e.g. "John 3:16") in the Bible reader */
+  onOpenBibleReader?: (ref: string) => void;
+  /** Show admin edit entry button — provided when the user is an admin */
+  onEdit?: () => void;
 }
 
 const LANGUAGE_LABELS: Record<string, string> = {
@@ -46,6 +61,8 @@ export default function WordStudyBottomSheet({
   onClose,
   onSearchAllUses,
   onSaveWord,
+  onOpenBibleReader,
+  onEdit,
 }: WordStudyBottomSheetProps) {
   const COLORS = getColors(isDark);
 
@@ -56,9 +73,25 @@ export default function WordStudyBottomSheet({
     return raw.split(',').map(s => s.trim()).filter(Boolean);
   };
 
+  const [copiedStudyNote, setCopiedStudyNote] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
+
+  // Reset full-screen mode when the sheet closes entirely
+  useEffect(() => {
+    if (!visible) setFullScreen(false);
+  }, [visible]);
+
   const hasGrammaticalDetails = entry?.grammaticalCase || entry?.gender || entry?.number;
   const crossRefs = entry?.crossReferences ? parseCrossReferences(entry.crossReferences) : [];
   const langLabel = entry?.language ? LANGUAGE_LABELS[entry.language] || entry.language : null;
+
+  const handleCopyStudyNote = () => {
+    const adminExplanation = (entry as any)?.adminExplanation;
+    if (!adminExplanation) return;
+    copyToClipboard(adminExplanation);
+    setCopiedStudyNote(true);
+    setTimeout(() => setCopiedStudyNote(false), 2000);
+  };
 
   const renderContent = () => {
     if (loading) {
@@ -226,6 +259,7 @@ export default function WordStudyBottomSheet({
               {crossRefs.map((ref, i) => (
                 <TouchableOpacity
                   key={i}
+                  onPress={() => onOpenBibleReader?.(ref)}
                   activeOpacity={0.7}
                   style={[ss.crossRefChip, { backgroundColor: `${COLORS.primary}10`, borderColor: `${COLORS.primary}25` }]}
                 >
@@ -233,6 +267,34 @@ export default function WordStudyBottomSheet({
                   <Text style={[ss.crossRefText, { color: COLORS.primary }]}>{ref}</Text>
                 </TouchableOpacity>
               ))}
+            </View>
+          </View>
+        )}
+
+        {/* ── Study Note (admin explanation) ──────────────── */}
+        {(entry as any).adminExplanation && (
+          <View style={ss.section}>
+            <View style={ss.studyNoteHeader}>
+              <Text style={[ss.sectionLabel, { color: COLORS.textSecondary, flex: 1 }]}>
+                Study Note
+              </Text>
+              <TouchableOpacity
+                onPress={handleCopyStudyNote}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={[ss.copyBtn, { backgroundColor: copiedStudyNote ? 'rgba(34,197,94,0.12)' : 'transparent' }]}
+              >
+                {copiedStudyNote ? (
+                  <Check size={14} color="#22C55E" strokeWidth={2.5} />
+                ) : (
+                  <Copy size={14} color={COLORS.accent} strokeWidth={2.5} />
+                )}
+              </TouchableOpacity>
+            </View>
+            <View style={[ss.studyNoteCard, { backgroundColor: `${COLORS.accent}10`, borderColor: `${COLORS.accent}20` }]}>
+              <Text style={[ss.studyNoteText, { color: COLORS.text }]}>
+                {(entry as any).adminExplanation}
+              </Text>
             </View>
           </View>
         )}
@@ -259,6 +321,25 @@ export default function WordStudyBottomSheet({
               <Text style={[ss.actionBtnText, { color: COLORS.accent }]}>Save</Text>
             </TouchableOpacity>
           )}
+          {onEdit && (
+            <TouchableOpacity
+              onPress={onEdit}
+              activeOpacity={0.8}
+              style={[ss.actionBtn, { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderWidth: 1 }]}
+            >
+              <Edit2 size={13} color={COLORS.accent} strokeWidth={2.5} />
+              <Text style={[ss.actionBtnText, { color: COLORS.accent }]}>Edit Entry</Text>
+            </TouchableOpacity>
+          )}
+          {/* Full-screen dialog toggle */}
+          <TouchableOpacity
+            onPress={() => setFullScreen(true)}
+            activeOpacity={0.8}
+            style={[ss.actionBtn, { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderWidth: 1 }]}
+          >
+            <ExternalLink size={13} color={COLORS.muted} strokeWidth={2.5} />
+            <Text style={[ss.actionBtnText, { color: COLORS.muted }]}>Open in Dialog</Text>
+          </TouchableOpacity>
         </View>
         </ScrollView>
       </View>
@@ -266,39 +347,82 @@ export default function WordStudyBottomSheet({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={ss.overlay}>
-        <TouchableOpacity
-          style={ss.backdrop}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-        <View
-          style={[
-            ss.sheet,
-            { backgroundColor: COLORS.cardBackground },
-          ]}
-        >
-          <View style={[ss.handleRow, { borderBottomColor: COLORS.border }]}>
-            <View style={[ss.handle, { backgroundColor: COLORS.border }]} />
-            <TouchableOpacity
-              onPress={onClose}
-              activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={[ss.closeBtn, { backgroundColor: `${COLORS.textSecondary}15` }]}
-            >
-              <X size={16} color={COLORS.textSecondary} strokeWidth={2.5} />
-            </TouchableOpacity>
+    <>
+      {/* ── Bottom sheet modal ──────────────────────────────── */}
+      <Modal
+        visible={visible && !fullScreen}
+        transparent
+        animationType="slide"
+        onRequestClose={onClose}
+      >
+        <View style={ss.overlay}>
+          <TouchableOpacity
+            style={ss.backdrop}
+            activeOpacity={1}
+            onPress={onClose}
+          />
+          <View
+            style={[
+              ss.sheet,
+              { backgroundColor: COLORS.cardBackground },
+            ]}
+          >
+            <View style={[ss.handleRow, { borderBottomColor: COLORS.border }]}>
+              <View style={[ss.handle, { backgroundColor: COLORS.border }]} />
+              <TouchableOpacity
+                onPress={onClose}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={[ss.closeBtn, { backgroundColor: `${COLORS.textSecondary}15` }]}
+              >
+                <X size={16} color={COLORS.textSecondary} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+            {renderContent()}
           </View>
-          {renderContent()}
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      {/* ── Full-screen dialog modal ───────────────────────── */}
+      <Modal
+        visible={visible && fullScreen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFullScreen(false)}
+      >
+        <View style={ss.dialogOverlay}>
+          <TouchableOpacity
+            style={ss.backdrop}
+            activeOpacity={1}
+            onPress={() => setFullScreen(false)}
+          />
+          <View style={[ss.dialogContainer, { backgroundColor: COLORS.cardBackground }]}>
+            <View style={[ss.dialogHeader, { borderBottomColor: COLORS.border }]}>
+              <Text style={[ss.dialogTitle, { color: COLORS.text }]}>Word Study</Text>
+              <View style={ss.dialogHeaderRight}>
+                <TouchableOpacity
+                  onPress={() => setFullScreen(false)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={[ss.dialogBackBtn, { backgroundColor: `${COLORS.primary}12` }]}
+                >
+                  <Text style={[ss.dialogBackText, { color: COLORS.primary }]}>Sheet</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { setFullScreen(false); onClose(); }}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={[ss.dialogXBtn, { backgroundColor: `${COLORS.textSecondary}15` }]}
+                >
+                  <X size={16} color={COLORS.textSecondary} strokeWidth={2.5} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            {renderContent()}
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -511,6 +635,30 @@ const ss = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
   },
+  // ── Study Note ───────────────────────────────────────────
+  studyNoteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  copyBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  studyNoteCard: {
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    padding: SPACING.md,
+  },
+  studyNoteText: {
+    fontSize: FONT_SIZES.sm,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
   // ── Actions (small, brief) ───────────────────────────────
   actionsRow: {
     flexDirection: 'row',
@@ -531,5 +679,58 @@ const ss = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  // ── Full-screen dialog ───────────────────────────────────
+  dialogOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 60,
+  },
+  dialogContainer: {
+    width: '100%',
+    maxHeight: '100%',
+    borderRadius: BORDER_RADIUS.xl,
+    overflow: 'hidden',
+    // Elevation shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 16,
+  },
+  dialogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+  },
+  dialogTitle: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '700',
+  },
+  dialogHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dialogBackBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.round,
+  },
+  dialogBackText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '700',
+  },
+  dialogXBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

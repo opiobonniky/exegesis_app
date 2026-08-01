@@ -42,6 +42,11 @@ export type OnboardingTranslations = {
   slide3Feature1?: string;
   slide3Feature2?: string;
   slide3Feature3?: string;
+  slide4Highlight?: string;
+  slide4Text?: string;
+  slide4Feature1?: string;
+  slide4Feature2?: string;
+  slide4Feature3?: string;
 };
 
 // Explicit translations shape so editors can autocomplete (strong typing)
@@ -79,6 +84,7 @@ export type Translations = {
     helpPrefix?: string;
     contact?: string;
     emailPlaceholder?: string;
+    passwordLabel?: string;
   };
   createAccount: {
     text: string;
@@ -166,6 +172,9 @@ export type Translations = {
     action?: string;
     resendTimerPrefix?: string;
     alreadyVerified?: string;
+    sent?: string;
+    enterCode?: string;
+    invalidCode?: string;
   };
   welcome: {
     title: string;
@@ -535,8 +544,21 @@ export type BibleTranslations = {
   // Action labels
   explain?: string;
   reflection?: string;
+  reflections?: string;
   learnMore?: string;
   verseLabel?: string;
+  devotional?: string;
+  readMore?: string;
+  journalPrompts?: string;
+  hideExplanation?: string;
+  
+  // Bible header actions
+  chapterReflections?: string;
+  add?: string;
+  day?: string;
+  
+  // Drawer menu
+  voiceSettingsLabel?: string;
 
   // Books of the Bible
   genesis?: string;
@@ -916,6 +938,12 @@ export type AdminTranslations = {
   signOut?: string;
   adminConsole?: string;
   totalUsers?: string;
+  newThisMonth?: string;
+  userGrowth?: string;
+  dailySignups?: string;
+  avgDaily?: string;
+  thisMonth?: string;
+  day?: string;
   activeKpi?: string;
   plansKpi?: string;
   enrolledKpi?: string;
@@ -1360,6 +1388,11 @@ export type JournalTranslations = {
   categoryReflection?: string;
   categoryApplication?: string;
   categoryExplanation?: string;
+  
+  // Legacy Ledger filter
+  startDateLabel?: string;
+  endDateLabel?: string;
+  clearFilterLabel?: string;
 
   // Admin Templates
   journalTemplates?: string;

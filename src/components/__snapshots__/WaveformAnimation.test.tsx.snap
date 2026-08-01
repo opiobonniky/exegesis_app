@@ -1,0 +1,455 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`WaveformAnimation snapshots matches snapshot for default active state (10 bars) 1`] = `
+<View
+  accessibilityElementsHidden={true}
+  importantForAccessibility="no-hide-descendants"
+  style={
+    {
+      "alignItems": "flex-end",
+      "flexDirection": "row",
+      "gap": 2,
+      "height": 16,
+      "opacity": 1,
+    }
+  }
+>
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+</View>
+`;
+
+exports[`WaveformAnimation snapshots matches snapshot for default inactive state 1`] = `
+<View
+  accessibilityElementsHidden={true}
+  importantForAccessibility="no-hide-descendants"
+  style={
+    {
+      "alignItems": "flex-end",
+      "flexDirection": "row",
+      "gap": 2,
+      "height": 16,
+      "opacity": 0.5,
+    }
+  }
+>
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+</View>
+`;
+
+exports[`WaveformAnimation snapshots matches snapshot for single bar active 1`] = `
+<View
+  accessibilityElementsHidden={true}
+  importantForAccessibility="no-hide-descendants"
+  style={
+    {
+      "alignItems": "flex-end",
+      "flexDirection": "row",
+      "gap": 2,
+      "height": 16,
+      "opacity": 1,
+    }
+  }
+>
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#396284",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+</View>
+`;
+
+exports[`WaveformAnimation snapshots matches snapshot for single bar inactive 1`] = `
+<View
+  accessibilityElementsHidden={true}
+  importantForAccessibility="no-hide-descendants"
+  style={
+    {
+      "alignItems": "flex-end",
+      "flexDirection": "row",
+      "gap": 2,
+      "height": 16,
+      "opacity": 0.5,
+    }
+  }
+>
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#64748B",
+        "borderRadius": 1.5,
+        "height": 6.4,
+        "width": 3,
+      }
+    }
+  />
+</View>
+`;
+
+exports[`WaveformAnimation snapshots matches snapshot with custom barCount and colors 1`] = `
+<View
+  accessibilityElementsHidden={true}
+  importantForAccessibility="no-hide-descendants"
+  style={
+    {
+      "alignItems": "flex-end",
+      "flexDirection": "row",
+      "gap": 4,
+      "height": 24,
+      "opacity": 1,
+    }
+  }
+>
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#22C55E",
+        "borderRadius": 1.5,
+        "height": 8,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#22C55E",
+        "borderRadius": 1.5,
+        "height": 8,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#22C55E",
+        "borderRadius": 1.5,
+        "height": 8,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#22C55E",
+        "borderRadius": 1.5,
+        "height": 8,
+        "width": 3,
+      }
+    }
+  />
+</View>
+`;
+
+exports[`WaveformAnimation snapshots matches snapshot with custom props and inactive state 1`] = `
+<View
+  accessibilityElementsHidden={true}
+  importantForAccessibility="no-hide-descendants"
+  style={
+    {
+      "alignItems": "flex-end",
+      "flexDirection": "row",
+      "gap": 3,
+      "height": 20,
+      "opacity": 0.5,
+    }
+  }
+>
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#9CA3AF",
+        "borderRadius": 1.5,
+        "height": 7.2,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#9CA3AF",
+        "borderRadius": 1.5,
+        "height": 7.2,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#9CA3AF",
+        "borderRadius": 1.5,
+        "height": 7.2,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#9CA3AF",
+        "borderRadius": 1.5,
+        "height": 7.2,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#9CA3AF",
+        "borderRadius": 1.5,
+        "height": 7.2,
+        "width": 3,
+      }
+    }
+  />
+  <View
+    collapsable={false}
+    style={
+      {
+        "backgroundColor": "#9CA3AF",
+        "borderRadius": 1.5,
+        "height": 7.2,
+        "width": 3,
+      }
+    }
+  />
+</View>
+`;

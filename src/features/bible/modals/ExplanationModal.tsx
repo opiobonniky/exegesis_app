@@ -26,6 +26,7 @@ import {
   SPACING,
   BORDER_RADIUS,
 } from '../../../constants/theme';
+import RichText from '../../../reusable/RichText';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.78;
@@ -265,9 +266,12 @@ export default function ExplanationModal({
                   { borderLeftColor: `${COLORS.primary}40` },
                 ]}
               >
-                <Text style={[s.explanationText, { color: COLORS.text }]}>
-                  {explanation}
-                </Text>
+                <RichText
+                  text={explanation}
+                  textStyle={[s.explanationText, { color: COLORS.text }]}
+                  accentColor={COLORS.primary}
+                  paragraphGap={8}
+                />
               </View>
 
               {/* Read more CTA */}

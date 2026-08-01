@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { FileText } from 'lucide-react-native';
 import { SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../../constants/theme';
 import { ResourceCard, SectionLabel } from './shared';
+import RichText from '../../../../reusable/RichText';
 import { STUDY_TOOL_LABELS, STUDY_TOOL_COLORS } from './constants';
 import type { StudyToolResource } from '../../../../services/verseResourcesApi';
 
@@ -71,14 +72,15 @@ export function StudyToolsSection({
               </View>
 
               {tool.description ? (
-                <Text
-                  style={[
+                <RichText
+                  text={tool.description}
+                  textStyle={[
                     stStyles.desc,
                     { color: colors.textSecondary, textAlign: isRtl ? 'right' : 'left' },
                   ]}
-                >
-                  {tool.description}
-                </Text>
+                  accentColor={toolColor}
+                  paragraphGap={6}
+                />
               ) : null}
 
               {tool.verseRefs?.length ? (
@@ -151,14 +153,15 @@ export function StudyToolsSection({
                           </Text>
                         ) : null}
                         {explanation ? (
-                          <Text
-                            style={[
+                          <RichText
+                            text={explanation}
+                            textStyle={[
                               stStyles.wordExpl,
                               { color: colors.textSecondary, textAlign: isRtl ? 'right' : 'left' },
                             ]}
-                          >
-                            {explanation}
-                          </Text>
+                            accentColor={toolColor}
+                            paragraphGap={4}
+                          />
                         ) : null}
                       </View>
                     );

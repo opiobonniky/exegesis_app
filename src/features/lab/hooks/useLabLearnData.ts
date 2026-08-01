@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { BookPrologue, getBookPrologue } from '../../../services/bookProloguesApi';
-import { getVerseResources, VerseResourceData } from '../../../services/verseResourcesApi';
+import {
+  getTranslationComparison,
+  getVerseResources,
+  TranslationComparisonEntry,
+  VerseResourceData,
+} from '../../../services/verseResourcesApi';
 import { getVerseWords, StrongsWordData } from '../../../services/strongsService';
 
 interface UseLabLearnDataArgs {
@@ -23,6 +28,8 @@ export function useLabLearnData({
   const [learnDataLoading, setLearnDataLoading] = useState(false);
   const [verseResources, setVerseResources] = useState<VerseResourceData | null>(null);
   const [bookPrologue, setBookPrologue] = useState<BookPrologue | null>(null);
+  const [translations, setTranslations] = useState<TranslationComparisonEntry[] | null>(null);
+  const [translationsLoading, setTranslationsLoading] = useState(false);
 
   useEffect(() => {
     if (stage !== 'learn' || !bookName || !chapter) return;
@@ -31,11 +38,13 @@ export function useLabLearnData({
       const ch = parseInt(chapter, 10);
       const vs = parseInt(verseStart || '1', 10);
       try {
-        const [wordsRes, resourcesRes, prologueRes] = await Promise.allSettled([
-          getVerseWords(bookName, ch, vs, translationId),
-          getVerseResources(bookName, ch, vs),
-          getBookPrologue(bookName),
-        ]);
+        const [wordsRes, resourcesRes, prologueRes, translationsRes] =
+          await Promise.allSettled([
+            getVerseWords(bookName, ch, vs, translationId),
+            getVerseResources(bookName, ch, vs),
+            getBookPrologue(bookName),
+            getTranslationComparison(bookName, ch, vs),
+          ]);
         if (wordsRes.status === 'fulfilled' && wordsRes.value?.returnData) {
           setVerseWords(wordsRes.value.returnData);
         }
@@ -43,6 +52,15 @@ export function useLabLearnData({
           setVerseResources(resourcesRes.value.returnData);
         }
         if (prologueRes.status === 'fulfilled') setBookPrologue(prologueRes.value);
+        if (
+          translationsRes.status === 'fulfilled' &&
+          translationsRes.value?.returnData
+        ) {
+          setTranslations(translationsRes.value.returnData);
+        } else {
+          setTranslations(null);
+        }
+        setTranslationsLoading(false);
 
         if (
           vs > 1 &&
@@ -60,6 +78,7 @@ export function useLabLearnData({
     };
 
     fetchLearnData();
+    setTranslationsLoading(true);
   }, [bookName, chapter, setVerseWords, stage, translationId, verseStart]);
 
   return {
@@ -68,5 +87,7 @@ export function useLabLearnData({
     setVerseResources,
     bookPrologue,
     setBookPrologue,
+    translations,
+    translationsLoading,
   };
 }

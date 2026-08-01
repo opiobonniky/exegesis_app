@@ -160,12 +160,12 @@ export default function Home() {
         icon: GraduationCap,
         onPress: () => navigation.navigate(route.lab),
       },
-      {
-        id: 'lordsbook',
-        label: 'LordsBook',
-        icon: Heart,
-        onPress: () => navigation.navigate(route.home),
-      },
+      // {
+      //   id: 'lordsbook',
+      //   label: 'LordsBook',
+      //   icon: Heart,
+      //   onPress: () => navigation.navigate(route.home),
+      // },
       {
         id: 'resources',
         label: 'Resources',
@@ -251,10 +251,10 @@ export default function Home() {
       if (statsRes?.returnCode === 200) {
         const d = statsRes.returnData || {};
         setStats({
-          chaptersRead: d.readHistoryCount ?? 0,
-          highlights: d.highlightCount ?? 0,
-          notes: d.noteCount ?? 0,
-          bookmarks: d.favoriteCount ?? 0,
+          chaptersRead: d.chaptersRead ?? 0,
+          highlights: d.highlights ?? 0,
+          notes: d.notes ?? 0,
+          bookmarks: d.favorites ?? 0,
         });
       }
 
@@ -438,7 +438,7 @@ export default function Home() {
           <ProfileCard
             greeting={getGreeting(translation)}
             userName={
-              userInfo?.lastName + ' ' + userInfo?.firstName || 'Friend'
+              userInfo?.firstName + ' ' + userInfo?.lastName || 'Friend'
             }
             profilePhotoUrl={userInfo?.profilePhotoUrl}
             onProfilePress={() => navigation.navigate(route.profile)}
@@ -458,30 +458,79 @@ export default function Home() {
                 tintColor={COLORS.accent}
               />
             }
-          >
-            {/* ── Content Banners ── */}
-            <View style={styles.bannersSection}>
-              {contentBanners.map((btn, idx) => {
-                const Icon = btn.icon;
-                return (
-                  <TouchableOpacity
-                    key={btn.id}
-                    activeOpacity={0.85}
-                    onPress={btn.onPress}
-                    style={[
-                      styles.bannerRow,
-                      isRtl && styles.bannerRowRtl,
-                      { backgroundColor: COLORS.primary },
-                    ]}
-                  >
-                    <View style={styles.bannerIconWrap}>
-                      <Icon size={16} color="#FFFFFF" strokeWidth={2} />
+            >
+              
+              {lastBiblePosition && (
+              <View
+                style={[
+                  styles.dashboardCard,
+                  {
+                    backgroundColor: COLORS.cardBackground,
+                    borderColor: COLORS.border,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate(route.bible, {
+                      bookName: lastBiblePosition.bookName,
+                      chapter: lastBiblePosition.chapter,
+                    })
+                  }
+                  style={styles.dashboardCardInner}
+                >
+                  <View style={styles.dashboardCardTop}>
+                    <View
+                      style={[
+                        styles.dashboardCardIcon,
+                        { backgroundColor: `${COLORS.primary}15` },
+                        isRtl && rtlCardIcon,
+                      ]}
+                    >
+                      <BookOpen
+                        size={18}
+                        color={COLORS.primary}
+                        strokeWidth={2}
+                      />
                     </View>
-                    <Text style={styles.bannerLabel}>{btn.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                    <View style={styles.dashboardCardTitleGroup}>
+                      <Text
+                        style={[
+                          styles.dashboardCardTitle,
+                          { color: COLORS.text },
+                        ]}
+                      >
+                        Continue Reading
+                      </Text>
+                      <Text
+                        style={[
+                          styles.dashboardCardSubtitle,
+                          { color: COLORS.muted },
+                        ]}
+                      >
+                        {lastBiblePosition.bookName} {lastBiblePosition.chapter}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.dashboardCardAction}>
+                    <View
+                      style={[
+                        styles.dashboardCardBtn,
+                        { backgroundColor: COLORS.primary },
+                      ]}
+                    >
+                      <Play size={14} color="#FFFFFF" fill="#FFFFFF" />
+                      <Text style={styles.dashboardCardBtnText}>
+                        Continue
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+            {/* ── Content Banners ── */}
+            
 
             {/* ── Daily Verse Card ── */}
             {todaysVerse && (
@@ -658,75 +707,7 @@ export default function Home() {
             )}
 
             {/* ── Continue Reading Card ── */}
-            {lastBiblePosition && (
-              <View
-                style={[
-                  styles.dashboardCard,
-                  {
-                    backgroundColor: COLORS.cardBackground,
-                    borderColor: COLORS.border,
-                  },
-                ]}
-              >
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() =>
-                    navigation.navigate(route.bible, {
-                      bookName: lastBiblePosition.bookName,
-                      chapter: lastBiblePosition.chapter,
-                    })
-                  }
-                  style={styles.dashboardCardInner}
-                >
-                  <View style={styles.dashboardCardTop}>
-                    <View
-                      style={[
-                        styles.dashboardCardIcon,
-                        { backgroundColor: `${COLORS.primary}15` },
-                        isRtl && rtlCardIcon,
-                      ]}
-                    >
-                      <BookOpen
-                        size={18}
-                        color={COLORS.primary}
-                        strokeWidth={2}
-                      />
-                    </View>
-                    <View style={styles.dashboardCardTitleGroup}>
-                      <Text
-                        style={[
-                          styles.dashboardCardTitle,
-                          { color: COLORS.text },
-                        ]}
-                      >
-                        Continue Reading
-                      </Text>
-                      <Text
-                        style={[
-                          styles.dashboardCardSubtitle,
-                          { color: COLORS.muted },
-                        ]}
-                      >
-                        {lastBiblePosition.bookName} {lastBiblePosition.chapter}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.dashboardCardAction}>
-                    <View
-                      style={[
-                        styles.dashboardCardBtn,
-                        { backgroundColor: COLORS.primary },
-                      ]}
-                    >
-                      <Play size={14} color="#FFFFFF" fill="#FFFFFF" />
-                      <Text style={styles.dashboardCardBtnText}>
-                        Continue
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            )}
+            
 
             {/* ── Continue Exegesis Lab Card ── */}
             {activeSession && !activeSession.completed && hasAccess('legacy_sower') && (
@@ -993,7 +974,30 @@ export default function Home() {
                   </View>
                 </TouchableOpacity>
               </View>
-            )}
+              )}
+              
+              <View style={styles.bannersSection}>
+              {contentBanners.map((btn, idx) => {
+                const Icon = btn.icon;
+                return (
+                  <TouchableOpacity
+                    key={btn.id}
+                    activeOpacity={0.85}
+                    onPress={btn.onPress}
+                    style={[
+                      styles.bannerRow,
+                      isRtl && styles.bannerRowRtl,
+                      { backgroundColor: COLORS.primary },
+                    ]}
+                  >
+                    <View style={styles.bannerIconWrap}>
+                      <Icon size={16} color="#FFFFFF" strokeWidth={2} />
+                    </View>
+                    <Text style={styles.bannerLabel}>{btn.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
             {/* ── Quick Actions ── */}
             <View style={styles.section}>

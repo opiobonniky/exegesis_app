@@ -9,6 +9,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { AppContext } from '../../common/AppContext';
 import { getColors, SPACING } from '../../constants/theme';
 import { ChevronDown, X } from 'lucide-react-native';
+import RichText from '../../reusable/RichText';
 
 type Props = {
   text?: string;
@@ -19,6 +20,10 @@ type Props = {
   onClose?: () => void;
   containerStyle?: any;
   textStyle?: any;
+  /** When true, render the rich AI answer format (## headings, **bold**, • lists). */
+  rich?: boolean;
+  /** Accent color used for headings / markers in rich mode. */
+  accentColor?: string;
 };
 
 function formatParagraphs(text: string): string {
@@ -59,14 +64,17 @@ export default function ExpandableText({
   onClose,
   containerStyle,
   textStyle,
+  rich = false,
+  accentColor,
 }: Props) {
   const app: any = useContext(AppContext);
   const COLORS = useMemo(() => getColors(app?.isDark), [app?.isDark]);
+  const richAccent = accentColor || COLORS.primary;
 
   const cleanText = (text ?? '').trim();
   const formattedText = useMemo(
-    () => formatParagraphs(cleanText),
-    [cleanText],
+    () => (rich ? cleanText : formatParagraphs(cleanText)),
+    [rich, cleanText],
   );
 
   const [maxLines, setMaxLines] = useState(initialLines);
@@ -98,13 +106,13 @@ export default function ExpandableText({
 
   const handleTextLayout = useCallback(
     (e: any) => {
-      if (expanded || maxLines === 0) return;
+      if (expanded || maxLines === 0 || rich) return;
       const lines = e.nativeEvent.lines.length;
       if (lines >= maxLines) {
         setMaxLines(prev => Math.min(prev + 1, lines));
       }
     },
-    [expanded, maxLines],
+    [expanded, maxLines, rich],
   );
 
   if (!formattedText) return null;
@@ -113,19 +121,29 @@ export default function ExpandableText({
 
   return (
     <View style={containerStyle}>
-      <Text
-        style={[
-          styles.text,
-          { color: COLORS.text, lineHeight },
-          textStyle,
-        ]}
-        numberOfLines={maxLines}
-        onTextLayout={handleTextLayout}
-      >
-        {formattedText}
-      </Text>
+      {rich ? (
+        <RichText
+          text={formattedText}
+          textStyle={[styles.text, { color: COLORS.text, lineHeight }, textStyle]}
+          accentColor={richAccent}
+        />
+      ) : (
+        <Text
+          style={[
+            styles.text,
+            { color: COLORS.text, lineHeight },
+            textStyle,
+          ]}
+          numberOfLines={maxLines}
+          onTextLayout={handleTextLayout}
+        >
+          {formattedText}
+        </Text>
+      )}
 
-      <View style={styles.footer}>
+      {/* Rich mode renders the full formatted content — no expand/collapse toggle needed */}
+      {!rich && (
+        <View style={styles.footer}>
         {expanded ? (
           <TouchableOpacity onPress={handleClose} style={styles.toggleBtn}>
             <X size={12} color={COLORS.primary} />
@@ -141,7 +159,8 @@ export default function ExpandableText({
             <ChevronDown size={12} color={COLORS.primary} />
           </TouchableOpacity>
         )}
-      </View>
+        </View>
+      )}
     </View>
   );
 }

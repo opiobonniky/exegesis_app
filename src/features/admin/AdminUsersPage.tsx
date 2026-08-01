@@ -1075,7 +1075,7 @@ const modalStyles = StyleSheet.create({
   },
 });
 
-// ─── Styles ──────────────────────────────────────────────────────────────────  const getStyles = (theme: ReturnType<typeof getUsersPageTheme>) =>
+const getStyles = (theme: ReturnType<typeof getUsersPageTheme>) =>
   StyleSheet.create({
     container: {
       flex: 1,

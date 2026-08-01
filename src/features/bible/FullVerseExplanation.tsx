@@ -29,6 +29,7 @@ import {
 import { sendPostRequest } from '../../services/api';
 
 import ExpandableText from './ExpandableText';
+import RichText from '../../reusable/RichText';
 import ActionHeader from '../../reusable/ActionHeader';
 import { BookOpen, RefreshCw, AlertCircle, BookText } from 'lucide-react-native';
 import { route } from '../../component/navigations/routes';
@@ -60,6 +61,46 @@ function isBulletLine(line: string) {
 
 function stripBulletPrefix(line: string) {
   return line.replace(/^(\-|\*|•|\d+\.)\s+/, '').trim();
+}
+
+/**
+ * Render AI content with the rich format (## headings, **bold**, • lists).
+ * Falls back to legacy paragraph/bullet rendering when no rich markers exist.
+ */
+function renderRichOrLegacy(text: string, styles: any, COLORS: any) {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return null;
+  const hasRichMarkers =
+    /(\*\*|^#{1,3}\s|^[•\-]\s|^\d+\.\s)/m.test(trimmed);
+  if (hasRichMarkers) {
+    return (
+      <RichText
+        text={trimmed}
+        textStyle={styles.paragraph}
+        accentColor={COLORS.primary}
+        paragraphGap={SPACING.sm}
+      />
+    );
+  }
+  const lines = normalizeLines(trimmed);
+  return lines.map((line, i) => {
+    if (isBulletLine(line)) {
+      const clean = stripBulletPrefix(line);
+      return (
+        <View key={`b-${i}`} style={styles.bulletRow}>
+          <View style={styles.bulletDot} />
+          <Text style={[styles.paragraph, { flex: 1, marginBottom: 0 }]}>
+            {clean}
+          </Text>
+        </View>
+      );
+    }
+    return (
+      <Text key={`p-${i}`} style={styles.paragraph}>
+        {line}
+      </Text>
+    );
+  });
 }
 
 export default function FullVerseExplanation({ route, navigation }: any) {
@@ -111,30 +152,9 @@ export default function FullVerseExplanation({ route, navigation }: any) {
       if (!text?.trim()) {
         return <Text style={styles.emptyText}>{translations?.bible?.noContentAvailable || 'No content available.'}</Text>;
       }
-
-      const lines = normalizeLines(text);
-
-      return lines.map((line, i) => {
-        if (isBulletLine(line)) {
-          const clean = stripBulletPrefix(line);
-          return (
-            <View key={`b-${i}`} style={styles.bulletRow}>
-              <View style={styles.bulletDot} />
-              <Text style={[styles.paragraph, { flex: 1, marginBottom: 0 }]}>
-                {clean}
-              </Text>
-            </View>
-          );
-        }
-
-        return (
-          <Text key={`p-${i}`} style={styles.paragraph}>
-            {line}
-          </Text>
-        );
-      });
+      return renderRichOrLegacy(text, styles, COLORS);
     },
-    [styles],
+    [styles, translations, COLORS],
   );
 
   const load = useCallback(
@@ -356,8 +376,10 @@ export default function FullVerseExplanation({ route, navigation }: any) {
                 <View style={styles.sectionBody}>
                   <ExpandableText
                     text={data?.learnMore ?? ''}
-                    initialChars={250}
-                    stepChars={800}
+                    initialLines={8}
+                    stepLines={20}
+                    rich
+                    accentColor={COLORS.primary}
                   />
                 </View>
               </LinearGradient>

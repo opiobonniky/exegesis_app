@@ -235,7 +235,7 @@ export const createStyles = (COLORS: any) =>
       gap: 4,
     },
     dashboardCardBtn: {
-      flexDirection: 'row',
+      flexDirection: "row",
       alignItems: 'center',
       gap: 6,
       paddingHorizontal: SPACING.md,

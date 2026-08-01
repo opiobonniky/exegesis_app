@@ -14,6 +14,7 @@ import {
 } from 'lucide-react-native';
 import { SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../../constants/theme';
 import ExpandableText from '../../ExpandableText';
+import RichText from '../../../../reusable/RichText';
 import { ResourceCard, EmptyState } from './shared';
 import type {
   CommentaryEntry,
@@ -64,6 +65,8 @@ export function CommentariesView({
             initialLines={5}
             expandLabel={bc?.learnMore || 'Read more'}
             closeLabel={bc?.cancel || 'Close'}
+            rich
+            accentColor={colors.primary}
           />
         </ResourceCard>
       ))}
@@ -169,14 +172,15 @@ export function WordStudiesView({
               </Text>
             </View>
           </View>
-          <Text
-            style={[
+          <RichText
+            text={ws.meaning}
+            textStyle={[
               vrStyles.wsMeaning,
               { color: colors.textSecondary, textAlign: isRtl ? 'right' : 'left' },
             ]}
-          >
-            {ws.meaning}
-          </Text>
+            accentColor="#8B5CF6"
+            paragraphGap={6}
+          />
         </ResourceCard>
       ))}
     </View>
@@ -234,6 +238,8 @@ export function DictionaryView({
             initialLines={4}
             expandLabel={bc?.learnMore || 'Read more'}
             closeLabel={bc?.cancel || 'Close'}
+            rich
+            accentColor="#10B981"
           />
         </ResourceCard>
       ))}

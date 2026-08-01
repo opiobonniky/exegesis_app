@@ -25,6 +25,7 @@ import {
   RefreshCcw,
 } from 'lucide-react-native';
 import ActionHeader from '../../reusable/ActionHeader';
+import RichText from '../../reusable/RichText';
 import { AppContext } from '../../common/AppContext';
 import {
   BORDER_RADIUS,
@@ -297,6 +298,8 @@ export default function DailyExegesisScreen() {
 
 function Section({ icon: Icon, title, text, styles, colors, required }: any) {
   if (!text && !required) return null;
+  const body = text || 'No content added yet.';
+  const hasRichMarkers = /(\*\*|^#{1,3}\s|^[•\-]\s|^\d+\.\s)/m.test(body);
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionHeader}>
@@ -305,7 +308,16 @@ function Section({ icon: Icon, title, text, styles, colors, required }: any) {
         </View>
         <Text style={styles.sectionTitle}>{title}</Text>
       </View>
-      <Text style={styles.sectionText}>{text || 'No content added yet.'}</Text>
+      {hasRichMarkers ? (
+        <RichText
+          text={body}
+          textStyle={styles.sectionText}
+          accentColor={colors.primary}
+          paragraphGap={8}
+        />
+      ) : (
+        <Text style={styles.sectionText}>{body}</Text>
+      )}
     </View>
   );
 }

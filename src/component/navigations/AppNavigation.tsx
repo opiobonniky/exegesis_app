@@ -209,8 +209,8 @@ const AppNavigation = () => {
           />
         ) : userLoggedIn ? (
           <Stack.Screen
-            name={route.home}
-            getComponent={() => require('../../features/home/Home').default}
+            name={route.bible}
+            getComponent={() => require('../../features/bible/bible').default}
           />
         ) : (
           <Stack.Screen
@@ -247,8 +247,8 @@ const AppNavigation = () => {
 
         {/* ── Bible ─────────────────────────────────────────────────────── */}
         <Stack.Screen
-          name={route.bible}
-          getComponent={() => require('../../features/bible/bible').default}
+          name={route.home}
+          getComponent={() => require('../../features/home/Home').default}
         />
         <Stack.Screen
           name={route.bibleGuest}

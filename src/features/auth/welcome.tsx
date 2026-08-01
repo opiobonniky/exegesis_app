@@ -37,7 +37,7 @@ const withAlpha = (hex: string, alpha: number) => {
 
 const Welcome = () => {
   const scrollX = useRef(new Animated.Value(0)).current;
-  const scrollRef = useRef<Animated.ScrollView>(null);
+  const scrollRef = useRef<any>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
