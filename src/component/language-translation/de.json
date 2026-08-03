@@ -166,7 +166,7 @@
     "slide3Feature2": "Verse teilen",
     "slide3Feature3": "Fortschrittsverfolgung"
   },
-  "appTagline": "Ihr täglicher geistlicher Begleiter",
+  "appTagline": "Ihr biblischer Begleiter",
   "bottomTab": {
     "home": "Start",
     "bible": "Bibel",
@@ -1081,6 +1081,18 @@
       "noted": "Notiert",
       "planProgress": "Planfortschritt",
       "favorited": "Favorisiert"
+    },
+    "greetingMessage": "Wir ermutigen dich, täglich in der Schrift zu forschen, wie Paulus es den Beröern sagte. Tauche ins Wort ein, bleib beständig und baue tägliche geistliche Gewohnheiten auf.",
+    "continueReadingTitle": "Weiterlesen",
+    "progress": "Fortschritt",
+    "readExplanation": "Erklärung lesen",
+    "readDevotion": "Andacht lesen",
+    "statsTitle": "Deine Statistiken",
+    "stats": {
+      "daysStreak": "Tage in Folge",
+      "versesRead": "Gelesene Verse",
+      "devotions": "Andachten",
+      "bookmarks": "Lesezeichen"
     }
   },
   "readingPlans": {

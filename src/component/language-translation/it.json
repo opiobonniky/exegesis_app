@@ -166,7 +166,7 @@
     "slide3Feature2": "Condivisione versetti",
     "slide3Feature3": "Monitoraggio progressi"
   },
-  "appTagline": "Il tuo compagno spirituale quotidiano",
+  "appTagline": "Il tuo compagno biblico",
   "bottomTab": {
     "home": "Home",
     "bible": "Bibbia",
@@ -1081,6 +1081,18 @@
       "noted": "Annotato",
       "planProgress": "Progresso piano",
       "favorited": "Preferito"
+    },
+    "greetingMessage": "Ti incoraggiamo a cercare ogni giorno le Scritture, come Paolo disse ai Bereani. Immergiti nella parola, sii costante e costruisci discipline spirituali quotidiane.",
+    "continueReadingTitle": "Continua a leggere",
+    "progress": "Avanzamento",
+    "readExplanation": "Leggi la spiegazione",
+    "readDevotion": "Leggi la devozione",
+    "statsTitle": "Le tue statistiche",
+    "stats": {
+      "daysStreak": "Giorni consecutivi",
+      "versesRead": "Versetti letti",
+      "devotions": "Devozioni",
+      "bookmarks": "Segnalibri"
     }
   },
   "readingPlans": {

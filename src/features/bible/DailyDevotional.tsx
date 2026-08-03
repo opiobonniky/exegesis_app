@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { AppContext } from '../../common/AppContext';
 import {
@@ -27,7 +26,7 @@ import { sendPostRequest } from '../../services/api';
 import { getVerseText } from '../../utilits/bibleUtils';
 import { getVersionById } from '../../assets/bibleVersion/json/bibleVersions';
 import ActionHeader from '../../reusable/ActionHeader';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../../component/language-translation/LanguageProvider';
 import { route } from '../../component/navigations/routes';
 
@@ -149,39 +148,7 @@ export default function DailyDevotionalScreen() {
   const [devotion, setDevotion] = useState<DailyVerse | null>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
 
-  if (!app) return null;
-  const { isDark } = app;
-  const COLORS = getColors(isDark);
-  const themeStyle = createThemeStyles(COLORS);
-
-  useEffect(() => {
-    fetchDailyDevotional();
-  }, []);
-
-  const fetchDailyDevotional = async () => {
-    setLoading(true);
-    try {
-      const response = await sendPostRequest(
-        'bible',
-        'get-todays-devotion',
-        {},
-      );
-
-      console.log('Response:', response);
-      if (response.returnCode === 200 && response.returnData) {
-        setDevotion(response.returnData as DailyVerse);
-      } else {
-        useFallbackDevotional();
-      }
-    } catch (err) {
-      console.error('Failed to fetch daily devotional:', err);
-      useFallbackDevotional();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const useFallbackDevotional = () => {
+  const applyFallbackDevotional = useCallback(() => {
     setDevotion({
       id: 999,
       bookName: 'Jeremiah',
@@ -194,7 +161,39 @@ export default function DailyDevotionalScreen() {
       displayTime: new Date().toISOString(),
       isPublished: true,
     });
-  };
+  }, []);
+
+  const fetchDailyDevotional = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await sendPostRequest(
+        'bible',
+        'get-todays-devotion',
+        {},
+      );
+
+      console.log('Response:', response);
+      if (response.returnCode === 200 && response.returnData) {
+        setDevotion(response.returnData as DailyVerse);
+      } else {
+        applyFallbackDevotional();
+      }
+    } catch (err) {
+      console.error('Failed to fetch daily devotional:', err);
+      applyFallbackDevotional();
+    } finally {
+      setLoading(false);
+    }
+  }, [applyFallbackDevotional]);
+
+  useEffect(() => {
+    fetchDailyDevotional();
+  }, [fetchDailyDevotional]);
+
+  if (!app) return null;
+  const { isDark } = app;
+  const COLORS = getColors(isDark);
+  const themeStyle = createThemeStyles(COLORS);
 
   const formatDate = (dateVal: string | object): string => {
     try {
@@ -581,7 +580,8 @@ export default function DailyDevotionalScreen() {
           <View style={s.devotionCardInner}>
             <Text style={s.devotionLabel}>{translations?.bible?.todaysDevotion || "Today's devotion"}</Text>
 
-            <View style={s.devotionDivider} />              <DevotionBody
+            <View style={s.devotionDivider} />
+            <DevotionBody
                 paragraphs={paragraphs}
                 COLORS={COLORS}
                 dynamicStyles={s}

@@ -889,10 +889,12 @@ export type ProfileTranslations = {
     chapters?: string;
     highlights?: string;
     notes?: string;
+    favorites?: string;
   };
   menuSections?: {
     bibleStudy?: string;
     settings?: string;
+    content?: string;
   };
   menuItems?: {
     continueReading?: string;
@@ -906,6 +908,10 @@ export type ProfileTranslations = {
     notifications?: string;
     editProfile?: string;
     readingSettings?: string;
+    dailyExegesis?: string;
+  };
+  sowerStatus?: {
+    label?: string;
   };
   fields?: {
     email?: string;

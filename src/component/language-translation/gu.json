@@ -159,7 +159,7 @@
     "slide3Feature2": "શ્લોક શેરિંગ",
     "slide3Feature3": "પ્રગતિ ટ્રેકિંગ"
   },
-  "appTagline": "તમારો દૈનિક આધ્યાત્મિક સાથી",
+  "appTagline": "તમારો બાઈબલિકલ સાથી",
   "bottomTab": {
     "home": "હોમ",
     "bible": "બાઇબલ",
@@ -905,6 +905,18 @@
       "highlighted": "હાઇલાઇટ કર્યું",
       "noted": "નોંધ્યું",
       "favorited": "પસંદ કર્યું"
+    },
+    "greetingMessage": "અમે તમને દરરોજ શાસ્ત્રવચનો શોધવા પ્રોત્સાહિત કરીએ છીએ, જેમ પાઊલે બેરિયાના લોકોને કહ્યું હતું. કૃપા કરીને શબ્દમાં ડૂબકી લગાવો, સતત રહો અને દૈનિક આધ્યાત્મિક ટેવો બનાવો.",
+    "continueReadingTitle": "વાંચન ચાલુ રાખો",
+    "progress": "પ્રગતિ",
+    "readExplanation": "સમજૂતી વાંચો",
+    "readDevotion": "ભક્તિ વાંચો",
+    "statsTitle": "તમારા આંકડા",
+    "stats": {
+      "daysStreak": "સતત દિવસો",
+      "versesRead": "વાંચેલી કલમો",
+      "devotions": "ભક્તિઓ",
+      "bookmarks": "બુકમાર્ક્સ"
     }
   },
   "readingPlans": {

@@ -146,7 +146,7 @@
     "cancel": "Cancelar",
     "confirm": "Confirmar"
   },
-  "appTagline": "Tu compañero espiritual diario",
+  "appTagline": "Tu compañero bíblico",
   "bottomTab": {
     "home": "Inicio",
     "bible": "Biblia",
@@ -1063,6 +1063,18 @@
       "noted": "Anotado",
       "planProgress": "Progreso del plan",
       "favorited": "Favorito"
+    },
+    "greetingMessage": "Te animamos a buscar las Escrituras a diario, tal como Pablo les dijo a los bereanos. Sumérgete en la palabra, sé constante y construye disciplinas espirituales diarias.",
+    "continueReadingTitle": "Continuar leyendo",
+    "progress": "Progreso",
+    "readExplanation": "Leer explicación",
+    "readDevotion": "Leer devocional",
+    "statsTitle": "Tus estadísticas",
+    "stats": {
+      "daysStreak": "Días consecutivos",
+      "versesRead": "Versículos leídos",
+      "devotions": "Devocionales",
+      "bookmarks": "Marcadores"
     }
   },
   "readingPlans": {

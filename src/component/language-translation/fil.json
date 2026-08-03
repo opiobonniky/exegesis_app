@@ -159,7 +159,7 @@
     "slide3Feature2": "Pagbabahagi ng Verse",
     "slide3Feature3": "Pagsubaybay sa Pag-unlad"
   },
-  "appTagline": "Iyong Pang-araw-araw na Espiritwal na Kasama",
+  "appTagline": "Iyong Biblikal na Kasama",
   "bottomTab": {
     "home": "Tahanan",
     "bible": "Bibliya",
@@ -1076,6 +1076,18 @@
       "noted": "Itinala",
       "planProgress": "Pag-unlad ng Plano",
       "favorited": "Nagustuhan"
+    },
+    "greetingMessage": "Hinihikayat ka naming hanapin ang mga banal na kasulatan araw-araw gaya ng sinabi ni Pablo sa mga taga-Berea. Sumisid sa salita, maging pare-pareho at bumuo ng pang-araw-araw na espiritwal na disiplina.",
+    "continueReadingTitle": "Ipagpatuloy ang Pagbasa",
+    "progress": "Progreso",
+    "readExplanation": "Basahin ang Paliwanag",
+    "readDevotion": "Basahin ang Debosyon",
+    "statsTitle": "Iyong mga Estadistika",
+    "stats": {
+      "daysStreak": "Magkasunod na araw",
+      "versesRead": "Mga talatang binasa",
+      "devotions": "Mga debosyon",
+      "bookmarks": "Mga bookmark"
     }
   },
   "readingPlans": {

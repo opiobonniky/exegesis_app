@@ -10,7 +10,7 @@ import {
 import React, { useContext, useEffect, useState } from 'react';
 import { getColors, SPACING } from '../constants/theme';
 import LinearGradient from 'react-native-linear-gradient';
-import { ChevronLeft, ChevronRight, Moon, Search, Sun, User } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Search, User } from 'lucide-react-native';
 import exegesisLogo from '../assets/logos/exegesis_bg_rm.png';
 import { useLanguage, isRtlLanguage } from '../component/language-translation/LanguageProvider';
 import { useTranslation } from '../hooks/useTranslation';
@@ -41,8 +41,6 @@ type HomeProps = BaseProps & {
   greeting?: string;
   userName?: string;
   tagline?: string;
-  isDarkMode: boolean;
-  onThemeToggle: () => void;
   onSearchPress?: () => void;
   profilePhotoUrl?: string | null;
   onProfilePress?: () => void;
@@ -57,6 +55,9 @@ type Props = StandardProps | HomeProps;
 
 // Default top inset for platforms when safe area is not available
 const DEFAULT_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
+
+// Demo avatar shown when the user has no profile photo (Home header)
+const DEMO_AVATAR_URL = 'https://i.pravatar.cc/150?img=12';
 
 // ── Logo lockup ───────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ const LogoLockup = ({ compact = false, appName, tagline }: { compact?: boolean; 
           {translatedAppName || appName || 'Exegesis'}
         </Text>
         <Text style={[logo.tagline, compact && { fontSize: 11, lineHeight: 14 }, { color: isDark ? 'rgba(255,255,255,0.5)' : '#6B7280' }]}>
-          {tagline || translations.appTagline || 'Your Daily Spiritual Companion'}
+          {tagline || translations.appTagline || 'Your Biblical Companion'}
         </Text>
       </View>
     </View>
@@ -160,8 +161,6 @@ const ActionHeader = (props: Props) => {
       greeting,
       userName,
       tagline,
-      isDarkMode,
-      onThemeToggle,
       onSearchPress,
       profilePhotoUrl,
       onProfilePress,
@@ -171,7 +170,7 @@ const ActionHeader = (props: Props) => {
     } = props as HomeProps;
 
     return (
-      <View style={[styles.shadowWrapper, isDark && styles.shadowWrapperDark]}>
+      <View style={styles.homeHeader}>
         <StatusBar
           backgroundColor="transparent"
           translucent
@@ -193,15 +192,35 @@ const ActionHeader = (props: Props) => {
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                onPress={onThemeToggle}
-                style={[styles.themeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : COLORS.surface }]}
+                onPress={onProfilePress}
+                style={[styles.profileBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : COLORS.surface }]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 activeOpacity={0.75}
               >
-                {isDarkMode ? (
-                  <Sun size={16} color="#F0B429" />
+                {profilePhotoUrl ? (
+                  // Thin light-blue ring matches the Home design (docs/design-pic)
+                  <Image
+                    source={{ uri: profilePhotoUrl }}
+                    style={[
+                      styles.headerPic,
+                      {
+                        borderWidth: 2,
+                        borderColor: isDark ? '#7DD3FC' : '#396284',
+                      },
+                    ]}
+                  />
                 ) : (
-                  <Moon size={16} color={COLORS.primary} />
+                  // Demo avatar placeholder when the user has no profile photo
+                  <Image
+                    source={{ uri: DEMO_AVATAR_URL }}
+                    style={[
+                      styles.headerPic,
+                      {
+                        borderWidth: 2,
+                        borderColor: isDark ? '#7DD3FC' : '#396284',
+                      },
+                    ]}
+                  />
                 )}
               </TouchableOpacity>
             </View>
@@ -466,6 +485,11 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.md,
   },
 
+  // Home header is seamless with the page background (no shadow / rounded corners)
+  homeHeader: {
+    width: '100%',
+  },
+
   // ── Brand bar (Row 1) ──────────────────────────────────────────────────────
   brandBar: {
     flexDirection: 'row',
@@ -488,6 +512,18 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  profileBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerPic: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
 
   // ── User profile section (Row 2) ───────────────────────────────────────────

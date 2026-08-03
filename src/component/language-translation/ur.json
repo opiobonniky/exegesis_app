@@ -159,7 +159,7 @@
     "slide3Feature2": "آیت کی شیئرنگ",
     "slide3Feature3": "پیش رفت کی نگرانی"
   },
-  "appTagline": "آپ کا روزانہ روحانی ساتھی",
+  "appTagline": "آپ کا بائبلی ساتھی",
   "bottomTab": {
     "home": "ہوم",
     "bible": "بائبل",
@@ -1076,6 +1076,18 @@
       "noted": "نوٹ کیا",
       "planProgress": "منصوبے کی پیش رفت",
       "favorited": "پسند کیا"
+    },
+    "greetingMessage": "ہم آپ کی حوصلہ افزائی کرتے ہیں کہ جیسا پولس نے بیریا کے لوگوں سے کہا تھا، ویسا ہی آپ روزانہ کلامِ مقدس میں تلاش کریں۔ براہِ کرم کلام میں اتریں، مستقل رہیں اور روزانہ روحانی عادات بنائیں۔",
+    "continueReadingTitle": "پڑھنا جاری رکھیں",
+    "progress": "ترقی",
+    "readExplanation": "وضاحت پڑھیں",
+    "readDevotion": "عقیدت پڑھیں",
+    "statsTitle": "آپ کے اعداد و شمار",
+    "stats": {
+      "daysStreak": "مسلسل دن",
+      "versesRead": "پڑھی ہوئی آیات",
+      "devotions": "عقیدتیں",
+      "bookmarks": "بک مارکس"
     }
   },
   "readingPlans": {

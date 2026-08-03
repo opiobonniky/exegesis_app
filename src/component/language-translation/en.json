@@ -159,7 +159,7 @@
     "slide3Feature2": "Verse Sharing",
     "slide3Feature3": "Progress Tracking"
   },
-  "appTagline": "Your Daily Spiritual Companion",
+  "appTagline": "Your Biblical Companion",
   "bottomTab": {
     "home": "HOME",
     "bible": "BIBLE",
@@ -317,11 +317,13 @@
       "books": "Books",
       "chapters": "Chapters",
       "highlights": "Highlights",
-      "notes": "Notes"
+      "notes": "Notes",
+      "favorites": "Favorites"
     },
     "menuSections": {
       "bibleStudy": "Bible Study",
-      "settings": "Settings"
+      "settings": "Settings",
+      "content": "Content"
     },
     "menuItems": {
       "continueReading": "Continue Reading",
@@ -334,7 +336,11 @@
       "notifications": "Notifications",
       "editProfile": "Edit Profile",
       "readingSettings": "Reading Settings",
-      "language": "Language"
+      "language": "Language",
+      "dailyExegesis": "Daily Exegesis"
+    },
+    "sowerStatus": {
+      "label": "Account Status"
     },
     "fields": {
       "email": "Email",
@@ -1091,6 +1097,18 @@
       "noted": "Noted",
       "planProgress": "Plan Progress",
       "favorited": "Favorited"
+    },
+    "greetingMessage": "We encourage you to search the scriptures daily just like Paul told the Bereans. Please jump into the word, get consistent and build daily spiritual disciplines.",
+    "continueReadingTitle": "Continue",
+    "progress": "Progress",
+    "readExplanation": "Read Explanation",
+    "readDevotion": "Read Devotion",
+    "statsTitle": "Your Stats",
+    "stats": {
+      "booksRead": "Books Read",
+      "chaptersRead": "Chapters Read",
+      "readingPlan": "Reading Plan",
+      "trivia": "Trivia"
     }
   },
   "readingPlans": {

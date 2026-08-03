@@ -315,6 +315,12 @@ const AppNavigation = () => {
           }
         />
         <Stack.Screen
+          name={route.userProfile}
+          getComponent={() =>
+            require('../../features/Setting/UserProfile').default
+          }
+        />
+        <Stack.Screen
           name={route.extendedProfile}
           getComponent={() =>
             require('../../features/Setting/ExtendedProfile').default

@@ -404,7 +404,7 @@ export default function GuestEntry() {
         >
           <Image source={logo} style={styles.logo} resizeMode="contain" />
           <Text style={styles.tagline}>
-            {translations.welcome?.message || 'Your Daily Spiritual Companion'}
+            {translations.welcome?.message || 'Your Biblical Companion'}
           </Text>
         </Animated.View>
 

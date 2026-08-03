@@ -159,7 +159,7 @@
     "slide3Feature2": "ਆਇਤ ਸਾਂਝਾਕਰਨ",
     "slide3Feature3": "ਪ੍ਰਗਤੀ ਟ੍ਰੈਕਿੰਗ"
   },
-  "appTagline": "ਤੁਹਾਡਾ ਰੋਜ਼ਾਨਾ ਰੂਹਾਨੀ ਸਾਥੀ",
+  "appTagline": "ਤੁਹਾਡਾ ਬਾਈਬਲ ਸਾਥੀ",
   "bottomTab": {
     "home": "ਹੋਮ",
     "bible": "ਬਾਈਬਲ",
@@ -1076,6 +1076,18 @@
       "noted": "ਨੋਟ ਕੀਤਾ",
       "planProgress": "ਯੋਜਨਾ ਪ੍ਰਗਤੀ",
       "favorited": "ਪਸੰਦ ਕੀਤਾ"
+    },
+    "greetingMessage": "ਅਸੀਂ ਤੁਹਾਨੂੰ ਹਰ ਰੋਜ਼ ਧਰਮ-ਗ੍ਰੰਥ ਵਿੱਚ ਖੋਜ ਕਰਨ ਲਈ ਉਤਸ਼ਾਹਿਤ ਕਰਦੇ ਹਾਂ, ਜਿਵੇਂ ਪੌਲੁਸ ਨੇ ਬੇਰੀਆ ਦੇ ਲੋਕਾਂ ਨੂੰ ਕਿਹਾ ਸੀ। ਕਿਰਪਾ ਕਰਕੇ ਬਚਨ ਵਿੱਚ ਉਤਰੋ, ਸਥਿਰ ਰਹੋ ਅਤੇ ਰੋਜ਼ਾਨਾ ਅਧਿਆਤਮਿਕ ਆਦਤਾਂ ਬਣਾਓ।",
+    "continueReadingTitle": "ਪੜ੍ਹਨਾ ਜਾਰੀ ਰੱਖੋ",
+    "progress": "ਤਰੱਕੀ",
+    "readExplanation": "ਵਿਆਖਿਆ ਪੜ੍ਹੋ",
+    "readDevotion": "ਭਗਤੀ ਪੜ੍ਹੋ",
+    "statsTitle": "ਤੁਹਾਡੇ ਅੰਕੜੇ",
+    "stats": {
+      "daysStreak": "ਲਗਾਤਾਰ ਦਿਨ",
+      "versesRead": "ਪੜ੍ਹੀਆਂ ਆਇਤਾਂ",
+      "devotions": "ਭਗਤੀਆਂ",
+      "bookmarks": "ਬੁੱਕਮਾਰਕ"
     }
   },
   "readingPlans": {

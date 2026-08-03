@@ -20,6 +20,7 @@ export const route = {
   bibleFirstLaunch: 'BibleFirstLaunch',
   notes: 'Notes',
   editProfile: 'EditProfile',
+  userProfile: 'UserProfile',
   extendedProfile: 'ExtendedProfile',
   readingPlan: 'ReadingPlan',
   planDetail: 'PlanDetail',
@@ -94,6 +95,7 @@ export type RootStackParamList = {
   [route.readHistory]: undefined;
   [route.profile]: undefined;
   [route.editProfile]: undefined;
+  [route.userProfile]: undefined;
   [route.extendedProfile]: undefined;
   [route.favorites]: undefined;
   [route.notes]: undefined;

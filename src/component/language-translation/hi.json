@@ -159,7 +159,7 @@
     "slide3Feature2": "पद साझाकरण",
     "slide3Feature3": "प्रगति ट्रैकिंग"
   },
-  "appTagline": "आपका दैनिक आध्यात्मिक साथी",
+  "appTagline": "आपका बाइबिल साथी",
   "bottomTab": {
     "home": "होम",
     "bible": "बाइबल",
@@ -1076,6 +1076,18 @@
       "noted": "नोट किया",
       "planProgress": "योजना प्रगति",
       "favorited": "पसंद किया"
+    },
+    "greetingMessage": "हम आपको प्रोत्साहित करते हैं कि जैसा पौलुस ने बेरेयावासियों से कहा था, वैसे ही आप प्रतिदिन शास्त्रों में खोजें। कृपया वचन में उतरें, स्थिर रहें और दैनिक आत्मिक आदतें बनाएँ।",
+    "continueReadingTitle": "पढ़ना जारी रखें",
+    "progress": "प्रगति",
+    "readExplanation": "व्याख्या पढ़ें",
+    "readDevotion": "भक्ति पढ़ें",
+    "statsTitle": "आपके आँकड़े",
+    "stats": {
+      "daysStreak": "लगातार दिन",
+      "versesRead": "पढ़े गए पद",
+      "devotions": "भक्तियाँ",
+      "bookmarks": "बुकमार्क"
     }
   },
   "readingPlans": {

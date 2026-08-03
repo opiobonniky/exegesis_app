@@ -159,7 +159,7 @@
     "slide3Feature2": "Compartilhar Versículos",
     "slide3Feature3": "Acompanhamento de Progresso"
   },
-  "appTagline": "Seu Companheiro Espiritual Diário",
+  "appTagline": "Seu Companheiro Bíblico",
   "bottomTab": {
     "home": "Início",
     "bible": "Bíblia",
@@ -1074,6 +1074,18 @@
       "noted": "Anotado",
       "planProgress": "Progresso do Plano",
       "favorited": "Favoritado"
+    },
+    "greetingMessage": "Nós o encorajamos a buscar as Escrituras diariamente, como Paulo disse aos bereanos. Mergulhe na palavra, seja consistente e construa disciplinas espirituais diárias.",
+    "continueReadingTitle": "Continuar lendo",
+    "progress": "Progresso",
+    "readExplanation": "Ler explicação",
+    "readDevotion": "Ler devocional",
+    "statsTitle": "Suas estatísticas",
+    "stats": {
+      "daysStreak": "Dias consecutivos",
+      "versesRead": "Versículos lidos",
+      "devotions": "Devocionais",
+      "bookmarks": "Marcadores"
     }
   },
   "readingPlans": {

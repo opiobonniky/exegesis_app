@@ -159,7 +159,7 @@
     "slide3Feature2": "Kushiriki Mstari",
     "slide3Feature3": "Ufuatiliaji wa Maendeleo"
   },
-  "appTagline": "Mshirika Wako wa Kiroho wa Kila Siku",
+  "appTagline": "Mshirika Wako wa Kibiblia",
   "bottomTab": {
     "home": "Nyumbani",
     "bible": "Biblia",
@@ -1076,6 +1076,18 @@
       "noted": "Imeandikwa",
       "planProgress": "Maendeleo ya Mpango",
       "favorited": "Imependwa"
+    },
+    "greetingMessage": "Tunakuhimiza utafute Maandiko kila siku kama vile Paulo alivyowaambia Wabereani. Tumbukia katika neno, uwe thabiti na ujenge tabia za kiroho za kila siku.",
+    "continueReadingTitle": "Endelea Kusoma",
+    "progress": "Maendeleo",
+    "readExplanation": "Soma Ufafanuzi",
+    "readDevotion": "Soma Ibada",
+    "statsTitle": "Takwimu Zako",
+    "stats": {
+      "daysStreak": "Siku Mfululizo",
+      "versesRead": "Mistari Iliyosomwa",
+      "devotions": "Ibada",
+      "bookmarks": "Alamisho"
     }
   },
   "readingPlans": {

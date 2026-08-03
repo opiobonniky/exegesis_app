@@ -146,7 +146,7 @@
     "cancel": "Annuler",
     "confirm": "Confirmer"
   },
-  "appTagline": "Votre compagnon spirituel quotidien",
+  "appTagline": "Votre compagnon biblique",
   "bottomTab": {
     "home": "Accueil",
     "bible": "Bible",
@@ -1063,6 +1063,18 @@
       "noted": "Noté",
       "planProgress": "Progrès du plan",
       "favorited": "Favori"
+    },
+    "greetingMessage": "Nous vous encourageons à chercher chaque jour dans les Écritures, comme Paul l'a dit aux Béréens. Plongez dans la parole, soyez constant et bâtissez des disciplines spirituelles quotidiennes.",
+    "continueReadingTitle": "Continuer la lecture",
+    "progress": "Progression",
+    "readExplanation": "Lire l'explication",
+    "readDevotion": "Lire la dévotion",
+    "statsTitle": "Vos statistiques",
+    "stats": {
+      "daysStreak": "Jours consécutifs",
+      "versesRead": "Versets lus",
+      "devotions": "Dévotions",
+      "bookmarks": "Signets"
     }
   },
   "readingPlans": {

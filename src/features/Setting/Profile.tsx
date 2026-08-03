@@ -17,65 +17,115 @@ import {
   Animated,
   Platform,
   Linking,
+  StatusBar,
+  Image,
 } from 'react-native';
 import {
   Moon,
   Sun,
-  User,
-  BookOpen,
-  Heart,
-  Star,
   Bell,
   Globe,
   ChevronRight,
-  Edit,
+  ChevronLeft,
   History,
-  Target,
   LogOut,
   FileText,
   Settings2,
-  Mail,
-  Phone,
-  Calendar,
+  BadgeCheck,
+  BookOpen,
+  Heart,
+  Star,
+  BookMarked,
+  CalendarDays,
+  Brain,
+  GraduationCap,
+  HelpCircle,
+  ArrowRight,
+  ArrowLeft,
 } from 'lucide-react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppContext } from '../../common/AppContext';
 import { useLanguage, isRtlLanguage } from '../../component/language-translation/LanguageProvider';
 import LanguagePickerModal, { FLAGS, NATIVE_NAMES } from '../../component/LanguagePickerModal';
-import {
-  BORDER_RADIUS,
-  getColors,
-  FONT_SIZES,
-  SPACING,
-} from '../../constants/theme';
+import { BORDER_RADIUS, getColors, SPACING } from '../../constants/theme';
 import ActionModal from '../../reusable/ActionModal';
-import { useNavigation } from '@react-navigation/native';
 import { route } from '../../component/navigations/routes';
 import BottomTab from '../../component/navigations/BottomTab';
-import ActionHeader from '../../reusable/ActionHeader';
 import { sendPostRequest } from '../../services/api';
+import { getHomeDesign } from '../home/homeStyle';
+import StatsRow from '../home/cards/StatsRow';
+import RecentActivity from '../home/cards/RecentActivity';
+import { formatWhatsAppTime } from '../../utilits/bibleUtils';
+import { useSubscription } from '../../hooks/useSubscription';
+import { ProfileCard, ContentList, QuickActions } from './cards';
+import exegesisLogo from '../../assets/logos/exegesis_bg_rm.png';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+type ActivityType = 'read' | 'highlight' | 'note' | 'favorite' | 'plan';
+
+type RecentActivityItem = {
+  type: ActivityType;
+  id: number;
+  book: string;
+  chapter: number;
+  verse: number;
+  time: string;
+};
+
+type SettingsItem = {
+  id: string;
+  icon: any;
+  label: string;
+  color: string;
+  isSwitch?: boolean;
+  value?: boolean;
+  onToggle?: () => void;
+  onPress?: () => void;
+  rightText?: string;
+};
+
+const safeNumber = (v: any): number =>
+  typeof v === 'number' && Number.isFinite(v) ? v : 0;
+
+const DEFAULT_TOP =
+  Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
 export default function ProfileScreen() {
   const app = useContext(AppContext);
   const navigation = useNavigation<any>();
+  const { translations, language, t } = useLanguage();
+  const isRtl = isRtlLanguage(language);
+  const { hasAccess } = useSubscription();
+  const insets = useSafeAreaInsets();
+
+  const isDark = app?.isDark ?? false;
+  const COLORS = getColors(isDark);
+  const design = useMemo(() => getHomeDesign(isDark), [isDark]);
+
+  const userInfo = app?.userInfo ?? null;
+  const user = userInfo as any;
+  const toggleTheme = useCallback(() => {
+    app?.toggleTheme?.();
+  }, [app]);
+  const logout = app?.logout ?? (async () => {});
+
+  const subscriptionTier = app?.subscriptionTier || 'free';
 
   const [showLogout, setShowLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [langModalOpen, setLangModalOpen] = useState(false);
   const [bottomTabVisible, setBottomTabVisible] = useState(true);
-  const isMounted = useRef(true);
-  const scrollY = useRef(0);
-  const tabBarAnimation = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    return () => { isMounted.current = false; };
-  }, []);
-
   const [stats, setStats] = useState({
-    booksRead: 0, // optional (see below)
-    chaptersRead: 0, // ✅ from get-home-stats
+    chaptersRead: 0,
     highlights: 0,
     notes: 0,
     favorites: 0,
   });
+  const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
+
+  const scrollY = useRef(0);
+  const tabBarAnimation = useRef(new Animated.Value(1)).current;
 
   const [modal, setModal] = useState<{
     status: boolean;
@@ -88,55 +138,96 @@ export default function ProfileScreen() {
     message: '',
     severity: 'info',
   });
-  const [langModalOpen, setLangModalOpen] = useState(false);
 
-  const isDark = app?.isDark ?? false;
-  const COLORS = getColors(isDark);
-  const userInfo = app?.userInfo ?? null;
-  const toggleTheme = useCallback(() => {
-    app?.toggleTheme?.();
-  }, [app]);
-  const logout = app?.logout ?? (async () => {});
-  const user = userInfo as any;
-  const { translations, language, t } = useLanguage();
-  const isRtl = isRtlLanguage(language);
-
-  const subscriptionTier = app?.subscriptionTier || 'free';
-  const hasSubscriptionAccess = app?.hasSubscriptionAccess ?? (() => false);
-
-  const [gateModal, setGateModal] = useState<{
-    visible: boolean;
-    featureName: string;
-  }>({ visible: false, featureName: '' });
-
-  const requireAccess = useCallback(
-    (minimumTier: 'legacy_sower' | 'covenant_sower', featureName: string, onGranted: () => void) => {
-      if (app?.isAdmin || hasSubscriptionAccess(minimumTier)) {
-        onGranted();
-      } else {
-        setGateModal({ visible: true, featureName });
-      }
-    },
-    [hasSubscriptionAccess, app?.isAdmin],
-  );
-
-  const displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || 'Reader';
-  const initials = displayName
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part: string) => part[0]?.toUpperCase())
-    .join('') || 'R';
+  const displayName =
+    `${user?.firstName || ''} ${user?.lastName || ''}`.trim() ||
+    user?.username ||
+    'Reader';
   const accountLabel =
-    subscriptionTier === 'covenant_sower_monthly' || subscriptionTier === 'covenant_sower_yearly'  || subscriptionTier === 'covenant_sower'
+    subscriptionTier === 'covenant_sower_monthly' ||
+    subscriptionTier === 'covenant_sower_yearly' ||
+    subscriptionTier === 'covenant_sower'
       ? 'Covenant Sower'
-      : subscriptionTier === 'legacy_sower_monthly' || subscriptionTier === 'legacy_sower_yearly' || subscriptionTier === 'legacy_sower'
+      : subscriptionTier === 'legacy_sower_monthly' ||
+          subscriptionTier === 'legacy_sower_yearly' ||
+          subscriptionTier === 'legacy_sower'
         ? 'Legacy Sower'
         : 'Free Reader';
-  
-  console.log("subscriptionTier in ProfileScreen::::", subscriptionTier);
-  
 
+  const topInset =
+    Platform.OS === 'android' ? (insets.top || DEFAULT_TOP) + 8 : insets.top || DEFAULT_TOP;
+
+  // ── Data ───────────────────────────────────────────────────────────────────
+  const formatActivityTime = useCallback(
+    (act: any): string => {
+      try {
+        if (act.formattedTime) return act.formattedTime;
+        const timeVal = act.time;
+        if (!timeVal || typeof timeVal !== 'object') {
+          if (typeof timeVal === 'string')
+            return formatWhatsAppTime(timeVal, language);
+          return translations?.home?.recentLabel || 'Recent';
+        }
+        const timeStr = timeVal.createdOn || timeVal.updatedOn;
+        if (!timeStr) return translations?.home?.recentLabel || 'Recent';
+        const time = new Date(timeStr);
+        if (isNaN(time.getTime()))
+          return translations?.home?.recentLabel || 'Recent';
+        return formatWhatsAppTime(timeStr, language);
+      } catch {
+        return translations?.home?.recentLabel || 'Recent';
+      }
+    },
+    [language, translations],
+  );
+
+  const loadProfileData = useCallback(async () => {
+    try {
+      const [homeRes, activityRes] = await Promise.all([
+        sendPostRequest('bible', 'get-home-stats', {}).catch(() => null),
+        sendPostRequest('bible', 'get-recent-activity', { limit: 10 }).catch(
+          () => null,
+        ),
+      ]);
+
+      if (homeRes?.returnCode === 200 && homeRes?.returnData) {
+        const d = homeRes.returnData;
+        setStats({
+          chaptersRead: Number(d.chaptersRead ?? 0),
+          highlights: Number(d.highlights ?? 0),
+          notes: Number(d.notes ?? 0),
+          favorites: Number(d.favorites ?? 0),
+        });
+      }
+
+      if (activityRes?.returnData) {
+        const activities = activityRes.returnData.map((act: any) => ({
+          type: act.type,
+          id: act.id,
+          book: act.book,
+          chapter: act.chapter,
+          verse: act.verse,
+          time: formatActivityTime(act),
+        }));
+        setRecentActivity(activities);
+      }
+    } catch (error) {
+      console.error('Error loading profile data:', error);
+    }
+  }, [formatActivityTime]);
+
+  useEffect(() => {
+    if (userInfo) loadProfileData();
+  }, [loadProfileData, userInfo]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!userInfo) return;
+      loadProfileData();
+    }, [loadProfileData, userInfo]),
+  );
+
+  // ── Actions ────────────────────────────────────────────────────────────────
   const handleManageSubscription = async () => {
     if (subscriptionTier === 'free') {
       navigation.navigate(route.sower);
@@ -152,58 +243,11 @@ export default function ProfileScreen() {
     }
   };
 
-  useEffect(() => {
-    loadProfileData();
-  }, []);
-
-  const loadProfileData = async () => {
-    try {
-      // setLoading(true);
-
-      // ✅ Single call
-      const homeRes = await sendPostRequest('bible', 'get-home-stats', {});
-
-      if (homeRes?.returnCode === 200 && homeRes?.returnData) {
-        const d = homeRes.returnData;
-
-        setStats(prev => ({
-          ...prev,
-          chaptersRead: Number(d.chaptersRead ?? 0),
-          highlights: Number(d.highlights ?? 0),
-          notes: Number(d.notes ?? 0),
-          favorites: Number(d.favorites ?? 0),
-        }));
-      }
-
-      /**
-       * OPTIONAL:
-       * If you still want "Books Read" to be accurate, you need backend to return it too.
-       * For now, you can compute it from recentActivity (approx), or keep a light read-history call.
-       *
-       * Best: update get-home-stats to also return "booksRead" (distinct book_name).
-       */
-
-      // Quick approximation from recentActivity (if backend returns it):
-      if (homeRes?.returnCode === 200 && homeRes?.returnData?.recentActivity) {
-        const recent = homeRes.returnData.recentActivity;
-        const uniqueBooks = new Set(
-          (recent || []).map((x: any) => x.bookName).filter(Boolean),
-        );
-        setStats(prev => ({ ...prev, booksRead: uniqueBooks.size }));
-      }
-    } catch (error) {
-      console.error('Error loading profile data:', error);
-    } finally {
-    }
-  };
-
   const handleLogout = async () => {
     setShowLogout(false);
     setLoggingOut(true);
     try {
       await logout();
-      // Navigation is handled automatically by the AppNavigation conditional rendering
-      // based on auth state, so we don't need to navigate manually here
     } catch (err) {
       console.error('Logout failed:', err);
       setModal({
@@ -217,89 +261,8 @@ export default function ProfileScreen() {
     }
   };
 
-
-
-  const statCards = useMemo(
-    () => [
-      {
-        label: t('profile.stats.books') || (translations.profile && translations.profile.stats?.books) || 'Books',
-        value: stats.booksRead.toString(),
-        icon: BookOpen,
-        color: COLORS.primary,
-      },
-      {
-        label: t('profile.stats.chapters') || (translations.profile && translations.profile.stats?.chapters) || 'Chapters',
-        value: stats.chaptersRead.toString(), // ✅ correct now
-        icon: Target,
-        color: '#3B82F6',
-      },
-      {
-        label: t('profile.stats.highlights') || (translations.profile && translations.profile.stats?.highlights) || 'Highlights',
-        value: stats.highlights.toString(),
-        icon: Star,
-        color: '#F59E0B',
-      },
-      {
-        label: t('profile.stats.notes') || (translations.profile && translations.profile.stats?.notes) || 'Notes',
-        value: stats.notes.toString(),
-        icon: FileText,
-        color: '#8B5CF6',
-      },
-    ],
-    [stats, COLORS.primary, translations, t],
-  );
-
-  const quickActions = useMemo(
-    () => [
-      {
-        label: 'Daily Exegesis',
-        icon: Sun,
-        color: '#F59E0B',
-        requiredTier: 'covenant_sower' as const,
-        onPress: () => navigation.navigate(route.dailyExegesis),
-      },
-      {
-        label: 'Journals',
-        icon: FileText,
-        color: '#8B5CF6',
-        requiredTier: null,
-        onPress: () => navigation.navigate(route.journal),
-      },
-      {
-        label: 'Reading Plan',
-        icon: Calendar,
-        color: '#10B981',
-        requiredTier: 'covenant_sower' as const,
-        onPress: () => navigation.navigate(route.readingPlan),
-      },
-      {
-        label: 'Bible Trivia',
-        icon: Star,
-        color: '#EC4899',
-        requiredTier: null,
-        onPress: () => navigation.navigate(route.trivia),
-      },
-      {
-        label: 'Bible Study',
-        icon: BookOpen,
-        color: COLORS.primary,
-        requiredTier: 'legacy_sower' as const,
-        onPress: () => navigation.navigate(route.studyBible),
-      },
-      {
-        label: 'Community Feed',
-        icon: Globe,
-        color: '#06B6D4',
-        requiredTier: null,
-        onPress: () => navigation.navigate(route.legacyLedger),
-      },
-    ],
-    [COLORS.primary, navigation],
-  );
-
   const handleScroll = useCallback(
     (event: any) => {
-      if (!isMounted.current) return;
       const currentOffset = event.nativeEvent.contentOffset.y;
       const direction = currentOffset > scrollY.current ? 'down' : 'up';
       const shouldShow = direction === 'up' || currentOffset <= 0;
@@ -312,119 +275,286 @@ export default function ProfileScreen() {
           useNativeDriver: true,
         }).start();
       }
-
       scrollY.current = currentOffset;
     },
     [bottomTabVisible, tabBarAnimation],
   );
 
-  const menuSections = useMemo(
+  // ── Content lists ──────────────────────────────────────────────────────────
+  const contentItems = useMemo(
     () => [
       {
-        title: t('profile.menuSections.bibleStudy') || (translations.profile && translations.profile.menuSections?.bibleStudy) || 'Bible Study',
-        items: [
-          {
-            icon: BookOpen,
-            label: t('profile.menuItems.continueReading') || (translations.profile && translations.profile.menuItems?.continueReading) || 'Continue Reading',
-            route: route.bible,
-            color: COLORS.primary,
-          },
-          {
-            icon: Star,
-            label: t('profile.menuItems.myHighlights') || (translations.profile && translations.profile.menuItems?.myHighlights) || 'My Highlights',
-            route: route.Highlights,
-            badge:
-              stats.highlights > 0 ? stats.highlights.toString() : undefined,
-            color: '#F59E0B',
-          },
-          {
-            icon: Heart,
-            label: t('profile.menuItems.favorites') || (translations.profile && translations.profile.menuItems?.favorites) || 'Favorites',
-            route: route.favorites,
-            badge: stats.favorites > 0 ? stats.favorites.toString() : undefined,
-            color: '#EF4444',
-          },
-          {
-            icon: FileText,
-            label: t('profile.menuItems.myNotes') || (translations.profile && translations.profile.menuItems?.myNotes) || 'My Notes',
-            route: route.notes,
-            badge: stats.notes > 0 ? stats.notes.toString() : undefined,
-            color: '#8B5CF6',
-          },
-          {
-            icon: History,
-            label: t('profile.menuItems.readingHistory') || (translations.profile && translations.profile.menuItems?.readingHistory) || 'Reading History',
-            route: route.readHistory,
-            color: '#10B981',
-            badge:
-              stats.chaptersRead > 0
-                ? stats.chaptersRead.toString()
-                : undefined,
-          },
-        ],
+        id: 'exegesis',
+        label: translations?.profile?.menuItems?.dailyExegesis || 'Daily Exegesis',
+        icon: Star,
+        onPress: () => navigation.navigate(route.dailyExegesis),
       },
       {
-        title: t('profile.menuSections.settings') || (translations.profile && translations.profile.menuSections?.settings) || 'Settings',
-        items: [
-          {
-            icon: isDark ? Moon : Sun,
-            label: isDark
-              ? t('profile.menuItems.lightMode') || (translations.profile && translations.profile.menuItems?.lightMode) || 'Light Mode'
-              : t('profile.menuItems.darkMode') || (translations.profile && translations.profile.menuItems?.darkMode) || 'Dark Mode',
-            isSwitch: true,
-            value: isDark,
-            onToggle: toggleTheme,
-            color: COLORS.accent,
-          },
-          {
-            icon: Bell,
-            label: t('profile.menuItems.notifications') || (translations.profile && translations.profile.menuItems?.notifications) || 'Notifications',
-            onPress: () => navigation.navigate(route.notificationSettings),
-            color: '#EC4899',
-          },
-          {
-            icon: Globe,
-            label: t('profile.menuItems.language') || (translations.profile && translations.profile.menuItems?.language) || 'Language',
-            onPress: () => setLangModalOpen(true),
-            color: '#8B5CF6',
-            rightText: `${FLAGS[language]}  ${NATIVE_NAMES[language]}`,
-          },
-          {
-            icon: User,
-            label: t('profile.menuItems.editProfile') || (translations.profile && translations.profile.menuItems?.editProfile) || 'Edit Profile',
-            onPress: () => navigation.navigate(route.editProfile),
-            color: '#06B6D4',
-          },
-          {
-            icon: Settings2,
-            label: t('profile.menuItems.readingSettings') || (translations.profile && translations.profile.menuItems?.readingSettings) || 'Reading Settings',
-            onPress: () => navigation.navigate(route.readingSettings),
-            color: COLORS.primary,
-          },
-        ],
+        id: 'bible',
+        label: translations?.home?.banners?.bible || 'Bible',
+        icon: BookOpen,
+        onPress: () => navigation.navigate(route.bible),
+      },
+      {
+        id: 'journal',
+        label: translations?.home?.banners?.journal || 'Journals',
+        icon: BookMarked,
+        onPress: () =>
+          hasAccess('legacy_sower')
+            ? navigation.navigate(route.legacyLedger)
+            : navigation.navigate(route.sower),
+      },
+      {
+        id: 'plan',
+        label: translations?.home?.banners?.plan || 'Reading Plans',
+        icon: CalendarDays,
+        onPress: () =>
+          hasAccess('legacy_sower')
+            ? navigation.navigate(route.readingPlan)
+            : navigation.navigate(route.sower),
+      },
+      {
+        id: 'trivia',
+        label: 'Bible Trivia',
+        icon: Brain,
+        onPress: () => navigation.navigate(route.trivia),
+      },
+      {
+        id: 'study',
+        label: translations?.home?.banners?.study || 'Bible Study',
+        icon: GraduationCap,
+        onPress: () => navigation.navigate(route.lab),
+      },
+      {
+        id: 'resources',
+        label: translations?.home?.banners?.resources || 'Resources',
+        icon: Globe,
+        onPress: () => navigation.navigate(route.verseResources),
+      },
+      {
+        id: 'support',
+        label: translations?.home?.banners?.support || 'Support',
+        icon: HelpCircle,
+        onPress: () => navigation.navigate(route.home),
       },
     ],
-    [COLORS.primary, COLORS.accent, isDark, stats, translations, t, language, navigation, toggleTheme],
+    [navigation, hasAccess, translations],
   );
 
+  const quickActions = useMemo(
+    () => [
+      {
+        id: 'notes',
+        label: translations?.home?.quickLinks?.notes || 'Notes',
+        icon: FileText,
+        onPress: () => navigation.navigate(route.notes),
+      },
+      {
+        id: 'history',
+        label: translations?.home?.quickLinks?.history || 'History',
+        icon: History,
+        onPress: () => navigation.navigate(route.readHistory),
+      },
+      {
+        id: 'highlights',
+        label: translations?.home?.quickLinks?.highlights || 'Highlights',
+        icon: Star,
+        onPress: () => navigation.navigate(route.Highlights),
+      },
+      {
+        id: 'favorites',
+        label: translations?.home?.quickLinks?.favorites || 'Favorites',
+        icon: Heart,
+        onPress: () => navigation.navigate(route.favorites),
+      },
+    ],
+    [navigation, translations],
+  );
+
+  const statItems = useMemo(
+    () => [
+      {
+        value: safeNumber(stats.chaptersRead),
+        label: t('profile.stats.chapters') || (translations.profile && translations.profile.stats?.chapters) || 'Chapters',
+        icon: BookOpen,
+        color: design.blue,
+      },
+      {
+        value: safeNumber(stats.highlights),
+        label: t('profile.stats.highlights') || (translations.profile && translations.profile.stats?.highlights) || 'Highlights',
+        icon: Star,
+        color: design.accent,
+      },
+      {
+        value: safeNumber(stats.notes),
+        label: t('profile.stats.notes') || (translations.profile && translations.profile.stats?.notes) || 'Notes',
+        icon: FileText,
+        color: design.green,
+      },
+      {
+        value: safeNumber(stats.favorites),
+        label: t('profile.stats.favorites') || (translations.profile && translations.profile.stats?.favorites) || 'Favorites',
+        icon: Heart,
+        color: design.purple,
+      },
+    ],
+    [stats, translations, t, design],
+  );
+
+  // The mockup shows READING activity in purple — tint the shared component
+  // by pointing its "blue" accent at the design's purple for this screen only.
+  const activityDesign = useMemo(
+    () => ({ ...design, blue: design.purple }),
+    [design],
+  );
+
+  const settingsItems = useMemo<SettingsItem[]>(
+    () => [
+      {
+        id: 'theme',
+        icon: isDark ? Sun : Moon,
+        label:
+          (isDark
+            ? t('profile.menuItems.lightMode') ||
+              (translations.profile && translations.profile.menuItems?.lightMode)
+            : t('profile.menuItems.darkMode') ||
+              (translations.profile && translations.profile.menuItems?.darkMode)) ||
+          (isDark ? 'Light Mode' : 'Dark Mode'),
+        color: design.accent,
+        isSwitch: true,
+        value: isDark,
+        onToggle: toggleTheme,
+      },
+      {
+        id: 'notifications',
+        icon: Bell,
+        label: t('profile.menuItems.notifications') || (translations.profile && translations.profile.menuItems?.notifications) || 'Notifications',
+        color: '#EC4899',
+        onPress: () => navigation.navigate(route.notificationSettings),
+      },
+      {
+        id: 'language',
+        icon: Globe,
+        label: t('profile.menuItems.language') || (translations.profile && translations.profile.menuItems?.language) || 'Language',
+        color: design.purple,
+        onPress: () => setLangModalOpen(true),
+        rightText: `${FLAGS[language]}  ${NATIVE_NAMES[language]}`,
+      },
+      {
+        id: 'readingSettings',
+        icon: Settings2,
+        label: t('profile.menuItems.readingSettings') || (translations.profile && translations.profile.menuItems?.readingSettings) || 'Reading Settings',
+        color: design.lightBlue,
+        onPress: () => navigation.navigate(route.readingSettings),
+      },
+    ],
+    [isDark, t, translations, design, navigation, toggleTheme, language],
+  );
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <View style={[styles.container, { backgroundColor: COLORS.background }]}>
+    <View style={[styles.container, { backgroundColor: design.pageBg }]}>
       {!app || !userInfo ? (
-        <View
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-        >
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.accent} />
         </View>
       ) : (
         <>
-          <ActionHeader
-            title={
-              t('profile.title') ||
-              translations?.profile?.title ||
-              'Profile Information'
-            }
-            onPress={() => navigation.goBack()}
-          />
+          {/* ── Custom header ──────────────────────────────────────────────── */}
+          <View
+            style={[
+              styles.header,
+              { backgroundColor: design.cardBg, borderBottomColor: design.cardBorder },
+            ]}
+          >
+            <StatusBar
+              backgroundColor="transparent"
+              translucent
+              barStyle={isDark ? 'light-content' : 'dark-content'}
+            />
+            <View
+              style={[
+                styles.headerRow,
+                isRtl && styles.headerRowRtl,
+                { paddingTop: topInset },
+              ]}
+            >
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={[
+                  styles.headerBackBtn,
+                  { borderColor: design.cardBorder },
+                ]}
+              >
+                {isRtl ? (
+                  <ChevronRight size={20} color={design.title} strokeWidth={2.5} />
+                ) : (
+                  <ChevronLeft size={20} color={design.title} strokeWidth={2.5} />
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.headerBrand}>
+                <View
+                  style={[
+                    styles.headerBrandRow,
+                    isRtl && styles.headerBrandRowRtl,
+                  ]}
+                >
+                  <Image
+                    source={exegesisLogo}
+                    style={styles.headerLogo}
+                    resizeMode="contain"
+                  />
+                  <View style={styles.headerBrandText}>
+                    <View
+                      style={[
+                        styles.headerTitleRow,
+                        isRtl && styles.headerTitleRowRtl,
+                      ]}
+                    >
+                      <Text
+                        style={[styles.headerTitle, { color: design.title }]}
+                        numberOfLines={1}
+                      >
+                        Exegesis Project
+                      </Text>
+                      <BadgeCheck
+                        size={15}
+                        color={design.lightBlue}
+                        fill={design.lightBlue + '30'}
+                      />
+                    </View>
+                    <Text
+                      style={[styles.headerHandle, { color: design.lightBlue }]}
+                      numberOfLines={1}
+                    >
+                      @{user?.username || 'ExegesisProject'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate(route.userProfile)}
+                activeOpacity={0.7}
+                style={[
+                  styles.viewProfilePill,
+                  { borderColor: design.lightBlue },
+                ]}
+              >
+                <Text style={[styles.viewProfileText, { color: design.lightBlue }]}>
+                  View profile
+                </Text>
+                {isRtl ? (
+                  <ArrowLeft size={13} color={design.lightBlue} />
+                ) : (
+                  <ArrowRight size={13} color={design.lightBlue} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <ScrollView
             contentContainerStyle={styles.content}
@@ -432,359 +562,210 @@ export default function ProfileScreen() {
             onScroll={handleScroll}
             scrollEventThrottle={16}
           >
-            {/* ── PROFILE CARD ─────────────────────────────────────────────── */}
-            <View
-              style={[
-                styles.profileCard,
-                { backgroundColor: COLORS.cardBackground },
-              ]}
-            >
-              <View style={[styles.profileHeader, isRtl && styles.profileHeaderRtl]}>
-                <View style={[styles.profileAvatar, { backgroundColor: COLORS.primary }]}> 
-                  <Text style={styles.profileAvatarText}>{initials}</Text>
-                </View>
+            {/* ── Profile card ─────────────────────────────────────────────── */}
+            <ProfileCard
+              design={design}
+              isRtl={isRtl}
+              name={displayName}
+              photoUrl={user?.profilePhotoUrl}
+              viewProfileLabel="View profile"
+              onViewProfile={() => navigation.navigate(route.userProfile)}
+            />
 
-                <View style={styles.profileNameSection}>
-                  <View style={[styles.profileNameRow, isRtl && styles.profileNameRowRtl]}>
-                    <Text style={[styles.profileName, { color: COLORS.text }]} numberOfLines={1}>
-                      {displayName}
-                    </Text>
-                    <View style={[styles.accountPill, { backgroundColor: COLORS.primary + '14' }]}> 
-                      <Text style={[styles.accountPillText, { color: COLORS.primary }]}>
-                        {accountLabel}
-                      </Text>
-                    </View>
-                  </View>
+            {/* ── Content ─────────────────────────────────────────────────── */}
+            <ContentList
+              design={design}
+              isRtl={isRtl}
+              title={translations?.profile?.menuSections?.content || 'Content'}
+              items={contentItems}
+            />
 
-                  {user?.username ? (
-                    <Text style={[styles.profileUsername, { color: COLORS.muted }]} numberOfLines={1}>
-                      @{user.username}
-                    </Text>
-                  ) : null}
+            {/* ── Quick Actions ───────────────────────────────────────────── */}
+            <QuickActions
+              design={design}
+              isRtl={isRtl}
+              title={translations?.home?.quickActionsTitle || 'Quick Actions'}
+              items={quickActions}
+            />
 
-                  <View style={[styles.profileMetaRow, isRtl && styles.profileMetaRowRtl]}>
-                    <View style={[styles.profileMetaItem, isRtl && styles.profileMetaItemRtl]}>
-                      <Mail size={13} color={COLORS.muted} />
-                      <Text style={[styles.profileMetaText, { color: COLORS.muted }]} numberOfLines={1}>
-                        {user?.email || 'No email'}
-                      </Text>
-                    </View>
-                    {user?.phoneNumber ? (
-                      <View style={[styles.profileMetaItem, isRtl && styles.profileMetaItemRtl]}>
-                        <Phone size={13} color={COLORS.muted} />
-                        <Text style={[styles.profileMetaText, { color: COLORS.muted }]} numberOfLines={1}>
-                          {user.phoneNumber}
-                        </Text>
+            {/* ── Your Stats ──────────────────────────────────────────────── */}
+            <StatsRow
+              design={design}
+              isRtl={isRtl}
+              title={
+                translations?.home?.yourStatsTitle ||
+                translations?.home?.statsTitle ||
+                'Your Stats'
+              }
+              stats={statItems}
+            />
+
+            {/* ── Recent Activity ─────────────────────────────────────────── */}
+            <RecentActivity
+              design={activityDesign}
+              isRtl={isRtl}
+              items={recentActivity}
+              title={
+                translations?.home?.recentActivityTitle || 'Recent Activity'
+              }
+              seeAllLabel={translations?.home?.seeAll || 'See All'}
+              emptyMessage={
+                translations?.home?.startReadingTip ||
+                'Start reading to see your activity here'
+              }
+              labels={{
+                read: translations?.home?.activityLabels?.reading || 'Reading',
+                highlight:
+                  translations?.home?.activityLabels?.highlighted || 'Highlighted',
+                note: translations?.home?.activityLabels?.noted || 'Noted',
+                plan: translations?.home?.activityLabels?.planProgress || 'Plan Progress',
+                favorite:
+                  translations?.home?.activityLabels?.favorited || 'Favorited',
+              }}
+              onSeeAll={() => navigation.navigate(route.readHistory)}
+              onPressItem={act =>
+                navigation.navigate(route.bible, {
+                  bookName: act.book,
+                  chapter: act.chapter,
+                })
+              }
+            />
+
+            {/* ── Settings ────────────────────────────────────────────────── */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: design.title }]}>
+                {translations?.profile?.menuSections?.settings || 'Settings'}
+              </Text>
+              <View
+                style={[
+                  styles.settingsCard,
+                  {
+                    backgroundColor: design.cardBg,
+                    borderColor: design.cardBorder,
+                  },
+                ]}
+              >
+                {settingsItems.map((item, idx) => {
+                  const Icon = item.icon;
+                  const isLast = idx === settingsItems.length - 1;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.settingsRow,
+                        isRtl && styles.settingsRowRtl,
+                        !isLast && {
+                          borderBottomWidth: StyleSheet.hairlineWidth,
+                          borderBottomColor: design.cardBorder,
+                        },
+                      ]}
+                      onPress={item.isSwitch ? undefined : item.onPress}
+                      activeOpacity={0.7}
+                      disabled={!!item.isSwitch}
+                    >
+                      <View
+                        style={[
+                          styles.settingsIcon,
+                          { backgroundColor: item.color + '1F' },
+                        ]}
+                      >
+                        <Icon size={18} color={item.color} />
                       </View>
-                    ) : null}
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={[
-                    styles.editButton,
-                    { backgroundColor: COLORS.primary + '15' },
-                  ]}
-                  onPress={() => navigation.navigate(route.editProfile)}
-                  activeOpacity={0.7}
-                >
-                  <Edit size={16} color={COLORS.primary} />
-                </TouchableOpacity>
+                      <Text
+                        style={[styles.settingsLabel, { color: design.title }]}
+                        numberOfLines={1}
+                      >
+                        {item.label}
+                      </Text>
+                      {item.isSwitch ? (
+                        <Switch
+                          value={item.value}
+                          onValueChange={item.onToggle}
+                          trackColor={{
+                            false: design.cardBorder,
+                            true: design.lightBlue,
+                          }}
+                          thumbColor="#FFFFFF"
+                          ios_backgroundColor={design.cardBorder}
+                        />
+                      ) : (
+                        <>
+                          {item.rightText && (
+                            <Text
+                              style={[
+                                styles.settingsRightText,
+                                { color: design.muted },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {item.rightText}
+                            </Text>
+                          )}
+                          {isRtl ? (
+                            <ChevronLeft size={18} color={design.muted} />
+                          ) : (
+                            <ChevronRight size={18} color={design.muted} />
+                          )}
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
-            {/* ── QUICK ACTIONS ─────────────────────────────────────────────── */}
-            <View style={styles.quickActionsGrid}>
-              {quickActions.map(action => {
-                const Icon = action.icon;
-                return (
-                  <TouchableOpacity
-                    key={action.label}
-                    style={[
-                      styles.quickActionCard,
-                      { backgroundColor: COLORS.cardBackground },
-                    ]}
-                    onPress={() => {
-                      if (action.requiredTier) {
-                        requireAccess(action.requiredTier, action.label, action.onPress);
-                      } else {
-                        action.onPress();
-                      }
-                    }}
-                    activeOpacity={0.75}
-                  >
-                    <View
-                      style={[
-                        styles.quickActionIcon,
-                        { backgroundColor: action.color + '16' },
-                      ]}
-                    >
-                      <Icon size={18} color={action.color} />
-                    </View>
-                    <Text style={[styles.quickActionText, { color: COLORS.text }]} numberOfLines={2}>
-                      {action.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* ── SOWER STATUS ──────────────────────────────────────────────── */}
+            {/* ── Sower status ────────────────────────────────────────────── */}
             <TouchableOpacity
               style={[
                 styles.sowerCard,
-                { backgroundColor: COLORS.cardBackground },
+                { backgroundColor: design.cardBg, borderColor: design.cardBorder },
               ]}
               onPress={handleManageSubscription}
               activeOpacity={0.7}
             >
               <View style={styles.sowerRow}>
                 <View style={styles.sowerInfo}>
-                  <Text style={[styles.sowerLabel, { color: COLORS.muted }]}>
-                    Account Status
+                  <Text style={[styles.sowerLabel, { color: design.muted }]}>
+                    {translations?.profile?.sowerStatus?.label || 'Account Status'}
                   </Text>
-                  <Text style={[styles.sowerValue, { color: COLORS.text }]}>
+                  <Text style={[styles.sowerValue, { color: design.title }]}>
                     {accountLabel}
                   </Text>
-                  <Text style={[styles.sowerExpiry, { color: COLORS.muted }]}>
-                    {subscriptionTier !== 'free' && app?.accessExpiresAt
-                      ? `Renews ${new Date(app.accessExpiresAt).toLocaleDateString()}`
-                      : ''}
-                  </Text>
                   {subscriptionTier !== 'free' && app?.accessExpiresAt && (
-                    <Text style={[styles.sowerExpiry, { color: COLORS.muted }]}>
+                    <Text style={[styles.sowerExpiry, { color: design.muted }]}>
                       Renews{' '}
-                      {new Date(
-                        (app as any).accessExpiresAt,
-                      ).toLocaleDateString()}
+                      {new Date(app.accessExpiresAt).toLocaleDateString()}
                     </Text>
                   )}
                 </View>
-                <View
-                  style={[
-                    styles.manageButton,
-                    { backgroundColor: COLORS.primary + '15' },
-                  ]}
-                >
-                  <Text
-                    style={[styles.manageButtonText, { color: COLORS.primary }]}
-                  >
-                    {subscriptionTier === 'free'
-                      ? 'Subscribe'
-                      : 'Manage Subscription'}
+                <View style={[styles.managePill, { backgroundColor: design.pillBg }]}>
+                  <Text style={[styles.managePillText, { color: design.pillText }]}>
+                    {subscriptionTier === 'free' ? 'Subscribe' : 'Manage'}
                   </Text>
                 </View>
               </View>
             </TouchableOpacity>
 
-            {/* ── STATS ROW ────────────────────────────────────────────────── */}
-            <View
-              style={[
-                styles.statsRow,
-                { backgroundColor: COLORS.cardBackground },
-              ]}
-            >
-              {statCards.map((stat, index) => (
-                <View key={index} style={styles.statItem}>
-                  <View
-                    style={[
-                      styles.statIconSmall,
-                      { backgroundColor: stat.color + '15' },
-                    ]}
-                  >
-                    <stat.icon size={16} color={stat.color} />
-                  </View>
-                  <Text
-                    style={[styles.statValueCompact, { color: COLORS.text }]}
-                  >
-                    {stat.value}
-                  </Text>
-                  <Text
-                    style={[styles.statLabelCompact, { color: COLORS.muted }]}
-                    numberOfLines={1}
-                  >
-                    {stat.label}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            {/* ── MENU SECTIONS ────────────────────────────────────────────── */}
-            {menuSections.map((section, sectionIndex) => (
-              <View key={sectionIndex} style={styles.menuSection}>
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    isRtl && styles.sectionTitleRtl,
-                    { color: COLORS.muted },
-                  ]}
-                >
-                  {section.title}
-                </Text>
-
-                <View
-                  style={[
-                    styles.menuCard,
-                    { backgroundColor: COLORS.cardBackground },
-                  ]}
-                >
-                  {section.items.map((item: any, itemIndex) => {
-                    const Icon = item.icon;
-                    const isLast = itemIndex === section.items.length - 1;
-
-                    if (item.isSwitch) {
-                      return (
-                        <View
-                          key={itemIndex}
-                          style={[
-                            styles.menuItem,
-                            !isLast && {
-                              borderBottomWidth: 1,
-                              borderBottomColor: COLORS.border,
-                            },
-                          ]}
-                        >
-                          <View
-                            style={[
-                              styles.menuLeft,
-                              isRtl && styles.menuLeftRtl,
-                            ]}
-                          >
-                            <View
-                              style={[
-                                styles.menuIconContainer,
-                                isRtl && styles.menuIconContainerRtl,
-                                { backgroundColor: item.color + '15' },
-                              ]}
-                            >
-                              <Icon size={20} color={item.color} />
-                            </View>
-                            <Text
-                              style={[styles.menuLabel, { color: COLORS.text }]}
-                            >
-                              {item.label}
-                            </Text>
-                          </View>
-
-                          <Switch
-                            value={item.value}
-                            onValueChange={item.onToggle}
-                            trackColor={{
-                              false: COLORS.border,
-                              true: COLORS.primary,
-                            }}
-                            thumbColor={COLORS.white}
-                            ios_backgroundColor={COLORS.border}
-                          />
-                        </View>
-                      );
-                    }
-
-                    return (
-                      <TouchableOpacity
-                        key={itemIndex}
-                        style={[
-                          styles.menuItem,
-                          !isLast && {
-                            borderBottomWidth: 1,
-                            borderBottomColor: COLORS.border,
-                          },
-                        ]}
-                        onPress={
-                          item.route
-                            ? () => navigation.navigate(item.route)
-                            : item.onPress
-                        }
-                        activeOpacity={0.6}
-                      >
-                        <View
-                          style={[styles.menuLeft, isRtl && styles.menuLeftRtl]}
-                        >
-                          <View
-                            style={[
-                              styles.menuIconContainer,
-                              isRtl && styles.menuIconContainerRtl,
-                              { backgroundColor: item.color + '15' },
-                            ]}
-                          >
-                            <Icon size={20} color={item.color} />
-                          </View>
-                          <Text
-                            style={[styles.menuLabel, { color: COLORS.text }]}
-                          >
-                            {item.label}
-                          </Text>
-                        </View>
-
-                        <View
-                          style={[
-                            styles.menuRight,
-                            isRtl && styles.menuRightRtl,
-                          ]}
-                        >
-                          {item.rightText && (
-                            <Text
-                              style={[
-                                styles.rightLangText,
-                                { color: COLORS.muted },
-                              ]}
-                            >
-                              {item.rightText}
-                            </Text>
-                          )}
-                          {item.badge && (
-                            <View
-                              style={[
-                                styles.badge,
-                                { backgroundColor: item.color },
-                              ]}
-                            >
-                              <Text style={styles.badgeText}>{item.badge}</Text>
-                            </View>
-                          )}
-                          {isRtl ? (
-                            <ChevronRight
-                              size={20}
-                              color={COLORS.muted}
-                              style={{ transform: [{ scaleX: -1 }] }}
-                            />
-                          ) : (
-                            <ChevronRight size={20} color={COLORS.muted} />
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            ))}
-
-            {/* ── LOGOUT ───────────────────────────────────────────────────── */}
+            {/* ── Logout ──────────────────────────────────────────────────── */}
             <TouchableOpacity
               style={[
-                styles.logoutButton,
-                isRtl && styles.logoutButtonRtl,
-                { backgroundColor: COLORS.cardBackground },
-                loggingOut && { opacity: 0.6 },
+                styles.logoutBtn,
+                {
+                  backgroundColor: design.cardBg,
+                  borderColor: design.cardBorder,
+                },
+                loggingOut && styles.logoutDimmed,
               ]}
               onPress={() => setShowLogout(true)}
               activeOpacity={0.7}
               disabled={loggingOut}
             >
-              <View
-                style={[
-                  styles.logoutIconContainer,
-                  isRtl && styles.logoutIconContainerRtl,
-                  { backgroundColor: COLORS.error + '15' },
-                ]}
-              >
-                {loggingOut ? (
-                  <ActivityIndicator size="small" color={COLORS.error} />
-                ) : (
-                  <LogOut size={20} color={COLORS.error} />
-                )}
-              </View>
-              <Text style={[styles.logoutText, { color: COLORS.error }]}>
+              {loggingOut ? (
+                <ActivityIndicator size="small" color="#F87171" />
+              ) : (
+                <LogOut size={18} color="#F87171" />
+              )}
+              <Text style={styles.logoutText}>
                 {loggingOut
                   ? t('profile.logout.loggingOut') ||
                     (translations.profile &&
@@ -798,14 +779,13 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </ScrollView>
 
-          {/* ── MODALS ───────────────────────────────────────────────────────── */}
+          {/* ── Modals ─────────────────────────────────────────────────────── */}
           <ActionModal
             visible={showLogout}
             severity="warning"
             title={
               t('profile.logout.confirmTitle') ||
-              (translations.profile &&
-                translations.profile.logout?.confirmTitle) ||
+              (translations.profile && translations.profile.logout?.confirmTitle) ||
               'Logout'
             }
             message={
@@ -816,14 +796,12 @@ export default function ProfileScreen() {
             }
             confirmLabel={
               t('profile.logout.confirmLabel') ||
-              (translations.profile &&
-                translations.profile.logout?.confirmLabel) ||
+              (translations.profile && translations.profile.logout?.confirmLabel) ||
               'Logout'
             }
             cancelLabel={
               t('profile.logout.cancelLabel') ||
-              (translations.profile &&
-                translations.profile.logout?.cancelLabel) ||
+              (translations.profile && translations.profile.logout?.cancelLabel) ||
               'Cancel'
             }
             onCancel={() => setShowLogout(false)}
@@ -842,474 +820,218 @@ export default function ProfileScreen() {
             severity={modal.severity}
             onConfirm={() => setModal({ ...modal, status: false })}
           />
-
-          {/* ── Subscription Gate Modal ─────────────────────────── */}
-          <ActionModal
-            visible={gateModal.visible}
-            severity="warning"
-            title={`${gateModal.featureName} requires a Sower subscription`}
-            message={
-              subscriptionTier === 'free'
-                ? `Upgrade your plan to access ${gateModal.featureName}. Choose a Sower tier to unlock premium features.`
-                : `${gateModal.featureName} requires a higher-tier plan. Upgrade to Covenant Sower to access this feature.`
-            }
-            confirmLabel="Upgrade"
-            cancelLabel="Not now"
-            onCancel={() =>
-              setGateModal({ visible: false, featureName: '' })
-            }
-            onConfirm={() => {
-              setGateModal({ visible: false, featureName: '' });
-              navigation.navigate(route.sower);
-            }}
-          />
         </>
       )}
 
-     
+      
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
-  },
-  center: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: SPACING.md,
-    fontSize: FONT_SIZES.md,
-    fontWeight: '500',
-  },
-  content: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: 0,
-    paddingBottom: Platform.OS === 'ios' ? 56 : 32,
-  },
 
-  // ── Profile card ──
-  profileCard: {
-    borderRadius: BORDER_RADIUS.xl,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.md,
-    padding: SPACING.lg,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+  // ── Header ──
+  header: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: SPACING.md,
   },
-  profileHeader: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
-  },
-  profileHeaderRtl: {
-    flexDirection: 'row-reverse',
-  },
-  profileNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
     gap: SPACING.sm,
   },
-  profileNameRowRtl: {
+  headerRowRtl: {
     flexDirection: 'row-reverse',
   },
-  profileNameSection: {
+  headerBackBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBrand: {
     flex: 1,
     minWidth: 0,
   },
-  profileAvatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileAvatarText: {
-    color: '#FFFFFF',
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  editButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileName: {
-    fontSize: FONT_SIZES.xl,
-    fontWeight: '800',
-    flexShrink: 1,
-  },
-  profileUsername: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '600',
-    marginTop: 3,
-  },
-  accountPill: {
-    borderRadius: BORDER_RADIUS.round,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-  },
-  accountPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  profileMetaRow: {
-    marginTop: SPACING.sm,
-    gap: 4,
-  },
-  profileMetaRowRtl: {
-    alignItems: 'flex-end',
-  },
-  profileMetaItem: {
+  headerBrandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 10,
   },
-  profileMetaItemRtl: {
+  headerBrandRowRtl: {
     flexDirection: 'row-reverse',
   },
-  profileMetaText: {
-    flexShrink: 1,
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '600',
+  headerBrandText: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
   },
-  profileDivider: {
-    height: 1,
-    marginTop: SPACING.md,
-    marginHorizontal: SPACING.lg,
-  },
-  profileDetails: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.lg,
-  },
-  detailRow: {
-    marginBottom: SPACING.md,
-  },
-  detailLabel: {
+  headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 4,
   },
-  detailLabelRtl: {
+  headerLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+  },
+  headerTitleRowRtl: {
     flexDirection: 'row-reverse',
   },
-  detailLabelText: {
-    fontSize: FONT_SIZES.xs,
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  headerHandle: {
+    fontSize: 12,
     fontWeight: '600',
+    marginTop: 2,
   },
-  detailValue: {
-    fontSize: FONT_SIZES.md,
-    fontWeight: '500',
-  },
-
-  // Quick actions
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
-  },
-  quickActionCard: {
-    width: '31.8%',
-    minHeight: 88,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.sm,
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  quickActionIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quickActionText: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '800',
-    lineHeight: 15,
-  },
-
-  // Stats
-  avatarWrapper: {
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
-    borderStyle: 'dashed',
-  },
-  avatarFallback: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.6)',
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: FONT_SIZES.xxxl,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  editBadge: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  name: {
-    fontSize: FONT_SIZES.xxl,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: SPACING.xs,
-    letterSpacing: 0.3,
-  },
-  email: {
-    fontSize: FONT_SIZES.sm,
-    color: 'rgba(255,255,255,0.75)',
-    fontWeight: '500',
-    marginBottom: SPACING.md,
-  },
-  memberPill: {
+  viewProfilePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 999,
+    gap: 4,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1.2,
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    paddingVertical: 7,
   },
-  memberPillText: {
-    fontSize: 11,
+  viewProfileText: {
+    fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.9)',
-    letterSpacing: 0.5,
   },
 
-  // ── Stats ──
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.sm,
-    borderRadius: BORDER_RADIUS.xl,
+  content: {
+    paddingTop: SPACING.md,
+    paddingBottom: Platform.OS === 'ios' ? 140 : 120,
+  },
+
+  // ── Settings ──
+  section: {
+    paddingHorizontal: SPACING.lg,
     marginBottom: SPACING.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statIconSmall: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.xs,
-  },
-  statValueCompact: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  statLabelCompact: {
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-
-  // ── Menu ──
-  menuSection: {
-    marginBottom: SPACING.xl,
   },
   sectionTitle: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '700',
-    marginBottom: SPACING.md,
-    marginLeft: SPACING.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
   },
-  sectionTitleRtl: {
-    marginLeft: 0,
-    marginRight: SPACING.xs,
-  },
-  menuCard: {
-    borderRadius: BORDER_RADIUS.xl,
+  settingsCard: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  menuItem: {
+  settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: SPACING.md,
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    paddingVertical: 14,
   },
-  menuLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  menuLeftRtl: {
+  settingsRowRtl: {
     flexDirection: 'row-reverse',
   },
-  menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
+  settingsIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
-    marginRight: SPACING.md,
+    justifyContent: 'center',
   },
-  menuIconContainerRtl: {
-    marginRight: 0,
-    marginLeft: SPACING.md,
-  },
-  menuLabel: {
-    fontSize: FONT_SIZES.md,
+  settingsLabel: {
+    flex: 1,
+    fontSize: 14,
     fontWeight: '600',
   },
-  menuRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  menuRightRtl: {
-    flexDirection: 'row-reverse',
-  },
-  badge: {
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 3,
-    borderRadius: BORDER_RADIUS.round,
-    minWidth: 28,
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '700',
-  },
-  rightLangText: {
-    fontSize: 13,
+  settingsRightText: {
+    fontSize: 12,
     fontWeight: '500',
-    marginRight: 4,
+    marginRight: 2,
+    maxWidth: 110,
   },
 
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.xl,
-    marginBottom: SPACING.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  logoutButtonRtl: {
-    flexDirection: 'row-reverse',
-  },
-  logoutIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-  },
-  logoutIconContainerRtl: {
-    marginRight: 0,
-    marginLeft: SPACING.md,
-  },
-  logoutText: {
-    fontSize: FONT_SIZES.md,
-    fontWeight: '700',
-  },
-
-  // ── Sower Status ──
+  // ── Sower status ──
   sowerCard: {
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    padding: SPACING.lg,
   },
   sowerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: SPACING.md,
   },
   sowerInfo: {
     flex: 1,
   },
   sowerLabel: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   sowerValue: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '700',
-    marginTop: 4,
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 3,
   },
   sowerExpiry: {
-    fontSize: FONT_SIZES.xs,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 3,
   },
-  manageButton: {
-    borderRadius: BORDER_RADIUS.lg,
+  managePill: {
+    borderRadius: BORDER_RADIUS.round,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.sm,
-    marginLeft: SPACING.md,
   },
-  manageButtonText: {
-    fontSize: FONT_SIZES.sm,
+  managePillText: {
+    fontSize: 12,
     fontWeight: '700',
+  },
+
+  // ── Logout ──
+  logoutBtn: {
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.xl,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F87171',
+  },
+  logoutDimmed: {
+    opacity: 0.6,
+  },
+
+  // ── Bottom tab ──
+  bottomTabWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
 });
