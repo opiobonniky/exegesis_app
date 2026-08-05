@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
   BookOpen,
@@ -7,12 +7,18 @@ import {
   Sprout,
   ChevronDown,
 } from 'lucide-react-native';
+import StudyToolPanel from './StudyToolPanel';
+import StudyRollPanel from './StudyRollPanel';
 
 export type StudyToolKey = 'explanation' | 'background' | 'strongs' | 'application';
 
 interface Props {
+  bookName: string;
+  chapter: number;
+  verse: number;
+  translationId: string;
+  isDark: boolean;
   colors: any;
-  onPress: (tool: StudyToolKey) => void;
 }
 
 interface ToolDef {
@@ -26,7 +32,7 @@ interface ToolDef {
   numBg: string;
 }
 
-const TOOLS: ToolDef[] = [
+export const TOOLS: ToolDef[] = [
   {
     key: 'explanation',
     title: 'Verse Explanation',
@@ -70,49 +76,82 @@ const TOOLS: ToolDef[] = [
 ];
 
 /**
- * VERSE STUDY TOOLS section — four stacked tool rows (icon badge + number
- * chip + title/subtitle + chevron) matching the dictionary design.
+ * VERSE STUDY TOOLS section — accordion list. Tapping a tool row expands its
+ * content inline beneath the row (only one tool open at a time); tapping again
+ * collapses it.
  */
-export default function StudyToolsList({ colors, onPress }: Props) {
+export default function StudyToolsList({
+  bookName,
+  chapter,
+  verse,
+  translationId,
+  isDark,
+  colors,
+}: Props) {
+  const [openKey, setOpenKey] = useState<StudyToolKey | null>(null);
+
+  const toggle = (key: StudyToolKey) =>
+    setOpenKey(prev => (prev === key ? null : key));
+
   return (
     <View>
       <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
         VERSE STUDY TOOLS
       </Text>
-      <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      {/* Full-bleed: counteracts StudyVerseTab's 16px horizontal padding. */}
+      <View style={[styles.list, { backgroundColor: colors.background }]}>
         {TOOLS.map((tool, idx) => {
           const Icon = tool.Icon;
+          const open = openKey === tool.key;
           return (
-            <TouchableOpacity
-              key={tool.key}
-              style={[
-                styles.item,
-                { borderBottomColor: colors.border },
-                idx === TOOLS.length - 1 && styles.itemLast,
-              ]}
-              activeOpacity={0.7}
-              onPress={() => onPress(tool.key)}
-            >
-              <View style={styles.badgeWrap}>
-                <View style={[styles.iconBadge, { backgroundColor: tool.badgeBg }]}>
-                  <Icon size={20} color={tool.iconColor} strokeWidth={2.2} />
+            <View key={tool.key}>
+              <TouchableOpacity
+                style={[
+                  styles.item,
+                  open && { backgroundColor: `${colors.primary}08` },
+                ]}
+                activeOpacity={0.7}
+                onPress={() => toggle(tool.key)}
+              >
+                <View style={styles.badgeWrap}>
+                  <View style={[styles.iconBadge, { backgroundColor: tool.badgeBg }]}>
+                    <Icon size={20} color={tool.iconColor} strokeWidth={2.2} />
+                  </View>
+                  <View style={[styles.numChip, { backgroundColor: tool.numBg }]}>
+                    <Text style={[styles.numText, { color: tool.numColor }]}>
+                      {idx + 1}
+                    </Text>
+                  </View>
                 </View>
-                <View style={[styles.numChip, { backgroundColor: tool.numBg }]}>
-                  <Text style={[styles.numText, { color: tool.numColor }]}>
-                    {idx + 1}
+                <View style={styles.body}>
+                  <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+                    {tool.title}
+                  </Text>
+                  <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={2}>
+                    {tool.subtitle}
                   </Text>
                 </View>
-              </View>
-              <View style={styles.body}>
-                <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-                  {tool.title}
-                </Text>
-                <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={2}>
-                  {tool.subtitle}
-                </Text>
-              </View>
-              <ChevronDown size={17} color={colors.muted} />
-            </TouchableOpacity>
+                <ChevronDown
+                  size={17}
+                  color={open ? colors.primary : colors.muted}
+                  style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}
+                />
+              </TouchableOpacity>
+
+              <StudyRollPanel open={open}>
+                <View style={styles.panelWrap}>
+                  <StudyToolPanel
+                    tool={tool.key}
+                    bookName={bookName}
+                    chapter={chapter}
+                    verse={verse}
+                    translationId={translationId}
+                    isDark={isDark}
+                    colors={colors}
+                  />
+                </View>
+              </StudyRollPanel>
+            </View>
           );
         })}
       </View>
@@ -130,19 +169,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   list: {
-    borderRadius: 14,
-    borderWidth: 1,
+    // Full width: bleeds past the parent's 16px horizontal padding.
+    marginHorizontal: -16,
     overflow: 'hidden',
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 20,
     paddingVertical: 13,
-    borderBottomWidth: 1,
-  },
-  itemLast: {
-    borderBottomWidth: 0,
   },
   badgeWrap: {
     width: 52,
@@ -185,5 +220,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     marginTop: 2,
+  },
+  panelWrap: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
   },
 });

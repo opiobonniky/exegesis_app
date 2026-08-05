@@ -159,6 +159,8 @@ export type VerseListProps = {
   scrollEventThrottle?: number;
   onVersePress: (verseNumber: number) => void;
   onRemoveHighlight: (verseNumber: number) => void;
+  /** When true, the single-verse action card is suppressed (multi-select bar shows instead). */
+  multiSelectMode?: boolean;
   onExplain?: (verseNumber: number) => void;
   /** Contextual action card handlers (Strong's, Background, Study Tools, Journal). */
   onStrongs?: (verseNumber: number) => void;
@@ -233,6 +235,7 @@ export default function VerseList({
   scrollEventThrottle,
   onVersePress,
   onRemoveHighlight,
+  multiSelectMode = false,
   onExplain,
   onStrongs,
   onBackground,
@@ -281,7 +284,8 @@ export default function VerseList({
     const dvData = dailyVerseRefMap?.[verseNumber];
     const shouldShowDvPanel = !!dvData;
 
-    const showActions = selectedVerses.length === 1 && isSelected;
+    const showActions =
+      !multiSelectMode && selectedVerses.length === 1 && isSelected;
     const isExplaining = explainingVerse === verseNumber;
     const studyToolHighlight = studyToolHighlights[verseNumber] ?? null;
     const sectionHeading = chapterHeadings.find(h => h.verse === verseNumber);

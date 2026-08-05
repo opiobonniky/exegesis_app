@@ -398,6 +398,8 @@
     "deviceHint": "Sposta il cursore per sovrascrivere l'impostazione del dispositivo"
   },
   "bible": {
+    "longPressHint": "Tieni premuto un versetto per selezionarne più di uno",
+    "doubleTapHint": "Tocca due volte un versetto per aprire le azioni rapide",
     "noContent": "Seleziona un libro e un capitolo per iniziare a leggere",
     "search": "Cerca",
     "translate": "Traduci",

@@ -188,6 +188,8 @@ export type Translations = {
 export type BibleTranslations = {
   noContent?: string;
   noHighlights?: string;
+  longPressHint?: string;
+  doubleTapHint?: string;
   search?: string;
   translate?: string;
   book?: string;

@@ -391,6 +391,8 @@
     "deviceHint": "Sogeza kitelezi kubadilisha mpangilio wa kifaa chako"
   },
   "bible": {
+    "longPressHint": "Bonyeza kwa muda mrefu mstari wowote ili kuchagua mistari mingi",
+    "doubleTapHint": "Gusa mstari wowote mara mbili kufungua vitendo vya haraka",
     "noContent": "Chagua kitabu na sura kuanza kusoma",
     "search": "Tafuta",
     "translate": "Tafsiri",

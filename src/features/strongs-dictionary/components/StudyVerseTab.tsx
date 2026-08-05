@@ -4,9 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import { route } from '../../../component/navigations/routes';
 import VerseSelector from './VerseSelector';
 import SelectedVerseCard from './SelectedVerseCard';
-import StudyToolsList, { StudyToolKey } from './StudyToolsList';
+import StudyToolsList from './StudyToolsList';
 import LabStudiesSection from './LabStudiesSection';
-import StrongsStudyModal from './StrongsStudyModal';
 
 interface Props {
   translationId: string;
@@ -34,47 +33,12 @@ export default function StudyVerseTab({
 }: Props) {
   const navigation = useNavigation<any>();
   const [selected, setSelected] = useState<SelectedVerse | null>(null);
-  const [strongsOpen, setStrongsOpen] = useState(false);
 
   const handleGoToVerse = useCallback(
     (bookName: string, chapter: number, verse: number) => {
       setSelected({ bookName, chapter, verse });
     },
     [],
-  );
-
-  const handleToolPress = useCallback(
-    (tool: StudyToolKey) => {
-      if (!selected) return;
-      const { bookName, chapter, verse } = selected;
-      switch (tool) {
-        case 'explanation':
-          navigation.navigate(route.fullVerseExplanation, {
-            bookName,
-            chapter,
-            verse,
-          });
-          break;
-        case 'background':
-          navigation.navigate(route.verseResources, {
-            bookName,
-            chapter,
-            verse,
-          });
-          break;
-        case 'strongs':
-          setStrongsOpen(true);
-          break;
-        case 'application':
-          navigation.navigate(route.fullVerseExplanation, {
-            bookName,
-            chapter,
-            verse,
-          });
-          break;
-      }
-    },
-    [selected, navigation],
   );
 
   const handleViewInContext = useCallback(() => {
@@ -108,7 +72,14 @@ export default function StudyVerseTab({
             isDark={isDark}
           />
 
-          <StudyToolsList colors={colors} onPress={handleToolPress} />
+          <StudyToolsList
+            bookName={selected.bookName}
+            chapter={selected.chapter}
+            verse={selected.verse}
+            translationId={translationId}
+            isDark={isDark}
+            colors={colors}
+          />
 
           <LabStudiesSection
             bookName={selected.bookName}
@@ -119,17 +90,6 @@ export default function StudyVerseTab({
         </>
       )}
       <View style={styles.bottomSpacer} />
-
-      <StrongsStudyModal
-        visible={strongsOpen}
-        bookName={selected?.bookName || ''}
-        chapter={selected?.chapter || 1}
-        verse={selected?.verse || 1}
-        translationId={translationId}
-        isDark={isDark}
-        onClose={() => setStrongsOpen(false)}
-        colors={colors}
-      />
     </ScrollView>
   );
 }

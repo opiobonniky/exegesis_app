@@ -140,6 +140,23 @@ export default function VerseSelector({
     setVerse('');
   }, []);
 
+  const onSelectVerse = useCallback(
+    (value: string | number) => {
+      const v = String(value);
+      setVerse(v);
+      setPicker(null);
+      // Book + chapter are already chosen by the time the verse is picked, so
+      // return the study tools immediately.
+      onGoToVerse(book, Number(chapter), Number(v));
+    },
+    [book, chapter, onGoToVerse],
+  );
+
+  const goToVerse = useCallback(() => {
+    if (!book || !chapter || !verse) return;
+    onGoToVerse(book, Number(chapter), Number(verse));
+  }, [book, chapter, verse, onGoToVerse]);
+
   const canGo = Boolean(book && chapter && verse);
 
   return (
@@ -199,13 +216,11 @@ export default function VerseSelector({
           style={[
             styles.goBtn,
             { backgroundColor: colors.primary },
-            !canGo && { opacity: 0.5 },
+            !canGo && styles.goBtnDisabled,
           ]}
           activeOpacity={0.85}
           disabled={!canGo}
-          onPress={() => {
-            onGoToVerse(book, Number(chapter), Number(verse));
-          }}
+          onPress={goToVerse}
         >
           <Text style={styles.goBtnText}>Go to Verse</Text>
           <ArrowRight size={15} color="#fff" strokeWidth={2.5} />
@@ -238,10 +253,7 @@ export default function VerseSelector({
         title={`${book} ${chapter} — Verse`}
         options={verseOptions}
         selectedValue={verse}
-        onSelect={value => {
-          setVerse(String(value));
-          setPicker(null);
-        }}
+        onSelect={onSelectVerse}
         onClose={() => setPicker(null)}
         colors={colors}
       />
@@ -302,6 +314,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12.5,
     fontWeight: '800',
+  },
+  goBtnDisabled: {
+    opacity: 0.5,
   },
   loading: {
     marginTop: 10,

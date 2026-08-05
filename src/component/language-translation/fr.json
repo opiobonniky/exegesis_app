@@ -378,6 +378,8 @@
     "deviceHint": "Déplacez le curseur pour remplacer le paramètre de votre appareil"
   },
   "bible": {
+    "longPressHint": "Maintenez enfoncé un verset pour en sélectionner plusieurs",
+    "doubleTapHint": "Touchez deux fois un verset pour ouvrir les actions rapides",
     "noContent": "Sélectionnez un livre et un chapitre pour commencer à lire",
     "search": "Rechercher",
     "translate": "Traduire",

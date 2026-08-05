@@ -69,6 +69,7 @@ import {
   BibleActionBar,
   BookOverviewScreen,
   ChapterJournalSection,
+  VerseMultiSelectBar,
 } from './components';
 
 import {
@@ -192,6 +193,9 @@ export default function Bible() {
     highlights,
     favorites,
     selectedVerses,
+    multiSelectMode,
+    enterMultiSelect,
+    exitMultiSelect,
     setPendingVerses,
     activeVersion,
     bibleVersionId,
@@ -300,14 +304,15 @@ export default function Bible() {
         }).start();
       }
 
-      // Scrolling dismisses the verse selection (and its action card).
+      // Scrolling dismisses the verse selection (and any open panels).
       if (selectedVerses.length > 0) {
         clearSelection();
+        exitMultiSelect();
       }
 
       scrollY.current = currentOffset;
     },
-    [bottomTabVisible, tabBarAnimation, selectedVerses, clearSelection],
+    [bottomTabVisible, tabBarAnimation, selectedVerses, clearSelection, exitMultiSelect],
   );
 
   const { language, translations } = useLanguage();
@@ -424,6 +429,89 @@ export default function Bible() {
       setLastReadBook(currentBook);
     }
   }, [currentBook, currentChapter, initialLoading]);
+
+  // ── One-time long-press hint (first time the reader opens) ────────────────
+  // Shown once ever (AsyncStorage flag) so new readers discover that long-
+  // pressing a verse selects multiple verses. Only for signed-in users, since
+  // guests are gated out of multi-select.
+  const LONG_PRESS_HINT_KEY = 'bible_long_press_hint_shown';
+  const longPressHintShownRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      selectionStage !== 'reading' ||
+      isGuest ||
+      longPressHintShownRef.current
+    ) {
+      return;
+    }
+    longPressHintShownRef.current = true;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    (async () => {
+      try {
+        const shown = await AsyncStorage.getItem(LONG_PRESS_HINT_KEY);
+        if (shown || cancelled) return;
+        // Give the verse list a moment to render before popping the hint. The
+        // flag is written right as the toast fires so a quick navigation away
+        // (cleanup cancels the timer) doesn't consume the one-time hint.
+        timer = setTimeout(() => {
+          showToast(
+            'info',
+            translations?.bible?.longPressHint ||
+              'Long-press any verse to select multiple verses',
+          );
+          AsyncStorage.setItem(LONG_PRESS_HINT_KEY, '1').catch(() => {});
+        }, 900);
+      } catch {
+        // Never block reading because of the hint.
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [selectionStage, isGuest, translations]);
+
+  // ── One-time double-tap hint (opens the verse side menu) ───────────────────
+  // Same one-time pattern as the long-press hint, but delayed past the first
+  // hint's toast (900ms + 2.6s visibility) so both tips never collide on the
+  // very first reader open.
+  const DOUBLE_TAP_HINT_KEY = 'bible_doubletap_hint_shown';
+  const doubleTapHintShownRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      selectionStage !== 'reading' ||
+      isGuest ||
+      doubleTapHintShownRef.current
+    ) {
+      return;
+    }
+    doubleTapHintShownRef.current = true;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    (async () => {
+      try {
+        const shown = await AsyncStorage.getItem(DOUBLE_TAP_HINT_KEY);
+        if (shown || cancelled) return;
+        timer = setTimeout(() => {
+          showToast(
+            'info',
+            translations?.bible?.doubleTapHint ||
+              'Double-tap any verse to open quick actions',
+          );
+          AsyncStorage.setItem(DOUBLE_TAP_HINT_KEY, '1').catch(() => {});
+        }, 4200);
+      } catch {
+        // Never block reading because of the hint.
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [selectionStage, isGuest, translations]);
 
   const handleEntrySelectBook = useCallback((bookName: string) => {
     setCurrentBook(bookName);
@@ -698,6 +786,7 @@ export default function Bible() {
         style={{ flex: 1 }}
         onPress={() => {
           clearSelection();
+          exitMultiSelect();
           closeAllPanels();
         }}
       >
@@ -722,6 +811,17 @@ export default function Bible() {
       addReadHistory(verseNumber);
     },
     [isGuest, showAudioPlayer, hasOpenPanel, closeAllPanels, toggleVerseSelection, addReadHistory],
+  );
+
+  /** Long-press enters multi-select mode with the verse selected. */
+  const handleLongPressVerse = useCallback(
+    (verseNumber: number) => {
+      if (isGuest || showAudioPlayer) return;
+      closeAllPanels();
+      clearSelection();
+      enterMultiSelect(verseNumber);
+    },
+    [isGuest, showAudioPlayer, closeAllPanels, clearSelection, enterMultiSelect],
   );
 
   return (
@@ -885,16 +985,8 @@ export default function Bible() {
                 onDoubleTap={verseNumber => {
                   openVerseMenu(verseNumber);
                 }}
-                onLongPress={vn =>
-                  guard(
-                    'Highlights are saved to your account. Sign in to use this feature.',
-                    () => {
-                      setPendingVerses([vn]);
-                      toggleVerseSelection(vn);
-                      setShowHighlightPicker(true);
-                    },
-                  )
-                }
+                onLongPress={handleLongPressVerse}
+                multiSelectMode={multiSelectMode}
                 explanationMap={verseExplanationMap}
                 onDailyVerse={vn => {
                   getDailyVerseRef(vn, currentBook, currentChapter);
@@ -974,6 +1066,8 @@ export default function Bible() {
               onDoubleTap={verseNumber => {
                 openVerseMenu(verseNumber);
               }}
+              onLongPress={handleLongPressVerse}
+              multiSelectMode={multiSelectMode}
               explanationMap={verseExplanationMap}
               onDailyVerse={vn => {
                 getDailyVerseRef(vn, currentBook, currentChapter);
@@ -1116,15 +1210,19 @@ export default function Bible() {
               setShowHighlightPicker(false);
               setPendingVerses([]);
               clearSelection();
+              exitMultiSelect();
             }}
             isDark={isDark}
             selectedVerses={selectedVerses}
             totalVerses={Object.keys(verses).length}
             onSelectColor={(colorId, color, rangeStart, rangeEnd) => {
               setShowHighlightPicker(false);
+              // highlightVerses prioritises pendingVersesRef, so the whole
+              // multi-selection is highlighted — not just the displayed range.
               highlightVerses(colorId, color, rangeStart, rangeEnd);
               setPendingVerses([]);
               clearSelection();
+              exitMultiSelect();
             }}
           />
 
@@ -1155,8 +1253,16 @@ export default function Bible() {
 
           <NoteModal
             visible={showNoteModal}
-            onClose={closeNoteModal}
-            onSave={(rangeStart, rangeEnd) => saveNote(rangeStart, rangeEnd)}
+            onClose={() => {
+              closeNoteModal();
+              exitMultiSelect();
+            }}
+            onSave={(rangeStart, rangeEnd) => {
+              // saveNote prioritises pendingVersesRef, so the note applies to
+              // every selected verse; exit multi-select once the batch is queued.
+              saveNote(rangeStart, rangeEnd);
+              exitMultiSelect();
+            }}
             noteText={noteText}
             onNoteChange={setNoteText}
             saving={noteSaving}
@@ -1437,6 +1543,87 @@ export default function Bible() {
             opacity: tabBarAnimation,
           }}
         >
+          {/* ── Multi-select floating bar (long-press mode) ─────────────── */}
+          {multiSelectMode && selectedVerses.length > 0 && (
+            <View
+              style={[
+                styles.multiSelectWrap,
+                isRtl && styles.multiSelectWrapRtl,
+              ]}
+            >
+              <VerseMultiSelectBar
+                count={selectedVerses.length}
+                colors={COLORS}
+                onHighlight={() =>
+                  guard(
+                    'Highlights are saved to your account. Sign in to use this feature.',
+                    () => {
+                      // Batch: the whole selection is queued via pendingVerses,
+                      // so every selected verse receives the chosen color.
+                      setPendingVerses([...selectedVerses]);
+                      setShowHighlightPicker(true);
+                    },
+                  )
+                }
+                onNote={() =>
+                  guard(
+                    'Notes are saved to your account. Sign in to use this feature.',
+                    () => {
+                      // Batch: the whole selection is queued via pendingVerses,
+                      // so every selected verse receives the note.
+                      setPendingVerses([...selectedVerses]);
+                      if (selectedVerses.length === 1)
+                        setVerseRangeSelection(
+                          selectedVerses[0],
+                          selectedVerses[0],
+                        );
+                      openNoteModal();
+                    },
+                  )
+                }
+                onFavorite={() =>
+                  guard(
+                    'Favourites are saved to your account. Sign in to use this feature.',
+                    () => {
+                      const verses = [...selectedVerses];
+                      clearSelection();
+                      exitMultiSelect();
+                      addFavorite(verses);
+                    },
+                  )
+                }
+                onCopy={() =>
+                  guard('Copying requires a free account.', () => {
+                    const verses = [...selectedVerses];
+                    clearSelection();
+                    exitMultiSelect();
+                    copyVerses(verses);
+                  })
+                }
+                onShare={() =>
+                  guard('Sharing requires a free account.', () => {
+                    const verses = [...selectedVerses];
+                    clearSelection();
+                    exitMultiSelect();
+                    shareVerses(verses);
+                  })
+                }
+                onListen={() =>
+                  guard('Audio narration requires a free account.', () => {
+                    const verses = [...selectedVerses];
+                    clearSelection();
+                    exitMultiSelect();
+                    startReadingSelectedVerses(verses);
+                  })
+                }
+                onClear={() => {
+                  clearSelection();
+                  exitMultiSelect();
+                }}
+              />
+            </View>
+          )}
+
           {selectionStage === 'reading' && (
             <BibleActionBar
               isRtl={isRtl}

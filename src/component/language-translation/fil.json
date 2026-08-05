@@ -391,6 +391,8 @@
     "deviceHint": "Ilipat ang slider upang i-override ang setting ng iyong device"
   },
   "bible": {
+    "longPressHint": "Pindutin nang matagal ang anumang talata para pumili ng maraming talata",
+    "doubleTapHint": "I-double tap ang anumang talata upang buksan ang mabilis na pagkilos",
     "noContent": "Pumili ng aklat at kabanata upang simulan ang pagbasa",
     "search": "Maghanap",
     "translate": "Isalin",

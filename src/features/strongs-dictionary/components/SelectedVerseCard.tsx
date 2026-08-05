@@ -79,7 +79,6 @@ export default function SelectedVerseCard({
     const text = `${ref} ${activeVersion.abbreviation}\n${verseText}`;
     try {
       Clipboard.setString(text);
-      showToast('success', 'Verse copied');
     } catch {
       showToast('error', 'Could not copy verse');
     }
@@ -104,7 +103,7 @@ export default function SelectedVerseCard({
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View style={[styles.card, { backgroundColor: colors.background, borderColor: colors.border }]}>
       {/* ── Header row: ref left, actions right on the same line ── */}
       <View style={styles.headerRow}>
         <Text

@@ -397,6 +397,8 @@
     "deviceHint": "Move the slider to override your device setting"
   },
   "bible": {
+    "longPressHint": "Long-press any verse to select multiple verses",
+    "doubleTapHint": "Double-tap any verse to open quick actions",
     "noContent": "Select a book and chapter to start reading",
     "search": "Search",
     "translate": "Translate",

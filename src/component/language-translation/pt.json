@@ -391,6 +391,8 @@
     "deviceHint": "Mova o controle para substituir a configuração do dispositivo"
   },
   "bible": {
+    "longPressHint": "Mantenha pressionado qualquer versículo para selecionar vários",
+    "doubleTapHint": "Toque duas vezes em qualquer versículo para abrir ações rápidas",
     "noContent": "Selecione um livro e capítulo para começar a ler",
     "search": "Buscar",
     "translate": "Traduzir",

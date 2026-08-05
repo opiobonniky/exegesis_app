@@ -398,6 +398,8 @@
     "deviceHint": "Bewegen Sie den Schieberegler, um die Geräteeinstellung zu überschreiben"
   },
   "bible": {
+    "longPressHint": "Drücke lange auf einen Vers, um mehrere Verse auszuwählen",
+    "doubleTapHint": "Tippe doppelt auf einen Vers, um Schnellaktionen zu öffnen",
     "noContent": "Wählen Sie ein Buch und ein Kapitel, um mit dem Lesen zu beginnen",
     "search": "Suchen",
     "translate": "Übersetzen",

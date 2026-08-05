@@ -506,16 +506,37 @@ export const useBible = () => {
   }, []);
 
   // ─── Selection ──────────────────────────────────────────────────────────────
-  const toggleVerseSelection = useCallback((verseNumber: number) => {
-    setSelectedVerses(prev => {
-      if (prev.includes(verseNumber)) {
-        // Deselect the verse
-        return prev.filter(v => v !== verseNumber);
-      }
-      // Selecting a new verse should replace any existing selection
-      return [verseNumber];
-    });
+  // Multi-select mode: entered via long-press on a verse. While active, tapping
+  // verses toggles them in/out of the selection instead of replacing it.
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+
+  const enterMultiSelect = useCallback((verseNumber: number) => {
+    setMultiSelectMode(true);
+    setSelectedVerses([verseNumber]);
   }, []);
+
+  const exitMultiSelect = useCallback(() => {
+    setMultiSelectMode(false);
+    setSelectedVerses([]);
+  }, []);
+
+  const toggleVerseSelection = useCallback(
+    (verseNumber: number) => {
+      setSelectedVerses(prev => {
+        if (prev.includes(verseNumber)) {
+          // Deselect the verse
+          return prev.filter(v => v !== verseNumber);
+        }
+        if (multiSelectMode) {
+          // Add to the growing multi-selection
+          return [...prev, verseNumber];
+        }
+        // Selecting a new verse should replace any existing selection
+        return [verseNumber];
+      });
+    },
+    [multiSelectMode],
+  );
 
   const setVerseRangeSelection = useCallback((start: number, end: number) => {
     const range: number[] = [];
@@ -524,6 +545,11 @@ export const useBible = () => {
   }, []);
 
   const clearSelection = useCallback(() => setSelectedVerses([]), []);
+
+  const clearMultiSelect = useCallback(() => {
+    setMultiSelectMode(false);
+    setSelectedVerses([]);
+  }, []);
   const setPendingVerses = useCallback((v: number[]) => {
     pendingVersesRef.current = v;
   }, []);
@@ -1082,6 +1108,10 @@ export const useBible = () => {
     highlights,
     favorites,
     selectedVerses,
+    multiSelectMode,
+    enterMultiSelect,
+    exitMultiSelect,
+    clearMultiSelect,
     setPendingVerses,
     activeVersion,
     bibleVersionId,

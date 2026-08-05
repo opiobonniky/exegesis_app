@@ -195,6 +195,19 @@ export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
       // Leave space for BottomTab + selection actions bar + audio player
       paddingBottom: SPACING.xxl * 3,
     },
+
+    // Floating multi-select bar (long-press verse mode) — sits above the
+    // bottom action bar + tab bar.
+    multiSelectWrap: {
+      position: 'absolute',
+      left: SPACING.lg,
+      right: SPACING.lg,
+      bottom: 110,
+      zIndex: 90,
+    },
+    multiSelectWrapRtl: {
+      flexDirection: 'row-reverse',
+    },
     versesCard: {
       backgroundColor: COLORS.cardBackground,
       borderRadius: BORDER_RADIUS.lg,

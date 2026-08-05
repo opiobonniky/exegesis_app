@@ -10,3 +10,4 @@ export { default as BibleActionBar } from './BibleActionBar';
 export { default as ChapterStudyToolsSheet } from './ChapterStudyToolsSheet';
 export { default as BookOverviewScreen } from './BookOverviewScreen';
 export { default as ChapterJournalSection } from './ChapterJournalSection';
+export { default as VerseMultiSelectBar } from './VerseMultiSelectBar';
