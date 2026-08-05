@@ -175,7 +175,8 @@
     "dashboard": "ഡാഷ്ബോർഡ്",
     "users": "ഉപയോക്താക്കൾ",
     "verse": "വാക്യം",
-    "devotion": "ഭക്തി"
+    "devotion": "ഭക്തി",
+    "tools": "ഉപകരണങ്ങൾ"
   },
   "readingSettings": {
     "title": "വായനാ ക്രമീകരണങ്ങൾ",
@@ -1050,7 +1051,6 @@
     "showMore": "കൂടുതൽ കാണിക്കുക ▼",
     "showLess": "കുറവ് കാണിക്കുക ▲",
     "explainVerse": "വാക്യം വിശദീകരിക്കുക",
-    "hideExplanation": "വിശദീകരണം മറയ്ക്കുക",
     "shareVerse": "വാക്യം പങ്കിടുക",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1093,7 +1093,11 @@
       "versesRead": "വായിച്ച വാക്യങ്ങൾ",
       "devotions": "ഭക്തികൾ",
       "bookmarks": "ബുക്ക്മാർക്കുകൾ"
-    }
+    },
+    "labCardTitle": "എക്സിജിസിസ് ലാബ്",
+    "labCardSubtitle": "ഏത് ഭാഗത്തിലൂടെയും 5-ഘട്ട ഗൈഡഡ് യാത്ര — നോക്കുക, കേൾക്കുക, പഠിക്കുക, വസിക്കുക, പ്രയോഗിക്കുക.",
+    "labStartStudy": "പഠനം ആരംഭിക്കുക",
+    "labDurationHint": "5 ഘട്ടങ്ങൾ · 30–60 മിനിറ്റ്"
   },
   "readingPlans": {
     "myReadingPlans": "എന്റെ വായനാ പദ്ധതികൾ",

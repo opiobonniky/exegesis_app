@@ -6,10 +6,8 @@ import {
   BIBLE_BOOKS_NT,
   ALL_BOOKS,
 } from '../../../constants/bibleBooks';
-import type { DictionaryMode } from '../hooks/useStrongsDictionary';
 
 interface Props {
-  mode: DictionaryMode;
   selectedBook?: string;
   verseBook?: string;
   onSelectBrowse: (book: string) => void;
@@ -18,7 +16,6 @@ interface Props {
 }
 
 export default function InlineBookPicker({
-  mode,
   selectedBook,
   verseBook,
   onSelectBrowse,
@@ -80,11 +77,8 @@ export default function InlineBookPicker({
                 isSelected && { backgroundColor: `${colors.primary}15` },
               ]}
               onPress={() => {
-                if (mode === 'browse') {
-                  onSelectBrowse(item);
-                } else if (mode === 'verse') {
-                  onSelectVerse(item);
-                }
+                onSelectBrowse(item);
+                onSelectVerse(item);
               }}
             >
               <Text style={[styles(colors).modalItemText, { color: isSelected ? colors.primary : colors.text }, isSelected && { fontWeight: '700' }]}>

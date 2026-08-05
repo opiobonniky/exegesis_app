@@ -168,7 +168,8 @@
     "dashboard": "ਡੈਸ਼ਬੋਰਡ",
     "users": "ਉਪਭੋਗਤਾ",
     "verse": "ਆਇਤ",
-    "devotion": "ਭਗਤੀ"
+    "devotion": "ਭਗਤੀ",
+    "tools": "ਟੂਲਸ"
   },
   "readingSettings": {
     "title": "ਪੜ੍ਹਨ ਦੀਆਂ ਸੈਟਿੰਗਾਂ",
@@ -1045,7 +1046,6 @@
     "showMore": "ਹੋਰ ਦਿਖਾਓ ▼",
     "showLess": "ਘੱਟ ਦਿਖਾਓ ▲",
     "explainVerse": "ਆਇਤ ਸਮਝਾਓ",
-    "hideExplanation": "ਵਿਆਖਿਆ ਲੁਕਾਓ",
     "shareVerse": "ਆਇਤ ਸਾਂਝੀ ਕਰੋ",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1088,7 +1088,11 @@
       "versesRead": "ਪੜ੍ਹੀਆਂ ਆਇਤਾਂ",
       "devotions": "ਭਗਤੀਆਂ",
       "bookmarks": "ਬੁੱਕਮਾਰਕ"
-    }
+    },
+    "labCardTitle": "ਐਕਸੇਜੇਸਿਸ ਲੈਬ",
+    "labCardSubtitle": "ਕਿਸੇ ਵੀ ਅਨੁਚੇਦ ਵਿੱਚੋਂ 5-ਕਦਮਾਂ ਦੀ ਗਾਈਡਡ ਯਾਤਰਾ — ਦੇਖੋ, ਸੁਣੋ, ਸਿੱਖੋ, ਟਿਕੇ ਰਹੋ ਅਤੇ ਲਾਗੂ ਕਰੋ।",
+    "labStartStudy": "ਅਧਿਐਨ ਸ਼ੁਰੂ ਕਰੋ",
+    "labDurationHint": "5 ਕਦਮ · 30–60 ਮਿੰਟ"
   },
   "readingPlans": {
     "myReadingPlans": "ਮੇਰੀਆਂ ਪੜ੍ਹਨ ਦੀਆਂ ਯੋਜਨਾਵਾਂ",

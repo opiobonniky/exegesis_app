@@ -5,3 +5,4 @@ export { default as DailyDevotionCard } from './DailyDevotionCard';
 export { default as StatsRow } from './StatsRow';
 export { default as QuickAccess } from './QuickAccess';
 export { default as RecentActivity } from './RecentActivity';
+export { default as LabCard } from './LabCard';

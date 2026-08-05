@@ -18,15 +18,14 @@ import {
   Languages,
   Pause,
   Play,
-  RotateCcw,
   ScrollText,
   Volume2,
-  Timer,
 } from 'lucide-react-native';
 import { SPACING } from '../../../constants/theme';
 import { LISTEN_OPTIONS } from '../constants';
 import WaveformAnimation from '../../../components/WaveformAnimation';
 import { showToast } from '../../../helpers/Toash.helper';
+import StageHeader from './StageHeader';
 import {
   getTranslationComparison,
   getVerseResources,
@@ -47,7 +46,6 @@ interface ListenStageProps {
   chapter: string;
   verseStart: string;
   passageVerses: PassageVerse[];
-  passageVersesCount: number;
   selectedRepeats: number;
   setSelectedRepeats: (value: number) => void;
   repeatCount: number;
@@ -60,11 +58,9 @@ interface ListenStageProps {
   stageOrder: readonly string[];
   scrollX: any;
   screenWidth: number;
-  renderChangePassageActions: () => React.ReactNode;
   onStart: () => void;
   onToggle: () => void;
   onReset: () => void;
-  onReplay: () => void;
   onAdvance: () => void;
 }
 
@@ -76,7 +72,6 @@ export default function ListenStage({
   chapter,
   verseStart,
   passageVerses,
-  passageVersesCount,
   selectedRepeats,
   setSelectedRepeats,
   repeatCount,
@@ -89,11 +84,9 @@ export default function ListenStage({
   stageOrder,
   scrollX,
   screenWidth,
-  renderChangePassageActions,
   onStart,
   onToggle,
   onReset,
-  onReplay,
   onAdvance,
 }: ListenStageProps) {
   const isPreparingAudio = audioStarting && !isPlaying && !isPaused;
@@ -126,14 +119,9 @@ export default function ListenStage({
     }
   };
 
-  // ── Translations + commentary (expandable, lazy-loaded) ─────────────────
   const [studyExpanded, setStudyExpanded] = useState(false);
-  const [translations, setTranslations] = useState<
-    TranslationComparisonEntry[] | null
-  >(null);
-  const [verseResources, setVerseResources] = useState<VerseResourceData | null>(
-    null,
-  );
+  const [translations, setTranslations] = useState<TranslationComparisonEntry[] | null>(null);
+  const [verseResources, setVerseResources] = useState<VerseResourceData | null>(null);
   const [studyLoading, setStudyLoading] = useState(false);
   const [copiedCommentary, setCopiedCommentary] = useState(false);
   const copiedCommentaryTimerRef = useRef<number>(0);
@@ -142,8 +130,6 @@ export default function ListenStage({
     return () => clearTimeout(copiedCommentaryTimerRef.current);
   }, []);
 
-  // Reset the expandable study-tools state when the passage changes so a
-  // new passage never shows the previous passage's translations/commentary.
   useEffect(() => {
     setStudyExpanded(false);
     setTranslations(null);
@@ -154,13 +140,7 @@ export default function ListenStage({
 
   const toggleStudyTools = () => {
     setStudyExpanded(!studyExpanded);
-    if (
-      !translations &&
-      !verseResources &&
-      !studyLoading &&
-      bookName &&
-      chapter
-    ) {
+    if (!translations && !verseResources && !studyLoading && bookName && chapter) {
       setStudyLoading(true);
       const ch = Number(chapter);
       const vs = parsedVerse;
@@ -181,11 +161,7 @@ export default function ListenStage({
     }
   };
 
-  const handleCopyCommentary = (
-    text: string,
-    author: string,
-    title: string,
-  ) => {
+  const handleCopyCommentary = (text: string, author: string, title: string) => {
     const ref = passageRef || `${bookName} ${chapter}:${verseStart}`;
     const attribution = `${text}\n\n— ${author}, ${title} (commentary on ${ref})`;
     try {
@@ -193,10 +169,7 @@ export default function ListenStage({
       setCopiedCommentary(true);
       showToast('success', 'Commentary copied with attribution');
       clearTimeout(copiedCommentaryTimerRef.current);
-      copiedCommentaryTimerRef.current = setTimeout(
-        () => setCopiedCommentary(false),
-        2000,
-      );
+      copiedCommentaryTimerRef.current = setTimeout(() => setCopiedCommentary(false), 2000);
     } catch (e) {
       console.error('Copy failed:', e);
       showToast('error', 'Could not copy commentary');
@@ -205,56 +178,32 @@ export default function ListenStage({
 
   return (
     <View style={styles.stageContainer}>
-      <View style={styles.stageHeader}>
-        <View
-          style={[styles.stageBadge, { backgroundColor: `${colors.accent}20` }]}
-        >
-          <Ear size={20} color={colors.accent} />
-        </View>
-        <Text style={[styles.stageLabel, { color: colors.accent }]}>
-          Step 2 of 4
-        </Text>
-        <Text style={[styles.stageTitle, { color: colors.text }]}>Listen</Text>
-        <Text style={[styles.stageSubtitle, { color: colors.textSecondary }]}>
-          Be still and dwell in the Word
-        </Text>
-        <View style={[styles.passageChip, { backgroundColor: `${colors.accent}10`, marginTop: 6, marginBottom: 4 }]}>
-          <Timer size={10} color={colors.accent} />
-          <Text style={{ fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 0.5 }}>
-            5–15 min
-          </Text>
-        </View>
-        {passageRef && (
-          <View
-            style={[
-              styles.passageChip,
-              { backgroundColor: `${colors.primary}15` },
-            ]}
-          >
-            <BookOpen size={12} color={colors.primary} />
-            <Text style={[styles.passageChipText, { color: colors.primary }]}>
-              {passageRef}
-            </Text>
-          </View>
-        )}
-        {renderChangePassageActions()}
-      </View>
+      {/* ── Stage Header ─────────────────────────────────────────────────── */}
+      <StageHeader
+        Icon={Ear}
+        step={2}
+        total={5}
+        title="Listen"
+        subtitle="Be still and dwell in the Word"
+        timeLabel="5–15 min"
+        colors={colors}
+        accentColor={colors.accent}
+      />
 
-      {/* Passage text (follow-along display) */}
+      {/* ── Passage Text Card ────────────────────────────────────────────── */}
       {passageVerses.length > 0 && (
         <View
           style={[
             styles.passageTextCard,
             {
               backgroundColor: colors.surface,
-              borderColor: colors.border,
-              borderLeftColor: colors.primary,
+              borderColor: `${colors.primaryOnSurface ?? colors.primary}40`,
             },
           ]}
         >
-          <View style={[styles.passageTextHeader, { borderBottomColor: colors.border }]}>
-            <BookOpen size={14} color={colors.primary} />
-            <Text style={[styles.passageTextLabel, { color: colors.primary }]}>
+          <View style={[styles.passageTextHeader, { borderBottomColor: `${colors.primaryOnSurface ?? colors.primary}20` }]}>
+            <BookOpen size={15} color={colors.primaryOnSurface ?? colors.primary} strokeWidth={2.2} />
+            <Text style={[styles.passageTextLabel, { color: colors.primaryOnSurface ?? colors.primary }]}>
               {passageRef || 'Passage'}
             </Text>
             <View style={styles.passageTextHeaderRight}>
@@ -263,12 +212,12 @@ export default function ListenStage({
                   style={[
                     styles.verseRangeChip,
                     {
-                      backgroundColor: `${colors.primary}15`,
-                      borderColor: `${colors.primary}30`,
+                      backgroundColor: `${colors.primaryOnSurface ?? colors.primary}15`,
+                      borderColor: `${colors.primaryOnSurface ?? colors.primary}30`,
                     },
                   ]}
                 >
-                  <Text style={[styles.verseRangeChipText, { color: colors.primary }]}>
+                  <Text style={[styles.verseRangeChipText, { color: colors.primaryOnSurface ?? colors.primary }]}>
                     {verseRange}
                   </Text>
                 </View>
@@ -277,26 +226,25 @@ export default function ListenStage({
                 onPress={handleCopyPassage}
                 activeOpacity={0.7}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityLabel="Copy passage text"
                 style={[
                   styles.copyPassageBtn,
                   {
-                    backgroundColor: copied ? 'rgba(34,197,94,0.12)' : `${colors.surface}`,
+                    backgroundColor: copied ? 'rgba(34,197,94,0.12)' : colors.surface,
                     borderColor: copied ? 'rgba(34,197,94,0.4)' : colors.border,
                   },
                 ]}
               >
                 {copied ? (
-                  <Check size={14} color="#22C55E" strokeWidth={2.5} />
+                  <Check size={18} color="#22C55E" strokeWidth={2.2} />
                 ) : (
-                  <Copy size={14} color={colors.primary} strokeWidth={2.5} />
+                  <Copy size={18} color={colors.primaryOnSurface ?? colors.primary} strokeWidth={2.2} />
                 )}
               </TouchableOpacity>
             </View>
           </View>
           {passageVerses.map(v => (
             <View key={v.verseNumber} style={styles.passageVerseRow}>
-              <Text style={[styles.passageVerseNum, { color: colors.muted }]}>
+              <Text style={[styles.passageVerseNum, { color: colors.primaryOnSurface ?? colors.primary }]}>
                 {v.verseNumber}
               </Text>
               <Text style={[styles.passageVerseText, { color: colors.text, flex: 1 }]}>
@@ -305,43 +253,29 @@ export default function ListenStage({
             </View>
           ))}
 
-          {/* ── Translations + Commentary (expandable, lazy-loaded) ── */}
-          <View
-            style={[
-              styles.listenStudySection,
-              { borderTopColor: colors.border },
-            ]}
-          >
+          {/* ── Translations & Commentary (expandable) ──────────────────── */}
+          <View style={[styles.listenStudySection, { borderTopColor: colors.border }]}>
             <TouchableOpacity
               onPress={toggleStudyTools}
               activeOpacity={0.7}
               style={styles.listenStudyHeader}
             >
-              <Languages size={14} color={colors.primary} strokeWidth={2.5} />
-              <Text style={[styles.listenStudyLabel, { color: colors.primary }]}>
+              <Languages size={14} color={colors.primaryOnSurface ?? colors.primary} strokeWidth={2.5} />
+              <Text style={[styles.listenStudyLabel, { color: colors.primaryOnSurface ?? colors.primary }]}>
                 Translations & Commentary
               </Text>
               {studyLoading ? (
-                <ActivityIndicator size="small" color={colors.primary} />
+                <ActivityIndicator size="small" color={colors.primaryOnSurface ?? colors.primary} />
               ) : (
                 <ChevronDown
                   size={15}
-                  color={colors.primary}
-                  style={{
-                    transform: [
-                      { rotate: studyExpanded ? '180deg' : '0deg' },
-                    ],
-                  }}
+                  color={colors.primaryOnSurface ?? colors.primary}
+                  style={{ transform: [{ rotate: studyExpanded ? '180deg' : '0deg' }] }}
                 />
               )}
             </TouchableOpacity>
             {studyExpanded && (
-              <View
-                style={[
-                  styles.listenStudyBody,
-                  { borderTopColor: colors.border },
-                ]}
-              >
+              <View style={[styles.listenStudyBody, { borderTopColor: colors.border }]}>
                 {studyLoading ? (
                   <Text style={[styles.aiTipText, { color: colors.muted, fontStyle: 'italic' }]}>
                     Loading translations...
@@ -358,26 +292,15 @@ export default function ListenStage({
                             key={i}
                             style={[
                               styles.resourceCard,
-                              {
-                                backgroundColor: colors.surface,
-                                borderColor: colors.border,
-                                borderLeftColor: colors.primary,
-                              },
+                              { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.primaryOnSurface ?? colors.primary },
                             ]}
                           >
-                            <View
-                              style={[
-                                styles.translationBadge,
-                                { backgroundColor: `${colors.primary}15` },
-                              ]}
-                            >
-                              <Text style={[styles.translationBadgeText, { color: colors.primary }]}>
+                            <View style={[styles.translationBadge, { backgroundColor: `${colors.primaryOnSurface ?? colors.primary}15` }]}>
+                              <Text style={[styles.translationBadgeText, { color: colors.primaryOnSurface ?? colors.primary }]}>
                                 {t.abbreviation}
                               </Text>
                             </View>
-                            <Text style={[styles.resourceCardLabel, { color: colors.muted }]}>
-                              {t.version}
-                            </Text>
+                            <Text style={[styles.resourceCardLabel, { color: colors.muted }]}>{t.version}</Text>
                             <Text style={[styles.translationText, { color: colors.textSecondary }]}>
                               “{t.text}”
                             </Text>
@@ -387,44 +310,29 @@ export default function ListenStage({
                     )}
                     {verseResources && verseResources.commentaries.length > 0 && (
                       <View>
-                        <Text style={[styles.learnSectionTitle, { color: colors.text }]}>
-                          Commentary
-                        </Text>
+                        <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Commentary</Text>
                         {verseResources.commentaries.map((c, i) => (
                           <View
                             key={i}
                             style={[
                               styles.resourceCard,
-                              {
-                                backgroundColor: colors.surface,
-                                borderColor: colors.border,
-                                borderLeftColor: colors.accent,
-                              },
+                              { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.accent },
                             ]}
                           >
                             <View style={styles.commentaryHeaderRow}>
                               <View style={{ flex: 1 }}>
-                                <Text style={[styles.resourceCardAuthor, { color: colors.text }]}>
-                                  {c.author}
-                                </Text>
-                                <Text style={[styles.resourceCardTitle, { color: colors.textSecondary }]}>
-                                  {c.title}
-                                </Text>
+                                <Text style={[styles.resourceCardAuthor, { color: colors.text }]}>{c.author}</Text>
+                                <Text style={[styles.resourceCardTitle, { color: colors.textSecondary }]}>{c.title}</Text>
                               </View>
                               <TouchableOpacity
-                                onPress={() =>
-                                  handleCopyCommentary(c.text, c.author, c.title)
-                                }
+                                onPress={() => handleCopyCommentary(c.text, c.author, c.title)}
                                 activeOpacity={0.7}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                accessibilityLabel="Copy commentary with attribution"
                                 style={[
                                   styles.commentaryCopyBtn,
                                   {
-                                    backgroundColor:
-                                      copiedCommentary ? 'rgba(34,197,94,0.12)' : colors.surface,
-                                    borderColor:
-                                      copiedCommentary ? 'rgba(34,197,94,0.4)' : colors.border,
+                                    backgroundColor: copiedCommentary ? 'rgba(34,197,94,0.12)' : colors.surface,
+                                    borderColor: copiedCommentary ? 'rgba(34,197,94,0.4)' : colors.border,
                                   },
                                 ]}
                               >
@@ -444,8 +352,7 @@ export default function ListenStage({
                       </View>
                     )}
                     {(!translations || translations.length === 0) &&
-                      (!verseResources ||
-                        verseResources.commentaries.length === 0) && (
+                      (!verseResources || verseResources.commentaries.length === 0) && (
                         <View style={styles.listenStudyEmpty}>
                           <ScrollText size={18} color={colors.muted} />
                           <Text style={[styles.aiTipText, { color: colors.muted, fontStyle: 'italic' }]}>
@@ -463,7 +370,6 @@ export default function ListenStage({
 
       {!listenComplete ? (
         <>
-          {/* Before playing — repeat selection */}
           {!isPlaying && !audioStarting && (
             <>
               {repeatCount > 0 ? (
@@ -538,10 +444,8 @@ export default function ListenStage({
             </>
           )}
 
-          {/* Playing / paused state */}
           {(isPlaying || audioStarting) && (
             <View style={{ alignItems: 'center', paddingTop: SPACING.xl }}>
-              {/* Now Playing info */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: SPACING.lg }}>
                 <Volume2 size={18} color={colors.accent} />
                 <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
@@ -549,71 +453,37 @@ export default function ListenStage({
                 </Text>
               </View>
 
-              {/* Waveform animation bars (visual feedback) */}
               <WaveformAnimation active={!isPaused} barCount={10} size={16} color={colors.accent} mutedColor={colors.muted} />
 
-
-              {/* Repeat progress dots */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: SPACING.xl }}>
                 {Array.from({ length: selectedRepeats }, (_, i) => (
                   <View
                     key={i}
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      borderWidth: 3,
-                      borderColor: i < repeatCount
-                        ? colors.accent
-                        : i === repeatCount
-                          ? colors.accent
-                          : colors.border,
-                      backgroundColor: i < repeatCount
-                        ? colors.accent
-                        : i === repeatCount
-                          ? `${colors.accent}30`
-                          : 'transparent',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      width: 32, height: 32, borderRadius: 16, borderWidth: 3,
+                      borderColor: i < repeatCount ? colors.accent : i === repeatCount ? colors.accent : colors.border,
+                      backgroundColor: i < repeatCount ? colors.accent : i === repeatCount ? `${colors.accent}30` : 'transparent',
+                      alignItems: 'center', justifyContent: 'center',
                     }}
                   >
-                    <Text
-                      style={{
-                        color: i < repeatCount ? '#FFFFFF' : i === repeatCount ? colors.text : colors.muted,
-                        fontSize: 13,
-                        fontWeight: '800',
-                      }}
-                    >
+                    <Text style={{ color: i < repeatCount ? '#FFFFFF' : i === repeatCount ? colors.text : colors.muted, fontSize: 13, fontWeight: '800' }}>
                       {i + 1}
                     </Text>
                   </View>
                 ))}
               </View>
 
-              {/* Audio loading indicator */}
               {audioStarting && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: SPACING.lg }}>
                   <ActivityIndicator size="small" color={colors.accent} />
-                  <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
-                    Loading audio...
-                  </Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Loading audio...</Text>
                 </View>
               )}
 
-              {/* Play/Pause button */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.lg }}>
                 {!audioStarting && (
                   <TouchableOpacity
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 36,
-                      backgroundColor: colors.surface,
-                      borderWidth: 2,
-                      borderColor: colors.accent,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
+                    style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}
                     onPress={onToggle}
                     activeOpacity={0.7}
                   >
@@ -624,31 +494,17 @@ export default function ListenStage({
                     )}
                   </TouchableOpacity>
                 )}
-
-                {/* Reset button */}
                 {!audioStarting && (
                   <TouchableOpacity
-                    style={{
-                      height: 44,
-                      paddingHorizontal: SPACING.lg,
-                      borderRadius: 22,
-                      borderWidth: 1.5,
-                      borderColor: colors.border,
-                      backgroundColor: colors.surface,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
+                    style={{ height: 44, paddingHorizontal: SPACING.lg, borderRadius: 22, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
                     onPress={onReset}
                     activeOpacity={0.7}
                   >
-                    <Text style={{ color: colors.error, fontSize: 13, fontWeight: '700' }}>
-                      Reset
-                    </Text>
+                    <Text style={{ color: colors.error, fontSize: 13, fontWeight: '700' }}>Reset</Text>
                   </TouchableOpacity>
                 )}
               </View>
 
-              {/* Repeat count label */}
               <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '600', marginTop: SPACING.md }}>
                 Reading {repeatCount + 1} of {selectedRepeats}
               </Text>
@@ -657,12 +513,7 @@ export default function ListenStage({
         </>
       ) : (
         <View style={styles.amenContainer}>
-          <View
-            style={[
-              styles.amenCircle,
-              { backgroundColor: `${colors.accent}20` },
-            ]}
-          >
+          <View style={[styles.amenCircle, { backgroundColor: `${colors.accent}20` }]}>
             <CheckCircle2 size={48} color={colors.accent} />
           </View>
           <Text style={[styles.amenText, { color: colors.text }]}>Amen</Text>
@@ -672,31 +523,6 @@ export default function ListenStage({
           <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: SPACING.lg }}>
             The passage was read {repeatCount} time{repeatCount !== 1 ? 's' : ''}.
           </Text>
-
-          {passageVersesCount > 0 && (
-            <TouchableOpacity
-              style={[
-                styles.secondaryBtn,
-                {
-                  borderColor: colors.accent,
-                  marginBottom: SPACING.sm,
-                  paddingHorizontal: SPACING.md,
-                },
-              ]}
-              onPress={onReplay}
-              disabled={audioStarting}
-              activeOpacity={0.7}
-            >
-              {audioStarting ? (
-                <ActivityIndicator size="small" color={colors.accent} />
-              ) : (
-                <RotateCcw size={16} color={colors.accent} />
-              )}
-              <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>
-                {audioStarting ? 'Preparing Reader...' : 'Replay Passage'}
-              </Text>
-            </TouchableOpacity>
-          )}
 
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
@@ -716,23 +542,16 @@ export default function ListenStage({
         </View>
       )}
 
+      {/* ── Page Indicator Dots ─────────────────────────────────────────── */}
       <View style={styles.pageIndicator}>
         {stageOrder.map((s, idx) => {
           const dotOpacity = scrollX.interpolate({
-            inputRange: [
-              (idx - 1) * screenWidth,
-              idx * screenWidth,
-              (idx + 1) * screenWidth,
-            ],
+            inputRange: [(idx - 1) * screenWidth, idx * screenWidth, (idx + 1) * screenWidth],
             outputRange: [0.3, 1, 0.3],
             extrapolate: 'clamp',
           });
           const dotScale = scrollX.interpolate({
-            inputRange: [
-              (idx - 1) * screenWidth,
-              idx * screenWidth,
-              (idx + 1) * screenWidth,
-            ],
+            inputRange: [(idx - 1) * screenWidth, idx * screenWidth, (idx + 1) * screenWidth],
             outputRange: [1, 1.3, 1],
             extrapolate: 'clamp',
           });
@@ -742,8 +561,7 @@ export default function ListenStage({
               style={[
                 styles.pageDot,
                 {
-                  backgroundColor:
-                    idx === pageIndex ? colors.accent : colors.muted,
+                  backgroundColor: idx === pageIndex ? colors.accent : colors.muted,
                   opacity: dotOpacity,
                   transform: [{ scale: dotScale }],
                   width: idx === pageIndex ? 20 : 8,

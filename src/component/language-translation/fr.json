@@ -155,7 +155,8 @@
     "dashboard": "Tableau",
     "users": "Utilisateurs",
     "verse": "Verset",
-    "devotion": "Dévotion"
+    "devotion": "Dévotion",
+    "tools": "Outils"
   },
   "extendedProfile": {
     "title": "Informations complémentaires",
@@ -1032,7 +1033,6 @@
     "showMore": "Afficher plus ▼",
     "showLess": "Afficher moins ▲",
     "explainVerse": "Expliquer le verset",
-    "hideExplanation": "Masquer l'explication",
     "shareVerse": "Partager le verset",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1075,7 +1075,11 @@
       "versesRead": "Versets lus",
       "devotions": "Dévotions",
       "bookmarks": "Signets"
-    }
+    },
+    "labCardTitle": "Laboratoire d'exégèse",
+    "labCardSubtitle": "Un parcours guidé en 5 étapes à travers tout passage — Regarder, Écouter, Apprendre, Demeurer et Appliquer.",
+    "labStartStudy": "Commencer l'étude",
+    "labDurationHint": "5 étapes · 30–60 min"
   },
   "readingPlans": {
     "myReadingPlans": "Mes Plans de Lecture",

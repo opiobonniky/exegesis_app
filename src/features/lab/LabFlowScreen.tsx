@@ -43,10 +43,12 @@ import {
 import { bibleTTS } from '../../utilits/bibleTTS';
 import StrongsWordModal from './components/StrongsWordModal';
 import PassageSelectionStep from './components/PassageSelectionStep';
+import StageStepper from './components/StageStepper';
 import LookStage from './components/LookStage';
 import ListenStage from './components/ListenStage';
 import LearnStage from './components/LearnStage';
 import AbideStage from './components/AbideStage';
+import ApplyStage from './components/ApplyStage';
 import CompletedStage from './components/CompletedStage';
 import { useStrongsWordModal } from './hooks/useStrongsWordModal';
 import { LOOK_PROMPTS, STAGE_ORDER } from './constants';
@@ -66,7 +68,17 @@ export default function LabFlowScreen() {
 
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
-  const COLORS = getColors(isDark);
+  // primaryOnSurface: a brighter blue for text/icons on dark surfaces.
+  // Dark mode's primary (#396284) is nearly invisible on dark backgrounds
+  // (2.78:1); #60A5FA reads at 7.05:1. Buttons keep colors.primary so white
+  // text on the button still passes (6.45:1).
+  const COLORS = useMemo(() => {
+    const base = getColors(isDark);
+    return {
+      ...base,
+      primaryOnSurface: isDark ? '#60A5FA' : base.primary,
+    };
+  }, [isDark]);
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const translationId = app?.bibleVersionId || 'Berean';
   const { books, booksLoading } = useLabBooks(translationId);
@@ -107,7 +119,6 @@ export default function LabFlowScreen() {
   const [stage, setStage] = useState<string>(initialStage);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savingProgress, setSavingProgress] = useState(false);
 
   // ── Passage selection ─────────────────────────────────────────────────────
   const [passageRef, setPassageRef] = useState(routeParams.passageRef || '');
@@ -207,6 +218,7 @@ export default function LabFlowScreen() {
 
   // ── Look stage ────────────────────────────────────────────────────────────
   const [lookNotes, setLookNotes] = useState('');
+  const [observations, setObservations] = useState('');
   const [currentPromptIdx, setCurrentPromptIdx] = useState(0);
 
   // ── Listen stage ──────────────────────────────────────────────────────────
@@ -222,15 +234,13 @@ export default function LabFlowScreen() {
   // ── Learn stage ───────────────────────────────────────────────────────────
   const [learnNotes, setLearnNotes] = useState('');
   const [learnTab, setLearnTab] = useState<
-    'exegesis' | 'language' | 'history' | 'prologue'
+    'prologue' | 'language' | 'history' | 'geography' | 'theology' | 'crossrefs' | 'exegesis'
   >(routeParams.learnTab || 'prologue');
   const [verseWords, setVerseWords] = useState<StrongsWordData[]>([]);
   const {
     learnDataLoading,
     verseResources,
-    setVerseResources,
     bookPrologue,
-    setBookPrologue,
     translations,
     translationsLoading,
   } = useLabLearnData({
@@ -274,7 +284,10 @@ export default function LabFlowScreen() {
   const [tags, setTags] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [journalEntryId, setJournalEntryId] = useState<string | null>(null);
+
+  // ── Apply stage ───────────────────────────────────────────────────────────
+  const [challengeText, setChallengeText] = useState('');
+  const [resultsText, setResultsText] = useState('');
 
   // Sync refs with state for use in async callbacks
   useEffect(() => { repeatCountRef.current = repeatCount; }, [repeatCount]);
@@ -362,6 +375,7 @@ export default function LabFlowScreen() {
         listen: 'Listen',
         learn: 'Learn',
         abide: 'Abide',
+        apply: 'Apply',
       };
       const label = stageLabelMap[routeParams.stage] || routeParams.stage;
       showToast('info', `Resumed at ${label} stage`);
@@ -450,50 +464,6 @@ const handleBackToBooks = useCallback(() => {
       setSubStage('book');
     }, [setPassageRef]);
 
-const handleChangePassage = useCallback(
-      (nextSubStage: 'book' | 'chapter' | 'verse') => {
-        bibleTTS.stop().catch(() => {});
-        setStage('passage');
-        setPageIndex(0);
-        setSubStage(nextSubStage);
-        setSessionId(null);
-        setPassageRef('');
-        setPassageVerses([]);
-        setVerseWords([]);
-        setVerseResources(null);
-        setBookPrologue(null);
-        setLookNotes('');
-        setLearnNotes('');
-        setIsPlaying(false);
-        setIsPaused(false);
-        setRepeatCount(0);
-        setListenComplete(false);
-        isLoopActiveRef.current = false;
-
-        if (nextSubStage === 'book') {
-          setBookName('');
-          setChapter('');
-          setVerseStart('');
-          setVerseEnd('');
-          setAvailableVerses([]);
-        } else if (nextSubStage === 'chapter') {
-          setChapter('');
-          setVerseStart('');
-          setVerseEnd('');
-          setAvailableVerses([]);
-        } else {
-          setVerseStart('');
-          setVerseEnd('');
-        }
-      },
-      [
-        setAvailableVerses,
-        setBookPrologue,
-        setPassageVerses,
-        setVerseResources,
-      ],
-    );
-
   // ── API calls ────────────────────────────────────────────────────────────
   const startSession = useCallback(async () => {
     if (!bookName || !chapter) {
@@ -559,15 +529,16 @@ const handleChangePassage = useCallback(
       }
       await sendPostRequest('exegesis', `${sessionId}/look`, {
         notes: lookNotes,
+        observations,
       });
+      showToast('success', 'Progress saved!');
       goToStage('listen');
     } catch (e: any) {
       showToast('error', e?.message || 'Failed to save');
-      goToStage('listen');
     } finally {
       setSaving(false);
     }
-  }, [sessionId, lookNotes, goToStage]);
+  }, [sessionId, lookNotes, observations, goToStage]);
 
   const saveListen = useCallback(async () => {
     if (!sessionId) return;
@@ -603,16 +574,7 @@ const handleChangePassage = useCallback(
     if (!sessionId) return;
     setSaving(true);
     try {
-      // Extract studied Strong's words from the Learn stage
-      const strongsWords = verseWords
-        .filter(w => w.strongsId)
-        .map(w => ({
-          strongsId: w.strongsId,
-          surfaceText: w.surfaceText,
-          lemma: w.lemma || '',
-        }));
-
-      // Save abide progress to session before navigating
+      // Save abide progress to session before advancing
       await sendPostRequest('exegesis', `${sessionId}/progress`, {
         abideReflection: reflection,
         abidePrayer: prayer,
@@ -620,27 +582,9 @@ const handleChangePassage = useCallback(
         abideTags: tags,
         isPublic: isPublic,
       }, false, true);
-
-      // Navigate to JournalEntry with pre-filled data
-      navigation.navigate(route.ledgerEntry, {
-        reflection,
-        prayers: prayer,
-        application: appText,
-        tags,
-        isPublic,
-        strongsWords:
-          strongsWords.length > 0 ? JSON.stringify(strongsWords) : undefined,
-        bookName,
-        chapter: chapter ? parseInt(chapter, 10) : undefined,
-        verseStart: verseStart ? parseInt(verseStart, 10) : undefined,
-        verseEnd: verseEnd ? parseInt(verseEnd, 10) : undefined,
-        passageRef,
-        source: 'exegesis-lab',
-        returnTo: route.legacyLedger,
-        sessionId, // Pass session ID so JournalEntry can update it
-      });
+      goToStage('apply');
     } catch (e: any) {
-      showToast('error', e?.message || 'Failed to navigate');
+      showToast('error', e?.message || 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -651,14 +595,24 @@ const handleChangePassage = useCallback(
     appText,
     tags,
     isPublic,
-    verseWords,
-    bookName,
-    chapter,
-    verseStart,
-    verseEnd,
-    passageRef,
-    navigation,
+    goToStage,
   ]);
+
+  const saveApply = useCallback(async () => {
+    if (!sessionId) return;
+    setSaving(true);
+    try {
+      await sendPostRequest('exegesis', `${sessionId}/progress`, {
+        applyChallenge: challengeText,
+        applyResults: resultsText,
+      }, false, true);
+      setCompleted(true);
+    } catch (e: any) {
+      showToast('error', e?.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }, [sessionId, challengeText, resultsText]);
 
   // ── Save progress (without advancing stage) ──────────────────────────
   const saveCurrentProgress = useCallback(async ({ silent }: { silent?: boolean } = {}) => {
@@ -666,12 +620,12 @@ const handleChangePassage = useCallback(
       showToast('error', 'No active session to save');
       return;
     }
-    setSavingProgress(true);
     try {
       const body: any = {};
       switch (stage) {
         case 'look':
           body.lookNotes = lookNotes;
+          body.observations = observations;
           break;
         case 'listen':
           body.listenRepeats = selectedRepeats;
@@ -688,8 +642,11 @@ const handleChangePassage = useCallback(
           body.abideTags = tags;
           body.isPublic = isPublic;
           break;
+        case 'apply':
+          body.applyChallenge = challengeText;
+          body.applyResults = resultsText;
+          break;
         default:
-          setSavingProgress(false);
           return;
       }
       await sendPostRequest('exegesis', `${sessionId}/progress`, body, false, true);
@@ -700,13 +657,12 @@ const handleChangePassage = useCallback(
       } else {
         showToast('error', e?.message || 'Failed to save progress');
       }
-    } finally {
-      setSavingProgress(false);
     }
   }, [
     sessionId,
     stage,
     lookNotes,
+    observations,
     selectedRepeats,
     listenComplete,
     repeatCount,
@@ -716,6 +672,8 @@ const handleChangePassage = useCallback(
     appText,
     tags,
     isPublic,
+    challengeText,
+    resultsText,
   ]);
 
   // ── TTS passage playback for Listen stage ─────────────────────────────
@@ -757,28 +715,6 @@ const handleChangePassage = useCallback(
         isLoopActiveRef.current = false;
       });
   }, [speakPassageWithPreferredVoice]);
-
-  const handleReplayPassageAudio = useCallback(async () => {
-    if (!passageVerses.length) {
-      showToast('error', 'No passage selected to replay');
-      return;
-    }
-
-    setAudioStarting(true);
-    setRepeatCount(0);
-    setListenComplete(false);
-    setIsPlaying(true);
-    setIsPaused(false);
-    isLoopActiveRef.current = true;
-    try {
-      await speakPassageWithPreferredVoice();
-      if (isLoopActiveRef.current) scheduleNextPlay();
-    } catch (error: any) {
-      showToast('error', error?.message || 'Audio could not start');
-    } finally {
-      setAudioStarting(false);
-    }
-  }, [passageVerses.length, speakPassageWithPreferredVoice, scheduleNextPlay]);
 
   const handleStart = useCallback(() => {
     if (passageVerses.length === 0) {
@@ -844,6 +780,7 @@ const handleChangePassage = useCallback(
         const data = res.returnData;
         // Restore saved notes
         if (data.lookNotes) setLookNotes(data.lookNotes);
+        if (data.observations) setObservations(data.observations);
         if (data.learnNotes) setLearnNotes(data.learnNotes);
         // Restore abide fields if resuming from Abide
         if (data.abideReflection) setReflection(data.abideReflection);
@@ -851,7 +788,9 @@ const handleChangePassage = useCallback(
         if (data.abideApplication) setAppText(data.abideApplication);
         if (data.abideTags) setTags(data.abideTags);
         if (data.isPublic !== undefined) setIsPublic(data.isPublic);
-        if (data.journalEntryId) setJournalEntryId(data.journalEntryId);
+        // Restore apply fields if resuming from Apply
+        if (data.applyChallenge) setChallengeText(data.applyChallenge);
+        if (data.applyResults) setResultsText(data.applyResults);
         // Restore listen stage progress
         if (data.listenRepeats) {
           setSelectedRepeats(Number(data.listenRepeats));
@@ -966,30 +905,6 @@ const handleChangePassage = useCallback(
     return word.toLowerCase().replace(/[^a-z0-9']/g, '');
   }, []);
 
-  const renderChangePassageActions = () => (
-    <View style={styles.changePassageRow}>
-      {([
-        { label: 'Book', value: 'book' },
-        { label: 'Chapter', value: 'chapter' },
-        { label: 'Verses', value: 'verse' },
-      ] as const).map(action => (
-        <TouchableOpacity
-          key={action.value}
-          style={[
-            styles.changePassageBtn,
-            { backgroundColor: COLORS.surface, borderColor: COLORS.border },
-          ]}
-          onPress={() => handleChangePassage(action.value)}
-          activeOpacity={0.75}
-        >
-          <Text style={[styles.changePassageText, { color: COLORS.primary }]}> 
-            Change {action.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
   const renderHighlightedVerseText = (
     verse: { verseNumber: number; text: string },
   ) => {
@@ -1028,9 +943,9 @@ const handleChangePassage = useCallback(
                 style={[
                   styles.passageStrongWord,
                   {
-                    color: COLORS.primary,
-                    backgroundColor: `${COLORS.primary}18`,
-                    borderColor: `${COLORS.primary}35`,
+                    color: COLORS.primaryOnSurface ?? COLORS.primary,
+                    backgroundColor: `${COLORS.primaryOnSurface ?? COLORS.primary}18`,
+                    borderColor: `${COLORS.primaryOnSurface ?? COLORS.primary}35`,
                   },
                 ]}
               >
@@ -1074,20 +989,18 @@ const handleChangePassage = useCallback(
       passageRef={passageRef}
       bookName={bookName}
       chapter={chapter}
-      verseStart={verseStart}
       passageVerses={passageVerses}
       passageVersesLoading={passageVersesLoading}
       lookNotes={lookNotes}
       setLookNotes={setLookNotes}
+      observations={observations}
+      setObservations={setObservations}
       saving={saving}
-      savingProgress={savingProgress}
       pageIndex={pageIndex}
       stageOrder={STAGE_ORDER}
       scrollX={scrollX}
       screenWidth={SCREEN_WIDTH}
-      onSaveProgress={() => saveCurrentProgress()}
-      onContinue={saveLook}
-      renderChangePassageActions={renderChangePassageActions}
+      onSaveProgress={saveLook}
       renderHighlightedVerseText={renderHighlightedVerseText}
     />
   );
@@ -1102,7 +1015,6 @@ const handleChangePassage = useCallback(
       chapter={chapter}
       verseStart={verseStart}
       passageVerses={passageVerses}
-      passageVersesCount={passageVerses.length}
       selectedRepeats={selectedRepeats}
       setSelectedRepeats={handleSetSelectedRepeats}
       repeatCount={repeatCount}
@@ -1115,11 +1027,9 @@ const handleChangePassage = useCallback(
       stageOrder={STAGE_ORDER}
       scrollX={scrollX}
       screenWidth={SCREEN_WIDTH}
-      renderChangePassageActions={renderChangePassageActions}
       onStart={handleStart}
       onToggle={handleToggle}
       onReset={handleReset}
-      onReplay={handleReplayPassageAudio}
       onAdvance={saveListen}
     />
   );
@@ -1146,7 +1056,6 @@ const handleChangePassage = useCallback(
       isPublic={isPublic}
       setIsPublic={setIsPublic}
       saving={saving}
-      savingProgress={savingProgress}
       pageIndex={pageIndex}
       stageOrder={STAGE_ORDER}
       scrollX={scrollX}
@@ -1175,7 +1084,6 @@ const handleChangePassage = useCallback(
         });
       }}
       onStrongsWordPress={handleStrongsWordPress}
-      onSaveProgress={saveCurrentProgress}
       onContinue={saveLearn}
     />
   );
@@ -1185,10 +1093,6 @@ const handleChangePassage = useCallback(
     <AbideStage
       styles={styles}
       colors={COLORS}
-      passageRef={passageRef}
-      bookName={bookName}
-      chapter={chapter}
-      verseStart={verseStart}
       reflection={reflection}
       setReflection={setReflection}
       prayer={prayer}
@@ -1200,15 +1104,46 @@ const handleChangePassage = useCallback(
       isPublic={isPublic}
       setIsPublic={setIsPublic}
       saving={saving}
-      savingProgress={savingProgress}
-      journalEntryId={journalEntryId}
       pageIndex={pageIndex}
       stageOrder={STAGE_ORDER}
       scrollX={scrollX}
       screenWidth={SCREEN_WIDTH}
-      onSaveProgress={() => saveCurrentProgress()}
       onSaveAbide={saveAbide}
-      onViewLegacyLedger={() => navigation.navigate(route.legacyLedger)}
+    />
+  );
+
+  // ── Render Apply stage ───────────────────────────────────────────────────
+  const renderApply = () => (
+    <ApplyStage
+      styles={styles}
+      colors={COLORS}
+      passageRef={passageRef}
+      bookName={bookName}
+      chapter={chapter}
+      verseStart={verseStart}
+      passageVerses={passageVerses}
+      challengeText={challengeText}
+      setChallengeText={setChallengeText}
+      resultsText={resultsText}
+      setResultsText={setResultsText}
+      saving={saving}
+      pageIndex={pageIndex}
+      stageOrder={STAGE_ORDER}
+      scrollX={scrollX}
+      screenWidth={SCREEN_WIDTH}
+      onComplete={saveApply}
+      onOpenBibleReader={() =>
+        navigation.navigate(route.bible, {
+          bookName,
+          chapter: parseInt(chapter, 10),
+        })
+      }
+      onOpenChallengeLibrary={() =>
+        showToast('info', 'Challenge library coming soon')
+      }
+      onOpenPastChallenges={() =>
+        showToast('info', 'Past challenges coming soon')
+      }
     />
   );
 
@@ -1235,7 +1170,7 @@ const handleChangePassage = useCallback(
       passageVerseText || '(Passage text unavailable)',
       '',
       `─── Look: Observations ───`,
-      lookNotes || '(No observations recorded)',
+      observations || lookNotes || '(No observations recorded)',
       '',
       `─── Learn: Study Notes ───`,
       learnNotes || '(No study notes recorded)',
@@ -1250,6 +1185,12 @@ const handleChangePassage = useCallback(
       `─── Application ───`,
       appText || '(No application recorded)',
       '',
+      `─── Challenge ───`,
+      challengeText || '(No challenge recorded)',
+      '',
+      `─── Results ───`,
+      resultsText || '(No results recorded)',
+      '',
       tags ? `🏷️ Tags: ${tags}` : '',
       '',
       `─`.repeat(50),
@@ -1257,7 +1198,7 @@ const handleChangePassage = useCallback(
     ]
       .filter(Boolean)
       .join('\n');
-  }, [passageVerses, verseWords, passageRef, bookName, chapter, lookNotes, learnNotes, reflection, prayer, appText, tags]);
+  }, [passageVerses, verseWords, passageRef, bookName, chapter, lookNotes, observations, learnNotes, reflection, prayer, appText, tags, challengeText, resultsText]);
 
   // ── Handle copy entry to clipboard ───────────────────────────────
   const handleCopyEntry = useCallback(async () => {
@@ -1329,11 +1270,14 @@ const handleChangePassage = useCallback(
     setVerseStart('');
     setVerseEnd('');
     setLookNotes('');
+    setObservations('');
     setLearnNotes('');
     setReflection('');
     setPrayer('');
     setAppText('');
     setTags('');
+    setChallengeText('');
+    setResultsText('');
     setVerseWords([]);
     setPassageVerses([]);
     setListenComplete(false);
@@ -1345,9 +1289,9 @@ const handleChangePassage = useCallback(
   }, [
     setStage, setSubStage, setSessionId, setBookName, setChapter,
     setVerseStart, setVerseEnd, setLookNotes, setLearnNotes,
-    setReflection, setPrayer, setAppText, setTags, setVerseWords,
-    setPassageVerses, setListenComplete, setRepeatCount, setIsPlaying,
-    setIsPaused, setCompleted,
+    setReflection, setPrayer, setAppText, setTags, setChallengeText,
+    setResultsText, setObservations, setVerseWords, setPassageVerses,
+    setListenComplete, setRepeatCount, setIsPlaying, setIsPaused, setCompleted,
   ]);
 
   const renderCompleted = () => (
@@ -1368,6 +1312,7 @@ const handleChangePassage = useCallback(
     listen: 'Listen',
     learn: 'Learn',
     abide: 'Abide',
+    apply: 'Apply',
   };
 
   // When selecting book or chapter, show full-screen selectors
@@ -1439,76 +1384,14 @@ const handleChangePassage = useCallback(
         }}
       />
 
-      {/* Stage progress indicator (tappable, smoothly animated via scrollX) */}
+      {/* Stage stepper (tappable — matches the Lab design images) */}
       {stage !== 'passage' && !completed && (
-        <View style={[styles.progressBar, { backgroundColor: COLORS.border }]}>
-          {STAGE_ORDER.map((s, idx) => {
-            const isDone = idx < pageIndex;
-            const isCurrent = idx === pageIndex;
-
-            // Opacity: full when this dot's page is centered, faded otherwise
-            const dotOpacity = scrollX.interpolate({
-              inputRange: [
-                (idx - 1) * SCREEN_WIDTH,
-                idx * SCREEN_WIDTH,
-                (idx + 1) * SCREEN_WIDTH,
-              ],
-              outputRange: [0.35, 1, 0.35],
-              extrapolate: 'clamp',
-            });
-
-            // Scale: pops up slightly when active
-            const dotScale = scrollX.interpolate({
-              inputRange: [
-                (idx - 1) * SCREEN_WIDTH,
-                idx * SCREEN_WIDTH,
-                (idx + 1) * SCREEN_WIDTH,
-              ],
-              outputRange: [1, 1.25, 1],
-              extrapolate: 'clamp',
-            });
-
-            return (
-              <TouchableOpacity
-                key={s}
-                style={styles.progressStep}
-                onPress={() => goToStage(s)}
-                activeOpacity={0.7}
-              >
-                <Animated.View
-                  style={[
-                    styles.progressDot,
-                    {
-                      backgroundColor: isDone
-                        ? COLORS.success
-                        : isCurrent
-                          ? COLORS.accent
-                          : COLORS.muted,
-                      opacity: dotOpacity,
-                      transform: [{ scale: dotScale }],
-                      width: isCurrent ? 22 : 10,
-                    },
-                  ]}
-                />
-                <Animated.Text
-                  style={[
-                    styles.progressLabel,
-                    {
-                      color: isDone
-                        ? COLORS.success
-                        : isCurrent
-                          ? COLORS.accent
-                          : COLORS.muted,
-                      opacity: dotOpacity,
-                    },
-                  ]}
-                >
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </Animated.Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <StageStepper
+          stageOrder={STAGE_ORDER}
+          pageIndex={pageIndex}
+          colors={COLORS}
+          onSelect={goToStage}
+        />
       )}
 
       {/* Passage selection (standalone) */}
@@ -1603,6 +1486,16 @@ const handleChangePassage = useCallback(
           >
             {renderPage(3, renderAbide())}
           </ScrollView>
+          {/* Apply */}
+          <ScrollView
+            style={{ width: SCREEN_WIDTH }}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+          >
+            {renderPage(4, renderApply())}
+          </ScrollView>
         </Animated.ScrollView>
       )}
 
@@ -1660,57 +1553,6 @@ const createStyles = (COLORS: any) =>
       marginBottom: SPACING.lg,
     },
     selectedBadgeText: { fontSize: FONT_SIZES.md, fontWeight: '700', flex: 1 },
-
-    // Stage header
-    stageHeader: { alignItems: 'center', marginBottom: SPACING.xl },
-    stageBadge: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: SPACING.sm,
-    },
-    stageLabel: {
-      fontSize: FONT_SIZES.xs,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 1,
-      marginBottom: SPACING.xs,
-    },
-    stageTitle: {
-      fontSize: FONT_SIZES.xxl,
-      fontWeight: '800',
-      marginBottom: SPACING.xs,
-    },
-    stageSubtitle: { fontSize: FONT_SIZES.sm, textAlign: 'center' },
-    passageChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.xs + 2,
-      borderRadius: BORDER_RADIUS.round,
-      marginTop: SPACING.md,
-    },
-    passageChipText: { fontSize: FONT_SIZES.sm, fontWeight: '700' },
-    changePassageRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      gap: SPACING.sm,
-      marginTop: SPACING.md,
-    },
-    changePassageBtn: {
-      borderWidth: 1,
-      borderRadius: BORDER_RADIUS.round,
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.xs + 2,
-    },
-    changePassageText: {
-      fontSize: FONT_SIZES.xs,
-      fontWeight: '700',
-    },
 
     // Inputs
     inputGroup: { marginBottom: SPACING.md },
@@ -1810,48 +1652,80 @@ const createStyles = (COLORS: any) =>
       marginVertical: SPACING.sm,
     },
     secondaryBtnText: { fontSize: FONT_SIZES.sm, fontWeight: '700' },
-    saveProgressBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      height: 36,
-      borderRadius: BORDER_RADIUS.sm,
-      borderWidth: 1,
-      marginBottom: SPACING.md,
-    },
-    saveProgressText: { fontSize: FONT_SIZES.xs, fontWeight: '600' },
 
     // Look stage - prompts
     promptCard: {
       borderLeftWidth: 4,
       borderRadius: BORDER_RADIUS.md,
       padding: SPACING.md,
-      marginBottom: SPACING.lg,
+      marginBottom: SPACING.sm,
+    },
+    promptHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: SPACING.md,
+    },
+    promptQuoteIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     promptText: {
+      flex: 1,
       fontSize: FONT_SIZES.md,
-      lineHeight: 24,
-      marginTop: SPACING.sm,
-      fontStyle: 'italic',
+      lineHeight: 23,
+      paddingTop: 2,
+    },
+    promptInput: {
+      minHeight: 84,
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.md,
+      padding: SPACING.md,
+      fontSize: FONT_SIZES.md,
+      lineHeight: 22,
+      marginTop: SPACING.md,
+      marginLeft: 50, // aligns under the question text (icon 38 + gap 12)
     },
     promptNav: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginTop: SPACING.md,
+      marginLeft: 50, // aligns under the question text (icon 38 + gap 12)
     },
-    promptCounter: { fontSize: FONT_SIZES.xs, fontWeight: '600' },
+    promptNavBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    promptCounter: { fontSize: FONT_SIZES.sm, fontWeight: '700' },
+    obsLabelWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.md,
+      marginTop: SPACING.sm,
+      marginBottom: SPACING.sm,
+    },
+    obsIcon: {
+      width: 30,
+      height: 30,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
     // Look stage - passage text
     passageTextCard: {
-      borderLeftWidth: 3,
       borderRadius: BORDER_RADIUS.md,
       borderWidth: 1,
       paddingHorizontal: SPACING.md,
       paddingTop: SPACING.md,
       paddingBottom: SPACING.sm,
-      marginBottom: SPACING.lg,
+      marginBottom: SPACING.sm,
     },
     passageTextHeader: {
       flexDirection: 'row',
@@ -1888,20 +1762,20 @@ const createStyles = (COLORS: any) =>
       letterSpacing: 0.3,
     },
     copyPassageBtn: {
-      width: 28,
-      height: 28,
-      borderRadius: BORDER_RADIUS.sm,
+      width: 36,
+      height: 36,
+      borderRadius: 10,
       borderWidth: 1,
       alignItems: 'center',
       justifyContent: 'center',
     },
     passageVerseRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
     passageVerseNum: {
-      fontSize: FONT_SIZES.xs,
-      fontWeight: '700',
-      minWidth: 20,
+      fontSize: FONT_SIZES.md,
+      fontWeight: '800',
+      minWidth: 24,
       textAlign: 'right',
-      lineHeight: 22,
+      lineHeight: 24,
     },
     passageVerseTextWrap: {
       flex: 1,
@@ -1963,14 +1837,6 @@ const createStyles = (COLORS: any) =>
     },
     timerText: { fontSize: 42, fontWeight: '800', letterSpacing: -1 },
     timerLabel: { fontSize: FONT_SIZES.xs, fontWeight: '600', marginTop: 2 },
-    progressBarBg: {
-      width: 120,
-      height: 4,
-      borderRadius: 2,
-      marginTop: SPACING.md,
-      overflow: 'hidden',
-    },
-    progressBarFill: { height: '100%', borderRadius: 2 },
     timerControls: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -2211,14 +2077,6 @@ const createStyles = (COLORS: any) =>
     },
 
     // Abide stage
-    abideFieldRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: SPACING.sm,
-    },
-
-    // Abide stage
     privacyRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -2228,6 +2086,108 @@ const createStyles = (COLORS: any) =>
       marginBottom: SPACING.md,
     },
     privacyText: { fontSize: FONT_SIZES.sm, fontWeight: '500' },
+
+    // Abide stage - question cards
+    abideCard: {
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.md,
+      padding: SPACING.md,
+      marginBottom: SPACING.md,
+    },
+    abideCardIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    abideNumBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'center',
+    },
+    abideNumText: { fontSize: 12, fontWeight: '800' },
+    abideQuestion: {
+      flex: 1,
+      fontSize: FONT_SIZES.md,
+      lineHeight: 23,
+      fontWeight: '700',
+      paddingTop: 2,
+    },
+    abideInput: {
+      minHeight: 84,
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.md,
+      padding: SPACING.md,
+      fontSize: FONT_SIZES.md,
+      lineHeight: 22,
+      marginTop: SPACING.xs,
+      marginLeft: 50, // aligns under the question text (icon 38 + gap 12), icon stands alone
+    },
+
+    // Apply stage - link rows
+    applyLinkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      paddingVertical: SPACING.md,
+    },
+    applyLinkText: {
+      fontSize: FONT_SIZES.md,
+      fontWeight: '600',
+      flexShrink: 1,
+    },
+    applyLinkTitle: {
+      fontSize: FONT_SIZES.md,
+      fontWeight: '700',
+    },
+    applyLinkSubtitle: {
+      fontSize: FONT_SIZES.xs,
+      lineHeight: 17,
+      marginTop: 2,
+    },
+
+    // Apply stage - cards
+    applyCard: {
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.md,
+      padding: SPACING.md,
+      marginTop: SPACING.lg,
+    },
+    applyCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.md,
+      marginBottom: SPACING.md,
+    },
+    applyCardIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    applyCardTitle: {
+      fontSize: FONT_SIZES.md,
+      fontWeight: '800',
+    },
+    applyCardSubtitle: {
+      fontSize: FONT_SIZES.xs,
+      lineHeight: 17,
+      marginTop: 2,
+    },
+    applyInput: {
+      minHeight: 96,
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.md,
+      padding: SPACING.md,
+      fontSize: FONT_SIZES.md,
+      lineHeight: 22,
+    },
 
     // Completed
     completedContainer: { alignItems: 'center', paddingTop: SPACING.xxl * 2 },
@@ -2312,20 +2272,6 @@ const createStyles = (COLORS: any) =>
     completedActionBtn: { flex: 1 },
     completedPrimaryBtn: { width: '100%' },
 
-    // Progress bar (at top)
-    progressBar: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      gap: SPACING.xl,
-      paddingVertical: SPACING.sm,
-      marginHorizontal: SPACING.lg,
-      borderRadius: BORDER_RADIUS.sm,
-      marginBottom: SPACING.xs,
-    },
-    progressStep: { alignItems: 'center', gap: 4 },
-    progressDot: { width: 10, height: 10, borderRadius: 5 },
-    progressLabel: { fontSize: 10, fontWeight: '600' },
-
     // Page indicator (bottom)
     pageIndicator: {
       flexDirection: 'row',
@@ -2337,51 +2283,8 @@ const createStyles = (COLORS: any) =>
     },
     pageDot: { height: 8, borderRadius: 4 },
 
-    // ── Look prompt header ───────────────────────────────────────────────
-    promptHeaderRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: SPACING.xs,
-    },
-    promptHeaderActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: SPACING.sm,
-    },
 
-    // ── Look observations row ────────────────────────────────────────────
-    textareaLabelRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginTop: SPACING.sm,
-    },
 
-    // Look stage - answered-count badge + saved flash
-    answeredBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: SPACING.sm + 2,
-      paddingVertical: 3,
-      borderRadius: BORDER_RADIUS.round,
-      borderWidth: 1,
-    },
-    answeredBadgeText: {
-      fontSize: FONT_SIZES.xs,
-      fontWeight: '800',
-      letterSpacing: 0.3,
-    },
-    savedFlash: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: SPACING.sm,
-      paddingVertical: 3,
-      borderRadius: BORDER_RADIUS.sm,
-      marginRight: SPACING.xs,
-    },
     textareaWrap: { position: 'relative' },
     promptTagRow: {
       alignItems: 'flex-end',

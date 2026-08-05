@@ -168,7 +168,8 @@
     "dashboard": "Πίνακας",
     "users": "Χρήστες",
     "verse": "Στίχος",
-    "devotion": "Αφιέρωση"
+    "devotion": "Αφιέρωση",
+    "tools": "Εργαλεία"
   },
   "readingSettings": {
     "title": "Ρυθμίσεις Ανάγνωσης",
@@ -1043,7 +1044,6 @@
     "showMore": "Περισσότερα ▼",
     "showLess": "Λιγότερα ▲",
     "explainVerse": "Εξήγηση στίχου",
-    "hideExplanation": "Απόκρυψη",
     "shareVerse": "Κοινοποίηση",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1086,7 +1086,11 @@
       "versesRead": "Στίχοι που διαβάστηκαν",
       "devotions": "Αποσπάσματα",
       "bookmarks": "Σελιδοδείκτες"
-    }
+    },
+    "labCardTitle": "Εργαστήριο Εξήγησης",
+    "labCardSubtitle": "Ένα καθοδηγούμενο ταξίδι 5 βημάτων μέσα από οποιοδήποτε απόσπασμα — Κοιτάξτε, Ακούστε, Μάθετε, Μείνετε και Εφαρμόστε.",
+    "labStartStudy": "Έναρξη Μελέτης",
+    "labDurationHint": "5 βήματα · 30–60 λεπτά"
   },
   "readingPlans": {
     "myReadingPlans": "Τα Πλάνα μου",

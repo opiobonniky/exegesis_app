@@ -168,7 +168,8 @@
     "dashboard": "ڈیش بورڈ",
     "users": "صارفین",
     "verse": "آیت",
-    "devotion": "عبادت"
+    "devotion": "عبادت",
+    "tools": "ٹولز"
   },
   "readingSettings": {
     "title": "پڑھنے کی ترتیبات",
@@ -1045,7 +1046,6 @@
     "showMore": "مزید دکھائیں ▼",
     "showLess": "کم دکھائیں ▲",
     "explainVerse": "آیت کی وضاحت کریں",
-    "hideExplanation": "وضاحت چھپائیں",
     "shareVerse": "آیت شیئر کریں",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1088,7 +1088,11 @@
       "versesRead": "پڑھی ہوئی آیات",
       "devotions": "عقیدتیں",
       "bookmarks": "بک مارکس"
-    }
+    },
+    "labCardTitle": "ایگزجیسس لیب",
+    "labCardSubtitle": "کسی بھی حوالے سے گزرنے کا 5 مراحل پر مشتمل رہنمائی سفر — دیکھیں، سنیں، سیکھیں، قائم رہیں اور عمل کریں۔",
+    "labStartStudy": "مطالعہ شروع کریں",
+    "labDurationHint": "5 مراحل · 30–60 منٹ"
   },
   "readingPlans": {
     "myReadingPlans": "میرے پڑھنے کے منصوبے",

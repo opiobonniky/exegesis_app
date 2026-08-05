@@ -168,7 +168,8 @@
     "dashboard": "ಡ್ಯಾಶ್ಬೋರ್ಡ್",
     "users": "ಬಳಕೆದಾರರು",
     "verse": "ವಾಕ್ಯ",
-    "devotion": "ಭಕ್ತಿ"
+    "devotion": "ಭಕ್ತಿ",
+    "tools": "ಉಪಕರಣಗಳು"
   },
   "readingSettings": {
     "title": "ಓದುವ ಸೆಟ್ಟಿಂಗ್ಗಳು",
@@ -1043,7 +1044,6 @@
     "showMore": "ಇನ್ನಷ್ಟು ತೋರಿಸಿ ▼",
     "showLess": "ಕಡಿಮೆ ತೋರಿಸಿ ▲",
     "explainVerse": "ವಾಕ್ಯವನ್ನು ವಿವರಿಸಿ",
-    "hideExplanation": "ವಿವರಣೆ ಮರೆಮಾಡಿ",
     "shareVerse": "ವಾಕ್ಯ ಹಂಚಿಕೊಳ್ಳಿ",
     "faithReelTitle": "ಫೇಯ್ತ್ ರೀಲ್",
     "faithReelsFooter": "🎉 ಫೇಯ್ತ್ ರೀಲ್ಸ್ —",
@@ -1086,7 +1086,11 @@
       "versesRead": "ಓದಿದ ವಚನಗಳು",
       "devotions": "ಭಕ್ತಿಗಳು",
       "bookmarks": "ಬುಕ್ಮಾರ್ಕ್‌ಗಳು"
-    }
+    },
+    "labCardTitle": "ಎಕ್ಸೆಜೆಸಿಸ್ ಲ್ಯಾಬ್",
+    "labCardSubtitle": "ಯಾವುದೇ ಭಾಗದ ಮೂಲಕ ಮಾರ್ಗದರ್ಶಿ 5-ಹಂತದ ಪ್ರಯಾಣ — ನೋಡಿ, ಕೇಳಿ, ಕಲಿಯಿರಿ, ನೆಲೆಸಿರಿ ಮತ್ತು ಅನ್ವಯಿಸಿ.",
+    "labStartStudy": "ಅಧ್ಯಯನ ಪ್ರಾರಂಭಿಸಿ",
+    "labDurationHint": "5 ಹಂತಗಳು · 30–60 ನಿಮಿಷ"
   },
   "readingPlans": {
     "myReadingPlans": "ನನ್ನ ಓದುವ ಯೋಜನೆಗಳು",

@@ -1,6 +1,5 @@
 import { api, GenericResponse, sendGet, sendPostRequest } from '../../../services/api';
 import {
-  StrongsEntry,
   StrongsVerseRef,
   getStrongsEntry as fetchStrongsEntry,
 } from '../../../services/strongsService';

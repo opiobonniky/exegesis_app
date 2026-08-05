@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
 import { BadgeCheck, Camera } from 'lucide-react-native';
 import { BORDER_RADIUS, SPACING } from '../../../constants/theme';
 import { HomeDesign } from '../../home/homeStyle';
@@ -18,6 +25,7 @@ type Props = {
   photoUrl?: string | null;
   coverUrl?: string | null;
   editCoverLabel?: string;
+  uploading?: boolean;
   onEditCover?: () => void;
 };
 
@@ -30,6 +38,7 @@ export default function CoverCard({
   photoUrl,
   coverUrl,
   editCoverLabel,
+  uploading,
   onEditCover,
 }: Props) {
   return (
@@ -49,11 +58,18 @@ export default function CoverCard({
         <TouchableOpacity
           onPress={onEditCover}
           activeOpacity={0.8}
-          style={styles.editCoverBtn}
+          disabled={uploading}
+          style={[styles.editCoverBtn, uploading && styles.editCoverBtnBusy]}
         >
-          <Camera size={13} color="#FFFFFF" />
+          {uploading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Camera size={13} color="#FFFFFF" />
+          )}
           <Text style={styles.editCoverText}>
-            {editCoverLabel || 'Edit Cover'}
+            {uploading
+              ? 'Uploading…'
+              : editCoverLabel || 'Edit Cover'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -127,6 +143,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  editCoverBtnBusy: {
+    opacity: 0.85,
   },
   avatarRow: {
     marginTop: -44,

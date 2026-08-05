@@ -175,7 +175,8 @@
     "dashboard": "ड्यासबोर्ड",
     "users": "प्रयोगकर्ताहरू",
     "verse": "पद",
-    "devotion": "भक्ति"
+    "devotion": "भक्ति",
+    "tools": "उपकरणहरू"
   },
   "readingSettings": {
     "title": "पढ्ने सेटिङ्गहरू",
@@ -1050,7 +1051,6 @@
     "showMore": "थप देखाउनुहोस् ▼",
     "showLess": "कम देखाउनुहोस् ▲",
     "explainVerse": "पद व्याख्या गर्नुहोस्",
-    "hideExplanation": "व्याख्या लुकाउनुहोस्",
     "shareVerse": "पद साझा गर्नुहोस्",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1093,7 +1093,11 @@
       "versesRead": "पढिएका पदहरू",
       "devotions": "भक्तिहरू",
       "bookmarks": "बुकमार्कहरू"
-    }
+    },
+    "labCardTitle": "एक्सेजेसिस ल्याब",
+    "labCardSubtitle": "कुनै पनि अनुच्छेदबाट 5-चरण निर्देशित यात्रा — हेर्नुहोस्, सुन्नुहोस्, सिक्नुहोस्, बस्नुहोस् र लागू गर्नुहोस्।",
+    "labStartStudy": "अध्ययन सुरु गर्नुहोस्",
+    "labDurationHint": "5 चरणहरू · 30–60 मिनेट"
   },
   "readingPlans": {
     "myReadingPlans": "मेरो पढ्ने योजनाहरू",

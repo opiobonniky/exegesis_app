@@ -11,6 +11,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   Platform,
   LayoutAnimation,
   UIManager,
@@ -53,13 +54,7 @@ import {
 } from '../../component/language-translation/LanguageProvider';
 import LinearGradient from 'react-native-linear-gradient';
 import { bibleApi } from '../../services/bibleApi';
-import {
-  getVerseWords,
-  getStrongsEntry,
-  StrongsWordData,
-  StrongsEntry,
-} from '../../services/strongsService';
-import WordStudyBottomSheet from './components/WordStudyBottomSheet';
+import { getVerseWords, StrongsWordData } from '../../services/strongsService';
 import BookSelectorScreen from './components/BookSelectorScreen';
 import ChapterSelectorScreen from './components/ChapterSelectorScreen';
 
@@ -71,6 +66,9 @@ import {
   VerseSideMenu,
   ChapterStudyToolsSheet,
   SkeletonLoader,
+  BibleActionBar,
+  BookOverviewScreen,
+  ChapterJournalSection,
 } from './components';
 
 import {
@@ -158,26 +156,6 @@ export default function Bible() {
     setReflectionOpen(next);
   };
 
-  const handleScroll = useCallback(
-    (event: any) => {
-      const currentOffset = event.nativeEvent.contentOffset.y;
-      const direction = currentOffset > scrollY.current ? 'down' : 'up';
-      const shouldShow = direction === 'up' || currentOffset <= 0;
-
-      if (shouldShow !== bottomTabVisible) {
-        setBottomTabVisible(shouldShow);
-        Animated.timing(tabBarAnimation, {
-          toValue: shouldShow ? 1 : 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }
-
-      scrollY.current = currentOffset;
-    },
-    [bottomTabVisible, tabBarAnimation],
-  );
-
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponderCapture: () => {
@@ -245,6 +223,8 @@ export default function Bible() {
     highlightAnim,
     fadeAnim,
     flatListRef,
+    chapterHeadings,
+    bookHeadings,
     toggleVerseSelection,
     setVerseRangeSelection,
     clearSelection,
@@ -286,6 +266,15 @@ export default function Bible() {
     verseJournalPrompts,
     chapterJournalPrompts,
     loadChapterPrompts,
+    verseStrongsMap,
+    getVerseStrongs,
+    clearVerseStrongsForVerse,
+    verseBackgroundMap,
+    getVerseBackground,
+    clearVerseBackgroundForVerse,
+    journalOpenVerse,
+    openVerseJournal,
+    closeVerseJournal,
     dailyVerseRefMap,
     getDailyVerseRef,
     clearDailyVerseRef,
@@ -296,48 +285,56 @@ export default function Bible() {
     onVoiceSelect,
   } = useBible();
 
+  const handleScroll = useCallback(
+    (event: any) => {
+      const currentOffset = event.nativeEvent.contentOffset.y;
+      const direction = currentOffset > scrollY.current ? 'down' : 'up';
+      const shouldShow = direction === 'up' || currentOffset <= 0;
+
+      if (shouldShow !== bottomTabVisible) {
+        setBottomTabVisible(shouldShow);
+        Animated.timing(tabBarAnimation, {
+          toValue: shouldShow ? 1 : 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      }
+
+      // Scrolling dismisses the verse selection (and its action card).
+      if (selectedVerses.length > 0) {
+        clearSelection();
+      }
+
+      scrollY.current = currentOffset;
+    },
+    [bottomTabVisible, tabBarAnimation, selectedVerses, clearSelection],
+  );
+
   const { language, translations } = useLanguage();
   const isRtl = isRtlLanguage(language);
 
   const [freeTranslationsOnly, setFreeTranslationsOnly] = useState(false);
   const settingsFetchedRef = useRef(false);
 
-  // ── Strong's Concordance (word study) state ──────────────────────────────
+  // ── Strong's Concordance (inline word study) ──────────────────────────────
   const [verseWordMap, setVerseWordMap] = useState<
     Record<number, StrongsWordData[]>
   >({});
-  const [showWordStudy, setShowWordStudy] = useState(false);
-  const [selectedWord, setSelectedWord] = useState<StrongsWordData | null>(
-    null,
-  );
-  const [selectedWordEntry, setSelectedWordEntry] =
-    useState<StrongsEntry | null>(null);
-  const [wordStudyLoading, setWordStudyLoading] = useState(false);
 
+  /** Word tap → inline Strong's panel for the tapped word's verse. */
   const handleWordPress = useCallback(
-    async (word: StrongsWordData) => {
+    (word: StrongsWordData) => {
       if (!hasAccess('legacy_sower')) {
         showToast('warning', 'Word Study requires a Legacy Sower subscription');
         setTimeout(() => navigation.navigate(route.sower), 1200);
         return;
       }
-      setSelectedWord(word);
-      setShowWordStudy(true);
-      setWordStudyLoading(true);
-      setSelectedWordEntry(null);
-      if (word.strongsId && word.hasData) {
-        try {
-          const res = await getStrongsEntry(word.strongsId);
-          if (res?.returnData) {
-            setSelectedWordEntry(res.returnData);
-          }
-        } catch (e) {
-          console.error('Failed to fetch Strongs entry:', e);
-        }
+      if (word.verseNumber != null) {
+        getVerseStrongs(word.verseNumber, word);
+        clearSelection();
       }
-      setWordStudyLoading(false);
     },
-    [hasAccess, navigation],
+    [hasAccess, navigation, getVerseStrongs, clearSelection],
   );
 
   // Fetch Strong's word data when chapter changes
@@ -370,13 +367,15 @@ export default function Bible() {
     };
   }, [currentBook, currentChapter, activeVersion?.id]);
 
-  // ── Entry flow: book → chapter → reader ──────────────────────────────
+  // ── Entry flow: book → overview → chapter → reader ─────────────────────
   const [selectionStage, setSelectionStage] = useState<
-    'book' | 'chapter' | 'reading'
+    'book' | 'overview' | 'chapter' | 'reading'
   >('book');
   const [initialLoading, setInitialLoading] = useState(true);
   const hasEnteredReadingRef = useRef(false);
   const BIBLE_POSITION_KEY = 'bible_last_position';
+  // Book the user last read — highlighted in the book selector for quick return.
+  const [lastReadBook, setLastReadBook] = useState<string | null>(null);
 
   // On mount: check route params first, then AsyncStorage for saved position
   useEffect(() => {
@@ -387,6 +386,7 @@ export default function Bible() {
         setCurrentChapter(chapter);
         setSelectionStage('reading');
         hasEnteredReadingRef.current = true;
+        setLastReadBook(bookName);
       } else {
         try {
           const saved = await AsyncStorage.getItem(BIBLE_POSITION_KEY);
@@ -397,6 +397,7 @@ export default function Bible() {
               setCurrentChapter(pos.chapter);
               setSelectionStage('reading');
               hasEnteredReadingRef.current = true;
+              setLastReadBook(pos.bookName);
             }
           }
         } catch {
@@ -417,11 +418,21 @@ export default function Bible() {
       BIBLE_POSITION_KEY,
       JSON.stringify({ bookName: currentBook, chapter: currentChapter }),
     ).catch(() => {});
+    // Only mark a 'last read' book once the user has actually entered reading
+    // (avoids highlighting the default Genesis on a first-ever launch).
+    if (hasEnteredReadingRef.current) {
+      setLastReadBook(currentBook);
+    }
   }, [currentBook, currentChapter, initialLoading]);
 
   const handleEntrySelectBook = useCallback((bookName: string) => {
     setCurrentBook(bookName);
     setCurrentChapter(1);
+    // Land on the book overview before reading the first chapter.
+    setSelectionStage('overview');
+  }, []);
+
+  const handleEntryStartReading = useCallback(() => {
     setSelectionStage('chapter');
   }, []);
 
@@ -437,6 +448,10 @@ export default function Bible() {
 
   const handleEntryBackToBooks = useCallback(() => {
     setSelectionStage('book');
+  }, []);
+
+  const handleEntryBackToOverview = useCallback(() => {
+    setSelectionStage('overview');
   }, []);
 
   // ── Load translation settings from backend ───────────────────────────
@@ -554,6 +569,161 @@ export default function Bible() {
     }, []),
   );
 
+  // ── Verse action card handlers (single-tap contextual menu) ────────────────
+  const handleVerseStrongs = useCallback(
+    (verseNumber: number) => {
+      const words = verseWordMap[verseNumber];
+      if (words && words.length > 0) {
+        handleWordPress(words[0]);
+      } else {
+        showToast(
+          'info',
+          translations?.bible?.noStrongsData ||
+            "No Strong's data for this verse yet.",
+        );
+      }
+    },
+    [verseWordMap, handleWordPress, translations],
+  );
+
+  const handleVerseStudyTools = useCallback(
+    (verseNumber: number) => {
+      if (!hasAccess('legacy_sower')) {
+        navigation.navigate(route.sower as never);
+        return;
+      }
+      (navigation.navigate as any)(route.bibleStudy, {
+        bookName: currentBook,
+        chapter: currentChapter,
+        verseStart: verseNumber,
+        verseEnd: verseNumber,
+      });
+    },
+    [hasAccess, navigation, currentBook, currentChapter],
+  );
+
+  const handleVerseBackground = useCallback(
+    (verseNumber: number) => {
+      getVerseBackground(verseNumber);
+      clearSelection();
+    },
+    [getVerseBackground, clearSelection],
+  );
+
+  const handleVerseJournal = useCallback(
+    (verseNumber: number) => {
+      guard(
+        'Journal entries are saved to your account. Sign in to use this feature.',
+        () => {
+          openVerseJournal(verseNumber);
+          clearSelection();
+          if (chapterJournalPrompts.length === 0) loadChapterPrompts();
+        },
+      );
+    },
+    [
+      guard,
+      openVerseJournal,
+      clearSelection,
+      chapterJournalPrompts,
+      loadChapterPrompts,
+    ],
+  );
+
+  const handleCloseVerseJournal = useCallback(
+    (verseNumber: number) => {
+      if (journalOpenVerse === verseNumber) closeVerseJournal();
+    },
+    [journalOpenVerse, closeVerseJournal],
+  );
+
+  // ── End-of-chapter journaling footer (3 fill-in/skip questions) ───────────
+  // Journaling is a Legacy Sower feature (journal/create is tier-gated), so the
+  // section only appears for authenticated Sower readers to avoid save errors.
+  const showChapterJournal =
+    !isGuest && hasAccess('legacy_sower') && chapterJournalPrompts.length > 0;
+  const chapterJournalFooter = showChapterJournal ? (
+    <ChapterJournalSection
+      prompts={chapterJournalPrompts}
+      currentBook={currentBook}
+      currentChapter={currentChapter}
+      colors={COLORS}
+      isRtl={isRtl}
+      onSkip={() => {
+        goToChapter('next');
+        // Start the next chapter from the top of the list.
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+      }}
+    />
+  ) : null;
+
+  /** True when any inline verse panel (Strong's / Background / Journal) is open. */
+  const hasOpenPanel =
+    Object.keys(verseExplanationMap).length > 0 ||
+    Object.keys(verseStrongsMap).length > 0 ||
+    Object.keys(verseBackgroundMap).length > 0 ||
+    journalOpenVerse != null;
+
+  /** Close all open verse panels. */
+  const closeAllPanels = useCallback(() => {
+    Object.keys(verseExplanationMap).forEach(vn =>
+      clearVerseExplanationForVerse(Number(vn)),
+    );
+    Object.keys(verseStrongsMap).forEach(vn =>
+      clearVerseStrongsForVerse(Number(vn)),
+    );
+    Object.keys(verseBackgroundMap).forEach(vn =>
+      clearVerseBackgroundForVerse(Number(vn)),
+    );
+    closeVerseJournal();
+  }, [
+    verseExplanationMap,
+    verseStrongsMap,
+    verseBackgroundMap,
+    clearVerseExplanationForVerse,
+    clearVerseStrongsForVerse,
+    clearVerseBackgroundForVerse,
+    closeVerseJournal,
+  ]);
+
+  /**
+   * Wraps the verse list in a tap-to-dismiss Pressable while a verse is
+   * selected OR an inline panel is open. When nothing is open (the common
+   * case) the list renders bare, so the wrapper can never interfere with
+   * scrolling. Tapping outside dismisses the selection and any open panels.
+   */
+  const wrapDismissPressable = (child: React.ReactNode) =>
+    selectedVerses.length > 0 || hasOpenPanel ? (
+      <Pressable
+        style={{ flex: 1 }}
+        onPress={() => {
+          clearSelection();
+          closeAllPanels();
+        }}
+      >
+        {child}
+      </Pressable>
+    ) : (
+      child
+    );
+
+  /**
+   * Handles tapping a verse number. If any panel is open, close it first
+   * before proceeding (so tapping a different verse while a panel is open
+   * dismisses the old panel rather than showing both).
+   */
+  const handleTapVerse = useCallback(
+    (verseNumber: number) => {
+      if (isGuest || showAudioPlayer) return;
+      if (hasOpenPanel) {
+        closeAllPanels();
+      }
+      toggleVerseSelection(verseNumber);
+      addReadHistory(verseNumber);
+    },
+    [isGuest, showAudioPlayer, hasOpenPanel, closeAllPanels, toggleVerseSelection, addReadHistory],
+  );
+
   return (
     <View style={styles.container}>
       {/* Offline banner */}
@@ -598,6 +768,18 @@ export default function Bible() {
           onBack={
             hasEnteredReadingRef.current ? handleEntryBackFromBooks : undefined
           }
+          versionAbbr={activeVersion?.abbreviation}
+          onVersionPress={() => setShowTranslationPicker(true)}
+          lastReadBook={lastReadBook}
+        />
+      ) : selectionStage === 'overview' ? (
+        <BookOverviewScreen
+          bookName={currentBook}
+          chapters={maxChapters}
+          testament={books.find(b => b.name === currentBook)?.testament}
+          isDark={isDark}
+          onStartReading={handleEntryStartReading}
+          onBack={handleEntryBackToBooks}
         />
       ) : selectionStage === 'chapter' ? (
         <ChapterSelectorScreen
@@ -605,7 +787,11 @@ export default function Bible() {
           maxChapters={maxChapters}
           isDark={isDark}
           onSelectChapter={handleEntrySelectChapter}
-          onBack={handleEntryBackToBooks}
+          onBack={handleEntryBackToOverview}
+          bookHeadings={bookHeadings}
+          versionAbbr={activeVersion?.abbreviation}
+          onVersionPress={() => setShowTranslationPicker(true)}
+          currentChapter={currentChapter}
         />
       ) : (
         <>
@@ -649,80 +835,13 @@ export default function Bible() {
             }
           />
 
-          {/* ── Chapter Journal Prompts ───────────────────────────────────────── */}
-          {chapterJournalPrompts.length > 0 && !isGuest && (
-            <View
-              style={[
-                styles.chapterPromptsContainer,
-                { backgroundColor: COLORS.surface },
-              ]}
-            >
-              <View style={styles.chapterPromptsHeader}>
-                <Text
-                  style={[
-                    styles.chapterPromptsTitle,
-                    { color: COLORS.primary },
-                  ]}
-                >
-                  {translations?.bible?.chapterReflections ||
-                    'Chapter Reflections'}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    navigation.navigate(route.journalEntry, {
-                      bookName: currentBook,
-                      chapter: currentChapter,
-                    });
-                  }}
-                  style={[
-                    styles.addJournalBtn,
-                    { backgroundColor: COLORS.primary },
-                  ]}
-                >
-                  <Text style={styles.addJournalBtnText}>
-                    + {translations?.bible?.add || 'Add'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.promptsScroll}
-              >
-                {chapterJournalPrompts.map((prompt, idx) => (
-                  <TouchableOpacity
-                    key={prompt.id || idx}
-                    style={[
-                      styles.chapterPromptChip,
-                      { borderColor: COLORS.border },
-                    ]}
-                    onPress={() => {
-                      navigation.navigate(route.journalEntry, {
-                        bookName: currentBook,
-                        chapter: currentChapter,
-                        promptText: prompt.prompt,
-                      });
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[styles.chapterPromptText, { color: COLORS.text }]}
-                      numberOfLines={2}
-                    >
-                      {prompt.prompt}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
           {/* ── Verses List ──────────────────────────────────────────────────── */}
           {isFromReadingPlan ? (
             <View
               style={{ flex: 1, marginBottom: -80 }}
               {...panResponder.panHandlers}
             >
+              {wrapDismissPressable(
               <VerseList
                 versesArray={versesArray}
                 selectedVerses={selectedVerses}
@@ -736,6 +855,7 @@ export default function Bible() {
                 fontSize={fontSize}
                 currentBook={currentBook}
                 currentChapter={currentChapter}
+                chapterHeadings={chapterHeadings}
                 colors={COLORS}
                 styles={styles}
                 flatListRef={flatListRef as React.RefObject<any>}
@@ -744,10 +864,7 @@ export default function Bible() {
                 onRefresh={onRefresh}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
-                onVersePress={verseNumber => {
-                  if (isGuest || showAudioPlayer) return;
-                  //make it handle the strong words when tapple to open the word study bottom sheet apply on word not the verse
-                }}
+                onVersePress={handleTapVerse}
                 onRemoveHighlight={removeHighlight}
                 onExplain={async vn => {
                   if (isGuest) {
@@ -761,8 +878,10 @@ export default function Bible() {
                   );
                   if (found) clearSelection();
                 }}
-                onShare={vn => shareVerses([vn])}
-                onCopy={vn => copyVerses([vn])}
+                onStrongs={handleVerseStrongs}
+                onBackground={handleVerseBackground}
+                onStudyTools={handleVerseStudyTools}
+                onJournal={handleVerseJournal}
                 onDoubleTap={verseNumber => {
                   openVerseMenu(verseNumber);
                 }}
@@ -776,9 +895,6 @@ export default function Bible() {
                     },
                   )
                 }
-                onCloseExplanation={vn => {
-                  clearVerseExplanationForVerse(vn);
-                }}
                 explanationMap={verseExplanationMap}
                 onDailyVerse={vn => {
                   getDailyVerseRef(vn, currentBook, currentChapter);
@@ -793,9 +909,27 @@ export default function Bible() {
                 verseWordMap={verseWordMap}
                 onWordPress={handleWordPress}
                 studyToolHighlights={studyToolHighlights}
+                strongsMap={verseStrongsMap}
+                onCloseStrongs={vn => clearVerseStrongsForVerse(vn)}
+                backgroundMap={verseBackgroundMap}
+                onCloseBackground={vn => clearVerseBackgroundForVerse(vn)}
+                journalOpenVerse={journalOpenVerse}
+                chapterJournalPrompts={chapterJournalPrompts}
+                onCloseJournal={handleCloseVerseJournal}
+                onOpenFullJournal={vn =>
+                  navigation.navigate(route.journalEntry, {
+                    bookName: currentBook,
+                    chapter: currentChapter,
+                    verseStart: vn,
+                    verseEnd: vn,
+                  })
+                }
+                listFooter={chapterJournalFooter}
               />
+              )}
             </View>
           ) : (
+            wrapDismissPressable(
             <VerseList
               versesArray={versesArray}
               selectedVerses={selectedVerses}
@@ -810,6 +944,7 @@ export default function Bible() {
               navigation={navigation}
               currentBook={currentBook}
               currentChapter={currentChapter}
+              chapterHeadings={chapterHeadings}
               colors={COLORS}
               styles={styles}
               flatListRef={flatListRef as React.RefObject<any>}
@@ -818,11 +953,7 @@ export default function Bible() {
               onRefresh={onRefresh}
               onScroll={handleScroll}
               scrollEventThrottle={16}
-              onVersePress={verseNumber => {
-                if (isGuest || showAudioPlayer) return;
-                toggleVerseSelection(verseNumber);
-                addReadHistory(verseNumber);
-              }}
+              onVersePress={handleTapVerse}
               onRemoveHighlight={removeHighlight}
               onExplain={async vn => {
                 if (isGuest) {
@@ -836,13 +967,12 @@ export default function Bible() {
                 );
                 if (found) clearSelection();
               }}
-              onShare={vn => shareVerses([vn])}
-              onCopy={vn => copyVerses([vn])}
+              onStrongs={handleVerseStrongs}
+              onBackground={handleVerseBackground}
+              onStudyTools={handleVerseStudyTools}
+              onJournal={handleVerseJournal}
               onDoubleTap={verseNumber => {
                 openVerseMenu(verseNumber);
-              }}
-              onCloseExplanation={vn => {
-                clearVerseExplanationForVerse(vn);
               }}
               explanationMap={verseExplanationMap}
               onDailyVerse={vn => {
@@ -857,7 +987,24 @@ export default function Bible() {
               verseWordMap={verseWordMap}
               onWordPress={handleWordPress}
               studyToolHighlights={studyToolHighlights}
+              strongsMap={verseStrongsMap}
+              onCloseStrongs={vn => clearVerseStrongsForVerse(vn)}
+              backgroundMap={verseBackgroundMap}
+              onCloseBackground={vn => clearVerseBackgroundForVerse(vn)}
+              journalOpenVerse={journalOpenVerse}
+              chapterJournalPrompts={chapterJournalPrompts}
+              onCloseJournal={handleCloseVerseJournal}
+              onOpenFullJournal={vn =>
+                navigation.navigate(route.journalEntry, {
+                  bookName: currentBook,
+                  chapter: currentChapter,
+                  verseStart: vn,
+                  verseEnd: vn,
+                })
+              }
+              listFooter={chapterJournalFooter}
             />
+            )
           )}
 
           {/* ── Reflection Questions Panel (from Reading Plan) ──────────────── */}
@@ -1146,36 +1293,6 @@ export default function Bible() {
             }}
           />
 
-          {/* ── Word Study Bottom Sheet (Strong's Concordance) ──────────────── */}
-          <WordStudyBottomSheet
-            visible={showWordStudy}
-            word={selectedWord}
-            entry={selectedWordEntry}
-            loading={wordStudyLoading}
-            isDark={isDark}
-            onClose={() => setShowWordStudy(false)}
-            onSearchAllUses={(strongsId, word) => {
-              setShowWordStudy(false);
-              const englishWord = (word ?? strongsId ?? '').trim();
-              if (englishWord.length > 0) {
-                navigation.navigate(route.search, {
-                  word: englishWord,
-                  scope: 'bible',
-                  strongsId: strongsId || undefined,
-                });
-              } else if (strongsId) {
-                navigation.navigate(route.search, {
-                  strongsId,
-                  scope: 'strongs',
-                });
-              }
-            }}
-            onSaveWord={entry => {
-              // Future: persist saved word to user account
-              setShowWordStudy(false);
-            }}
-          />
-
           {/* ── Chapter Study Tools Sheet ───────────────────────────────────── */}
           <ChapterStudyToolsSheet
             visible={showStudyTools}
@@ -1232,16 +1349,6 @@ export default function Bible() {
                 });
               }
             }}
-          />
-
-          {/* ── Translation Picker ──────────────────────────────────────────── */}
-          <TranslationPickerModal
-            visible={showTranslationPicker}
-            onClose={() => setShowTranslationPicker(false)}
-            currentVersionId={bibleVersionId}
-            onSelectVersion={handleVersionChange}
-            isDark={isDark}
-            freeTranslationsOnly={freeTranslationsOnly}
           />
 
           {/* ── Guest banner (auto nudge + gated action trigger) ────────────── */}
@@ -1301,8 +1408,18 @@ export default function Bible() {
         </>
       )}
 
-      {/* ── Bottom Tab — navigation gated for guests ─────────────────────── */}
-      {!isFromReadingPlan && (
+      {/* ── Translation Picker — mounted across all entry stages ──────────── */}
+      <TranslationPickerModal
+        visible={showTranslationPicker}
+        onClose={() => setShowTranslationPicker(false)}
+        currentVersionId={bibleVersionId}
+        onSelectVersion={handleVersionChange}
+        isDark={isDark}
+        freeTranslationsOnly={freeTranslationsOnly}
+      />
+
+      {/* ── Bottom Action Bar + Bottom Tab — only during reading ────────── */}
+      {!isFromReadingPlan && selectionStage === 'reading' && (
         <Animated.View
           style={{
             position: 'absolute',
@@ -1313,13 +1430,53 @@ export default function Bible() {
               {
                 translateY: tabBarAnimation.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [100, 0],
+                  outputRange: [140, 0],
                 }),
               },
             ],
             opacity: tabBarAnimation,
           }}
         >
+          {selectionStage === 'reading' && (
+            <BibleActionBar
+              isRtl={isRtl}
+              onNote={() =>
+                guard(
+                  'Notes are saved to your account. Sign in to use this feature.',
+                  () => {
+                    const verses =
+                      selectedVerses.length > 0 ? selectedVerses : [1];
+                    setPendingVerses(verses);
+                    if (verses.length === 1)
+                      setVerseRangeSelection(verses[0], verses[0]);
+                    openNoteModal();
+                  },
+                )
+              }
+              onBookmark={() =>
+                guard(
+                  'Favourites are saved to your account. Sign in to use this feature.',
+                  () => {
+                    const verses =
+                      selectedVerses.length > 0 ? selectedVerses : [1];
+                    clearSelection();
+                    addFavorite(verses);
+                  },
+                )
+              }
+              onUndo={() => goToChapter('prev')}
+              onScrollTop={() =>
+                flatListRef.current?.scrollToOffset({
+                  offset: 0,
+                  animated: true,
+                })
+              }
+              onRedo={() => goToChapter('next')}
+              onScrollBottom={() =>
+                flatListRef.current?.scrollToEnd({ animated: true })
+              }
+            />
+          )}
           <BottomTab
             activeTab="bible"
             setActiveTab={() => {}}

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
-import { strongsDictionaryApi, StrongsWordEntry, VerseUniqueWord } from '../services/strongsDictionaryApi';
+import { strongsDictionaryApi, StrongsWordEntry } from '../services/strongsDictionaryApi';
 
-export type DictionaryMode = 'search' | 'browse' | 'verse';
+export type DictionaryMode = 'study' | 'search' | 'browse' | 'favorites';
 
 export const LANG_FILTERS = [
   { key: 'all', label: 'All' },
@@ -14,8 +14,8 @@ export type LangFilter = (typeof LANG_FILTERS)[number]['key'];
 const BROWSE_PAGE_SIZE = 100;
 
 export function useStrongsDictionary() {
-  // Mode
-  const [mode, setMode] = useState<DictionaryMode>('search');
+  // Mode — Study Verse is the design's default/selected tab
+  const [mode, setMode] = useState<DictionaryMode>('study');
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,21 +35,11 @@ export function useStrongsDictionary() {
   const [browsePage, setBrowsePage] = useState(0);
   const [browseHasNext, setBrowseHasNext] = useState(false);
 
-  // Verse mode
-  const [verseBook, setVerseBook] = useState('');
-  const [verseChapter, setVerseChapter] = useState('');
-  const [verseNum, setVerseNum] = useState('');
-  const [verseWords, setVerseWords] = useState<VerseUniqueWord[]>([]);
-  const [verseWordsLoading, setVerseWordsLoading] = useState(false);
-  const [verseWordsLoaded, setVerseWordsLoaded] = useState(false);
-
   // Language filter
   const [langFilter, setLangFilter] = useState<LangFilter>('all');
 
   // Word detail
-  const [selectedWord, setSelectedWord] = useState<StrongsWordEntry | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const browseLoadingRef = useRef(false);
 
@@ -119,33 +109,14 @@ export function useStrongsDictionary() {
     }
   }, [browseHasNext, browseLoading, loadBookWords, selectedBook, browsePage]);
 
-  // ── Verse mode ──
-
-  const loadVerseWords = useCallback(async (book: string, chapter: number, verse?: number) => {
-    if (!book || !chapter) return;
-    setVerseWordsLoading(true);
-    setVerseWordsLoaded(false);
-    try {
-      const res = await strongsDictionaryApi.getVerseUniqueWords(book, chapter, verse);
-      setVerseWords(res.data);
-    } catch {
-      setVerseWords([]);
-    } finally {
-      setVerseWordsLoading(false);
-      setVerseWordsLoaded(true);
-    }
-  }, []);
-
   // ── Word Detail ──
 
-  const openWordDetail = useCallback(async (word: StrongsWordEntry) => {
-    setSelectedWord(word);
+  const openWordDetail = useCallback(() => {
     setDetailVisible(true);
   }, []);
 
   const closeWordDetail = useCallback(() => {
     setDetailVisible(false);
-    setSelectedWord(null);
   }, []);
 
   // ── Mode switching ──
@@ -168,31 +139,17 @@ export function useStrongsDictionary() {
     browseLoaded,
     browseTotal,
     browseHasNext,
-    verseBook,
-    verseChapter,
-    verseNum,
-    verseWords,
-    verseWordsLoading,
-    verseWordsLoaded,
     langFilter,
-    selectedWord,
     detailVisible,
-    detailLoading,
 
     setSearchQuery,
-    setSearched,
     setSelectedBook,
-    setVerseBook,
-    setVerseChapter,
-    setVerseNum,
     setLangFilter,
-    setDetailLoading,
 
     executeSearch,
     loadMoreSearch,
     loadBookWords,
     loadMoreBrowse,
-    loadVerseWords,
     openWordDetail,
     closeWordDetail,
     switchMode,

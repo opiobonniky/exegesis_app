@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Easing,
+  GestureResponderEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -10,12 +10,24 @@ import {
   Vibration,
   View,
 } from 'react-native';
-import { Heart, X, Lightbulb, BookText, Share2, Copy, Sun, BookMarked } from 'lucide-react-native';
+import { SPACING } from '../../../constants/theme';
+import { Heart, X, Sun, BookMarked } from 'lucide-react-native';
 import ExpandableText from '../../bible/ExpandableText';
+import VerseActionCard from './VerseActionCard';
+import VerseExplanationContent from './VerseExplanationContent';
+import VerseRollPanel, {
+  VerseRollPanelHandle,
+} from './VerseRollPanel';
+import VerseStrongsContent from './VerseStrongsContent';
+import VerseBackgroundContent from './VerseBackgroundContent';
+import VerseJournalContent from './VerseJournalContent';
+import { BookPrologue } from '../../../services/bookProloguesApi';
 import { bibleTTS } from '../../../utilits/bibleTTS';
-import { route } from '../../../component/navigations/routes';
 import { useLanguage, isRtlLanguage, toArabicIndic } from '../../../component/language-translation/LanguageProvider';
-import { StrongsWordData } from '../../../services/strongsService';
+import {
+  StrongsWordData,
+  StrongsEntry,
+} from '../../../services/strongsService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -40,13 +52,18 @@ type VerseCardProps = {
   onPress: () => void;
   onRemoveHighlight: (verseNumber: number) => void;
   onExplain?: () => void;
-  onShare?: () => void;
-  onCopy?: () => void;
+  onStrongs?: () => void;
+  onBackground?: () => void;
+  onStudyTools?: () => void;
+  onJournal?: () => void;
   onDoubleTap?: () => void;
   onLongPress?: () => void;
-  onCloseExplanation?: () => void;
   onCloseStart?: () => void;
-  explanationData?: { explanation: string; learnMore: string } | null;
+  explanationData?: {
+    explanation: string;
+    learnMore: string;
+    ai?: any;
+  } | null;
   onDailyVerse?: () => void;
   onCloseDailyVerse?: () => void;
   showDailyVerse?: boolean;
@@ -60,6 +77,28 @@ type VerseCardProps = {
   verseWords?: StrongsWordData[];
   /** Called when user taps a word that has Strong's data */
   onWordPress?: (word: StrongsWordData) => void;
+  /** Inline Strong's panel data (rendered instead of a bottom sheet). */
+  strongsData?: {
+    word: StrongsWordData;
+    entry: StrongsEntry | null;
+    ai?: any;
+    loading: boolean;
+  } | null;
+  onCloseStrongs?: () => void;
+  /** Inline Background panel data (rendered instead of a modal). */
+  backgroundData?: {
+    background: string | null;
+    prologue: BookPrologue | null;
+    ai?: any;
+    loading: boolean;
+  } | null;
+  onCloseBackground?: () => void;
+  /** Inline Journal panel flag (rendered instead of navigating to a screen). */
+  journalOpen?: boolean;
+  /** Chapter journal prompts used by the inline Journal panel. */
+  chapterPrompts?: Array<{ id: number; prompt: string }>;
+  onCloseJournal?: () => void;
+  onOpenFullJournal?: () => void;
 };
 
 export default function VerseCard({
@@ -81,11 +120,12 @@ export default function VerseCard({
   onPress,
   onRemoveHighlight,
   onExplain,
-  onShare,
-  onCopy,
+  onStrongs,
+  onBackground,
+  onStudyTools,
+  onJournal,
   onDoubleTap,
   onLongPress,
-  onCloseExplanation,
   onCloseStart,
   explanationData,
   onDailyVerse,
@@ -99,6 +139,14 @@ export default function VerseCard({
   studyToolHighlight,
   verseWords,
   onWordPress,
+  strongsData,
+  onCloseStrongs,
+  backgroundData,
+  onCloseBackground,
+  journalOpen,
+  chapterPrompts = [],
+  onCloseJournal,
+  onOpenFullJournal,
 }: VerseCardProps) {
   const accent = colors.accent;
   const { language, translations } = useLanguage();
@@ -440,24 +488,63 @@ export default function VerseCard({
     };
   }, []);
 
-  const handlePress = useCallback(() => {
-    if (isEffectivelyActive) return;
-    if (tapTimerRef.current) {
-      clearTimeout(tapTimerRef.current);
-      tapTimerRef.current = null;
-      onDoubleTap?.();
-    } else {
-      tapTimerRef.current = setTimeout(() => {
-        tapTimerRef.current = null;
-        onPress?.();
-      }, 350);
+  // Horizontal tap position — lets the action-card pointer follow the verse
+  // instead of always sitting dead-center (important for multi-line verses).
+  const [pointerOffset, setPointerOffset] = useState<number | null>(null);
+  const prevSelectedRefForPointer = useRef(isSelected);
+
+  // Clear a stale tap offset when the verse is deselected, so a later
+  // programmatic re-selection (side-menu range, long-press highlight) starts
+  // centered instead of pointing at an old tap spot.
+  useEffect(() => {
+    if (!isSelected && prevSelectedRefForPointer.current) {
+      setPointerOffset(null);
     }
-  }, [onPress, onDoubleTap, isEffectivelyActive]);
+    prevSelectedRefForPointer.current = isSelected;
+  }, [isSelected]);
+
+  const handlePress = useCallback(
+    (event: GestureResponderEvent) => {
+      if (isEffectivelyActive) return;
+      // locationX is relative to this card; the action card sits inside
+      // verseContent which pads by SPACING.sm, so shift to its coordinate space.
+      const offset = event.nativeEvent.locationX - SPACING.sm;
+      if (tapTimerRef.current) {
+        clearTimeout(tapTimerRef.current);
+        tapTimerRef.current = null;
+        onDoubleTap?.();
+      } else {
+        tapTimerRef.current = setTimeout(() => {
+          tapTimerRef.current = null;
+          onPress?.();
+          setPointerOffset(offset);
+        }, 350);
+      }
+    },
+    [onPress, onDoubleTap, isEffectivelyActive],
+  );
 
   const handleLongPress = useCallback(() => {
     Vibration.vibrate(10);
     onLongPress?.();
   }, [onLongPress]);
+
+  // ── Inline panel refs (Strong's / Background / Journal) ────────────────────
+  const strongsPanelRef = useRef<VerseRollPanelHandle>(null);
+  const backgroundPanelRef = useRef<VerseRollPanelHandle>(null);
+  const journalPanelRef = useRef<VerseRollPanelHandle>(null);
+
+  const handleHideStrongs = useCallback(() => {
+    strongsPanelRef.current?.requestHide();
+  }, []);
+
+  const handleHideBackground = useCallback(() => {
+    backgroundPanelRef.current?.requestHide();
+  }, []);
+
+  const handleHideJournal = useCallback(() => {
+    journalPanelRef.current?.requestHide();
+  }, []);
 
   return (      <Pressable
       style={({ pressed }) => [
@@ -597,57 +684,19 @@ export default function VerseCard({
           <View style={styles.verseTextContainer}>
             {renderVerseWords()}
 
-            {/* Action row: Explain, Daily Verse, Copy, Share — only when exactly one verse is selected */}
+            {/* Contextual action card — shown when exactly one verse is selected */}
             {showActions && (
-              <View style={[localStyles.actionRow, isRtl && localStyles.actionRowRtl]}>
-                {onExplain && (
-                  <TouchableOpacity
-                    onPress={onExplain}
-                    disabled={isExplaining}
-                    activeOpacity={0.7}
-                    style={localStyles.actionRowBtn}
-                  >
-                    {isExplaining ? (
-                      <ActivityIndicator size={11} color={colors.primary} />
-                    ) : (
-                      <Lightbulb size={11} color={colors.primary} strokeWidth={2} />
-                    )}
-                    <Text
-                      style={[localStyles.actionRowText, { color: colors.primary }]}
-                    >
-                      {'Explain Verse'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {onCopy && (
-                  <TouchableOpacity
-                    onPress={onCopy}
-                    activeOpacity={0.7}
-                    style={localStyles.actionRowBtn}
-                  >
-                    <Copy size={11} color={colors.primary} strokeWidth={2} />
-                    <Text
-                      style={[localStyles.actionRowText, { color: colors.primary }]}
-                    >
-                      {bc?.copy || 'Copy'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {onShare && (
-                  <TouchableOpacity
-                    onPress={onShare}
-                    activeOpacity={0.7}
-                    style={localStyles.actionRowBtn}
-                  >
-                    <Share2 size={11} color={colors.primary} strokeWidth={2} />
-                    <Text
-                      style={[localStyles.actionRowText, { color: colors.primary }]}
-                    >
-                      {bc?.share || 'Share'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              <VerseActionCard
+                colors={colors}
+                isRtl={isRtl}
+                isExplaining={isExplaining}
+                pointerOffset={pointerOffset}
+                onExplain={onExplain}
+                onStrongs={onStrongs}
+                onBackground={onBackground}
+                onStudyTools={onStudyTools}
+                onJournal={onJournal}
+              />
             )}
 
             {showDailyVerse && dailyVerseData && (
@@ -719,244 +768,135 @@ export default function VerseCard({
 
             {explanationVisible && (
               <View style={{ position: 'relative' }}>
-                {/* Hidden measurer — always present, tracks true content height */}
-
-                  <View
-                    style={{ position: 'absolute', left: 0, right: 0, top: 0, opacity: 0, pointerEvents: 'none' }}
-                    onLayout={e => {
-                      const h = e.nativeEvent.layout.height;
-                      if (!expAnimReady) {
-                        setExpAnimReady(true);
-                        expAnim.setValue(0);
-                        Animated.timing(expAnim, {
-                          toValue: h,
-                          duration: 1000,
-                          easing: Easing.out(Easing.ease),
-                          useNativeDriver: false,
-                        }).start(() => setExpAnimDone(true));
-                      } else if (expAnimDone && !expClosing) {
-                        expAnim.setValue(h);
-                      }
-                    }}
-                  >
-                    <View style={[localStyles.expContainer, { backgroundColor: `${colors.primary}08` }]}>
-                      <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
-                        <View style={[localStyles.expHeaderLeft, isRtl && localStyles.expHeaderLeftRtl]}>
-                          <Lightbulb size={14} color={colors.primary} strokeWidth={2.5} />
-                          <Text style={[localStyles.expHeaderTitle, { color: colors.primary }]}>
-                            {bc?.explanation || 'Explanation'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <Text style={[localStyles.expBodyText, { color: colors.text }]}>
-                        {explanationData?.explanation}
-                      </Text>
-
-                      {explanationData?.learnMore && (
-                        <>
-                          <View style={[localStyles.expDivider, { backgroundColor: `${colors.primary}20` }]} />
-                          <Text style={[localStyles.expLearnMoreTitle, { color: colors.primary }]}>
-                            {bc?.learnMore || 'Learn More'}
-                          </Text>
-                          <ExpandableText
-                            text={explanationData.learnMore}
-                            initialLines={4}
-                            stepLines={10}
-                            expandLabel={bc?.readMore || 'Read more'}
-                            closeLabel={bc?.close || 'Close'}
-                            containerStyle={localStyles.exExpandableContainer}
-                            textStyle={localStyles.expBodyText}
-                          />
-                        </>
-                      )}
-
-                      {journalPrompts.length > 0 && (
-                        <View style={[localStyles.journalPromptsContainer, { borderTopColor: `${colors.primary}20` }]}>
-                          <View style={localStyles.promptsHeader}>
-                            <Text style={[localStyles.promptsTitle, { color: colors.primary }]}>
-                              {bc?.journalPrompts || 'Journal Prompts'}
-                            </Text>
-                            {currentBook && currentChapter && (
-                              <TouchableOpacity
-                                onPress={() => {
-                                  navigation?.navigate(route.journalEntry, {
-                                    bookName: currentBook,
-                                    chapter: currentChapter,
-                                    verseStart: verseNumber,
-                                    verseEnd: verseNumber,
-                                  });
-                                }}
-                                style={[localStyles.addPromptBtn, { backgroundColor: colors.primary }]}
-                              >
-                                <BookText size={12} color="#FFFFFF" />
-                              </TouchableOpacity>
-                            )}
-                          </View>
-                          {journalPrompts.map((prompt, idx) => (
-                            <TouchableOpacity
-                              key={prompt.id || idx}
-                              style={[localStyles.promptItem, { backgroundColor: `${colors.primary}10`, borderColor: colors.primary }]}
-                              onPress={() => {
-                                if (navigation) {
-                                  navigation.navigate(route.journalEntry, {
-                                    bookName: currentBook,
-                                    chapter: currentChapter,
-                                    verseStart: verseNumber,
-                                    verseEnd: verseNumber,
-                                    promptText: prompt.prompt,
-                                  });
-                                }
-                              }}
-                              activeOpacity={0.7}
-                            >
-                              <Text style={[localStyles.promptText, { color: colors.text }]}>
-                                {prompt.prompt}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      )}
-
-                      {onCloseExplanation && (
-                        <TouchableOpacity
-                          onPress={() => {
-                            setExpClosing(true);
-                            onCloseStart?.();
-                            Animated.timing(expAnim, {
-                              toValue: 0,
-                              duration: 1000,
-                              easing: Easing.linear,
-                              useNativeDriver: false,
-                            }).start(() => {
-                              setExpAnimDone(false);
-                              setExplanationVisible(false);
-                              setExpClosing(false);
-                              onCloseExplanation();
-                            });
-                          }}
-                          style={[localStyles.hideExpBtn, { borderColor: `${colors.primary}30` }]}
-                        >
-                          <Text style={[localStyles.hideExpBtnText, { color: colors.primary }]}>
-                            {bc?.hideExplanation || 'Hide Explanation'}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
+                {/* Hidden measurer — always present, tracks true content height.
+                    Renders the SAME props as the display below (incl. onHide) so
+                    the measured height matches the visible card exactly. */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    opacity: 0,
+                    pointerEvents: 'none',
+                  }}
+                  onLayout={e => {
+                    const h = e.nativeEvent.layout.height;
+                    if (!expAnimReady) {
+                      setExpAnimReady(true);
+                      expAnim.setValue(0);
+                      Animated.timing(expAnim, {
+                        toValue: h,
+                        duration: 1000,
+                        easing: Easing.out(Easing.ease),
+                        useNativeDriver: false,
+                      }).start(() => setExpAnimDone(true));
+                    } else if (expAnimDone && !expClosing) {
+                      expAnim.setValue(h);
+                    }
+                  }}
+                >
+                  <VerseExplanationContent
+                    explanationData={explanationData}
+                    colors={colors}
+                    isRtl={isRtl}
+                    bc={bc}
+                    journalPrompts={journalPrompts}
+                    navigation={navigation}
+                    currentBook={currentBook}
+                    currentChapter={currentChapter}
+                    verseNumber={verseNumber}
+                  />
+                </View>
 
                 {/* Animated display */}
                 <Animated.View
                   style={[
-                    localStyles.expContainer,
-                    { backgroundColor: `${colors.primary}08` },
-                    (!expAnimDone || expClosing) && { height: expAnim, overflow: 'hidden' },
+                    (!expAnimDone || expClosing) && {
+                      height: expAnim,
+                      overflow: 'hidden',
+                    },
                   ]}
                 >
-                  <View style={[localStyles.expHeaderRow, isRtl && localStyles.expHeaderRowRtl]}>
-                    <View style={[localStyles.expHeaderLeft, isRtl && localStyles.expHeaderLeftRtl]}>
-                      <Lightbulb size={14} color={colors.primary} strokeWidth={2.5} />
-                      <Text style={[localStyles.expHeaderTitle, { color: colors.primary }]}>
-                        {bc?.explanation || 'Explanation'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <Text style={[localStyles.expBodyText, { color: colors.text }]}>
-                    {explanationData?.explanation}
-                  </Text>
-
-                  {explanationData?.learnMore && (
-                    <>
-                      <View style={[localStyles.expDivider, { backgroundColor: `${colors.primary}20` }]} />
-                      <Text style={[localStyles.expLearnMoreTitle, { color: colors.primary }]}>
-                        {bc?.learnMore || 'Learn More'}
-                      </Text>
-                      <ExpandableText
-                        text={explanationData.learnMore}
-                        initialLines={4}
-                        stepLines={10}
-                        expandLabel={bc?.readMore || 'Read more'}
-                        closeLabel={bc?.close || 'Close'}
-                        containerStyle={localStyles.exExpandableContainer}
-                        textStyle={localStyles.expBodyText}
-                      />
-                    </>
-                  )}
-
-                  {journalPrompts.length > 0 && (
-                    <View style={[localStyles.journalPromptsContainer, { borderTopColor: `${colors.primary}20` }]}>
-                      <View style={localStyles.promptsHeader}>
-                        <Text style={[localStyles.promptsTitle, { color: colors.primary }]}>
-                          {bc?.journalPrompts || 'Journal Prompts'}
-                        </Text>
-                        {currentBook && currentChapter && (
-                          <TouchableOpacity
-                            onPress={() => {
-                              navigation?.navigate(route.journalEntry, {
-                                bookName: currentBook,
-                                chapter: currentChapter,
-                                verseStart: verseNumber,
-                                verseEnd: verseNumber,
-                              });
-                            }}
-                            style={[localStyles.addPromptBtn, { backgroundColor: colors.primary }]}
-                          >
-                            <BookText size={12} color="#FFFFFF" />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                      {journalPrompts.map((prompt, idx) => (
-                        <TouchableOpacity
-                          key={prompt.id || idx}
-                          style={[localStyles.promptItem, { backgroundColor: `${colors.primary}10`, borderColor: colors.primary }]}
-                          onPress={() => {
-                            if (navigation) {
-                              navigation.navigate(route.journalEntry, {
-                                bookName: currentBook,
-                                chapter: currentChapter,
-                                verseStart: verseNumber,
-                                verseEnd: verseNumber,
-                                promptText: prompt.prompt,
-                              });
-                            }
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[localStyles.promptText, { color: colors.text }]}>
-                            {prompt.prompt}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-
-                  {onCloseExplanation && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setExpClosing(true);
-                        onCloseStart?.();
-                        Animated.timing(expAnim, {
-                          toValue: 0,
-                          duration: 1000,
-                          easing: Easing.linear,
-                          useNativeDriver: false,
-                        }).start(() => {
-                          setExpAnimDone(false);
-                          setExplanationVisible(false);
-                          setExpClosing(false);
-                          onCloseExplanation();
-                        });
-                      }}
-                      style={[localStyles.hideExpBtn, { borderColor: `${colors.primary}30` }]}
-                    >
-                      <Text style={[localStyles.hideExpBtnText, { color: colors.primary }]}>
-                        {bc?.hideExplanation || 'Hide Explanation'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  <VerseExplanationContent
+                    explanationData={explanationData}
+                    colors={colors}
+                    isRtl={isRtl}
+                    bc={bc}
+                    journalPrompts={journalPrompts}
+                    navigation={navigation}
+                    currentBook={currentBook}
+                    currentChapter={currentChapter}
+                    verseNumber={verseNumber}
+                  />
                 </Animated.View>
               </View>
+            )}
+
+            {/* Inline Strong's Concordance — replaces the old bottom sheet */}
+            {strongsData && (
+              <VerseRollPanel
+                ref={strongsPanelRef}
+                active={!!strongsData}
+                onClosed={onCloseStrongs}
+              >
+                <VerseStrongsContent
+                  word={strongsData.word}
+                  entry={strongsData.entry}
+                  ai={strongsData.ai}
+                  loading={strongsData.loading}
+                  colors={colors}
+                  isRtl={isRtl}
+                  onHide={handleHideStrongs}
+                />
+              </VerseRollPanel>
+            )}
+
+            {/* Inline Verse Background — replaces the old modal */}
+            {backgroundData && (
+              <VerseRollPanel
+                ref={backgroundPanelRef}
+                active={!!backgroundData}
+                onClosed={onCloseBackground}
+              >
+                <VerseBackgroundContent
+                  bookName={currentBook || ''}
+                  chapter={currentChapter || 0}
+                  verseNumber={verseNumber}
+                  background={backgroundData.background}
+                  prologue={backgroundData.prologue}
+                  ai={backgroundData.ai}
+                  loading={backgroundData.loading}
+                  colors={colors}
+                  isRtl={isRtl}
+                  bc={bc}
+                  onHide={handleHideBackground}
+                />
+              </VerseRollPanel>
+            )}
+
+            {/* Inline Journal — replaces the old screen navigation */}
+            {journalOpen && (
+              <VerseRollPanel
+                ref={journalPanelRef}
+                active={journalOpen}
+                onClosed={onCloseJournal}
+              >
+                <VerseJournalContent
+                  verseNumber={verseNumber}
+                  bookName={currentBook || ''}
+                  chapter={currentChapter || 0}
+                  prompts={
+                    (Array.isArray(chapterPrompts) && chapterPrompts.length > 0
+                      ? chapterPrompts
+                      : journalPrompts) || []
+                  }
+                  colors={colors}
+                  isRtl={isRtl}
+                  onHide={handleHideJournal}
+                  onOpenFullJournal={onOpenFullJournal}
+                />
+              </VerseRollPanel>
             )}
           </View>
         </View>
@@ -1036,85 +976,6 @@ const localStyles = StyleSheet.create({
     borderRadius: 8,
     pointerEvents: 'none',
   },
-  expContainer: {
-    marginTop: 10,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 4,
-  },
-  expHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  expHeaderRowRtl: {
-    flexDirection: 'row-reverse',
-  },
-  expHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  expHeaderLeftRtl: {
-    flexDirection: 'row-reverse',
-  },
-  expHeaderTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  hideExpBtn: {
-    borderTopWidth: 1,
-    paddingTop: 14,
-    marginTop: 14,
-    alignItems: 'center',
-  },
-  hideExpBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  expBodyText: {
-    fontSize: 17,
-    lineHeight: 28,
-    letterSpacing: 0.2,
-  },
-  expDivider: {
-    height: 1,
-    marginVertical: 14,
-  },
-  expLearnMoreTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  exExpandableContainer: {
-    marginTop: 0,
-    marginBottom: 2,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 6,
-  },
-  actionRowRtl: {
-    flexDirection: 'row-reverse',
-  },
-  actionRowBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRadius: 6,
-  },
-  actionRowText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
   inlineFavorite: {
     marginLeft: 2,
     marginRight: 2,
@@ -1143,42 +1004,6 @@ const localStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.3,
-  },
-  journalPromptsContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    // borderTopColor is applied inline (colors comes from props, not module scope)
-  },
-  promptsTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  promptsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  addPromptBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  promptItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 6,
-  },
-  promptText: {
-    fontSize: 13,
-    lineHeight: 18,
   },
   dvContainer: {
     marginTop: 10,

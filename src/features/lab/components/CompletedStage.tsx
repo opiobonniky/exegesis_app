@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import {
   BookMarked,
-  CheckCircle2,
   ClipboardList,
   ChevronRight,
   Share2,
   Sparkles,
+  CheckCircle2,
 } from 'lucide-react-native';
 
 interface CompletedStageProps {
@@ -45,20 +45,10 @@ export default function CompletedStage({
 
   return (
     <View style={[styles.stageContainer, styles.completedContainer]}>
-      {/* Celebration badge — layered rings + sparkle accent */}
+      {/* ── Celebration badge ────────────────────────────────────────────── */}
       <View style={styles.completedBadgeWrap}>
-        <View
-          style={[
-            styles.completedBadgeOuter,
-            { borderColor: `${colors.success}33` },
-          ]}
-        >
-          <View
-            style={[
-              styles.completedBadgeInner,
-              { backgroundColor: `${colors.success}20` },
-            ]}
-          >
+        <View style={[styles.completedBadgeOuter, { borderColor: `${colors.success}33` }]}>
+          <View style={[styles.completedBadgeInner, { backgroundColor: `${colors.success}20` }]}>
             <CheckCircle2 size={56} color={colors.success} />
           </View>
         </View>
@@ -67,14 +57,12 @@ export default function CompletedStage({
         </View>
       </View>
 
-      <Text style={[styles.completedTitle, { color: colors.text }]}>
-        Study Complete!
-      </Text>
+      <Text style={[styles.completedTitle, { color: colors.text }]}>Study Complete!</Text>
       <Text style={[styles.completedSubtitle, { color: colors.textSecondary }]}>
         Your exegesis has been saved to the Legacy Ledger. Export, share, or start a new study.
       </Text>
 
-      {/* Saved-to-ledger confirmation card */}
+      {/* ── Saved to Legacy Ledger card ──────────────────────────────────── */}
       <View
         style={[
           styles.completedSavedCard,
@@ -84,12 +72,7 @@ export default function CompletedStage({
           },
         ]}
       >
-        <View
-          style={[
-            styles.completedSavedIcon,
-            { backgroundColor: `${colors.success}20` },
-          ]}
-        >
+        <View style={[styles.completedSavedIcon, { backgroundColor: `${colors.success}20` }]}>
           <BookMarked size={18} color={colors.success} />
         </View>
         <View style={styles.completedSavedTextWrap}>
@@ -103,16 +86,13 @@ export default function CompletedStage({
         <CheckCircle2 size={18} color={colors.success} />
       </View>
 
-      {/* Action buttons row */}
+      {/* ── Action buttons row ───────────────────────────────────────────── */}
       <View style={styles.completedActionsRow}>
         <TouchableOpacity
           style={[
             styles.secondaryBtn,
             styles.completedActionBtn,
-            {
-              borderColor: copied ? colors.success : colors.primary,
-              marginVertical: 0,
-            },
+            { borderColor: copied ? colors.success : colors.primary, marginVertical: 0 },
           ]}
           onPress={handleCopy}
           activeOpacity={0.7}
@@ -122,22 +102,13 @@ export default function CompletedStage({
           ) : (
             <ClipboardList size={14} color={colors.primary} />
           )}
-          <Text
-            style={[
-              styles.secondaryBtnText,
-              { color: copied ? colors.success : colors.primary, fontSize: 11 },
-            ]}
-          >
+          <Text style={[styles.secondaryBtnText, { color: copied ? colors.success : colors.primary, fontSize: 11 }]}>
             {copied ? 'Copied!' : 'Copy'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[
-            styles.secondaryBtn,
-            styles.completedActionBtn,
-            { borderColor: colors.primary, marginVertical: 0 },
-          ]}
+          style={[styles.secondaryBtn, styles.completedActionBtn, { borderColor: colors.primary, marginVertical: 0 }]}
           onPress={handleShare}
           disabled={sharing}
           activeOpacity={0.7}
@@ -147,20 +118,12 @@ export default function CompletedStage({
           ) : (
             <Share2 size={14} color={colors.primary} />
           )}
-          <Text
-            style={[styles.secondaryBtnText, { color: colors.primary, fontSize: 11 }]}
-          >
-            Share
-          </Text>
+          <Text style={[styles.secondaryBtnText, { color: colors.primary, fontSize: 11 }]}>Share</Text>
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
-        style={[
-          styles.primaryBtn,
-          styles.completedPrimaryBtn,
-          { backgroundColor: colors.accent },
-        ]}
+        style={[styles.primaryBtn, styles.completedPrimaryBtn, { backgroundColor: colors.accent }]}
         onPress={onViewLegacyLedger}
         activeOpacity={0.8}
       >
@@ -170,17 +133,12 @@ export default function CompletedStage({
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[
-          styles.secondaryBtn,
-          { borderColor: colors.primary, marginTop: 4 },
-        ]}
+        style={[styles.secondaryBtn, { borderColor: colors.primary, marginTop: 4 }]}
         onPress={onStartNewStudy}
         activeOpacity={0.7}
       >
         <Sparkles size={16} color={colors.primary} />
-        <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>
-          Start Another Study
-        </Text>
+        <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>Start Another Study</Text>
       </TouchableOpacity>
     </View>
   );

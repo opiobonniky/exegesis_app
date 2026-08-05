@@ -32,6 +32,7 @@ export default function ChapterSelectorModal({
   currentChapter,
   onSelectChapter,
   isDark,
+  bookHeadings,
 }: ChapterSelectorModalProps) {
   const { translations } = useLanguage();
   const bc = translations?.bible;
@@ -157,6 +158,7 @@ export default function ChapterSelectorModal({
         >
           {chapters.map(ch => {
             const isActive = ch === currentChapter;
+            const preview = bookHeadings?.[ch]?.[0]?.heading || null;
             return (
               <TouchableOpacity
                 key={ch}
@@ -186,6 +188,17 @@ export default function ChapterSelectorModal({
                   ]}
                 >
                   {ch}
+                </Text>
+
+                {/* Reserved preview slot keeps all cells uniform */}
+                <Text
+                  style={[
+                    s.cellPreview,
+                    { color: isActive ? 'rgba(255,255,255,0.85)' : COLORS.primary },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {preview || ' '}
                 </Text>
 
                 {/* Active dot indicator */}
@@ -291,16 +304,24 @@ const s = StyleSheet.create({
   },
   cell: {
     width: ITEM_SIZE,
-    height: ITEM_SIZE,
+    height: ITEM_SIZE + 20,
     borderRadius: 14,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    paddingHorizontal: 3,
   },
   cellText: {
     fontSize: FONT_SIZES.md,
     letterSpacing: -0.2,
+  },
+  cellPreview: {
+    fontSize: 8,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 2,
+    paddingHorizontal: 1,
   },
   activeDot: {
     position: 'absolute',

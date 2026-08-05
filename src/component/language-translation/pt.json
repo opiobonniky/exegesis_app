@@ -168,7 +168,8 @@
     "dashboard": "Painel",
     "users": "Usuários",
     "verse": "Versículo",
-    "devotion": "Devocional"
+    "devotion": "Devocional",
+    "tools": "Ferramentas"
   },
   "readingSettings": {
     "title": "Configurações de Leitura",
@@ -1043,7 +1044,6 @@
     "showMore": "Mostrar Mais ▼",
     "showLess": "Mostrar Menos ▲",
     "explainVerse": "Explicar versículo",
-    "hideExplanation": "Ocultar Explicação",
     "shareVerse": "Compartilhar versículo",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1086,7 +1086,11 @@
       "versesRead": "Versículos lidos",
       "devotions": "Devocionais",
       "bookmarks": "Marcadores"
-    }
+    },
+    "labCardTitle": "Laboratório de Exegese",
+    "labCardSubtitle": "Uma jornada guiada em 5 etapas por qualquer passagem — Olhe, Ouça, Aprenda, Permaneça e Aplique.",
+    "labStartStudy": "Iniciar estudo",
+    "labDurationHint": "5 passos · 30–60 min"
   },
   "readingPlans": {
     "myReadingPlans": "Meus Planos de Leitura",

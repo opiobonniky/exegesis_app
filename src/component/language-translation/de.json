@@ -175,7 +175,8 @@
     "dashboard": "Dashboard",
     "users": "Benutzer",
     "verse": "Vers",
-    "devotion": "Andacht"
+    "devotion": "Andacht",
+    "tools": "Werkzeuge"
   },
   "readingSettings": {
     "title": "Leseeinstellungen",
@@ -1050,7 +1051,6 @@
     "showMore": "Mehr anzeigen ▼",
     "showLess": "Weniger anzeigen ▲",
     "explainVerse": "Vers erklären",
-    "hideExplanation": "Erklärung ausblenden",
     "shareVerse": "Vers teilen",
     "faithReelTitle": "Glaubensrolle",
     "faithReelsFooter": "🎉 GLAUBENSROLLEN —",
@@ -1093,7 +1093,11 @@
       "versesRead": "Gelesene Verse",
       "devotions": "Andachten",
       "bookmarks": "Lesezeichen"
-    }
+    },
+    "labCardTitle": "Exegese-Labor",
+    "labCardSubtitle": "Eine geführte 5-Schritte-Reise durch jeden Abschnitt — Schauen, Hören, Lernen, Bleiben und Anwenden.",
+    "labStartStudy": "Studium beginnen",
+    "labDurationHint": "5 Schritte · 30–60 Min."
   },
   "readingPlans": {
     "myReadingPlans": "Meine Lesepläne",

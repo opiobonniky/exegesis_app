@@ -168,7 +168,8 @@
     "dashboard": "Dashboard",
     "users": "Mga User",
     "verse": "Talata",
-    "devotion": "Debosyon"
+    "devotion": "Debosyon",
+    "tools": "Mga Tool"
   },
   "readingSettings": {
     "title": "Mga Setting ng Pagbasa",
@@ -1045,7 +1046,6 @@
     "showMore": "Magpakita Pa ▼",
     "showLess": "Magpakita Kaunti ▲",
     "explainVerse": "Ipaliwanag ang talata",
-    "hideExplanation": "Itago ang Paliwanag",
     "shareVerse": "I-share ang talata",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1088,7 +1088,11 @@
       "versesRead": "Mga talatang binasa",
       "devotions": "Mga debosyon",
       "bookmarks": "Mga bookmark"
-    }
+    },
+    "labCardTitle": "Exegesis Lab",
+    "labCardSubtitle": "Isang gabay na 5-hakbang na paglalakbay sa anumang talata — Tumingin, Makinig, Matuto, Manatili, at Mag-apply.",
+    "labStartStudy": "Simulan ang Pag-aaral",
+    "labDurationHint": "5 hakbang · 30–60 min"
   },
   "readingPlans": {
     "myReadingPlans": "Aking Reading Plans",

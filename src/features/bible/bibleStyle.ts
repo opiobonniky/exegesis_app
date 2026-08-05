@@ -1164,48 +1164,5 @@ export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
       width: 220,
     },
 
-    // Chapter Journal Prompts
-    chapterPromptsContainer: {
-      paddingVertical: SPACING.sm,
-      paddingHorizontal: SPACING.md,
-      borderBottomWidth: 1,
-      borderBottomColor: COLORS.border,
-    },
-    chapterPromptsHeader: {
-      flexDirection: rtl ? 'row-reverse' : 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: SPACING.sm,
-    },
-    chapterPromptsTitle: {
-      fontSize: FONT_SIZES.sm,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    addJournalBtn: {
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.xs,
-      borderRadius: BORDER_RADIUS.round,
-    },
-    addJournalBtnText: {
-      color: COLORS.white,
-      fontSize: FONT_SIZES.xs,
-      fontWeight: '700',
-    },
-    promptsScroll: {
-      gap: SPACING.sm,
-    },
-    chapterPromptChip: {
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.sm,
-      borderRadius: BORDER_RADIUS.md,
-      borderWidth: 1,
-      maxWidth: 200,
-    },
-    chapterPromptText: {
-      fontSize: FONT_SIZES.sm,
-      lineHeight: 18,
-    },
   });
 };

@@ -5,22 +5,26 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Platform,
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, BookOpen, Layers } from 'lucide-react-native';
-import { useLanguage } from '../../../component/language-translation/LanguageProvider';
+import {
+  ChevronLeft,
+  ChevronDown,
+  ChevronRight,
+  Globe,
+  BookOpen,
+  Layers,
+} from 'lucide-react-native';
+import {
+  useLanguage,
+  isRtlLanguage,
+} from '../../../component/language-translation/LanguageProvider';
 import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const COLUMNS = 4;
-const H_PAD = 20;
-const GAP = 10;
-const ITEM_SIZE = Math.floor(
-  (SCREEN_WIDTH - H_PAD * 2 - GAP * (COLUMNS - 1)) / COLUMNS,
-);
+// Design tokens matching the Bible screen header (biblescreen.jpeg)
+const HEADER_BG = '#25385C';
 
 interface ChapterSelectorScreenProps {
   bookName: string;
@@ -28,6 +32,11 @@ interface ChapterSelectorScreenProps {
   isDark: boolean;
   onSelectChapter: (chapter: number) => void;
   onBack: () => void;
+  bookHeadings?: Record<number, Array<{ verse: number; heading: string }>>;
+  versionAbbr?: string;
+  onVersionPress?: () => void;
+  /** Current chapter, used to highlight the active row and show "Chapter x of N". */
+  currentChapter?: number;
 }
 
 export default function ChapterSelectorScreen({
@@ -36,9 +45,14 @@ export default function ChapterSelectorScreen({
   isDark,
   onSelectChapter,
   onBack,
+  bookHeadings,
+  versionAbbr,
+  onVersionPress,
+  currentChapter = 1,
 }: ChapterSelectorScreenProps) {
   const insets = useSafeAreaInsets();
-  const { translations } = useLanguage();
+  const { translations, language } = useLanguage();
+  const isRtl = isRtlLanguage(language);
   const bc = translations?.bible;
   const COLORS = getColors(isDark);
   const scrollRef = useRef<ScrollView>(null);
@@ -48,91 +62,169 @@ export default function ChapterSelectorScreen({
     [maxChapters],
   );
 
-  const rows = useMemo(() => {
-    const result: number[][] = [];
-    for (let i = 0; i < chapters.length; i += COLUMNS) {
-      result.push(chapters.slice(i, i + COLUMNS));
-    }
-    return result;
-  }, [chapters]);
+  /** Up to two section headings of a chapter, joined (preview title). */
+  const getPreview = (ch: number): string | null => {
+    const list = bookHeadings?.[ch];
+    if (!list || list.length === 0) return null;
+    const headings = list
+      .slice(0, 2)
+      .map(h => h.heading)
+      .filter(Boolean);
+    return headings.length > 0 ? headings.join(' · ') : null;
+  };
 
   return (
-    <View style={[s.container, { backgroundColor: COLORS.background, paddingTop: insets.top + 4 }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <View style={[s.container, { backgroundColor: COLORS.background }]}>
+      <StatusBar backgroundColor={HEADER_BG} barStyle="light-content" />
 
-      {/* Header with back */}
-      <View style={s.header}>
-        <TouchableOpacity
-          onPress={onBack}
-          style={[s.backBtn, { backgroundColor: COLORS.surface }]}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <ChevronLeft size={20} color={COLORS.text} strokeWidth={2.5} />
-        </TouchableOpacity>
+      {/* ── Header (matches Bible screen) ─────────────────────────────────── */}
+      <View style={[s.header, { paddingTop: insets.top }]}>
+        <View style={[s.headerRow, isRtl && s.headerRowRtl]}>
+          {/* Back */}
+          <TouchableOpacity
+            onPress={onBack}
+            style={s.sideBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ChevronLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
+          </TouchableOpacity>
 
-        <View style={s.headerCenter}>
-          <View style={[s.headerIcon, { backgroundColor: `${COLORS.primary}15` }]}>
-            <BookOpen size={18} color={COLORS.primary} strokeWidth={1.5} />
-          </View>
-          <View>
-            <Text style={[s.headerTitle, { color: COLORS.text }]}>
-              {bookName}
-            </Text>
-            <Text style={[s.headerSubtitle, { color: COLORS.muted }]}>
+          {/* Centered book title (tappable to go back to books) */}
+          <View style={s.headerCenter}>
+            <TouchableOpacity
+              onPress={onBack}
+              activeOpacity={0.75}
+              style={s.titleRow}
+              hitSlop={{ top: 6, bottom: 6, left: 8, right: 8 }}
+            >
+              <Text style={s.headerTitle} numberOfLines={1}>
+                {bookName}
+              </Text>
+              <ChevronDown size={15} color="#FFFFFF" strokeWidth={2.5} />
+            </TouchableOpacity>
+            <Text style={s.headerSubtitle} numberOfLines={1}>
               {bc?.selectChapter || 'Select a chapter'}
             </Text>
           </View>
-        </View>
 
-        <View style={[s.chip, { backgroundColor: `${COLORS.primary}12`, borderColor: `${COLORS.primary}30` }]}>
-          <Layers size={12} color={COLORS.primary} strokeWidth={2.5} />
-          <Text style={[s.chipText, { color: COLORS.primary }]}>
-            {maxChapters} {bc?.chaptersAbbr || 'ch'}
-          </Text>
+          {/* ── Translation selector icon ─────────────────────────────────── */}
+          <TouchableOpacity
+            onPress={onVersionPress}
+            style={s.sideBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.8}
+          >
+            <Globe size={20} color="#FFFFFF" strokeWidth={2.2} />
+          </TouchableOpacity>
         </View>
+        {versionAbbr ? (
+          <Text style={s.headerVersion}>
+            {bc?.readingFrom || 'Reading'} {versionAbbr}
+          </Text>
+        ) : null}
       </View>
 
-      {/* Chapter grid */}
+      {/* Chapter list */}
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.gridContent}
+        contentContainerStyle={s.listContent}
       >
-        {rows.map((row, rowIdx) => (
-          <View key={rowIdx} style={s.row}>
-            {row.map(ch => (
-              <TouchableOpacity
-                key={ch}
-                onPress={() => onSelectChapter(ch)}
-                activeOpacity={0.75}
+        {/* Section header: "Chapter x of 50" */}
+        <View style={[s.sectionHeaderRow, isRtl && s.rowRtl]}>
+          <View style={[s.sectionIcon, { backgroundColor: `${COLORS.primary}12` }]}>
+            <Layers size={14} color={COLORS.primary} strokeWidth={2.2} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.sectionTitle, { color: COLORS.text }]}>
+              {bc?.chapterOfLabel || 'Chapter'} {currentChapter} {bc?.ofLabel || 'of'}{' '}
+              {maxChapters}
+            </Text>
+            <Text style={[s.sectionSubtitle, { color: COLORS.muted }]}>
+              {bc?.chaptersAbbr || 'ch'} · {chapters.length} {bc?.totalLabel || 'total'}
+            </Text>
+          </View>
+        </View>
+
+        {chapters.map((ch, index) => {
+          const preview = getPreview(ch);
+          const isLast = index === chapters.length - 1;
+          const isCurrent = ch === currentChapter;
+          return (
+            <TouchableOpacity
+              key={ch}
+              onPress={() => onSelectChapter(ch)}
+              activeOpacity={0.7}
+              style={[
+                s.row,
+                isRtl && s.rowRtl,
+                {
+                  backgroundColor: isCurrent
+                    ? `${COLORS.primary}0F`
+                    : COLORS.cardBackground,
+                  borderColor: isCurrent ? COLORS.primary : COLORS.border,
+                  borderWidth: isCurrent ? 1.5 : 1,
+                  marginBottom: isLast ? 0 : SPACING.sm,
+                },
+              ]}
+            >
+              <View
                 style={[
-                  s.cell,
+                  s.rowIndex,
                   {
-                    backgroundColor: COLORS.cardBackground,
-                    borderColor: COLORS.border,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.06,
-                    shadowRadius: 4,
-                    elevation: 1,
+                    backgroundColor: isCurrent
+                      ? COLORS.primary
+                      : `${COLORS.primary}12`,
                   },
                 ]}
               >
-                <Text style={[s.cellNum, { color: COLORS.text }]}>
+                <Text
+                  style={[
+                    s.rowIndexText,
+                    { color: isCurrent ? '#FFFFFF' : COLORS.primary },
+                  ]}
+                >
                   {ch}
                 </Text>
-                <Text style={[s.cellLabel, { color: COLORS.muted }]}>
-                  {bc?.chaptersAbbr || 'ch'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            {/* Fill remaining cells in last row */}
-            {row.length < COLUMNS &&
-              Array.from({ length: COLUMNS - row.length }).map((_, i) => (
-                <View key={`fill-${i}`} style={{ width: ITEM_SIZE }} />
-              ))}
-          </View>
-        ))}
+              </View>
+
+              <View style={s.rowContent}>
+                {preview ? (
+                  <>
+                    <Text style={[s.rowSub, { color: COLORS.muted }]} numberOfLines={1}>
+                      {bc?.chapterOfLabel || 'Chapter'} {ch}
+                    </Text>
+                    <View
+                      style={[
+                        s.rowPreviewWrap,
+                        { backgroundColor: `${COLORS.primary}0D` },
+                      ]}
+                    >
+                      <BookOpen size={11} color={COLORS.primary} strokeWidth={2.2} />
+                      <Text
+                        style={[s.rowPreview, { color: COLORS.primary }]}
+                        numberOfLines={1}
+                      >
+                        {preview}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <Text style={[s.rowTitle, { color: COLORS.text }]}>
+                    {bc?.chapterOfLabel || 'Chapter'} {ch}
+                  </Text>
+                )}
+              </View>
+
+              <ChevronRight
+                size={18}
+                color={COLORS.muted}
+                strokeWidth={2}
+                style={{ transform: [{ scaleX: isRtl ? -1 : 1 }] }}
+              />
+            </TouchableOpacity>
+          );
+        })}
         <View style={{ height: Platform.OS === 'ios' ? 40 : 24 }} />
       </ScrollView>
     </View>
@@ -144,84 +236,134 @@ const s = StyleSheet.create({
     flex: 1,
   },
   header: {
+    backgroundColor: HEADER_BG,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.38)',
+    paddingBottom: SPACING.sm,
+  },
+  headerRow: {
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: H_PAD,
-    paddingTop: SPACING.xs,
-    paddingBottom: SPACING.md,
-    gap: 12,
+    paddingHorizontal: SPACING.md,
+    gap: 6,
   },
-  backBtn: {
+  headerRowRtl: {
+    flexDirection: 'row-reverse',
+  },
+  sideBtn: {
     width: 40,
     height: 40,
-    borderRadius: BORDER_RADIUS.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerCenter: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    maxWidth: '100%',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 1,
+  },
+  headerVersion: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.75)',
+    textAlign: 'center',
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingTop: SPACING.md,
+    paddingBottom: 8,
+  },
+  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginBottom: SPACING.md,
   },
-  headerIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+  sectionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: FONT_SIZES.xl,
+  sectionTitle: {
+    fontSize: FONT_SIZES.md,
     fontWeight: '800',
-    letterSpacing: -0.4,
+    letterSpacing: -0.2,
   },
-  headerSubtitle: {
+  sectionSubtitle: {
     fontSize: FONT_SIZES.xs,
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: 1,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: BORDER_RADIUS.round,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  gridContent: {
-    paddingHorizontal: H_PAD,
-    paddingTop: SPACING.xs,
-    paddingBottom: 8,
   },
   row: {
     flexDirection: 'row',
-    gap: GAP,
-    marginBottom: GAP,
-  },
-  cell: {
-    width: ITEM_SIZE,
-    height: 76,
-    borderRadius: BORDER_RADIUS.lg,
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
+    gap: 12,
+  },
+  rowRtl: {
+    flexDirection: 'row-reverse',
+  },
+  rowIndex: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cellNum: {
-    fontSize: FONT_SIZES.xxl,
-    fontWeight: '700',
-    letterSpacing: -0.5,
+  rowIndexText: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '800',
   },
-  cellLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+  rowContent: {
+    flex: 1,
+  },
+  rowTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '700',
+  },
+  rowSub: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '500',
     marginTop: 2,
+  },
+  rowPreviewWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+  },
+  rowPreview: {
+    fontSize: 10,
+    fontWeight: '600',
+    flexShrink: 1,
   },
 });

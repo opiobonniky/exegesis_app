@@ -4,6 +4,7 @@ import {
   Animated,
   Clipboard,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -21,15 +22,24 @@ import {
   Globe,
   GraduationCap,
   Hash,
+  Lightbulb,
   Lock,
+  MapPin,
   Save,
   Search,
   Tags,
-  Timer,
+  Users,
+  User,
+  Calendar,
+  AtSign,
+  Star,
+  ScrollText,
+  Book,
 } from 'lucide-react-native';
 import { SPACING } from '../../../constants/theme';
 import RichText from '../../../reusable/RichText';
 import { showToast } from '../../../helpers/Toash.helper';
+import StageHeader from './StageHeader';
 import { StrongsWordData } from '../../../services/strongsService';
 import {
   TranslationComparisonEntry,
@@ -37,7 +47,7 @@ import {
 } from '../../../services/verseResourcesApi';
 import { BookPrologue } from '../../../services/bookProloguesApi';
 
-type LearnTab = 'exegesis' | 'language' | 'history' | 'prologue';
+type LearnTab = 'prologue' | 'language' | 'history' | 'geography' | 'theology' | 'crossrefs' | 'exegesis';
 
 interface LearnStageProps {
   styles: any;
@@ -59,7 +69,6 @@ interface LearnStageProps {
   isPublic: boolean;
   setIsPublic: (value: boolean) => void;
   saving: boolean;
-  savingProgress: boolean;
   pageIndex: number;
   stageOrder: readonly string[];
   scrollX: Animated.Value;
@@ -74,16 +83,85 @@ interface LearnStageProps {
   onOpenBibleReader: () => void;
   onOpenCrossReference: (ref: string) => void;
   onStrongsWordPress: (word: StrongsWordData) => void;
-  onSaveProgress: () => void;
   onContinue: () => void;
 }
 
-const TABS: { key: LearnTab; label: string; icon: React.ElementType; step?: string }[] = [
-  { key: 'prologue', label: 'Book Prologue', icon: BookMarked, step: 'Start' },
-  { key: 'language', label: 'Original Language', icon: BookText, step: 'Then' },
-  { key: 'history', label: 'Historical Context', icon: GraduationCap, step: 'Next' },
+const TABS: { key: LearnTab; label: string; icon: React.ElementType }[] = [
+  { key: 'prologue', label: 'Book Prologue', icon: BookMarked },
+  { key: 'language', label: 'Original Language', icon: BookText },
+  { key: 'history', label: 'Historical Context', icon: GraduationCap },
+  { key: 'geography', label: 'Geography', icon: MapPin },
+  { key: 'theology', label: 'Theology', icon: Lightbulb },
+  { key: 'crossrefs', label: 'Cross References', icon: ScrollText },
   { key: 'exegesis', label: 'Study Notes', icon: FileText },
 ];
+
+/** Row icon + label + value for prologue fields (matches the design image) */
+function PrologueRow({
+  icon: Icon,
+  label,
+  value,
+  accentColor,
+  colors,
+  isAccentValue = false,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  accentColor: string;
+  colors: any;
+  isAccentValue?: boolean;
+}) {
+  return (
+    <View style={[learnStyles.row, { borderBottomColor: colors.border }]}>
+      <View style={[learnStyles.rowIcon, { backgroundColor: `${accentColor}20` }]}>
+        <Icon size={15} color={accentColor} strokeWidth={2.2} />
+      </View>
+      <View style={learnStyles.rowContent}>
+        <Text style={[learnStyles.rowLabel, { color: colors.text }]}>{label}</Text>
+        <Text
+          style={[
+            learnStyles.rowValue,
+            isAccentValue ? { color: accentColor } : { color: colors.textSecondary },
+          ]}
+          numberOfLines={4}
+        >
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const learnStyles = {
+  row: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  rowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    marginTop: 2,
+  },
+  rowContent: {
+    flex: 1,
+    gap: 4,
+  },
+  rowLabel: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+  },
+  rowValue: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+};
 
 export default function LearnStage({
   styles,
@@ -105,7 +183,6 @@ export default function LearnStage({
   isPublic,
   setIsPublic,
   saving,
-  savingProgress,
   pageIndex,
   stageOrder,
   scrollX,
@@ -120,21 +197,13 @@ export default function LearnStage({
   onOpenBibleReader,
   onOpenCrossReference,
   onStrongsWordPress,
-  onSaveProgress,
   onContinue,
 }: LearnStageProps) {
   const tabContentRef = useRef<ScrollView>(null);
   const copiedTimerRef = useRef<number>(0);
-  const [copiedCommentaryIdx, setCopiedCommentaryIdx] = useState<number | null>(
-    null,
-  );
+  const [copiedCommentaryIdx, setCopiedCommentaryIdx] = useState<number | null>(null);
 
-  const copyCommentary = (
-    text: string,
-    author: string,
-    title: string,
-    idx: number,
-  ) => {
+  const copyCommentary = (text: string, author: string, title: string, idx: number) => {
     const ref = passageRef || `${bookName} ${chapter}:${verseStart}`;
     const attribution = `${text}\n\n— ${author}, ${title} (commentary on ${ref})`;
     try {
@@ -142,20 +211,15 @@ export default function LearnStage({
       setCopiedCommentaryIdx(idx);
       showToast('success', 'Commentary copied with attribution');
       clearTimeout(copiedTimerRef.current);
-      copiedTimerRef.current = setTimeout(
-        () => setCopiedCommentaryIdx(null),
-        2000,
-      );
+      copiedTimerRef.current = setTimeout(() => setCopiedCommentaryIdx(null), 2000);
     } catch (e) {
       console.error('Copy failed:', e);
       showToast('error', 'Could not copy commentary');
     }
   };
 
-  // Clear copy-feedback timers on unmount
   useEffect(() => {
     return () => clearTimeout(copiedTimerRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTabPress = (tab: LearnTab) => {
@@ -183,7 +247,7 @@ export default function LearnStage({
         onLayout={e => onTabContainerWidthChange(e.nativeEvent.layout.width)}
         contentContainerStyle={styles.tabRow}
       >
-        {TABS.map(({ key, label, icon: Icon, step }) => {
+        {TABS.map(({ key, label, icon: Icon }) => {
           const active = learnTab === key;
           return (
             <TouchableOpacity
@@ -195,9 +259,7 @@ export default function LearnStage({
                   : { backgroundColor: colors.surface, borderColor: colors.border },
               ]}
               onPress={() => handleTabPress(key)}
-              onLayout={e => {
-                tabPositions.current[key] = e.nativeEvent.layout.x;
-              }}
+              onLayout={e => { tabPositions.current[key] = e.nativeEvent.layout.x; }}
               activeOpacity={0.7}
             >
               <Icon size={14} color={active ? colors.accent : colors.textSecondary} />
@@ -210,19 +272,6 @@ export default function LearnStage({
               >
                 {label}
               </Text>
-              {step && (
-                <View style={{
-                  backgroundColor: active ? colors.accent : colors.muted,
-                  borderRadius: 8,
-                  paddingHorizontal: 5,
-                  paddingVertical: 1,
-                  marginLeft: 2,
-                }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: '800' }}>
-                    {step}
-                  </Text>
-                </View>
-              )}
             </TouchableOpacity>
           );
         })}
@@ -235,58 +284,59 @@ export default function LearnStage({
     </View>
   );
 
-  const renderExegesisTab = () => (
-    <View>
-      <View style={styles.textareaLabelRow}>
-        <Text style={[styles.textareaLabel, { color: colors.textSecondary }]}>
-          <FileText size={14} color={colors.textSecondary} /> Study Notes
-        </Text>
+  const renderPrologueTab = () => {
+    if (learnDataLoading) {
+      return (
+        <View style={{ paddingVertical: SPACING.xl, alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={colors.accent} />
+        </View>
+      );
+    }
+    if (!bookPrologue) {
+      return (
+        <View style={[styles.learnContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <BookOpen size={24} color={colors.muted} style={{ marginBottom: SPACING.sm }} />
+          <Text style={[styles.learnText, { color: colors.textSecondary }]}>
+            No book prologue available for {bookName}.
+          </Text>
+        </View>
+      );
+    }
+    const accentColor = colors.accent;
+    return (
+      <View>
+        {bookPrologue.author && (
+          <PrologueRow icon={User} label="Author" value={bookPrologue.author} accentColor={accentColor} colors={colors} />
+        )}
+        {bookPrologue.audience && (
+          <PrologueRow icon={Users} label="Audience" value={bookPrologue.audience} accentColor={accentColor} colors={colors} />
+        )}
+        {bookPrologue.dateWritten && (
+          <PrologueRow icon={Calendar} label="Date Written" value={bookPrologue.dateWritten} accentColor={accentColor} colors={colors} />
+        )}
+        {bookPrologue.locationWritten && (
+          <PrologueRow icon={MapPin} label="Location" value={bookPrologue.locationWritten} accentColor={accentColor} colors={colors} />
+        )}
+        {bookPrologue.purpose && (
+          <PrologueRow icon={AtSign} label="Purpose" value={bookPrologue.purpose} accentColor={accentColor} colors={colors} />
+        )}
+        {bookPrologue.keyTheme && (
+          <PrologueRow icon={Star} label="Key Theme" value={bookPrologue.keyTheme} accentColor={accentColor} colors={colors} isAccentValue />
+        )}
+        {bookPrologue.summary && (
+          <PrologueRow icon={Book} label="Summary" value={bookPrologue.summary} accentColor={accentColor} colors={colors} />
+        )}
+        <TouchableOpacity
+          style={[styles.primaryBtn, { backgroundColor: colors.primary, marginTop: SPACING.md }]}
+          onPress={onOpenBibleReader}
+          activeOpacity={0.8}
+        >
+          <BookOpen size={16} color="#FFFFFF" />
+          <Text style={styles.primaryBtnText}>Open {bookName} {chapter} in Reader</Text>
+        </TouchableOpacity>
       </View>
-      <TextInput
-        style={[
-          styles.textareaLarge,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-            color: colors.text,
-          },
-        ]}
-        placeholder="Write your study notes, observations, and insights..."
-        placeholderTextColor={colors.muted}
-        value={learnNotes}
-        onChangeText={setLearnNotes}
-        multiline
-        textAlignVertical="top"
-      />
-      <TouchableOpacity
-        style={[styles.saveProgressBtn, { borderColor: colors.muted }]}
-        onPress={onSaveProgress}
-        disabled={savingProgress}
-        activeOpacity={0.7}
-      >
-        {savingProgress ? (
-          <ActivityIndicator size="small" color={colors.muted} />
-        ) : (
-          <>
-            <Save size={14} color={colors.muted} />
-            <Text style={[styles.saveProgressText, { color: colors.muted }]}>Save Progress</Text>
-          </>
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
-        onPress={onContinue}
-        disabled={saving}
-        activeOpacity={0.8}
-      >
-        {saving ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        ) : (
-          <Text style={styles.primaryBtnText}>Continue to Abide</Text>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   const renderLanguageTab = () => {
     if (learnDataLoading) {
@@ -313,13 +363,7 @@ export default function LearnStage({
         {verseWords.map((word, idx) => (
           <TouchableOpacity
             key={`${word.wordOrder}-${idx}`}
-            style={[
-              styles.wordRow,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
+            style={[styles.wordRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => onStrongsWordPress(word)}
             activeOpacity={0.7}
           >
@@ -327,22 +371,14 @@ export default function LearnStage({
               <Text style={[styles.wordIndexText, { color: colors.accent }]}>{word.wordOrder}</Text>
             </View>
             <View style={styles.wordContent}>
-              <Text style={[styles.wordSurfaceText, { color: colors.text }]}>
-                {word.surfaceText}
-              </Text>
+              <Text style={[styles.wordSurfaceText, { color: colors.text }]}>{word.surfaceText}</Text>
               <View style={styles.wordMeta}>
                 {word.strongsId && (
                   <View style={[styles.wordBadge, { backgroundColor: `${colors.primary}20` }]}>
-                    <Text style={[styles.wordBadgeText, { color: colors.primary }]}>
-                      Strong's {word.strongsId}
-                    </Text>
+                    <Text style={[styles.wordBadgeText, { color: colors.primaryOnSurface ?? colors.primary }]}>Strong's {word.strongsId}</Text>
                   </View>
                 )}
-                {word.lemma && (
-                  <Text style={[styles.wordLemma, { color: colors.textSecondary }]}>
-                    {word.lemma}
-                  </Text>
-                )}
+                {word.lemma && <Text style={[styles.wordLemma, { color: colors.textSecondary }]}>{word.lemma}</Text>}
               </View>
               {word.morphology && (
                 <Text style={[styles.wordMorph, { color: colors.muted }]} numberOfLines={1}>
@@ -367,15 +403,10 @@ export default function LearnStage({
     }
     const hasResources =
       verseResources &&
-      (verseResources.commentaries.length > 0 ||
-        verseResources.crossReferences.length > 0 ||
-        verseResources.dictionaryTerms.length > 0 ||
-        verseResources.wordStudies.length > 0 ||
+      (verseResources.commentaries.length > 0 || verseResources.crossReferences.length > 0 ||
+        verseResources.dictionaryTerms.length > 0 || verseResources.wordStudies.length > 0 ||
         verseResources.relatedTopics.length > 0);
-    if (
-      !hasResources &&
-      (!translations || translations.length === 0)
-    ) {
+    if (!hasResources && (!translations || translations.length === 0)) {
       return (
         <View style={[styles.learnContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.learnText, { color: colors.textSecondary }]}>
@@ -386,47 +417,29 @@ export default function LearnStage({
     }
     return (
       <ScrollView ref={tabContentRef} showsVerticalScrollIndicator={false}>
-        {/* Translation comparison — how different versions render the verse */}
         {translationsLoading ? (
           <View style={{ paddingVertical: SPACING.md, alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={colors.primaryOnSurface ?? colors.primary} />
           </View>
         ) : translations && translations.length > 0 ? (
           <View style={{ marginBottom: SPACING.md }}>
             <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Translation Comparison</Text>
             {translations.map((t, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.resourceCard,
-                  { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.primary },
-                ]}
-              >
+              <View key={i} style={[styles.resourceCard, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.primaryOnSurface ?? colors.primary }]}>
                 <View style={[styles.translationBadge, { backgroundColor: `${colors.primary}15` }]}>
-                  <Text style={[styles.translationBadgeText, { color: colors.primary }]}>
-                    {t.abbreviation}
-                  </Text>
+                  <Text style={[styles.translationBadgeText, { color: colors.primaryOnSurface ?? colors.primary }]}>{t.abbreviation}</Text>
                 </View>
                 <Text style={[styles.resourceCardLabel, { color: colors.muted }]}>{t.version}</Text>
-                <Text style={[styles.translationText, { color: colors.textSecondary }]}>
-                  “{t.text}”
-                </Text>
+                <Text style={[styles.translationText, { color: colors.textSecondary }]}>“{t.text}”</Text>
               </View>
             ))}
           </View>
         ) : null}
-
         {verseResources && verseResources.commentaries.length > 0 && (
           <View style={{ marginBottom: SPACING.md }}>
             <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Commentaries</Text>
             {verseResources.commentaries.map((c, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.resourceCard,
-                  { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.accent },
-                ]}
-              >
+              <View key={i} style={[styles.resourceCard, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.accent }]}>
                 <View style={styles.commentaryHeaderRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.resourceCardAuthor, { color: colors.text }]}>{c.author}</Text>
@@ -436,29 +449,13 @@ export default function LearnStage({
                     onPress={() => copyCommentary(c.text, c.author, c.title, i)}
                     activeOpacity={0.7}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    accessibilityLabel="Copy commentary with attribution"
-                    style={[
-                      styles.commentaryCopyBtn,
-                      {
-                        backgroundColor: copiedCommentaryIdx === i ? 'rgba(34,197,94,0.12)' : colors.surface,
-                        borderColor: copiedCommentaryIdx === i ? 'rgba(34,197,94,0.4)' : colors.border,
-                      },
-                    ]}
+                    style={[styles.commentaryCopyBtn, { backgroundColor: copiedCommentaryIdx === i ? 'rgba(34,197,94,0.12)' : colors.surface, borderColor: copiedCommentaryIdx === i ? 'rgba(34,197,94,0.4)' : colors.border }]}
                   >
-                    {copiedCommentaryIdx === i ? (
-                      <Check size={13} color="#22C55E" strokeWidth={2.5} />
-                    ) : (
-                      <Copy size={13} color={colors.muted} strokeWidth={2.5} />
-                    )}
+                    {copiedCommentaryIdx === i ? <Check size={13} color="#22C55E" strokeWidth={2.5} /> : <Copy size={13} color={colors.muted} strokeWidth={2.5} />}
                   </TouchableOpacity>
                 </View>
                 <View style={[styles.dividerThin, { backgroundColor: colors.border }]} />
-                <RichText
-                  text={c.text}
-                  textStyle={[styles.resourceCardText, { color: colors.textSecondary }]}
-                  accentColor={colors.accent}
-                  paragraphGap={6}
-                />
+                <RichText text={c.text} textStyle={[styles.resourceCardText, { color: colors.textSecondary }]} accentColor={colors.accent} paragraphGap={6} />
               </View>
             ))}
           </View>
@@ -467,20 +464,10 @@ export default function LearnStage({
           <View style={{ marginBottom: SPACING.md }}>
             <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Cross References</Text>
             {verseResources.crossReferences.map((cr, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[
-                  styles.resourceCard,
-                  { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.primary },
-                ]}
-                onPress={() => onOpenCrossReference(cr.ref)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.resourceCardRef, { color: colors.primary }]}>{cr.ref}</Text>
+              <TouchableOpacity key={i} style={[styles.resourceCard, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.primaryOnSurface ?? colors.primary }]} onPress={() => onOpenCrossReference(cr.ref)} activeOpacity={0.7}>
+                <Text style={[styles.resourceCardRef, { color: colors.primaryOnSurface ?? colors.primary }]}>{cr.ref}</Text>
                 <Text style={[styles.resourceCardText, { color: colors.textSecondary }]}>{cr.text}</Text>
-                <Text style={[styles.crossRefTapHint, { color: colors.primary }]}>
-                  Tap to open in reader
-                </Text>
+                <Text style={[styles.crossRefTapHint, { color: colors.primaryOnSurface ?? colors.primary }]}>Tap to open in reader</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -489,28 +476,12 @@ export default function LearnStage({
           <View style={{ marginBottom: SPACING.md }}>
             <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Word Studies</Text>
             {verseResources.wordStudies.map((ws, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.resourceCard,
-                  { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.accent },
-                ]}
-              >
+              <View key={i} style={[styles.resourceCard, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.accent }]}>
                 <View style={styles.wordStudyHeader}>
                   <Hash size={13} color={colors.accent} strokeWidth={2.5} />
                   <Text style={[styles.resourceCardDef, { color: colors.text }]}>{ws.word}</Text>
-                  {ws.transliteration ? (
-                    <Text style={[styles.resourceCardLabel, { color: colors.muted }]}>
-                      ({ws.transliteration})
-                    </Text>
-                  ) : null}
-                  {ws.strongs ? (
-                    <View style={[styles.wordBadge, { backgroundColor: `${colors.accent}20` }]}>
-                      <Text style={[styles.wordBadgeText, { color: colors.accent }]}>
-                        {ws.strongs}
-                      </Text>
-                    </View>
-                  ) : null}
+                  {ws.transliteration && <Text style={[styles.resourceCardLabel, { color: colors.muted }]}>({ws.transliteration})</Text>}
+                  {ws.strongs && <View style={[styles.wordBadge, { backgroundColor: `${colors.accent}20` }]}><Text style={[styles.wordBadgeText, { color: colors.accent }]}>{ws.strongs}</Text></View>}
                 </View>
                 <Text style={[styles.resourceCardText, { color: colors.textSecondary }]}>{ws.meaning}</Text>
               </View>
@@ -521,26 +492,10 @@ export default function LearnStage({
           <View style={{ marginBottom: SPACING.md }}>
             <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Dictionary Terms</Text>
             {verseResources.dictionaryTerms.map((dt, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.resourceCard,
-                  { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.success },
-                ]}
-              >
+              <View key={i} style={[styles.resourceCard, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.success }]}>
                 <Text style={[styles.resourceCardDef, { color: colors.text }]}>{dt.term}</Text>
                 <Text style={[styles.resourceCardLabel, { color: colors.muted }]}>{dt.pronunciation}</Text>
-                <RichText
-                  text={dt.definition}
-                  textStyle={[styles.resourceCardText, { color: colors.textSecondary }]}
-                  accentColor={colors.success}
-                  paragraphGap={6}
-                />
-                {dt.description ? (
-                  <Text style={[styles.resourceCardText, { color: colors.muted, marginTop: 4 }]}>
-                    {dt.description}
-                  </Text>
-                ) : null}
+                <RichText text={dt.definition} textStyle={[styles.resourceCardText, { color: colors.textSecondary }]} accentColor={colors.success} paragraphGap={6} />
               </View>
             ))}
           </View>
@@ -550,9 +505,9 @@ export default function LearnStage({
             <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Related Topics</Text>
             <View style={styles.topicWrap}>
               {verseResources.relatedTopics.map((t, i) => (
-                <View key={i} style={[styles.topicPill, { borderColor: colors.primary }]}>
-                  <Tags size={10} color={colors.primary} strokeWidth={2.5} />
-                  <Text style={[styles.topicPillText, { color: colors.primary }]}>{t.name}</Text>
+                <View key={i} style={[styles.topicPill, { borderColor: colors.primaryOnSurface ?? colors.primary }]}>
+                  <Tags size={10} color={colors.primaryOnSurface ?? colors.primary} strokeWidth={2.5} />
+                  <Text style={[styles.topicPillText, { color: colors.primaryOnSurface ?? colors.primary }]}>{t.name}</Text>
                 </View>
               ))}
             </View>
@@ -562,215 +517,151 @@ export default function LearnStage({
     );
   };
 
-  const renderPrologueTab = () => {
-    if (learnDataLoading) {
-      return (
-        <View style={{ paddingVertical: SPACING.xl, alignItems: 'center' }}>
-          <ActivityIndicator size="small" color={colors.accent} />
-        </View>
-      );
-    }
-    if (!bookPrologue) {
+  const renderGeographyTab = () => {
+    return (
+      <View style={[styles.learnContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <MapPin size={24} color={colors.muted} style={{ marginBottom: SPACING.sm }} />
+        <Text style={[styles.learnText, { color: colors.textSecondary }]}>
+          Geography information for {bookName} will be available in a future update.
+        </Text>
+      </View>
+    );
+  };
+
+  const renderTheologyTab = () => {
+    return (
+      <View style={[styles.learnContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Lightbulb size={24} color={colors.muted} style={{ marginBottom: SPACING.sm }} />
+        <Text style={[styles.learnText, { color: colors.textSecondary }]}>
+          Theological themes for this passage will be available in a future update.
+        </Text>
+      </View>
+    );
+  };
+
+  const renderCrossrefsTab = () => {
+    if (!verseResources || verseResources.crossReferences.length === 0) {
       return (
         <View style={[styles.learnContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <BookOpen size={24} color={colors.muted} style={{ marginBottom: SPACING.sm }} />
+          <ScrollText size={24} color={colors.muted} style={{ marginBottom: SPACING.sm }} />
           <Text style={[styles.learnText, { color: colors.textSecondary }]}>
-            No book prologue available for {bookName}. Prologues provide author, date, audience, purpose, and key themes for each book.
+            No cross references available for this passage.
           </Text>
-          {bookName && chapter && (
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-              onPress={onOpenBibleReader}
-              activeOpacity={0.8}
-            >
-              <BookOpen size={16} color="#FFFFFF" />
-              <Text style={styles.primaryBtnText}>Open {bookName} {chapter} in Reader</Text>
-            </TouchableOpacity>
-          )}
         </View>
       );
     }
     return (
       <View>
-        {bookPrologue.author && (
-          <View style={{ marginBottom: SPACING.sm }}>
-            <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Author</Text>
-            <Text style={[styles.learnText, { color: colors.textSecondary }]}>{bookPrologue.author}</Text>
-          </View>
-        )}
-        {bookPrologue.audience && (
-          <View style={{ marginBottom: SPACING.sm }}>
-            <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Audience</Text>
-            <Text style={[styles.learnText, { color: colors.textSecondary }]}>{bookPrologue.audience}</Text>
-          </View>
-        )}
-        {bookPrologue.dateWritten && (
-          <View style={{ marginBottom: SPACING.sm }}>
-            <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Date Written</Text>
-            <Text style={[styles.learnText, { color: colors.textSecondary }]}>{bookPrologue.dateWritten}</Text>
-          </View>
-        )}
-        {bookPrologue.locationWritten && (
-          <View style={{ marginBottom: SPACING.sm }}>
-            <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Location</Text>
-            <Text style={[styles.learnText, { color: colors.textSecondary }]}>{bookPrologue.locationWritten}</Text>
-          </View>
-        )}
-        {bookPrologue.purpose && (
-          <View style={{ marginBottom: SPACING.sm }}>
-            <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Purpose</Text>
-            <Text style={[styles.learnText, { color: colors.textSecondary }]}>{bookPrologue.purpose}</Text>
-          </View>
-        )}
-        {bookPrologue.keyTheme && (
-          <View style={{ marginBottom: SPACING.sm }}>
-            <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Key Theme</Text>
-            <Text style={[styles.learnText, { color: colors.accent }]}>{bookPrologue.keyTheme}</Text>
-          </View>
-        )}
-        {bookPrologue.summary && (
-          <View style={{ marginBottom: SPACING.sm }}>
-            <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Summary</Text>
-            <RichText
-              text={bookPrologue.summary}
-              textStyle={[styles.learnText, { color: colors.textSecondary }]}
-              accentColor={colors.primary}
-              paragraphGap={6}
-            />
-          </View>
-        )}
-        {bookPrologue.mainThemes && bookPrologue.mainThemes.length > 0 && (
-          <View style={{ marginBottom: SPACING.sm }}>
-            <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Main Themes</Text>
-            {bookPrologue.mainThemes.map((theme, i) => (
-              <View key={i} style={[styles.topicPill, { borderColor: colors.primary, marginBottom: 4 }]}>
-                <Text style={[styles.topicPillText, { color: colors.primary }]}>{theme}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-        {bookPrologue.christConnection && (
-          <View style={{ marginBottom: SPACING.md }}>
-            <Text style={[styles.learnSectionTitle, { color: colors.text }]}>Connection to Christ</Text>
-            <RichText
-              text={bookPrologue.christConnection}
-              textStyle={[styles.learnText, { color: colors.textSecondary }]}
-              accentColor={colors.primary}
-              paragraphGap={6}
-            />
-          </View>
-        )}
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-          onPress={onOpenBibleReader}
-          activeOpacity={0.8}
-        >
-          <BookOpen size={16} color="#FFFFFF" />
-          <Text style={styles.primaryBtnText}>Open {bookName} {chapter} in Reader</Text>
-        </TouchableOpacity>
+        <Text style={[styles.learnSectionTitle, { color: colors.text }]}>
+          {verseResources.crossReferences.length} Cross References
+        </Text>
+        {verseResources.crossReferences.map((cr, i) => (
+          <TouchableOpacity
+            key={i}
+            style={[styles.resourceCard, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.primaryOnSurface ?? colors.primary }]}
+            onPress={() => onOpenCrossReference(cr.ref)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.resourceCardRef, { color: colors.primaryOnSurface ?? colors.primary }]}>{cr.ref}</Text>
+            <Text style={[styles.resourceCardText, { color: colors.textSecondary }]}>{cr.text}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     );
   };
 
+  const renderExegesisTab = () => (
+    <View>
+      <TextInput
+        style={[styles.textareaLarge, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+        placeholder="Write your study notes, observations, and insights..."
+        placeholderTextColor={colors.muted}
+        value={learnNotes}
+        onChangeText={setLearnNotes}
+        multiline
+        textAlignVertical="top"
+      />
+      <TouchableOpacity
+        style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
+        onPress={onContinue}
+        disabled={saving}
+        activeOpacity={0.8}
+      >
+        {saving ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <>
+            <Save size={18} color="#FFFFFF" />
+            <Text style={styles.primaryBtnText}>Save & Continue to Abide</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
   const renderTabContent = () => {
     switch (learnTab) {
-      case 'exegesis':
-        return renderExegesisTab();
-      case 'language':
-        return renderLanguageTab();
-      case 'history':
-        return renderHistoryTab();
-      case 'prologue':
-        return renderPrologueTab();
-      default:
-        return renderExegesisTab();
+      case 'prologue': return renderPrologueTab();
+      case 'language': return renderLanguageTab();
+      case 'history': return renderHistoryTab();
+      case 'geography': return renderGeographyTab();
+      case 'theology': return renderTheologyTab();
+      case 'crossrefs': return renderCrossrefsTab();
+      case 'exegesis': return renderExegesisTab();
+      default: return renderPrologueTab();
     }
   };
 
   return (
     <View style={styles.stageContainer}>
-      <View style={styles.stageHeader}>
-        <View style={[styles.stageBadge, { backgroundColor: `${colors.accent}20` }]}>
-          <Search size={20} color={colors.accent} />
-        </View>
-        <Text style={[styles.stageLabel, { color: colors.accent }]}>Step 3 of 4</Text>
-        <Text style={[styles.stageTitle, { color: colors.text }]}>Learn</Text>
-        <Text style={[styles.stageSubtitle, { color: colors.textSecondary }]}>
-          What does this mean?
-        </Text>
-        <View style={[styles.passageChip, { backgroundColor: `${colors.accent}10`, marginTop: 6, marginBottom: 4 }]}>
-          <Timer size={10} color={colors.accent} />
-          <Text style={{ fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 0.5 }}>
-            15–25 min
-          </Text>
-        </View>
-        {passageRef && (
-          <View style={[styles.passageChip, { backgroundColor: `${colors.primary}15` }]}>
-            <BookOpen size={12} color={colors.primary} />
-            <Text style={[styles.passageChipText, { color: colors.primary }]}>{passageRef}</Text>
-          </View>
-        )}
-      </View>
+      {/* ── Stage Header ─────────────────────────────────────────────────── */}
+      <StageHeader
+        Icon={Search}
+        step={3}
+        total={5}
+        title="Learn"
+        subtitle="What does this mean?"
+        timeLabel="15–25 min"
+        colors={colors}
+        accentColor={colors.accent}
+      />
 
       {renderTabBar()}
+      <View style={{ marginTop: SPACING.md }} />
       {renderTabContent()}
 
-      {/* ── Privacy toggle (matches web Learn stage) ── */}
+      {/* ── Privacy toggle ── */}
       <TouchableOpacity
-        style={[styles.privacyRow, { backgroundColor: colors.cardBackground }]}
+        style={[styles.privacyRow, { backgroundColor: colors.cardBackground, marginTop: SPACING.md }]}
         onPress={() => setIsPublic(!isPublic)}
         activeOpacity={0.7}
       >
-        {isPublic ? (
-          <Globe size={16} color={colors.warning} />
-        ) : (
-          <Lock size={16} color={colors.success} />
-        )}
+        {isPublic ? <Globe size={16} color={colors.warning} /> : <Lock size={16} color={colors.success} />}
         <View style={{ flex: 1 }}>
-          <Text style={[styles.privacyText, { color: colors.text }]}>
-            {isPublic ? 'Public' : 'Private'}
-          </Text>
+          <Text style={[styles.privacyText, { color: colors.text }]}>{isPublic ? 'Public' : 'Private'}</Text>
           <Text style={[styles.resourceCardLabel, { color: colors.muted }]}>
-            {isPublic
-              ? 'Anyone can read this study'
-              : 'Only you can see this study'}
+            {isPublic ? 'Anyone can read this study' : 'Only you can see this study'}
           </Text>
         </View>
       </TouchableOpacity>
 
+      {/* ── Page Indicator Dots ─────────────────────────────────────────── */}
       <View style={styles.pageIndicator}>
         {stageOrder.map((s, idx) => {
           const dotOpacity = scrollX.interpolate({
-            inputRange: [
-              (idx - 1) * screenWidth,
-              idx * screenWidth,
-              (idx + 1) * screenWidth,
-            ],
+            inputRange: [(idx - 1) * screenWidth, idx * screenWidth, (idx + 1) * screenWidth],
             outputRange: [0.3, 1, 0.3],
             extrapolate: 'clamp',
           });
           const dotScale = scrollX.interpolate({
-            inputRange: [
-              (idx - 1) * screenWidth,
-              idx * screenWidth,
-              (idx + 1) * screenWidth,
-            ],
+            inputRange: [(idx - 1) * screenWidth, idx * screenWidth, (idx + 1) * screenWidth],
             outputRange: [1, 1.3, 1],
             extrapolate: 'clamp',
           });
           return (
             <Animated.View
               key={s}
-              style={[
-                styles.pageDot,
-                {
-                  backgroundColor: idx === pageIndex ? colors.accent : colors.muted,
-                  opacity: dotOpacity,
-                  transform: [{ scale: dotScale }],
-                  width: idx === pageIndex ? 20 : 8,
-                },
-              ]}
+              style={[styles.pageDot, { backgroundColor: idx === pageIndex ? colors.accent : colors.muted, opacity: dotOpacity, transform: [{ scale: dotScale }], width: idx === pageIndex ? 20 : 8 }]}
             />
           );
         })}

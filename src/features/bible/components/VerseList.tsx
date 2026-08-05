@@ -16,11 +16,16 @@ import {
   FlatList,
   RefreshControl,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import VerseCard from './VerseCard';
 import { BORDER_RADIUS, SPACING } from '../../../constants/theme';
-import { StrongsWordData } from '../../../services/strongsService';
+import {
+  StrongsWordData,
+  StrongsEntry,
+} from '../../../services/strongsService';
+import { BookPrologue } from '../../../services/bookProloguesApi';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Static skeleton (no Animated — avoids RN 0.76+ frozen JSI node crash)
@@ -81,6 +86,18 @@ const skeletonStyles = StyleSheet.create({
   },
 });
 
+// ── Section heading (centered, e.g. “The Garden of Eden”) ────────────────────
+const headingStyles = StyleSheet.create({
+  heading: {
+    textAlign: 'center',
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+  },
+});
+
 const SKELETON_CONFIGS: string[][] = [
   ['90%', '75%', '60%'],
   ['85%', '100%'],
@@ -130,6 +147,8 @@ export type VerseListProps = {
   fontSize: number;
   currentBook: string;
   currentChapter: number;
+  /** Section headings keyed to the verse where they apply (from backend). */
+  chapterHeadings?: Array<{ verse: number; heading: string }>;
   colors: any;
   styles: any;
   flatListRef: React.RefObject<FlatList<VerseItem>>;
@@ -141,11 +160,13 @@ export type VerseListProps = {
   onVersePress: (verseNumber: number) => void;
   onRemoveHighlight: (verseNumber: number) => void;
   onExplain?: (verseNumber: number) => void;
-  onShare?: (verseNumber: number) => void;
-  onCopy?: (verseNumber: number) => void;
+  /** Contextual action card handlers (Strong's, Background, Study Tools, Journal). */
+  onStrongs?: (verseNumber: number) => void;
+  onBackground?: (verseNumber: number) => void;
+  onStudyTools?: (verseNumber: number) => void;
+  onJournal?: (verseNumber: number) => void;
   onLongPress?: (verseNumber: number) => void;
   onDoubleTap?: (verseNumber: number) => void;
-  onCloseExplanation?: (verseNumber: number) => void;
   explanationMap?: Record<number, { explanation: string; learnMore: string }>;
   verseJournalPrompts?: Record<number, any[]>;
   onDailyVerse?: (verseNumber: number) => void;
@@ -158,6 +179,30 @@ export type VerseListProps = {
   /** Called when user taps a word that has Strong's data */
   onWordPress?: (word: StrongsWordData) => void;
   studyToolHighlights?: Record<number, { label: string; color: string }>;
+  /** Inline Strong's panel data keyed by verse number. */
+  strongsMap?: Record<
+    number,
+    { word: StrongsWordData; entry: StrongsEntry | null; loading: boolean }
+  >;
+  onCloseStrongs?: (verseNumber: number) => void;
+  /** Inline Background panel data keyed by verse number. */
+  backgroundMap?: Record<
+    number,
+    {
+      background: string | null;
+      prologue: BookPrologue | null;
+      loading: boolean;
+    }
+  >;
+  onCloseBackground?: (verseNumber: number) => void;
+  /** Verse number whose inline Journal panel is open (or null). */
+  journalOpenVerse?: number | null;
+  /** Chapter journal prompts used by the inline per-verse Journal panel. */
+  chapterJournalPrompts?: Array<{ id: number; prompt: string }>;
+  onCloseJournal?: (verseNumber: number) => void;
+  onOpenFullJournal?: (verseNumber: number) => void;
+  /** Optional element rendered after the last verse (e.g. end-of-chapter journaling). */
+  listFooter?: React.ReactElement | null;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -177,6 +222,7 @@ export default function VerseList({
   fontSize,
   currentBook,
   currentChapter,
+  chapterHeadings = [],
   colors,
   styles,
   flatListRef,
@@ -188,11 +234,12 @@ export default function VerseList({
   onVersePress,
   onRemoveHighlight,
   onExplain,
-  onShare,
-  onCopy,
+  onStrongs,
+  onBackground,
+  onStudyTools,
+  onJournal,
   onDoubleTap,
   onLongPress,
-  onCloseExplanation,
   explanationMap,
   verseJournalPrompts = {},
   navigation,
@@ -203,6 +250,15 @@ export default function VerseList({
   verseWordMap,
   onWordPress,
   studyToolHighlights = {},
+  strongsMap,
+  onCloseStrongs,
+  backgroundMap,
+  onCloseBackground,
+  journalOpenVerse,
+  chapterJournalPrompts,
+  onCloseJournal,
+  onOpenFullJournal,
+  listFooter,
 }: VerseListProps) {
   const renderVerseItem = ({
     item,
@@ -228,8 +284,23 @@ export default function VerseList({
     const showActions = selectedVerses.length === 1 && isSelected;
     const isExplaining = explainingVerse === verseNumber;
     const studyToolHighlight = studyToolHighlights[verseNumber] ?? null;
+    const sectionHeading = chapterHeadings.find(h => h.verse === verseNumber);
 
     return (
+      <View key={verseNumber}>
+        {sectionHeading ? (
+          <Text
+            style={[
+              headingStyles.heading,
+              {
+                color: colors.text,
+                fontSize: Math.max(fontSize - 1, 15),
+              },
+            ]}
+          >
+            {sectionHeading.heading}
+          </Text>
+        ) : null}
       <VerseCard
         verseNum={String(verseNum)}
         verseNumber={verseNumber}
@@ -248,8 +319,6 @@ export default function VerseList({
         isExplaining={isExplaining}
         onPress={() => onVersePress(verseNumber)}
         onRemoveHighlight={onRemoveHighlight}
-        onShare={onShare ? () => onShare(verseNumber) : undefined}
-        onCopy={onCopy ? () => onCopy(verseNumber) : undefined}
         onDoubleTap={onDoubleTap ? () => onDoubleTap(verseNumber) : undefined}
         onLongPress={onLongPress ? () => onLongPress(verseNumber) : undefined}
         onExplain={
@@ -259,25 +328,21 @@ export default function VerseList({
               }
             : undefined
         }
-        onCloseStart={
-          onCloseExplanation
-            ? () => {
-                const index = versesArray.findIndex(v => v.num === verseNumber);
-                if (index !== -1) {
-                  flatListRef.current?.scrollToIndex({
-                    index,
-                    animated: true,
-                    viewPosition: 0,
-                  });
-                }
-              }
-            : undefined
-        }
-        onCloseExplanation={
-          onCloseExplanation
-            ? () => onCloseExplanation(verseNumber)
-            : undefined
-        }
+        onStrongs={onStrongs ? () => onStrongs(verseNumber) : undefined}
+        onBackground={onBackground ? () => onBackground(verseNumber) : undefined}
+        onStudyTools={onStudyTools ? () => onStudyTools(verseNumber) : undefined}
+        onJournal={onJournal ? () => onJournal(verseNumber) : undefined}
+        onCloseStart={() => {
+          // Scroll the verse back into view when its explanation panel closes.
+          const index = versesArray.findIndex(v => v.num === verseNumber);
+          if (index !== -1) {
+            flatListRef.current?.scrollToIndex({
+              index,
+              animated: true,
+              viewPosition: 0,
+            });
+          }
+        }}
         explanationData={explanationData}
         onDailyVerse={onDailyVerse ? () => onDailyVerse(verseNumber) : undefined}
         onCloseDailyVerse={onCloseDailyVerse ? () => onCloseDailyVerse(verseNumber) : undefined}
@@ -290,7 +355,26 @@ export default function VerseList({
         studyToolHighlight={studyToolHighlight}
         verseWords={verseWordMap?.[verseNumber]}
         onWordPress={onWordPress}
+        strongsData={strongsMap?.[verseNumber] ?? null}
+        onCloseStrongs={
+          onCloseStrongs ? () => onCloseStrongs(verseNumber) : undefined
+        }
+        backgroundData={backgroundMap?.[verseNumber] ?? null}
+        onCloseBackground={
+          onCloseBackground ? () => onCloseBackground(verseNumber) : undefined
+        }
+        journalOpen={
+          journalOpenVerse != null && journalOpenVerse === verseNumber
+        }
+        onCloseJournal={
+          onCloseJournal ? () => onCloseJournal(verseNumber) : undefined
+        }
+        chapterPrompts={chapterJournalPrompts || []}
+        onOpenFullJournal={
+          onOpenFullJournal ? () => onOpenFullJournal(verseNumber) : undefined
+        }
       />
+      </View>
     );
   };
 
@@ -310,7 +394,7 @@ export default function VerseList({
         <FlatList
           ref={flatListRef}
           data={versesArray}
-          extraData={[selectedVerses, activeAudioVerse, explanationMap, dailyVerseRefMap, verseJournalPrompts]}
+          extraData={[selectedVerses, activeAudioVerse, explanationMap, dailyVerseRefMap, verseJournalPrompts, chapterHeadings, strongsMap, backgroundMap, journalOpenVerse, chapterJournalPrompts]}
           renderItem={renderVerseItem}
           keyExtractor={item => String(item.num)}
           contentContainerStyle={[
@@ -322,6 +406,13 @@ export default function VerseList({
             loading ? (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 100 }}>
                 <ActivityIndicator size="large" color={colors.accent} />
+              </View>
+            ) : null
+          }
+          ListFooterComponent={
+            listFooter ? (
+              <View style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md }}>
+                {listFooter}
               </View>
             ) : null
           }

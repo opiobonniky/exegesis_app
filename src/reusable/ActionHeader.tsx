@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import React, { useContext, useEffect, useState } from 'react';
 import { getColors, SPACING } from '../constants/theme';
-import LinearGradient from 'react-native-linear-gradient';
 import { ChevronLeft, ChevronRight, Search, User } from 'lucide-react-native';
 import exegesisLogo from '../assets/logos/exegesis_bg_rm.png';
 import { useLanguage, isRtlLanguage } from '../component/language-translation/LanguageProvider';
@@ -273,19 +272,14 @@ const ActionHeader = (props: Props) => {
   const stdLogo = (props as StandardProps).logoComponent;
 
   return (
-    <View style={[styles.shadowWrapper, isDark && styles.shadowWrapperDark]}>
+    <View style={styles.shadowWrapper}>
       <StatusBar
         backgroundColor="transparent"
         translucent
         barStyle={isDark ? 'light-content' : 'dark-content'}
       />
       {isDark ? (
-        <LinearGradient
-          colors={COLORS.headgradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.container}
-        >
+        <View style={[styles.container, { backgroundColor: COLORS.background }]}>
           <View style={[styles.topBar, isRtl && styles.topBarRtl, { paddingTop: topInset }]}> 
             {onPress && !hideBack ? (
               <>
@@ -350,7 +344,7 @@ const ActionHeader = (props: Props) => {
               </>
             )}
           </View>
-        </LinearGradient>
+        </View>
       ) : (
         <View
           style={[styles.container, { backgroundColor: COLORS.background }]}
@@ -458,23 +452,10 @@ const ActionHeader = (props: Props) => {
 const styles = StyleSheet.create({
   shadowWrapper: {
     width: '100%',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    elevation: 12,
-    backgroundColor: 'transparent',
-  },
-  shadowWrapperDark: {
-    shadowOpacity: 0.15,
   },
 
   container: {
     width: '100%',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
     overflow: 'hidden',
     paddingBottom: SPACING.sm,
   },

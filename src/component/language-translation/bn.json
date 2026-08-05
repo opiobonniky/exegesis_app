@@ -168,7 +168,8 @@
     "dashboard": "ড্যাশবোর্ড",
     "users": "ব্যবহারকারী",
     "verse": "পদ",
-    "devotion": "ভক্তি"
+    "devotion": "ভক্তি",
+    "tools": "টুলস"
   },
   "readingSettings": {
     "title": "পড়ার সেটিংস",
@@ -1045,7 +1046,6 @@
     "showMore": "আরও দেখান ▼",
     "showLess": "কম দেখান ▲",
     "explainVerse": "পদ ব্যাখ্যা করুন",
-    "hideExplanation": "ব্যাখ্যা লুকান",
     "shareVerse": "পদ শেয়ার করুন",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1088,7 +1088,11 @@
       "versesRead": "পঠিত শ্লোক",
       "devotions": "ভক্তি",
       "bookmarks": "বুকমার্ক"
-    }
+    },
+    "labCardTitle": "এক্সেজেসিস ল্যাব",
+    "labCardSubtitle": "যেকোনো অনুচ্ছেদের মাধ্যমে ৫টি ধাপের নির্দেশিত যাত্রা — দেখুন, শুনুন, শিখুন, থাকুন এবং প্রয়োগ করুন।",
+    "labStartStudy": "অধ্যয়ন শুরু করুন",
+    "labDurationHint": "৫টি ধাপ · ৩০–৬০ মিনিট"
   },
   "readingPlans": {
     "myReadingPlans": "আমার পড়ার পরিকল্পনা",

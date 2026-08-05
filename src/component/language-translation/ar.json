@@ -155,7 +155,8 @@
     "dashboard": "لوحة التحكم",
     "users": "المستخدمون",
     "verse": "آية",
-    "devotion": "تأمل"
+    "devotion": "تأمل",
+    "tools": "الأدوات"
   },
   "extendedProfile": {
     "title": "معلومات إضافية",
@@ -1032,7 +1033,6 @@
     "showMore": "عرض المزيد ▼",
     "showLess": "عرض أقل ▲",
     "explainVerse": "اشرح الآية",
-    "hideExplanation": "إخفاء الشرح",
     "shareVerse": "مشاركة الآية",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1075,7 +1075,11 @@
       "versesRead": "آيات مقروءة",
       "devotions": "تأملات",
       "bookmarks": "مرجعيات"
-    }
+    },
+    "labCardTitle": "مختبر التفسير",
+    "labCardSubtitle": "رحلة موجهة من 5 خطوات عبر أي مقطع — انظر، اسمع، تعلّم، اثبت، وطبّق.",
+    "labStartStudy": "ابدأ الدراسة",
+    "labDurationHint": "5 خطوات · 30–60 دقيقة"
   },
   "readingPlans": {
     "myReadingPlans": "خطط القراءة الخاصة بي",

@@ -593,9 +593,15 @@ const AppNavigation = () => {
           }
         />
 
-        {/* ── Study Bible ─────────────────────────────────────────────────── */}
+        {/* ── Study Bible (Strong's Dictionary / tools) ────────────────────── */}
         <Stack.Screen
           name={route.studyBible}
+          getComponent={() => GatedStudyBible}
+        />
+
+        {/* ── Strong's Dictionary (alias route used by the Lab) ───────────── */}
+        <Stack.Screen
+          name={route.strongsDictionary}
           getComponent={() => GatedStudyBible}
         />
 

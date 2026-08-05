@@ -168,7 +168,8 @@
     "dashboard": "डॅशबोर्ड",
     "users": "वापरकर्ते",
     "verse": "वचन",
-    "devotion": "भक्ती"
+    "devotion": "भक्ती",
+    "tools": "साधने"
   },
   "readingSettings": {
     "title": "वाचन सेटिंग्ज",
@@ -1043,7 +1044,6 @@
     "showMore": "अधिक दाखवा ▼",
     "showLess": "कमी दाखवा ▲",
     "explainVerse": "वचन स्पष्ट करा",
-    "hideExplanation": "स्पष्टीकरण लपवा",
     "shareVerse": "वचन शेअर करा",
     "faithReelTitle": "फेथ रील",
     "faithReelsFooter": "🎉 फेथ रील्स —",
@@ -1086,7 +1086,11 @@
       "versesRead": "वाचलेली वचने",
       "devotions": "भक्ती",
       "bookmarks": "बुकमार्क"
-    }
+    },
+    "labCardTitle": "एक्सेजेसिस लॅब",
+    "labCardSubtitle": "कोणत्याही परिच्छेदातून 5-चरणीय मार्गदर्शित प्रवास — पहा, ऐका, शिका, स्थिर रहा आणि लागू करा.",
+    "labStartStudy": "अभ्यास सुरू करा",
+    "labDurationHint": "5 पायऱ्या · 30–60 मिनिटे"
   },
   "readingPlans": {
     "myReadingPlans": "माझ्या वाचन योजना",

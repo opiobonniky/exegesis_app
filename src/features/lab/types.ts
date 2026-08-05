@@ -5,5 +5,5 @@ export interface BookItem {
   testament: 'Old' | 'New';
 }
 
-export type LabStage = 'look' | 'listen' | 'learn' | 'abide';
+export type LabStage = 'look' | 'listen' | 'learn' | 'abide' | 'apply';
 export type PassageSubStage = 'book' | 'chapter' | 'verse';

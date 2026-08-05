@@ -1,6 +1,4 @@
-
-
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Easing,
@@ -11,15 +9,21 @@ import {
   View,
 } from 'react-native';
 import {
-  ArrowBigLeft,
-  ArrowBigRight,
+  ArrowLeft,
+  ArrowRight,
   Square,
   Volume2,
 } from 'lucide-react-native';
-import { useLanguage, toArabicIndic } from '../../../component/language-translation/LanguageProvider';
-import { getColors } from '../../../constants/theme';
+import {
+  useLanguage,
+  toArabicIndic,
+} from '../../../component/language-translation/LanguageProvider';
 import { ChapterNavigationProps } from '../types';
-import { createBibleStyles } from '../bibleStyle';
+
+// ── Design tokens (from biblescreen.jpeg) ─────────────────────────────────────
+const BAR_BG = '#25385C';
+const PILL_BG = '#55719B';
+const ARROW = '#FFFFFF';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LiveBars — only ever uses useNativeDriver: true (scaleY transform)
@@ -41,7 +45,6 @@ function LiveBars({ color }: { color: string }) {
       { peak: 0.8, dur: 340 },
     ];
 
-    // Stop any previous loops first (guards against remount races)
     loops.current.forEach(l => l.stop());
     timers.current.forEach(t => clearTimeout(t));
     loops.current = [];
@@ -54,7 +57,7 @@ function LiveBars({ color }: { color: string }) {
             toValue: peak,
             duration: dur,
             easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true, // ✓ only scaleY — native is fine
+            useNativeDriver: true,
           }),
           Animated.timing(bars[i], {
             toValue: 0.15,
@@ -70,10 +73,10 @@ function LiveBars({ color }: { color: string }) {
     });
 
     return () => {
-      // Stop synchronously so native nodes are freed before unmount
       loops.current.forEach(l => l.stop());
       timers.current.forEach(t => clearTimeout(t));
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -117,23 +120,22 @@ export default function ChapterNavigation({
   onPrev,
   onNext,
   onSelectChapter,
-  isDark,
   isAudioPlaying = false,
   onAudioChapter,
   isRtl,
   translations: translationsProp,
 }: ExtendedChapterNavigationProps) {
-  const COLORS = getColors(isDark);
-  const styles = useMemo(() => createBibleStyles(isDark, isRtl), [isDark, isRtl]);
   const { translations: langTranslations } = useLanguage();
   const t = translationsProp || langTranslations;
 
-  // ── Pulse glow — opacity only → useNativeDriver: true, zero conflict ───────
+  const isFirstChapter = currentChapter <= 1;
+  const isLastChapter = currentChapter >= maxChapters;
+
+  // ── Pulse glow — opacity only → useNativeDriver: true ─────────────────────
   const glowOpacity = useRef(new Animated.Value(0)).current;
   const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    // Always stop the previous loop before starting a new one
     if (pulseLoop.current) {
       pulseLoop.current.stop();
       pulseLoop.current = null;
@@ -147,7 +149,7 @@ export default function ChapterNavigation({
             toValue: 1,
             duration: 850,
             easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true, // ✓ opacity only
+            useNativeDriver: true,
           }),
           Animated.timing(glowOpacity, {
             toValue: 0.2,
@@ -169,139 +171,140 @@ export default function ChapterNavigation({
         pulseLoop.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAudioPlaying]);
 
-  // Pill colours derived from plain state — no Animated interpolation on colour
-  const pillBg = isAudioPlaying ? COLORS.primary : COLORS.surface;
-  const pillBorder = isAudioPlaying ? 'rgba(255,255,255,0.45)' : COLORS.border;
-  const pillGlow = isAudioPlaying ? COLORS.primary : 'transparent';
-
   return (
-    <View style={[styles.navCard,]}>
+    <View style={[localStyles.bar, isRtl && localStyles.barRtl]}>
+      {/* ── Prev ── */}
       <Pressable
-        style={[
-          styles.navButton,
-          currentChapter === 1 && styles.navButtonDisabled,
-        ]}
+        style={localStyles.arrowBtn}
         onPress={onPrev}
-        disabled={currentChapter === 1}
+        disabled={isFirstChapter}
       >
         {isRtl ? (
-          <ArrowBigRight
-            size={24}
-            color={currentChapter === 1 ? COLORS.muted : COLORS.text}
+          <ArrowRight
+            size={22}
+            color={isFirstChapter ? 'rgba(255,255,255,0.35)' : ARROW}
+            strokeWidth={2.6}
           />
         ) : (
-          <ArrowBigLeft
-            size={24}
-            color={currentChapter === 1 ? COLORS.muted : COLORS.text}
+          <ArrowLeft
+            size={22}
+            color={isFirstChapter ? 'rgba(255,255,255,0.35)' : ARROW}
+            strokeWidth={2.6}
           />
         )}
       </Pressable>
 
-      <TouchableOpacity style={styles.chapterButton} onPress={onSelectChapter}>
-        <Text style={styles.chapterButtonText}>{t?.bible?.chapter || 'Ch.'} {toArabicIndic(isRtl ?? false, currentChapter)}</Text>
-        <Text style={styles.chapterButtonIcon}>▼</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={onAudioChapter}
-        activeOpacity={0.82}
-        disabled={!onAudioChapter}
-        style={{ opacity: onAudioChapter ? 1 : 0.5 }}
-      >
-       
-        <View
-          style={[
-            localStyles.audioPill,
-            { backgroundColor: pillBg, borderColor: pillBorder },
-          ]}
+      {/* ── Center pills ── */}
+      <View style={[localStyles.center, isRtl && localStyles.centerRtl]}>
+        <TouchableOpacity
+          style={localStyles.pill}
+          onPress={onSelectChapter}
+          activeOpacity={0.8}
         >
-          
-          {isAudioPlaying && (
-            <Animated.View
-              style={[
-                StyleSheet.absoluteFillObject,
-                localStyles.glowOverlay,
-                { backgroundColor: pillGlow, opacity: glowOpacity },
-              ]}
-              pointerEvents="none"
-            />
-          )}
+          <Text style={localStyles.pillText}>
+            {t?.bible?.chapter || 'Chapter'} {toArabicIndic(isRtl ?? false, currentChapter)}
+          </Text>
+          <Text style={localStyles.pillChevron}>▼</Text>
+        </TouchableOpacity>
 
+        <TouchableOpacity
+          onPress={onAudioChapter}
+          activeOpacity={0.82}
+          disabled={!onAudioChapter}
+          style={localStyles.pill}
+        >
           {isAudioPlaying ? (
             <>
-              <LiveBars color={COLORS.accent} />
-              <Text style={localStyles.pillTextActive}>{t?.bible?.stop || 'Stop'}</Text>
-              <Square size={9} color="#fff" fill="#fff" strokeWidth={0} />
+              <LiveBars color="#F0B429" />
+              <Text style={localStyles.pillText}>
+                {t?.bible?.stop || 'Stop'}
+              </Text>
+              <Square size={8} color="#FFFFFF" fill="#FFFFFF" strokeWidth={0} />
             </>
           ) : (
             <>
-              <Volume2 size={14} color={COLORS.text} strokeWidth={2.5} />
-              <Text style={[localStyles.pillText, { color: COLORS.text }]}>
+              <Volume2 size={14} color="#FFFFFF" strokeWidth={2.5} />
+              <Text style={localStyles.pillText}>
                 {t?.bible?.read || 'Read'}
               </Text>
             </>
           )}
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity
-        style={[
-          styles.navButton,
-          currentChapter >= maxChapters && styles.navButtonDisabled,
-        ]}
+      {/* ── Next ── */}
+      <Pressable
+        style={localStyles.arrowBtn}
         onPress={onNext}
-        disabled={currentChapter >= maxChapters}
+        disabled={isLastChapter}
       >
         {isRtl ? (
-          <ArrowBigLeft
-            size={24}
-            color={currentChapter >= maxChapters ? COLORS.muted : COLORS.text}
+          <ArrowLeft
+            size={22}
+            color={isLastChapter ? 'rgba(255,255,255,0.35)' : ARROW}
+            strokeWidth={2.6}
           />
         ) : (
-          <ArrowBigRight
-            size={24}
-            color={currentChapter >= maxChapters ? COLORS.muted : COLORS.text}
+          <ArrowRight
+            size={22}
+            color={isLastChapter ? 'rgba(255,255,255,0.35)' : ARROW}
+            strokeWidth={2.6}
           />
         )}
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Local styles
-// ─────────────────────────────────────────────────────────────────────────────
-
 const localStyles = StyleSheet.create({
-  audioPill: {
+  bar: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: BAR_BG,
+    paddingHorizontal: 10,
+    height: 44,
+  },
+  barRtl: {
+    flexDirection: 'row-reverse',
+  },
+  arrowBtn: {
+    width: 40,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  center: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  centerRtl: {
+    flexDirection: 'row-reverse',
+  },
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    backgroundColor: PILL_BG,
+    borderRadius: 20,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    overflow: 'hidden', // clips the glow overlay to the pill shape
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  glowOverlay: {
-    borderRadius: 22,
+    paddingVertical: 7,
   },
   pillText: {
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.1,
   },
-  pillTextActive: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.1,
+  pillChevron: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 9,
   },
 });

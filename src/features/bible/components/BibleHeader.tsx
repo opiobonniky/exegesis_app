@@ -1,16 +1,13 @@
 /**
  * BibleHeader.tsx
  *
- * Premium top header — Menu | Book/Chapter | Version | Search.
- * Designed with depth, subtle gradients, and refined micro-interactions.
- *
- * Features:
- * - Layered gradient background with subtle shadow depth
- * - Animated press states on all interactive elements
- * - Elegant version badge with glass-morphism effect
- * - Improved typography hierarchy
- * - Subtle bottom border for visual separation
- * - Full RTL support
+ * Redesigned to match docs/design-pic/biblescreen.jpeg:
+ *  - Solid dark-navy bar (#25385C)
+ *  - Menu (hamburger) on the left
+ *  - Centered book + chapter title with dropdown chevron, and the
+ *    version abbreviation + red asterisk underneath
+ *  - Notes + search icon buttons on the right
+ * Full RTL support, animated press states.
  */
 
 import React, { useMemo } from 'react';
@@ -23,13 +20,12 @@ import {
   Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
-import { Menu, ScrollText, Search, ChevronDown } from 'lucide-react-native';
-import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
+import { Menu, NotebookPen, Search, ChevronDown, ScrollText } from 'lucide-react-native';
+import { SPACING } from '../../../constants/theme';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Props
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Design tokens (from biblescreen.jpeg) ─────────────────────────────────────
+const HEADER_BG = '#25385C';
+const VERSION_ACCENT = '#E5484D'; // red asterisk
 
 export interface BibleHeaderProps {
   book: string;
@@ -44,15 +40,11 @@ export interface BibleHeaderProps {
   onStudyToolsPress?: () => void;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// BibleHeader
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function BibleHeader({
   book,
   chapter,
   version,
-  isDark,
+  isDark: _isDark,
   isRtl,
   onMenuPress,
   onBookPress,
@@ -61,9 +53,7 @@ export default function BibleHeader({
   onStudyToolsPress,
 }: BibleHeaderProps) {
   const insets = useSafeAreaInsets();
-  const COLORS = getColors(isDark);
 
-  // Animated values for press feedback
   const menuScale = useMemo(() => new Animated.Value(1), []);
   const searchScale = useMemo(() => new Animated.Value(1), []);
   const titleScale = useMemo(() => new Animated.Value(1), []);
@@ -80,272 +70,187 @@ export default function BibleHeader({
 
   return (
     <>
-      {/* Status bar */}
       <StatusBar
         translucent
-        backgroundColor={COLORS.primary}
+        backgroundColor={HEADER_BG}
         barStyle="light-content"
       />
 
-      {/* Main gradient container */}
-      <LinearGradient
-        colors={[COLORS.primary, COLORS.primaryDark || COLORS.primary]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[localStyles.gradient, { paddingTop: insets.top }]}
-      >
-        {/* Subtle inner glow overlay */}
-        <View style={localStyles.glowOverlay} />
-
-        {/* Safe area inset */}
-        <View style={localStyles.safeArea}>
-          <View
-            style={[
-              localStyles.container,
-              { paddingHorizontal: SPACING.lg },
-              isRtl && localStyles.containerRtl,
-            ]}
+      <View style={[localStyles.header, { paddingTop: insets.top }]}>
+        <View
+          style={[
+            localStyles.row,
+            { paddingHorizontal: SPACING.md },
+            isRtl && localStyles.rowRtl,
+          ]}
+        >
+          {/* ── Menu (hamburger) ─────────────────────────────────────────── */}
+          <TouchableOpacity
+            onPress={onMenuPress}
+            activeOpacity={0.8}
+            onPressIn={() => animatePress(menuScale, 0.88)}
+            onPressOut={() => animatePress(menuScale, 1)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={localStyles.sideBtn}
           >
-            {/* ── Menu Button ───────────────────────────────────────────── */}
-            <TouchableOpacity
-              onPress={onMenuPress}
-              activeOpacity={0.8}
-              onPressIn={() => animatePress(menuScale, 0.9)}
-              onPressOut={() => animatePress(menuScale, 1)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Animated.View
-                style={[
-                  localStyles.iconButton,
-                  { transform: [{ scale: menuScale }] },
-                ]}
-              >
-                <View style={localStyles.iconButtonInner}>
-                  <Menu color={COLORS.white} size={22} strokeWidth={2.2} />
-                </View>
-              </Animated.View>
-            </TouchableOpacity>
+            <Animated.View style={{ transform: [{ scale: menuScale }] }}>
+              <Menu color="#FFFFFF" size={22} strokeWidth={2.4} />
+            </Animated.View>
+          </TouchableOpacity>
 
-            {/* ── Book & Chapter Title ─────────────────────────────────── */}
+          {/* ── Centered: Book + Chapter + Version ──────────────────────── */}
+          <View style={localStyles.titleWrap}>
             <TouchableOpacity
               onPress={onBookPress}
               activeOpacity={0.75}
               onPressIn={() => animatePress(titleScale, 0.97)}
               onPressOut={() => animatePress(titleScale, 1)}
-              style={localStyles.titleContainer}
-            >
-              <Animated.View
-                style={{ transform: [{ scale: titleScale }] }}
-              >
-                <View style={localStyles.titleContent}>
-                  <Text
-                    style={localStyles.bookTitle}
-                    numberOfLines={1}
-                  >
-                    {book}
-                  </Text>
-                  {chapter > 0 && (
-                    <View style={localStyles.chapterBadge}>
-                      <Text style={localStyles.chapterText}>
-                        {chapter}
-                      </Text>
-                    </View>
-                  )}
-                  <ChevronDown
-                    size={16}
-                    color={COLORS.white}
-                    strokeWidth={2.5}
-                    style={localStyles.chevron}
-                  />
-                </View>
-              </Animated.View>
-            </TouchableOpacity>
-
-            {/* ── Version Badge ────────────────────────────────────────── */}
-            {onVersionPress && version?.abbreviation && (
-              <TouchableOpacity
-                onPress={onVersionPress}
-                activeOpacity={0.75}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <View style={localStyles.versionBadge}>
-                  <Text style={localStyles.versionBadgeText}>
-                    {version.abbreviation}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            {/* ── Study Tools Button ────────────────────────────────────── */}
-            {onStudyToolsPress && (
-              <TouchableOpacity
-                onPress={onStudyToolsPress}
-                activeOpacity={0.8}
-                onPressIn={() => animatePress(studyToolsScale, 0.9)}
-                onPressOut={() => animatePress(studyToolsScale, 1)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Animated.View
-                  style={[
-                    localStyles.iconButton,
-                    { transform: [{ scale: studyToolsScale }] },
-                  ]}
-                >
-                  <View style={localStyles.iconButtonInner}>
-                    <ScrollText color={COLORS.white} size={22} strokeWidth={2.2} />
-                  </View>
-                </Animated.View>
-              </TouchableOpacity>
-            )}
-
-            {/* ── Search Button ────────────────────────────────────────── */}
-            <TouchableOpacity
-              onPress={onSearchPress}
-              activeOpacity={0.8}
-              onPressIn={() => animatePress(searchScale, 0.9)}
-              onPressOut={() => animatePress(searchScale, 1)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={localStyles.titleBtn}
             >
               <Animated.View
                 style={[
-                  localStyles.iconButton,
-                  { transform: [{ scale: searchScale }] },
+                  localStyles.titleRow,
+                  { transform: [{ scale: titleScale }] },
                 ]}
               >
-                <View style={localStyles.iconButtonInner}>
-                  <Search color={COLORS.white} size={22} strokeWidth={2.2} />
-                </View>
+                <Text style={localStyles.bookTitle} numberOfLines={1}>
+                  {book}
+                </Text>
+                {chapter > 0 && (
+                  <Text style={localStyles.bookTitle} numberOfLines={1}>
+                    {' '}
+                    {chapter}
+                  </Text>
+                )}
+                <ChevronDown
+                  size={15}
+                  color="#FFFFFF"
+                  strokeWidth={2.5}
+                  style={localStyles.chevron}
+                />
               </Animated.View>
             </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Bottom separator with subtle shadow */}
-        <View style={localStyles.bottomBorder} />
-      </LinearGradient>
+            {onVersionPress && version?.abbreviation ? (
+              <TouchableOpacity
+                onPress={onVersionPress}
+                activeOpacity={0.7}
+                hitSlop={{ top: 4, bottom: 4, left: 8, right: 8 }}
+                style={localStyles.versionRow}
+              >
+                <Text style={localStyles.versionText}>
+                  {version.abbreviation}
+                </Text>
+                <Text style={localStyles.versionStar}>*</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={localStyles.versionRow}>
+                <Text style={localStyles.versionText}>
+                  {version?.abbreviation || ''}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* ── Notes (study tools) ──────────────────────────────────────── */}
+          {onStudyToolsPress && (
+            <TouchableOpacity
+              onPress={onStudyToolsPress}
+              activeOpacity={0.8}
+              onPressIn={() => animatePress(studyToolsScale, 0.88)}
+              onPressOut={() => animatePress(studyToolsScale, 1)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={localStyles.sideBtn}
+            >
+              <Animated.View
+                style={{ transform: [{ scale: studyToolsScale }] }}
+              >
+                <ScrollText color="#FFFFFF" size={20} strokeWidth={2.2} />
+              </Animated.View>
+            </TouchableOpacity>
+          )}
+
+          {/* ── Search ───────────────────────────────────────────────────── */}
+          <TouchableOpacity
+            onPress={onSearchPress}
+            activeOpacity={0.8}
+            onPressIn={() => animatePress(searchScale, 0.88)}
+            onPressOut={() => animatePress(searchScale, 1)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={localStyles.sideBtn}
+          >
+            <Animated.View style={{ transform: [{ scale: searchScale }] }}>
+              <Search color="#FFFFFF" size={21} strokeWidth={2.3} />
+            </Animated.View>
+          </TouchableOpacity>
+        </View>
+      </View>
     </>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Local Styles
-// ─────────────────────────────────────────────────────────────────────────────
-
 const localStyles = StyleSheet.create({
-  // Gradient fills screen width, height wraps content
-  gradient: {
+  header: {
     width: '100%',
-    position: 'relative',
+    backgroundColor: HEADER_BG,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.38)',
   },
-
-  // Subtle inner glow for depth
-  glowOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    pointerEvents: 'none',
-  },
-
-  safeArea: {
-    width: '100%',
-  },
-
-  container: {
-    height: 52,
+  row: {
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    position: 'relative',
   },
-  containerRtl: {
+  rowRtl: {
     flexDirection: 'row-reverse',
   },
-
-  // ── Icon Buttons ──────────────────────────────────────────────────────
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  iconButtonInner: {
-    width: '100%',
-    height: '100%',
+  sideBtn: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // ── Title Section ─────────────────────────────────────────────────────
-  titleContainer: {
+  titleWrap: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
   },
-  titleContent: {
+  titleBtn: {
+    maxWidth: '100%',
+  },
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
+    gap: 2,
   },
   bookTitle: {
-    fontSize: FONT_SIZES.lg,
+    fontSize: 17,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.3,
-    textAlign: 'center',
-    maxWidth: 120,
-  },
-  chapterBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 2,
-    borderRadius: BORDER_RADIUS.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  chapterText: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
   },
   chevron: {
     marginLeft: 2,
     opacity: 0.9,
   },
-
-  // ── Version Badge ─────────────────────────────────────────────────────
-  versionBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: BORDER_RADIUS.round,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
+  versionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+    marginTop: 1,
   },
-  versionBadgeText: {
-    color: '#FFFFFF',
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '800',
+  versionText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.75)',
     letterSpacing: 0.8,
   },
-
-  // ── Bottom Border ─────────────────────────────────────────────────────
-  bottomBorder: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 2,
+  versionStar: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: VERSION_ACCENT,
   },
 });

@@ -19,6 +19,7 @@ import {
   Lightbulb,
   Beaker,
   Lock,
+  Wrench,
 } from 'lucide-react-native';
 import { getColors } from '../../constants/theme';
 import { AppContext } from '../../common/AppContext';
@@ -26,6 +27,7 @@ import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { useLanguage, isRtlLanguage } from '../language-translation/LanguageProvider';
 import { useSubscription } from '../../hooks/useSubscription';
 import { route } from './routes';
+import { getActiveTabForRoute } from './tabMap';
 
 interface BottomTabProps {
   activeTab?: string;
@@ -213,28 +215,10 @@ export default function BottomTab({
   const currentRouteName = navigationState?.routes[navigationState.index]?.name;
   const [barWidth, setBarWidth] = useState(SCREEN_WIDTH);
 
-  const activeTab = useMemo(() => {
-    const map: Record<string, string> = {
-      [route.home]: 'home',
-      [route.bible]: 'bible',
-      [route.favorites]: 'favorites',
-      [route.readingPlan]: 'Plan',
-      [route.profile]: 'profile',
-      [route.legacyLedger]: 'ledger',
-      [route.ledgerDetail]: 'ledger',
-      [route.ledgerEntry]: 'ledger',
-      [route.journal]: 'ledger',
-      [route.studyBible]: 'studyBible',
-      [route.bibleStudy]: 'studyBible',
-      [route.adminDashboard]: 'adminDashboard',
-      [route.adminUsers]: 'adminUsers',
-      [route.adminDailyVerse]: 'adminVerse',
-      [route.adminReadingPlans]: 'adminPlans',
-      [route.adminJournalPrompts]: 'adminJournalPrompts',
-      [route.adminJournalTemplates]: 'adminJournalTemplates',
-    };
-    return (currentRouteName ? map[currentRouteName] : null) ?? manualActiveTab ?? '';
-  }, [manualActiveTab, currentRouteName]);
+  const activeTab = useMemo(
+    () => getActiveTabForRoute(currentRouteName, manualActiveTab),
+    [manualActiveTab, currentRouteName],
+  );
 
   const tabs: TabItem[] = isUserAdmin
     ? [
@@ -246,7 +230,7 @@ export default function BottomTab({
     : [
         { id: 'home',   label: translations?.bottomTab?.home   || 'HOME',   icon: Home,     onPress: () => navigation.navigate(route.home) },
         { id: 'bible',  label: translations?.bottomTab?.bible  || 'BIBLE',  icon: BookOpen, onPress: () => navigation.navigate(route.bible) },
-        { id: 'studyBible', label: 'LAB', icon: hasAccess('legacy_sower') ? BookText : Lock, onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.studyBible) : navigation.navigate(route.sower) },
+        { id: 'studyBible', label: translations?.bottomTab?.tools || 'TOOLS', icon: hasAccess('legacy_sower') ? Wrench : Lock, onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.studyBible) : navigation.navigate(route.sower) },
         { id: 'ledger', label: translations?.bottomTab?.ledger || 'JOURNAL', icon: hasAccess('legacy_sower') ? BookText : Lock, onPress: () => hasAccess('legacy_sower') ? navigation.navigate(route.legacyLedger) : navigation.navigate(route.sower) },
       ];
 

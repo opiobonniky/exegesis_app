@@ -44,6 +44,7 @@ import {
   StatsRow,
   QuickAccess,
   RecentActivity,
+  LabCard,
 } from './cards';
 import { createStyles, getHomeDesign } from './homeStyle';
 import {
@@ -56,6 +57,7 @@ import {
   getLocalISODate,
   normalizeDailyVerse,
 } from './dailyVerseCache';
+import HomeSkeleton from './HomeSkeleton';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ActivityType = 'read' | 'highlight' | 'note' | 'favorite' | 'plan';
@@ -207,6 +209,7 @@ export default function Home() {
   } | null>(null);
   const [todaysVerse, setTodaysVerse] = useState<any | null>(null);
   const [todaysDevotion, setTodaysDevotion] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bottomTabVisible, setBottomTabVisible] = useState(true);
 
@@ -438,19 +441,22 @@ export default function Home() {
   }, []);
 
   // ── Effects ───────────────────────────────────────────────────────────────
+  const loadAllHomeData = useCallback(async () => {
+    await Promise.all([loadHomeStats(), loadBiblePosition()]);
+  }, [loadHomeStats, loadBiblePosition]);
+
   useEffect(() => {
     if (userInfo) {
-      loadHomeStats();
-      loadBiblePosition();
+      loadAllHomeData().finally(() => setIsLoading(false));
     }
-  }, [loadHomeStats, userInfo, loadBiblePosition]);
+  }, [userInfo, loadAllHomeData]);
 
   useFocusEffect(
     useCallback(() => {
       if (!userInfo) return;
-      loadHomeStats();
-      loadBiblePosition();
-    }, [loadHomeStats, userInfo, loadBiblePosition]),
+      // Initial load is handled above (with the skeleton); refresh silently on refocus.
+      loadAllHomeData();
+    }, [userInfo, loadAllHomeData]),
   );
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -501,192 +507,228 @@ export default function Home() {
             onProfilePress={() => navigation.navigate(route.profile)}
           />
 
-          <GreetingCard
-            design={design}
-            isRtl={isRtl}
-            greeting={getGreeting(translation)}
-            userName={
-              [userInfo?.firstName, userInfo?.lastName]
-                .filter(Boolean)
-                .join(' ') || 'Friend'
-            }
-            encouragement={
-              translation?.home?.greetingMessage ||
-              'We encourage you to search the scriptures daily just like Paul told the Bereans. Please jump into the word, get consistent and build daily spiritual disciplines.'
-            }
-            isDarkMode={isDark}
-            onThemeToggle={toggleTheme}
-            onProfilePress={() => navigation.navigate(route.profile)}
-          />
-
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={COLORS.accent}
-              />
-            }
-          >
-            {/* ── Continue Reading (with progress bar) ── */}
-            {lastBiblePosition && (
-              <ContinueReadingCard
+          {isLoading ? (
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <HomeSkeleton design={design} />
+            </ScrollView>
+          ) : (
+            <>
+              <GreetingCard
                 design={design}
                 isRtl={isRtl}
-                bookName={lastBiblePosition.bookName}
-                chapter={lastBiblePosition.chapter}
-                progressPercent={computeReadingProgress(lastBiblePosition)}
-                label={
-                  translation?.home?.continueReadingTitle || 'Continue Reading'
+                greeting={getGreeting(translation)}
+                userName={
+                  [userInfo?.firstName, userInfo?.lastName]
+                    .filter(Boolean)
+                    .join(' ') || 'Friend'
                 }
-                progressLabel={translation?.home?.progress || 'Progress'}
-                continueLabel={
-                  translation?.home?.continueReadingTitle || 'Continue'
+                encouragement={
+                  translation?.home?.greetingMessage ||
+                  'We encourage you to search the scriptures daily just like Paul told the Bereans. Please jump into the word, get consistent and build daily spiritual disciplines.'
                 }
-                onPress={() =>
-                  navigation.navigate(route.bible, {
-                    bookName: lastBiblePosition.bookName,
-                    chapter: lastBiblePosition.chapter,
-                  })
-                }
+                isDarkMode={isDark}
+                onThemeToggle={toggleTheme}
+                onProfilePress={() => navigation.navigate(route.profile)}
               />
-            )}
 
-            {/* ── Daily Verse Card ── */}
-            {todaysVerse && (
-              <DailyVerseCard
-                design={design}
-                isRtl={isRtl}
-                reference={
-                  todaysVerse.reference ||
-                  `${todaysVerse.bookName} ${todaysVerse.chapter}:${todaysVerse.verseNumber}`
+              <ScrollView
+                ref={scrollViewRef}
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    tintColor={COLORS.accent}
+                  />
                 }
-                text={todaysVerse.text}
-                label={
-                  translation?.home?.dailyVerseTitle ||
-                  translation?.bible?.dailyVerse ||
-                  'Daily Verse'
-                }
-                readLabel={
-                  translation?.home?.readExplanation || 'Read Explanation'
-                }
-                onPress={() => navigation.navigate(route.dailyExegesis)}
-              />
-            )}
+              >
+                {/* ── Continue Reading (with progress bar) ── */}
+                {lastBiblePosition && (
+                  <ContinueReadingCard
+                    design={design}
+                    isRtl={isRtl}
+                    bookName={lastBiblePosition.bookName}
+                    chapter={lastBiblePosition.chapter}
+                    progressPercent={computeReadingProgress(lastBiblePosition)}
+                    label={
+                      translation?.home?.continueReadingTitle ||
+                      'Continue Reading'
+                    }
+                    progressLabel={translation?.home?.progress || 'Progress'}
+                    continueLabel={
+                      translation?.home?.continueReadingTitle || 'Continue'
+                    }
+                    onPress={() =>
+                      navigation.navigate(route.bible, {
+                        bookName: lastBiblePosition.bookName,
+                        chapter: lastBiblePosition.chapter,
+                      })
+                    }
+                  />
+                )}
 
-            {/* ── Daily Devotion Card ── */}
-            {todaysDevotion && (
-              <DailyDevotionCard
-                design={design}
-                isRtl={isRtl}
-                subtitle={todaysDevotion.title || "Today's devotion"}
-                content={todaysDevotion.content || ''}
-                label={
-                  translation?.bible?.dailyDevotionalTitle ||
-                  translation?.home?.dailyDevotionTitle ||
-                  'Daily Devotion'
-                }
-                readLabel={translation?.home?.readDevotion || 'Read Devotion'}
-                onPress={() => navigation.navigate(route.dailyDevotional)}
-              />
-            )}
+                {/* ── Daily Verse Card ── */}
+                {todaysVerse && (
+                  <DailyVerseCard
+                    design={design}
+                    isRtl={isRtl}
+                    reference={
+                      todaysVerse.reference ||
+                      `${todaysVerse.bookName} ${todaysVerse.chapter}:${todaysVerse.verseNumber}`
+                    }
+                    text={todaysVerse.text}
+                    label={
+                      translation?.home?.dailyVerseTitle ||
+                      translation?.bible?.dailyVerse ||
+                      'Daily Verse'
+                    }
+                    readLabel={
+                      translation?.home?.readExplanation || 'Read Explanation'
+                    }
+                    onPress={() => navigation.navigate(route.dailyExegesis)}
+                  />
+                )}
 
-            <StatsRow
-              design={design}
-              isRtl={isRtl}
-              title={translation?.home?.statsTitle || 'Your Stats'}
-              stats={[
-                {
-                  value: safeNumber(stats.booksRead),
-                  label: translation?.home?.stats?.booksRead || 'Books Read',
-                  icon: BookOpen,
-                  color: design.blue,
-                },
-                {
-                  value: safeNumber(stats.chaptersRead),
-                  label:
-                    translation?.home?.stats?.chaptersRead || 'Chapters Read',
-                  icon: BookText,
-                  color: design.green,
-                },
-                {
-                  value: safeNumber(stats.planProgress),
-                  label:
-                    translation?.home?.stats?.readingPlan || 'Reading Plan',
-                  icon: CalendarCheck,
-                  color: design.accent,
-                },
-                {
-                  value: safeNumber(stats.trivia),
-                  label: translation?.home?.stats?.trivia || 'Trivia',
-                  icon: Brain,
-                  color: design.purple,
-                },
-              ]}
-            />
+                {/* ── Daily Devotion Card ── */}
+                {todaysDevotion && (
+                  <DailyDevotionCard
+                    design={design}
+                    isRtl={isRtl}
+                    subtitle={todaysDevotion.title || "Today's devotion"}
+                    content={todaysDevotion.content || ''}
+                    label={
+                      translation?.bible?.dailyDevotionalTitle ||
+                      translation?.home?.dailyDevotionTitle ||
+                      'Daily Devotion'
+                    }
+                    readLabel={
+                      translation?.home?.readDevotion || 'Read Devotion'
+                    }
+                    onPress={() => navigation.navigate(route.dailyDevotional)}
+                  />
+                )}
 
-            {/* ── Quick Access (content banners) ── */}
-            <QuickAccess
-              design={design}
-              isRtl={isRtl}
-              title={translation?.home?.quickActionsTitle || 'Quick Actions'}
-              items={contentBanners.map((b, idx) => ({
-                id: b.id,
-                label: b.label,
-                icon: b.icon,
-                color: BANNER_COLORS[idx % BANNER_COLORS.length],
-                onPress: b.onPress,
-              }))}
-            />
+                {/* ── Exegesis Lab ── */}
+                <LabCard
+                  design={design}
+                  isRtl={isRtl}
+                  title={translation?.home?.labCardTitle || 'Exegesis Lab'}
+                  subtitle={
+                    translation?.home?.labCardSubtitle ||
+                    'A guided 5-step journey through any passage — Look, Listen, Learn, Abide, and Apply.'
+                  }
+                  startLabel={translation?.home?.labStartStudy || 'Start Study'}
+                  durationHint={
+                    translation?.home?.labDurationHint || '5 steps · 30–60 min'
+                  }
+                  onPress={() => navigation.navigate(route.lab)}
+                />
 
-            {/* ── Stats ── */}
+                <StatsRow
+                  design={design}
+                  isRtl={isRtl}
+                  title={translation?.home?.statsTitle || 'Your Stats'}
+                  stats={[
+                    {
+                      value: safeNumber(stats.booksRead),
+                      label: translation?.home?.stats?.booksRead || 'Books Read',
+                      icon: BookOpen,
+                      color: design.blue,
+                    },
+                    {
+                      value: safeNumber(stats.chaptersRead),
+                      label:
+                        translation?.home?.stats?.chaptersRead ||
+                        'Chapters Read',
+                      icon: BookText,
+                      color: design.green,
+                    },
+                    {
+                      value: safeNumber(stats.planProgress),
+                      label:
+                        translation?.home?.stats?.readingPlan || 'Reading Plan',
+                      icon: CalendarCheck,
+                      color: design.accent,
+                    },
+                    {
+                      value: safeNumber(stats.trivia),
+                      label: translation?.home?.stats?.trivia || 'Trivia',
+                      icon: Brain,
+                      color: design.purple,
+                    },
+                  ]}
+                />
 
-            {/* ── Recent Activity ── */}
-            <RecentActivity
-              design={design}
-              isRtl={isRtl}
-              items={recentActivity}
-              title={
-                translation?.home?.recentActivityTitle || 'Recent Activity'
-              }
-              seeAllLabel={translation?.home?.seeAll || 'See All'}
-              emptyMessage={
-                translation?.home?.startReadingTip ||
-                'Start reading to see your activity here'
-              }
-              labels={{
-                read: translation?.home?.activityLabels?.reading || 'Reading',
-                highlight:
-                  translation?.home?.activityLabels?.highlighted ||
-                  'Highlighted',
-                note: translation?.home?.activityLabels?.noted || 'Noted',
-                plan:
-                  translation?.home?.activityLabels?.planProgress ||
-                  'Plan Progress',
-                favorite:
-                  translation?.home?.activityLabels?.favorited || 'Favorited',
-              }}
-              onSeeAll={() => navigation.navigate(route.readHistory)}
-              onPressItem={act => {
-                if (act.type === 'plan') {
-                  navigation.navigate(
-                    hasAccess('legacy_sower') ? route.readingPlan : route.sower,
-                  );
-                } else {
-                  navigation.navigate(route.bible, {
-                    bookName: act.book,
-                    chapter: act.chapter,
-                  });
-                }
-              }}
-            />
-          </ScrollView>
+                {/* ── Quick Access (content banners) ── */}
+                <QuickAccess
+                  design={design}
+                  isRtl={isRtl}
+                  title={translation?.home?.quickActionsTitle || 'Quick Actions'}
+                  items={contentBanners.map((b, idx) => ({
+                    id: b.id,
+                    label: b.label,
+                    icon: b.icon,
+                    color: BANNER_COLORS[idx % BANNER_COLORS.length],
+                    onPress: b.onPress,
+                  }))}
+                />
+
+                {/* ── Stats ── */}
+
+                {/* ── Recent Activity ── */}
+                <RecentActivity
+                  design={design}
+                  isRtl={isRtl}
+                  items={recentActivity}
+                  title={
+                    translation?.home?.recentActivityTitle || 'Recent Activity'
+                  }
+                  seeAllLabel={translation?.home?.seeAll || 'See All'}
+                  emptyMessage={
+                    translation?.home?.startReadingTip ||
+                    'Start reading to see your activity here'
+                  }
+                  labels={{
+                    read:
+                      translation?.home?.activityLabels?.reading || 'Reading',
+                    highlight:
+                      translation?.home?.activityLabels?.highlighted ||
+                      'Highlighted',
+                    note: translation?.home?.activityLabels?.noted || 'Noted',
+                    plan:
+                      translation?.home?.activityLabels?.planProgress ||
+                      'Plan Progress',
+                    favorite:
+                      translation?.home?.activityLabels?.favorited ||
+                      'Favorited',
+                  }}
+                  onSeeAll={() => navigation.navigate(route.readHistory)}
+                  onPressItem={act => {
+                    if (act.type === 'plan') {
+                      navigation.navigate(
+                        hasAccess('legacy_sower')
+                          ? route.readingPlan
+                          : route.sower,
+                      );
+                    } else {
+                      navigation.navigate(route.bible, {
+                        bookName: act.book,
+                        chapter: act.chapter,
+                      });
+                    }
+                  }}
+                />
+              </ScrollView>
+            </>
+          )}
         </>
       )}
 

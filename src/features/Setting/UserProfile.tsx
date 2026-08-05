@@ -39,15 +39,18 @@ import {
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { AppContext } from '../../common/AppContext';
 import {
   useLanguage,
   isRtlLanguage,
 } from '../../component/language-translation/LanguageProvider';
 import { getColors, SPACING } from '../../constants/theme';
+import ActionModal from '../../reusable/ActionModal';
 import { route } from '../../component/navigations/routes';
 import BottomTab from '../../component/navigations/BottomTab';
-import { sendPostRequest } from '../../services/api';
+import { api, sendPostRequest } from '../../services/api';
+import { showToast } from '../../helpers/Toash.helper';
 import { getHomeDesign } from '../home/homeStyle';
 import StatsRow from '../home/cards/StatsRow';
 import {
@@ -63,6 +66,12 @@ const DEFAULT_TOP =
 
 const safeNumber = (v: any): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : 0;
+
+// Backend stores cover paths relative to the API host (e.g. /uploads/covers/x.jpg).
+const toAbsoluteUrl = (url: string): string =>
+  url.startsWith('http')
+    ? url
+    : `${(api.defaults.baseURL || '').replace(/\/$/, '')}${url}`;
 
 // Demo fallbacks so the screen matches the design mockup while real
 // profile fields are still preferred when the backend supplies them.
@@ -97,6 +106,9 @@ export default function UserProfileScreen() {
     maritalStatus?: string;
     dateOfBirth?: string;
   }>({});
+  const [coverPhotoUrl, setCoverPhotoUrl] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [showCoverConfirm, setShowCoverConfirm] = useState(false);
 
   const scrollY = useRef(0);
   const tabBarAnimation = useRef(new Animated.Value(1)).current;
@@ -127,6 +139,9 @@ export default function UserProfileScreen() {
           maritalStatus: d.maritalStatus || undefined,
           dateOfBirth: d.dateOfBirth || undefined,
         });
+        if (d.coverPhotoUrl) {
+          setCoverPhotoUrl(toAbsoluteUrl(d.coverPhotoUrl));
+        }
       }
 
       if (statsRes?.returnCode === 200 && statsRes?.returnData) {
@@ -146,6 +161,49 @@ export default function UserProfileScreen() {
   useEffect(() => {
     if (userInfo) loadProfile();
   }, [loadProfile, userInfo]);
+
+  // ── Cover photo upload ────────────────────────────────────────────────────
+  const pickAndUploadCover = useCallback(async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        selectionLimit: 1,
+        includeBase64: true,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.8,
+      });
+      const asset = result.assets?.[0];
+      // asset.base64 works cross-platform (avoids Android content:// URIs)
+      if (!asset?.base64) return;
+
+      setUploadingCover(true);
+      const res = await sendPostRequest('auth', 'upload-cover', {
+        coverPhoto: asset.base64,
+        mimeType: asset.type || 'image/jpeg',
+      });
+      if (res.returnCode === 200 && res.returnData?.coverPhotoUrl) {
+        setCoverPhotoUrl(toAbsoluteUrl(res.returnData.coverPhotoUrl));
+        showToast('success', res.returnMessage || 'Cover photo updated');
+      } else {
+        showToast('error', res.returnMessage || 'Upload failed');
+      }
+    } catch (err) {
+      console.error('Cover upload failed:', err);
+      showToast('error', 'Upload failed. Please try again.');
+    } finally {
+      setUploadingCover(false);
+    }
+  }, []);
+
+  /** Ask for confirmation when a cover already exists, otherwise pick directly */
+  const requestCoverChange = useCallback(() => {
+    if (coverPhotoUrl) {
+      setShowCoverConfirm(true);
+    } else {
+      pickAndUploadCover();
+    }
+  }, [coverPhotoUrl, pickAndUploadCover]);
 
   const handleScroll = useCallback(
     (event: any) => {
@@ -387,8 +445,10 @@ export default function UserProfileScreen() {
               username={user?.username}
               bio={DEMO_BIO}
               photoUrl={user?.profilePhotoUrl}
+              coverUrl={coverPhotoUrl}
+              uploading={uploadingCover}
               editCoverLabel="Edit Cover"
-              onEditCover={() => navigation.navigate(route.editProfile)}
+              onEditCover={requestCoverChange}
             />
 
             {/* ── Quick actions (2x2) ── */}
@@ -416,8 +476,43 @@ export default function UserProfileScreen() {
             {/* ── Menu ── */}
             <MenuList design={design} isRtl={isRtl} items={menuItems} />
           </ScrollView>
+
+          {/* ── Cover change confirmation ────────────────────────────────── */}
+          <ActionModal
+            visible={showCoverConfirm}
+            severity="warning"
+            title="Replace cover photo?"
+            message="Do you want to replace your current cover photo with a new one?"
+            confirmLabel="Replace"
+            cancelLabel="Cancel"
+            onCancel={() => setShowCoverConfirm(false)}
+            onConfirm={() => {
+              setShowCoverConfirm(false);
+              pickAndUploadCover();
+            }}
+          />
         </>
       )}
+
+      {/* ── Bottom Tab ── */}
+      <Animated.View
+        style={[
+          styles.bottomTabWrapper,
+          {
+            transform: [
+              {
+                translateY: tabBarAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [100, 0],
+                }),
+              },
+            ],
+            opacity: tabBarAnimation,
+          },
+        ]}
+      >
+        <BottomTab activeTab="profile" setActiveTab={() => {}} />
+      </Animated.View>
 
       
     </View>

@@ -30,6 +30,19 @@ import { sendPostRequest } from '../../../services/api';
 import { showToast } from '../../../helpers/Toash.helper';
 import { useConnectivity } from '../../../providers/ConnectivityProvider';
 import { useVoiceReading } from '../../../hooks/useVoiceReading';
+import {
+  getStrongsEntry,
+  StrongsWordData,
+  StrongsEntry,
+} from '../../../services/strongsService';
+import {
+  getBookPrologue,
+  BookPrologue,
+} from '../../../services/bookProloguesApi';
+import {
+  getAiExplanation,
+  AiExplanation,
+} from '../../../services/aiApi';
 
 if (
   Platform.OS === 'android' &&
@@ -81,6 +94,12 @@ export const useBible = () => {
   const [versesArray, setVersesArray] = useState<
     Array<{ num: number; text: string }>
   >([]);
+  const [chapterHeadings, setChapterHeadings] = useState<
+    Array<{ verse: number; heading: string }>
+  >([]);
+  const [bookHeadings, setBookHeadings] = useState<
+    Record<number, Array<{ verse: number; heading: string }>>
+  >({});
   const [highlights, setHighlights] = useState<ChapterVerseHighlights>({});
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
@@ -101,9 +120,39 @@ export const useBible = () => {
   const [searchResults, setSearchResults] = useState<VerseSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const [verseExplanationMap, setVerseExplanationMap] = useState<
-    Record<number, { explanation: string; learnMore: string }>
+    Record<
+      number,
+      {
+        explanation: string;
+        learnMore: string;
+        ai?: AiExplanation | null;
+      }
+    >
   >({});
   const [explainingVerse, setExplainingVerse] = useState<number | null>(null);
+  // ── Inline verse panels (Strong's / Background / Journal) ─────────────────
+  const [verseStrongsMap, setVerseStrongsMap] = useState<
+    Record<
+      number,
+      {
+        word: StrongsWordData;
+        entry: StrongsEntry | null;
+        ai: AiExplanation | null;
+        loading: boolean;
+      }
+    >
+  >({});
+  const [verseBackgroundMap, setVerseBackgroundMap] = useState<
+    Record<
+      number,
+      {
+        ai: AiExplanation | null;
+        prologue: BookPrologue | null;
+        loading: boolean;
+      }
+    >
+  >({});
+  const [journalOpenVerse, setJournalOpenVerse] = useState<number | null>(null);
   const [dailyVerseRefMap, setDailyVerseRefMap] = useState<
     Record<
       number,
@@ -243,6 +292,25 @@ export const useBible = () => {
     if (currentBook) loadCurrentChapter();
   }, [currentBook, currentChapter]);
 
+  // Section headings for the whole book (chapter-selector previews)
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const headings = await bibleApi.getBookHeadings(
+          activeVersionId,
+          currentBook,
+        );
+        if (!ignore) setBookHeadings(headings || {});
+      } catch {
+        if (!ignore) setBookHeadings({});
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [activeVersionId, currentBook]);
+
   // ─── Get verse text async (from backend with local fallback) ─────────────────────
   const getVerseTextAsync = useCallback(
     async (
@@ -332,6 +400,17 @@ export const useBible = () => {
       );
     } finally {
       setLoading(false);
+    }
+    // Section headings are independent of the active translation
+    try {
+      const headings = await bibleApi.getChapterHeadings(
+        activeVersionId,
+        currentBook,
+        currentChapter,
+      );
+      setChapterHeadings(headings || []);
+    } catch (e) {
+      setChapterHeadings([]);
     }
   }, [activeVersionId, currentBook, currentChapter, books]);
 
@@ -699,7 +778,11 @@ export const useBible = () => {
 
         const explanations: Record<
           number,
-          { explanation: string; learnMore: string }
+          {
+            explanation: string;
+            learnMore: string;
+            ai?: AiExplanation | null;
+          }
         > = {};
         results.forEach((result, idx) => {
           if (result.status === 'fulfilled' && result.value) {
@@ -714,7 +797,21 @@ export const useBible = () => {
           }
         });
 
+        // Attach the rich AI analysis (Verse Introduction, Application, Word
+        // Study, Cross References, …) so the explanation panel renders the
+        // full structured content instead of plain text.
         if (Object.keys(explanations).length > 0) {
+          const aiResults = await Promise.allSettled(
+            Object.keys(explanations).map(vn =>
+              getAiExplanation(bookName, chapter, Number(vn), 'detailed'),
+            ),
+          );
+          aiResults.forEach((r, idx) => {
+            const vn = Number(Object.keys(explanations)[idx]);
+            if (r.status === 'fulfilled' && r.value) {
+              explanations[vn].ai = r.value;
+            }
+          });
           setVerseExplanationMap(prev => ({ ...prev, ...explanations }));
           setShowExplanation(true);
           return true;
@@ -738,6 +835,118 @@ export const useBible = () => {
       delete m[verseNumber];
       return m;
     });
+  }, []);
+
+  /** Fetches the rich AI explanation for a verse (detailed depth) once. */
+  const fetchVerseAi = useCallback(
+    async (verseNumber: number): Promise<AiExplanation | null> => {
+      try {
+        return await getAiExplanation(
+          currentBook,
+          currentChapter,
+          verseNumber,
+          'detailed',
+        );
+      } catch (err) {
+        console.warn('Failed to load verse AI analysis:', err);
+        return null;
+      }
+    },
+    [currentBook, currentChapter],
+  );
+
+  // ─── Inline Strong's Concordance (per verse) ──────────────────────────────
+  /** Loads the rich word study (word studies, applications, themes, cross
+      references) plus the tapped word's Strong's entry inline (no bottom sheet). */
+  const getVerseStrongs = useCallback(
+    async (verseNumber: number, word: StrongsWordData) => {
+      setVerseStrongsMap(prev => ({
+        ...prev,
+        [verseNumber]: { word, entry: null, ai: null, loading: true },
+      }));
+      try {
+        const [entry, ai] = await Promise.all([
+          (async () => {
+            if (word.strongsId && word.hasData) {
+              const res = await getStrongsEntry(word.strongsId);
+              return res?.returnData ?? null;
+            }
+            return null;
+          })(),
+          fetchVerseAi(verseNumber),
+        ]);
+        setVerseStrongsMap(prev => ({
+          ...prev,
+          [verseNumber]: { word, entry, ai, loading: false },
+        }));
+      } catch (err) {
+        console.warn('Failed to load Strongs entry:', err);
+        setVerseStrongsMap(prev => ({
+          ...prev,
+          [verseNumber]: {
+            word,
+            entry: null,
+            ai: null,
+            loading: false,
+          },
+        }));
+      }
+    },
+    [fetchVerseAi],
+  );
+
+  const clearVerseStrongsForVerse = useCallback((verseNumber: number) => {
+    setVerseStrongsMap(prev => {
+      const m = { ...prev };
+      delete m[verseNumber];
+      return m;
+    });
+  }, []);
+
+  // ─── Inline Verse Background (per verse) ──────────────────────────────────
+  /** Loads the verse background (Author / Book / Context from the AI analysis
+      + book prologue) inline instead of a modal. */
+  const getVerseBackground = useCallback(
+    async (verseNumber: number) => {
+      setVerseBackgroundMap(prev => ({
+        ...prev,
+        [verseNumber]: { ai: null, prologue: null, loading: true },
+      }));
+      try {
+        const [ai, prologue] = await Promise.all([
+          fetchVerseAi(verseNumber),
+          getBookPrologue(currentBook).catch(() => null),
+        ]);
+        setVerseBackgroundMap(prev => ({
+          ...prev,
+          [verseNumber]: { ai, prologue, loading: false },
+        }));
+      } catch (err) {
+        console.warn('Failed to load verse background:', err);
+        setVerseBackgroundMap(prev => ({
+          ...prev,
+          [verseNumber]: { ai: null, prologue: null, loading: false },
+        }));
+      }
+    },
+    [fetchVerseAi, currentBook],
+  );
+
+  const clearVerseBackgroundForVerse = useCallback((verseNumber: number) => {
+    setVerseBackgroundMap(prev => {
+      const m = { ...prev };
+      delete m[verseNumber];
+      return m;
+    });
+  }, []);
+
+  // ─── Inline Journal (per verse) ───────────────────────────────────────────
+  const openVerseJournal = useCallback((verseNumber: number) => {
+    setJournalOpenVerse(verseNumber);
+  }, []);
+
+  const closeVerseJournal = useCallback(() => {
+    setJournalOpenVerse(null);
   }, []);
 
   const getDailyVerseRef = useCallback(
@@ -868,6 +1077,8 @@ export const useBible = () => {
     maxChapters,
     verses,
     versesArray,
+    chapterHeadings,
+    bookHeadings,
     highlights,
     favorites,
     selectedVerses,
@@ -929,6 +1140,15 @@ export const useBible = () => {
     getverseExplanation,
     explainingVerse,
     clearVerseExplanationForVerse,
+    verseStrongsMap,
+    getVerseStrongs,
+    clearVerseStrongsForVerse,
+    verseBackgroundMap,
+    getVerseBackground,
+    clearVerseBackgroundForVerse,
+    journalOpenVerse,
+    openVerseJournal,
+    closeVerseJournal,
     dailyVerseRefMap,
     getDailyVerseRef,
     clearDailyVerseRef,

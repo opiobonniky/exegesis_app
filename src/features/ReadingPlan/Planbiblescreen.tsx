@@ -206,6 +206,7 @@ export default function PlanBibleScreen() {
     setShowBookSelector,
     showChapterSelector,
     setShowChapterSelector,
+    bookHeadings,
     goToChapter,
     selectChapterFromModal,
     selectBookFromModal,
@@ -348,6 +349,7 @@ export default function PlanBibleScreen() {
         currentChapter={currentChapter}
         isDark={isDark}
         onSelectChapter={ch => selectChapterFromModal(ch)}
+        bookHeadings={bookHeadings}
       />
       <ActionModal
         visible={modal.status}

@@ -247,6 +247,32 @@ export type BibleTranslations = {
   commentaries?: string;
   crossReferences?: string;
   strongsConcordance?: string;
+
+  // Verse action card (single-tap contextual menu)
+  explainVerse?: string;
+  background?: string;
+  studyTools?: string;
+  application?: string;
+  noStrongsData?: string;
+  loadingWordStudy?: string;
+  noDataAvailable?: string;
+  noStrongsInline?: string;
+  fullDefinition?: string;
+  grammar?: string;
+  studyNote?: string;
+  openJournalEditor?: string;
+  summaryLabel?: string;
+  authorLabel?: string;
+  audienceLabel?: string;
+  dateWrittenLabel?: string;
+  locationWrittenLabel?: string;
+  purposeLabel?: string;
+  keyThemeLabel?: string;
+  mainThemesLabel?: string;
+  christConnectionLabel?: string;
+  noBackgroundMessage?: string;
+  aboutVerseLabel?: string;
+  bookContextLabel?: string;
   
   // Loading
   loadingMessage?: string;
@@ -536,6 +562,9 @@ export type BibleTranslations = {
   showMore?: string;
   continueReading?: string;
 
+  // Hint text
+  tapOutsideToClose?: string;
+
   // Daily greeting
   dailyGreetingMorning?: string;
   dailyGreetingAfternoon?: string;
@@ -550,12 +579,42 @@ export type BibleTranslations = {
   devotional?: string;
   readMore?: string;
   journalPrompts?: string;
-  hideExplanation?: string;
+  verseIntroduction?: string;
+  contextLabel?: string;
+  strongsWordStudy?: string;
+  practicalApplications?: string;
+  keyInsights?: string;
   
   // Bible header actions
   chapterReflections?: string;
   add?: string;
   day?: string;
+
+  // Book selector
+  booksLabel?: string;
+  readingFrom?: string;
+
+  // Chapter selector list
+  chapterOfLabel?: string;
+  ofLabel?: string;
+  totalLabel?: string;
+
+  // Book overview landing
+  bookOverviewTitle?: string;
+  bookOverviewSubtitle?: string;
+  loadingOverview?: string;
+  keyTheme?: string;
+  purpose?: string;
+  mainThemes?: string;
+  christConnection?: string;
+  readyToRead?: string;
+  noOverviewMessage?: string;
+  startReading?: string;
+
+  // End-of-chapter journaling
+  chapterJournalTitle?: string;
+  chapterJournalSubtitle?: string;
+  skipJournal?: string;
   
   // Drawer menu
   voiceSettingsLabel?: string;
@@ -783,6 +842,7 @@ export type BottomTabTranslations = {
   devotion?: string;
   lab?: string;
   ledger?: string;
+  tools?: string;
 };
 
 // Edit Profile translations
@@ -1440,6 +1500,13 @@ export type JournalTranslations = {
   promptDeleted?: string;
   promptRequired?: string;
   backLabel?: string;
+
+  // End-of-chapter journaling
+  fillAtLeastOne?: string;
+  reflectionsSaved?: string;
+  yourAnswer?: string;
+  saveReflections?: string;
+  savedCheckmark?: string;
 };
 
 export type ScreenProps = {

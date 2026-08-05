@@ -168,7 +168,8 @@
     "dashboard": "டாஷ்போர்டு",
     "users": "பயனர்கள்",
     "verse": "வசனம்",
-    "devotion": "பக்தி"
+    "devotion": "பக்தி",
+    "tools": "கருவிகள்"
   },
   "readingSettings": {
     "title": "வாசிப்பு அமைப்புகள்",
@@ -1045,7 +1046,6 @@
     "showMore": "மேலும் காட்டு ▼",
     "showLess": "குறைவாக காட்டு ▲",
     "explainVerse": "வசனத்தை விளக்கு",
-    "hideExplanation": "விளக்கத்தை மறை",
     "shareVerse": "வசனத்தைப் பகிர்",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1088,7 +1088,11 @@
       "versesRead": "வாசித்த வசனங்கள்",
       "devotions": "தியானங்கள்",
       "bookmarks": "புத்தகக்குறிகள்"
-    }
+    },
+    "labCardTitle": "எக்ஸெஜெசிஸ் ஆய்வகம்",
+    "labCardSubtitle": "எந்த வசனத்தின் வழியும் 5-படி வழிகாட்டப்பட்ட பயணம் — பார், கேள், கற்றுக்கொள், தங்கு, பயன்படுத்து.",
+    "labStartStudy": "ஆய்வைத் தொடங்கு",
+    "labDurationHint": "5 படிகள் · 30–60 நிமிடங்கள்"
   },
   "readingPlans": {
     "myReadingPlans": "என் வாசிப்புத் திட்டங்கள்",

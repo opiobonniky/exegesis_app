@@ -2,18 +2,39 @@ import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
   StyleSheet,
-  Platform,
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, X, BookOpen, ChevronRight, ChevronLeft } from 'lucide-react-native';
-import { useLanguage } from '../../../component/language-translation/LanguageProvider';
-import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
+import { useNavigation } from '@react-navigation/native';
+import {
+  Search,
+  X,
+  ChevronLeft,
+  Globe,
+  Home,
+} from 'lucide-react-native';
+import { route } from '../../../component/navigations/routes';
+import {
+  useLanguage,
+  isRtlLanguage,
+} from '../../../component/language-translation/LanguageProvider';
+import {
+  getColors,
+  SPACING,
+  FONT_SIZES,
+  BORDER_RADIUS,
+} from '../../../constants/theme';
+
+// Design tokens matching the Bible screen header (biblescreen.jpeg)
+const HEADER_BG = '#25385C';
+
+const COLUMNS = 3;
+const H_PAD = 16;
+const GAP = 10;
 
 interface Book {
   name: string;
@@ -28,6 +49,10 @@ interface BookSelectorScreenProps {
   onSelectBook: (bookName: string) => void;
   onBack?: () => void;
   loading?: boolean;
+  versionAbbr?: string;
+  onVersionPress?: () => void;
+  /** Book the user last read — visually highlighted so they can find it fast. */
+  lastReadBook?: string | null;
 }
 
 export default function BookSelectorScreen({
@@ -36,54 +61,105 @@ export default function BookSelectorScreen({
   onSelectBook,
   onBack,
   loading = false,
+  versionAbbr,
+  onVersionPress,
+  lastReadBook = null,
 }: BookSelectorScreenProps) {
   const insets = useSafeAreaInsets();
-  const { translations } = useLanguage();
+  const navigation = useNavigation();
+  const { translations, language } = useLanguage();
+  const isRtl = isRtlLanguage(language);
   const bc = translations?.bible;
   const COLORS = getColors(isDark);
 
-  const [activeTab, setActiveTab] = useState<'Old' | 'New'>('Old');
   const [query, setQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'Old' | 'New'>('Old');
 
-  const oldBooks = books.filter(b => b.testament === 'Old');
-  const newBooks = books.filter(b => b.testament === 'New');
-
-  const displayed = useMemo(
-    () =>
-      (activeTab === 'Old' ? oldBooks : newBooks).filter(
-        b => query.length === 0 || b.name.toLowerCase().includes(query.toLowerCase()),
-      ),
-    [activeTab, oldBooks, newBooks, query],
+  const oldBooks = useMemo(
+    () => books.filter(b => b.testament === 'Old'),
+    [books],
+  );
+  const newBooks = useMemo(
+    () => books.filter(b => b.testament === 'New'),
+    [books],
   );
 
-  return (
-    <View style={[s.container, { backgroundColor: COLORS.background, paddingTop: Platform.OS === 'ios' ? insets.top + 4 : insets.top }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+  const filtering = query.trim().length > 0;
+  const q = query.trim().toLowerCase();
 
-      {/* Header */}
-      <View style={s.header}>
-        <View style={s.headerTop}>
-          {onBack && (
-            <TouchableOpacity
-              onPress={onBack}
-              style={[s.backBtn, { backgroundColor: COLORS.surface }]}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <ChevronLeft size={20} color={COLORS.text} strokeWidth={2.5} />
-            </TouchableOpacity>
-          )}
-          <View style={[s.headerIcon, onBack && { marginLeft: 4 }]}>
-            <BookOpen size={22} color={COLORS.primary} strokeWidth={1.5} />
+  // Books in canonical Bible order (the incoming array is already ordered).
+  // Search crosses both testaments; otherwise show only the active tab.
+  const visibleBooks = useMemo(() => {
+    const pool = filtering ? books : activeTab === 'Old' ? oldBooks : newBooks;
+    return filtering ? pool.filter(b => b.name.toLowerCase().includes(q)) : pool;
+  }, [books, activeTab, oldBooks, newBooks, filtering, q]);
+
+  const rows = useMemo(() => {
+    const result: Book[][] = [];
+    for (let i = 0; i < visibleBooks.length; i += COLUMNS) {
+      result.push(visibleBooks.slice(i, i + COLUMNS));
+    }
+    return result;
+  }, [visibleBooks]);
+
+  const anyResults = visibleBooks.length > 0;
+
+  return (
+    <View style={[s.container, { backgroundColor: COLORS.background }]}>
+      <StatusBar backgroundColor={HEADER_BG} barStyle="light-content" />
+
+      {/* ── Header (matches Bible screen) ─────────────────────────────────── */}
+      <View style={[s.header, { paddingTop: insets.top }]}>
+        <View style={[s.headerRow, isRtl && s.headerRowRtl]}>
+          {/* ── Left: back (or balanced spacer) ─────────────────────────────── */}
+          <View style={[s.headerSide, s.headerSideLeft, isRtl && s.headerSideRtl]}>
+            {onBack ? (
+              <TouchableOpacity
+                onPress={onBack}
+                style={s.sideBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <ChevronLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
+              </TouchableOpacity>
+            ) : null}
           </View>
-          <View style={s.headerTextWrap}>
-            <Text style={[s.headerTitle, { color: COLORS.text }]}>
+
+          <View style={s.headerCenter}>
+            <Text style={s.headerTitle} numberOfLines={1}>
               {bc?.selectBookTitle || 'Select a Book'}
             </Text>
-            <Text style={[s.headerSubtitle, { color: COLORS.muted }]}>
-              {books.length} books · {oldBooks.length} OT · {newBooks.length} NT
+            <Text style={s.headerSubtitle} numberOfLines={1}>
+              {books.length} {bc?.booksLabel || 'books'} · {oldBooks.length} OT · {newBooks.length} NT
             </Text>
           </View>
+
+          {/* ── Right: Home + translation selector icons ────────────────────── */}
+          <View style={[s.headerSide, s.headerSideRight, isRtl && s.headerSideRtl]}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate(route.home as never)}
+              style={s.sideBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.8}
+              accessibilityLabel="Home"
+            >
+              <Home size={20} color="#FFFFFF" strokeWidth={2.2} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={onVersionPress}
+              style={s.sideBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.8}
+              accessibilityLabel="Translation"
+            >
+              <Globe size={20} color="#FFFFFF" strokeWidth={2.2} />
+            </TouchableOpacity>
+          </View>
         </View>
+        {versionAbbr ? (
+          <Text style={s.headerVersion}>
+            {bc?.readingFrom || 'Reading'} {versionAbbr}
+          </Text>
+        ) : null}
       </View>
 
       {/* Search */}
@@ -105,9 +181,9 @@ export default function BookSelectorScreen({
         )}
       </View>
 
-      {/* Testament tabs */}
-      {query.length === 0 && (
-        <View style={[s.tabsRow, { borderColor: COLORS.border }]}>
+      {/* Old / New Testament tabs */}
+      {!filtering && (
+        <View style={[s.tabsRow, isRtl && s.tabsRowRtl, { borderColor: COLORS.border }]}>
           {(['Old', 'New'] as const).map(tab => {
             const isActive = activeTab === tab;
             return (
@@ -144,66 +220,69 @@ export default function BookSelectorScreen({
         </View>
       )}
 
-      {/* Book list */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.listContent}
-        keyboardShouldPersistTaps="handled"
-      >
+      {/* Book list — plain text, flex layout that always fits the screen */}
+      <View style={s.content}>
         {loading ? (
-          <View style={s.loadingWrap}>
+          <View style={s.centerWrap}>
             <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={[s.loadingText, { color: COLORS.muted }]}>Loading books...</Text>
+            <Text style={[s.centerText, { color: COLORS.muted }]}>Loading books...</Text>
           </View>
-        ) : displayed.length === 0 ? (
-          <View style={s.emptyWrap}>
-            <Text style={[s.emptyText, { color: COLORS.muted }]}>
+        ) : !anyResults ? (
+          <View style={s.centerWrap}>
+            <Text style={[s.centerText, { color: COLORS.muted }]}>
               {bc?.noBooksFound || 'No books found'} "{query}"
             </Text>
           </View>
         ) : (
-          displayed.map((book, index) => {
-            const isLast = index === displayed.length - 1;
-            return (
-              <TouchableOpacity
-                key={book.name}
-                onPress={() => onSelectBook(book.name)}
-                activeOpacity={0.7}
-                style={[
-                  s.row,
-                  {
-                    backgroundColor: COLORS.cardBackground,
-                    borderColor: COLORS.border,
-                    marginBottom: isLast ? 0 : SPACING.sm,
-                  },
-                ]}
-              >
-                <View style={[s.rowIndex, { backgroundColor: `${COLORS.primary}12` }]}>
-                  <Text style={[s.rowIndexText, { color: COLORS.primary }]}>
-                    {String(index + 1).padStart(2, '0')}
-                  </Text>
-                </View>
-
-                <View style={s.rowContent}>
-                  <Text style={[s.rowName, { color: COLORS.text }]}>
-                    {book.name}
-                  </Text>
-                  <View style={s.rowMeta}>
-                    <View style={[s.chip, { backgroundColor: COLORS.surface, borderColor: COLORS.border }]}>
-                      <Text style={[s.chipText, { color: COLORS.muted }]}>
-                        {book.chapters} {bc?.chaptersAbbr || 'ch'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <ChevronRight size={18} color={COLORS.muted} strokeWidth={2} />
-              </TouchableOpacity>
-            );
-          })
+          rows.map((row, rowIdx) => (
+            <View key={rowIdx} style={[s.row, isRtl && s.rowRtl]}>
+              {row.map(book => {
+                const isLastRead =
+                  !!lastReadBook && book.name === lastReadBook;
+                return (
+                  <TouchableOpacity
+                    key={book.name}
+                    onPress={() => onSelectBook(book.name)}
+                    activeOpacity={0.55}
+                    style={[
+                      s.bookItem,
+                      isLastRead && {
+                        backgroundColor: `${COLORS.primary}12`,
+                      },
+                      isLastRead && s.bookItemActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        s.bookName,
+                        { color: isLastRead ? COLORS.primary : COLORS.text },
+                        isLastRead && s.bookNameActive,
+                      ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                    >
+                      {book.name}
+                    </Text>
+                    <Text
+                      style={[
+                        s.bookChapters,
+                        {
+                          color: isLastRead ? COLORS.primary : COLORS.muted,
+                        },
+                        isLastRead && s.bookChaptersActive,
+                      ]}
+                    >
+                      {isLastRead ? '● ' : ''}
+                      {book.chapters} {bc?.chaptersAbbr || 'ch'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))
         )}
-        <View style={{ height: Platform.OS === 'ios' ? 40 : 24 }} />
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -213,47 +292,73 @@ const s = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: SPACING.xs,
+    backgroundColor: HEADER_BG,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.38)',
     paddingBottom: SPACING.sm,
   },
-  headerTop: {
+  headerRow: {
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    paddingHorizontal: SPACING.md,
+    gap: 6,
   },
-  headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    justifyContent: 'center',
+  headerRowRtl: {
+    flexDirection: 'row-reverse',
+  },
+  // Symmetric side rails (2×40px buttons + gap) keep the title perfectly centered
+  headerSide: {
+    width: 86,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
-  backBtn: {
+  headerSideLeft: {
+    justifyContent: 'flex-start',
+  },
+  headerSideRight: {
+    justifyContent: 'flex-end',
+  },
+  headerSideRtl: {
+    flexDirection: 'row-reverse',
+  },
+  sideBtn: {
     width: 40,
     height: 40,
-    borderRadius: BORDER_RADIUS.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTextWrap: {
+  headerCenter: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
-    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 1,
+  },
+  headerVersion: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.75)',
+    textAlign: 'center',
+    letterSpacing: 0.8,
+    marginBottom: 2,
   },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginTop: SPACING.xs,
+    marginHorizontal: H_PAD,
+    marginTop: SPACING.md,
     marginBottom: SPACING.md,
     paddingHorizontal: 14,
     height: 46,
@@ -268,18 +373,21 @@ const s = StyleSheet.create({
   },
   tabsRow: {
     flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: SPACING.md,
+    marginHorizontal: H_PAD,
+    marginBottom: SPACING.sm,
     borderRadius: 14,
     borderWidth: 1,
     overflow: 'hidden',
+  },
+  tabsRowRtl: {
+    flexDirection: 'row-reverse',
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 11,
     gap: 6,
   },
   tabText: {
@@ -290,66 +398,55 @@ const s = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 8,
+  content: {
+    flex: 1,
+    paddingHorizontal: H_PAD,
+    paddingTop: SPACING.xs,
+    paddingBottom: SPACING.sm,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 14,
-  },
-  rowIndex: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  rowIndexText: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '700',
-  },
-  rowContent: {
     flex: 1,
-  },
-  rowName: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  rowMeta: {
     flexDirection: 'row',
-    gap: 6,
-    marginTop: 4,
+    gap: GAP,
   },
-  chip: {
-    paddingHorizontal: 8,
+  rowRtl: {
+    flexDirection: 'row-reverse',
+  },
+  bookItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
   },
-  chipText: {
-    fontSize: 11,
+  bookItemActive: {
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: 5,
+    paddingHorizontal: 4,
+  },
+  bookName: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: -0.1,
+  },
+  bookNameActive: {
+    fontWeight: '800',
+  },
+  bookChapters: {
+    fontSize: 10,
     fontWeight: '600',
+    marginTop: 2,
   },
-  emptyWrap: {
-    paddingVertical: 60,
-    alignItems: 'center',
+  bookChaptersActive: {
+    fontWeight: '700',
   },
-  loadingWrap: {
-    paddingVertical: 56,
+  centerWrap: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: SPACING.sm,
   },
-  loadingText: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '600',
-  },
-  emptyText: {
+  centerText: {
     fontSize: FONT_SIZES.md,
   },
 });

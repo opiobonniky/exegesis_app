@@ -168,7 +168,8 @@
     "dashboard": "ડેશબોર્ડ",
     "users": "વપરાશકર્તાઓ",
     "verse": "શ્લોક",
-    "devotion": "ભક્તિ"
+    "devotion": "ભક્તિ",
+    "tools": "સાધનો"
   },
   "readingSettings": {
     "title": "વાંચન સેટિંગ્સ",
@@ -881,7 +882,6 @@
     "showMore": "વધુ બતાવો ▼",
     "showLess": "ઓછું બતાવો ▲",
     "explainVerse": "શ્લોક સમજાવો",
-    "hideExplanation": "સમજૂતી છુપાવો",
     "shareVerse": "શ્લોક શેર કરો",
     "quickActionsTitle": "ઝડપી ક્રિયાઓ",
     "yourStatsTitle": "તમારા આંકડા",
@@ -917,7 +917,11 @@
       "versesRead": "વાંચેલી કલમો",
       "devotions": "ભક્તિઓ",
       "bookmarks": "બુકમાર્ક્સ"
-    }
+    },
+    "labCardTitle": "એક્ઝેજેસિસ લેબ",
+    "labCardSubtitle": "કોઈપણ પેસેજમાંથી માર્ગદર્શિત 5-પગલાંની યાત્રા — જુઓ, સાંભળો, શીખો, રહો અને લાગુ કરો.",
+    "labStartStudy": "અભ્યાસ શરૂ કરો",
+    "labDurationHint": "5 પગલાં · 30–60 મિનિટ"
   },
   "readingPlans": {
     "myReadingPlans": "મારી વાંચન યોજનાઓ",

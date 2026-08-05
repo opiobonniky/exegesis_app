@@ -168,7 +168,8 @@
     "dashboard": "Панель",
     "users": "Пользователи",
     "verse": "Стих",
-    "devotion": "Размышление"
+    "devotion": "Размышление",
+    "tools": "Инструменты"
   },
   "readingSettings": {
     "title": "Настройки чтения",
@@ -1043,7 +1044,6 @@
     "showMore": "Показать больше ▼",
     "showLess": "Показать меньше ▲",
     "explainVerse": "Объяснить стих",
-    "hideExplanation": "Скрыть объяснение",
     "shareVerse": "Поделиться стихом",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1086,7 +1086,11 @@
       "versesRead": "Прочитано стихов",
       "devotions": "Размышления",
       "bookmarks": "Закладки"
-    }
+    },
+    "labCardTitle": "Лаборатория экзегезы",
+    "labCardSubtitle": "Руководство из 5 шагов по любому отрывку — Смотрите, Слушайте, Учитесь, Пребывайте и Применяйте.",
+    "labStartStudy": "Начать изучение",
+    "labDurationHint": "5 шагов · 30–60 мин"
   },
   "readingPlans": {
     "myReadingPlans": "Мои планы чтения",

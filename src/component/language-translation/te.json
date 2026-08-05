@@ -168,7 +168,8 @@
     "dashboard": "డ్యాష్‌బోర్డ్",
     "users": "వినియోగదారులు",
     "verse": "వచనం",
-    "devotion": "భక్తి"
+    "devotion": "భక్తి",
+    "tools": "సాధనాలు"
   },
   "readingSettings": {
     "title": "పఠన సెట్టింగ్స్",
@@ -1043,7 +1044,6 @@
     "showMore": "మరింత చూపించు ▼",
     "showLess": "తక్కువ చూపించు ▲",
     "explainVerse": "వచనాన్ని వివరించండి",
-    "hideExplanation": "వివరణ దాచండి",
     "shareVerse": "వచనాన్ని షేర్ చేయండి",
     "faithReelTitle": "ఫెయిత్ రీల్",
     "faithReelsFooter": "🎉 ఫెయిత్ రీల్స్ —",
@@ -1086,7 +1086,11 @@
       "versesRead": "చదివిన వచనాలు",
       "devotions": "భక్తులు",
       "bookmarks": "బుక్మార్క్‌లు"
-    }
+    },
+    "labCardTitle": "ఎక్సెజెసిస్ ల్యాబ్",
+    "labCardSubtitle": "ఏ భాగం ద్వారానైనా 5-దశల మార్గదర్శక ప్రయాణం — చూడండి, వినండి, నేర్చుకోండి, నిలిచి ఉండండి మరియు అన్వయించండి.",
+    "labStartStudy": "అధ్యయనం ప్రారంభించండి",
+    "labDurationHint": "5 దశలు · 30–60 నిమిషాలు"
   },
   "readingPlans": {
     "myReadingPlans": "నా పఠన ప్రణాళికలు",

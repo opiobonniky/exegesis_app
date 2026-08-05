@@ -72,6 +72,7 @@ export interface ChapterSelectorModalProps {
   currentChapter: number;
   onSelectChapter: (chapter: number) => void;
   isDark: boolean;
+  bookHeadings?: Record<number, Array<{ verse: number; heading: string }>>;
 }
 
 export interface SearchModalProps {

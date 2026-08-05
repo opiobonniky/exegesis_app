@@ -168,7 +168,8 @@
     "dashboard": "Dashibodi",
     "users": "Watumiaji",
     "verse": "Mstari",
-    "devotion": "Ibada"
+    "devotion": "Ibada",
+    "tools": "Zana"
   },
   "readingSettings": {
     "title": "Mipangilio ya Usomaji",
@@ -1045,7 +1046,6 @@
     "showMore": "Onyesha Zaidi ▼",
     "showLess": "Onyesha Machache ▲",
     "explainVerse": "Elezea mstari",
-    "hideExplanation": "Ficha Maelezo",
     "shareVerse": "Shiriki mstari",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1088,7 +1088,11 @@
       "versesRead": "Mistari Iliyosomwa",
       "devotions": "Ibada",
       "bookmarks": "Alamisho"
-    }
+    },
+    "labCardTitle": "Maabara ya Ufafanuzi",
+    "labCardSubtitle": "Safari inayoongozwa ya hatua 5 kupitia kifungu chochote — Angalia, Sikiliza, Jifunze, Kaa na Tumia.",
+    "labStartStudy": "Anza Kusoma",
+    "labDurationHint": "Hatua 5 · 30–60 dk"
   },
   "readingPlans": {
     "myReadingPlans": "Mipango Yangu ya Usomaji",

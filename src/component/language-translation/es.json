@@ -155,7 +155,8 @@
     "dashboard": "Panel",
     "users": "Usuarios",
     "verse": "Verso",
-    "devotion": "Devoción"
+    "devotion": "Devoción",
+    "tools": "Herramientas"
   },
   "extendedProfile": {
     "title": "Información adicional",
@@ -1032,7 +1033,6 @@
     "showMore": "Mostrar más ▼",
     "showLess": "Mostrar menos ▲",
     "explainVerse": "Explicar verso",
-    "hideExplanation": "Ocultar explicación",
     "shareVerse": "Compartir verso",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1075,7 +1075,11 @@
       "versesRead": "Versículos leídos",
       "devotions": "Devocionales",
       "bookmarks": "Marcadores"
-    }
+    },
+    "labCardTitle": "Laboratorio de Exégesis",
+    "labCardSubtitle": "Un viaje guiado de 5 pasos a través de cualquier pasaje: mira, escucha, aprende, permanece y aplica.",
+    "labStartStudy": "Iniciar estudio",
+    "labDurationHint": "5 pasos · 30–60 min"
   },
   "readingPlans": {
     "myReadingPlans": "Mis Planes de Lectura",

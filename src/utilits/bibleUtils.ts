@@ -45,6 +45,21 @@ const data = (override?: Record<string, string>): Record<string, string> =>
   override ?? _activeData;
 
 /* ------------------------------------------------------------------ */
+/*  Book-name normalization                                            */
+/* ------------------------------------------------------------------ */
+
+// Some version bundles spell certain book names differently (e.g. BSB uses
+// "Psalm 1:1" while KJV/WEB use "Psalms 1:1"). We canonicalize to one form
+// so lookups by "Psalms" work regardless of the active version's keys.
+const BOOK_NAME_CANONICAL: Record<string, string> = {
+  Psalm: 'Psalms',
+};
+
+/** Map a book name to its canonical spelling. */
+export const canonicalBookName = (name: string): string =>
+  BOOK_NAME_CANONICAL[name] ?? name;
+
+/* ------------------------------------------------------------------ */
 /*  Testament list                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -117,12 +132,15 @@ export const getBibleBooks = (versionData?: Record<string, string>): Book[] => {
     bookMap[book].verses++;
   });
 
-  return Object.keys(bookMap).map(book => ({
-    name: book,
-    chapters: bookMap[book].chapters.size,
-    verses: bookMap[book].verses,
-    testament: NEW_TESTAMENT_BOOKS.includes(book) ? 'New' : 'Old',
-  }));
+  return Object.keys(bookMap).map(rawBook => {
+    const book = canonicalBookName(rawBook);
+    return {
+      name: book,
+      chapters: bookMap[rawBook].chapters.size,
+      verses: bookMap[rawBook].verses,
+      testament: NEW_TESTAMENT_BOOKS.includes(book) ? 'New' : 'Old',
+    };
+  });
 };
 
 /* ------------------------------------------------------------------ */
@@ -146,7 +164,7 @@ export const getChaptersForBook = (bookName: string): number[] => {
     Philemon: 1, Hebrews: 13, James: 5, '1 Peter': 5, '2 Peter': 3,
     '1 John': 5, '2 John': 1, '3 John': 1, Jude: 1, Revelation: 22,
   };
-  const count = chapterCounts[bookName] || 1;
+  const count = chapterCounts[canonicalBookName(bookName)] || 1;
   return Array.from({ length: count }, (_, i) => i + 1);
 };
 
@@ -163,7 +181,7 @@ export const getVersesForChapter = (
     const bookName = key.substring(0, lastSpace);
     const [ch, vs] = key.substring(lastSpace + 1).split(':');
 
-    if (bookName === book && Number(ch) === chapter) {
+    if (canonicalBookName(bookName) === canonicalBookName(book) && Number(ch) === chapter) {
       verses[Number(vs)] = src[key];
     }
   });
@@ -180,7 +198,15 @@ export const getVerseText = (
   chapter: number,
   verse: number,
   versionData?: Record<string, string>,
-): string | null => data(versionData)[`${book} ${chapter}:${verse}`] ?? null;
+): string | null => {
+  const src = data(versionData);
+  const canonical = canonicalBookName(book);
+  return (
+    src[`${book} ${chapter}:${verse}`] ??
+    (canonical !== book ? src[`${canonical} ${chapter}:${verse}`] : undefined) ??
+    null
+  );
+};
 
 export const getVerseRange = (
   book: string,
@@ -191,10 +217,14 @@ export const getVerseRange = (
 ): Record<number, string> => {
   const src = data(versionData);
   const verses: Record<number, string> = {};
+  const canonical = canonicalBookName(book);
 
   for (let v = startVerse; v <= endVerse; v++) {
     const key = `${book} ${chapter}:${v}`;
+    const fallback =
+      canonical !== book ? `${canonical} ${chapter}:${v}` : null;
     if (src[key]) verses[v] = src[key];
+    else if (fallback && src[fallback]) verses[v] = src[fallback];
   }
 
   return verses;
@@ -219,7 +249,7 @@ export const searchVerses = (
     const text = src[key];
     if (text.toLowerCase().includes(q)) {
       const lastSpace = key.lastIndexOf(' ');
-      const book = key.substring(0, lastSpace);
+      const book = canonicalBookName(key.substring(0, lastSpace));
       const [chapter, verse] = key
         .substring(lastSpace + 1)
         .split(':')
@@ -255,7 +285,7 @@ export const buildVerseIndex = (): void => {
   Object.keys(src).forEach(key => {
     const text = src[key];
     const lastSpace = key.lastIndexOf(' ');
-    const book = key.substring(0, lastSpace);
+    const book = canonicalBookName(key.substring(0, lastSpace));
     const [chapter, verse] = key
       .substring(lastSpace + 1)
       .split(':')

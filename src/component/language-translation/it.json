@@ -175,7 +175,8 @@
     "dashboard": "Dashboard",
     "users": "Utenti",
     "verse": "Versetto",
-    "devotion": "Devozione"
+    "devotion": "Devozione",
+    "tools": "Strumenti"
   },
   "readingSettings": {
     "title": "Impostazioni di lettura",
@@ -1050,7 +1051,6 @@
     "showMore": "Mostra più ▼",
     "showLess": "Mostra meno ▲",
     "explainVerse": "Spiega versetto",
-    "hideExplanation": "Nascondi spiegazione",
     "shareVerse": "Condividi versetto",
     "faithReelTitle": "Faith Reel",
     "faithReelsFooter": "🎉 FAITH REELS —",
@@ -1093,7 +1093,11 @@
       "versesRead": "Versetti letti",
       "devotions": "Devozioni",
       "bookmarks": "Segnalibri"
-    }
+    },
+    "labCardTitle": "Laboratorio di Esegesi",
+    "labCardSubtitle": "Un percorso guidato in 5 passi attraverso qualsiasi passo: Guarda, Ascolta, Impara, Rimani e Applica.",
+    "labStartStudy": "Inizia lo studio",
+    "labDurationHint": "5 passi · 30–60 min"
   },
   "readingPlans": {
     "myReadingPlans": "I miei Piani di Lettura",

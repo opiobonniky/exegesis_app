@@ -53,6 +53,17 @@ export interface VerseData {
   verses: Verse[];
 }
 
+export interface ChapterHeading {
+  verse: number;
+  heading: string;
+}
+
+export interface ChapterHeadingsData {
+  bookName: string;
+  chapter: number;
+  headings: ChapterHeading[];
+}
+
 export interface SearchResult {
   bookNumber: number;
   bookName: string;
@@ -589,6 +600,62 @@ export const bibleApi = {
       link: null,
       copyright: null,
     }));
+  },
+
+  getChapterHeadings: async (
+    translationId: string,
+    bookName: string,
+    chapter: number,
+  ): Promise<ChapterHeading[]> => {
+    const backendId = mapTranslationId(translationId);
+    try {
+      const response = await api.post(
+        `${TRANSLATIONS_BASE_URL}/${backendId}/chapter-headings`,
+        {
+          bookName,
+          chapter,
+        },
+      );
+      if (response.data.success && response.data.data) {
+        return response.data.data.headings || [];
+      }
+      return [];
+    } catch (error) {
+      console.error(
+        `Failed to fetch chapter headings for ${bookName} ${chapter}:`,
+        error,
+      );
+      return [];
+    }
+  },
+
+  /** All chapters' section headings for a book, keyed by chapter number. */
+  getBookHeadings: async (
+    translationId: string,
+    bookName: string,
+  ): Promise<Record<number, ChapterHeading[]>> => {
+    const backendId = mapTranslationId(translationId);
+    try {
+      const response = await api.post(
+        `${TRANSLATIONS_BASE_URL}/${backendId}/book-headings`,
+        {
+          bookName,
+        },
+      );
+      if (response.data.success && response.data.data?.chapters) {
+        const chapters = response.data.data.chapters;
+        const result: Record<number, ChapterHeading[]> = {};
+        Object.keys(chapters).forEach(chKey => {
+          const num = parseInt(chKey, 10);
+          if (!isNaN(num)) result[num] = chapters[chKey] || [];
+        });
+        return result;
+      }
+      return {};
+    } catch (error) {
+      console.error(`Failed to fetch book headings for ${bookName}:`, error);
+      return {};
+    }
   },
 
   getTranslationSettings: async (): Promise<TranslationSettings> => {

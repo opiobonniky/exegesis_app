@@ -24,6 +24,7 @@ type Props = {
   rich?: boolean;
   /** Accent color used for headings / markers in rich mode. */
   accentColor?: string;
+  showMoreLabel?: string;
 };
 
 function formatParagraphs(text: string): string {
@@ -66,6 +67,7 @@ export default function ExpandableText({
   textStyle,
   rich = false,
   accentColor,
+  showMoreLabel = 'Show more',
 }: Props) {
   const app: any = useContext(AppContext);
   const COLORS = useMemo(() => getColors(app?.isDark), [app?.isDark]);

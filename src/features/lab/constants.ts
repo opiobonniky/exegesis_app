@@ -1,19 +1,21 @@
 import { LabStage } from './types';
 
-export const STAGE_ORDER: readonly LabStage[] = ['look', 'listen', 'learn', 'abide'];
+export const STAGE_ORDER: readonly LabStage[] = ['look', 'listen', 'learn', 'abide', 'apply'];
 
 export const STAGE_TIME: Record<string, string> = {
   look: '8–12 min',
   listen: '5–15 min',
   learn: '15–25 min',
   abide: '8–12 min',
+  apply: '10–15 min',
 };
 
 export const STAGE_DESC: Record<string, string> = {
-  look: 'Observe the passage carefully',
-  listen: 'Meditate through repetition',
-  learn: 'Understand the deeper meaning',
-  abide: 'Apply what you\'ve learned',
+  look: 'What does the text say?',
+  listen: 'Be still and dwell in the Word',
+  learn: 'What does this mean?',
+  abide: 'Record what the Lord has shown you',
+  apply: 'Live out what God has shown you',
 };
 
 export const STAGE_PURPOSE: Record<string, string> = {
@@ -21,6 +23,7 @@ export const STAGE_PURPOSE: Record<string, string> = {
   listen: 'Hear the Word repeatedly. Let Scripture sink past your defenses into your heart. This ancient practice of lectio divina opens you to God\'s voice.',
   learn: 'Now dig deeper. Original languages, cross-references, commentaries, and historical context reveal what the passage meant to its first hearers.',
   abide: 'The goal of study is transformation. Record what God has shown you, respond in prayer, and commit to one practical step of application.',
+  apply: 'Choose one practical way you will apply this verse to your life this week. Be specific and actionable.',
 };
 
 export const LISTEN_OPTIONS = [
@@ -45,5 +48,6 @@ export const STAGE_ICONS: Record<string, string> = {
   listen: 'Ear',
   learn: 'Brain',
   abide: 'Heart',
+  apply: 'CheckCircle',
 };
 
