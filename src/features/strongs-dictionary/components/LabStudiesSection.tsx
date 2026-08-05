@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(120,120,128,0.2)',
+    borderTopColor: 'transparent',
     gap: 2,
   },
   stageRow: {
