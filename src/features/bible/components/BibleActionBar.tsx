@@ -1,7 +1,7 @@
 /**
  * BibleActionBar.tsx
  *
- * Bottom action bar from docs/design-pic/biblescreen.jpeg — a dark-navy
+ * Bottom action bar from docs/biblescreen.jpeg — a slate-blue
  * strip with six white line icons:
  *   note+  bookmark  undo  up  redo  down
  */
@@ -9,6 +9,7 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import {
+  AudioLines,
   FilePlus2,
   Bookmark,
   Undo2,
@@ -17,7 +18,21 @@ import {
   ArrowDown,
 } from 'lucide-react-native';
 
-const BAR_BG = '#25385C';
+const BAR_BG = '#3c5172';
+
+function VoiceNoteIcon() {
+  return (
+    <View style={styles.voiceNoteIcon}>
+      <FilePlus2 color="#FFFFFF" size={24} strokeWidth={2} />
+      <AudioLines
+        color="#FFFFFF"
+        size={11}
+        strokeWidth={2.2}
+        style={styles.voiceWaves}
+      />
+    </View>
+  );
+}
 
 export type BibleActionBarProps = {
   isRtl?: boolean;
@@ -39,12 +54,42 @@ export default function BibleActionBar({
   onScrollBottom,
 }: BibleActionBarProps) {
   const actions = [
-    { id: 'note', icon: FilePlus2, onPress: onNote },
-    { id: 'bookmark', icon: Bookmark, onPress: onBookmark },
-    { id: 'undo', icon: Undo2, onPress: onUndo },
-    { id: 'up', icon: ArrowUp, onPress: onScrollTop },
-    { id: 'redo', icon: Redo2, onPress: onRedo },
-    { id: 'down', icon: ArrowDown, onPress: onScrollBottom },
+    {
+      id: 'note',
+      icon: VoiceNoteIcon,
+      label: 'Add note',
+      onPress: onNote,
+    },
+    {
+      id: 'bookmark',
+      icon: Bookmark,
+      label: 'Bookmark verse',
+      onPress: onBookmark,
+    },
+    {
+      id: 'previous',
+      icon: Undo2,
+      label: 'Previous chapter',
+      onPress: onUndo,
+    },
+    {
+      id: 'top',
+      icon: ArrowUp,
+      label: 'Scroll to top',
+      onPress: onScrollTop,
+    },
+    {
+      id: 'next',
+      icon: Redo2,
+      label: 'Next chapter',
+      onPress: onRedo,
+    },
+    {
+      id: 'bottom',
+      icon: ArrowDown,
+      label: 'Scroll to bottom',
+      onPress: onScrollBottom,
+    },
   ];
 
   return (
@@ -57,9 +102,11 @@ export default function BibleActionBar({
             style={styles.btn}
             onPress={action.onPress}
             activeOpacity={0.7}
-            hitSlop={{ top: 4, bottom: 4, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={action.label}
+            hitSlop={{ top: 3, bottom: 3, left: 8, right: 8 }}
           >
-            <Icon color="#FFFFFF" size={20} strokeWidth={2.2} />
+            <Icon color="#FFFFFF" size={25} strokeWidth={2.15} />
           </TouchableOpacity>
         );
       })}
@@ -74,17 +121,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     backgroundColor: BAR_BG,
-    height: 42,
+    height: 28,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.12)',
+    borderTopColor: 'rgba(255,255,255,0.2)',
   },
   barRtl: {
     flexDirection: 'row-reverse',
   },
   btn: {
-    width: 44,
-    height: 42,
+    flex: 1,
+    height: 38,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  voiceNoteIcon: {
+    width: 31,
+    height: 27,
+    justifyContent: 'center',
+  },
+  voiceWaves: {
+    position: 'absolute',
+    right: 0,
+    bottom: 1,
   },
 });

@@ -28,8 +28,8 @@ const STORAGE_KEYS = {
 };
 
 // ─── Narration defaults ───────────────────────────────────────────────────────
-const DEFAULT_RATE = 0.9;   // slightly slower for natural pacing
-const DEFAULT_PITCH = 1.0;  // neutral pitch sounds less robotic
+const DEFAULT_RATE = 0.9; // slightly slower for natural pacing
+const DEFAULT_PITCH = 1.0; // neutral pitch sounds less robotic
 
 // ─── AsyncStorage keys — Edge TTS ────────────────────────────────────────────
 const STORAGE_KEYS_EDGE = {
@@ -178,10 +178,15 @@ class BibleTTSManager {
   private _edgeVoiceId: string = DEFAULT_EDGE_VOICE_ID;
   private _edgeSound: Sound | null = null;
   private _edgePendingResolve: (() => void) | null = null;
+  private _edgePlayCompletion: ((success: boolean) => void) | null = null;
 
-  // ── Prefetch fields ───────────────────────────────────────────────────────
-  private _prefetchedFile: string | null = null;
-  private _prefetchedText: string | null = null;
+  // ── Rolling audio buffer ──────────────────────────────────────────────────
+  private _audioBuffer = new Map<string, string>();
+  private _bufferInFlight = new Map<string, Promise<string | null>>();
+  private _bufferGeneration = 0;
+  private _bufferFileCounter = 0;
+  private _edgeFilePath: string | null = null;
+  private readonly _maxBufferedTracks = 15;
 
   // ── Pause / resume state ──────────────────────────────────────────────────
   //
@@ -220,8 +225,15 @@ class BibleTTSManager {
     // ── tts-start ─────────────────────────────────────────────────────────────
     Tts.addEventListener('tts-start', (e?: any) => {
       const utteranceId = e && typeof e === 'object' ? e.utteranceId : e;
-      if (utteranceId !== undefined && this._activeUtteranceId !== null && utteranceId !== this._activeUtteranceId) {
-        console.log('[BibleTTS] tts-start ignored for old utterance:', utteranceId);
+      if (
+        utteranceId !== undefined &&
+        this._activeUtteranceId !== null &&
+        utteranceId !== this._activeUtteranceId
+      ) {
+        console.log(
+          '[BibleTTS] tts-start ignored for old utterance:',
+          utteranceId,
+        );
         return;
       }
       this._isTtsSpeaking = true;
@@ -244,7 +256,11 @@ class BibleTTSManager {
     // ── tts-progress ─────────────────────────────────────────────────────────
     Tts.addEventListener('tts-progress', (e: any) => {
       const utteranceId = e && typeof e === 'object' ? e.utteranceId : e;
-      if (utteranceId !== undefined && this._activeUtteranceId !== null && utteranceId !== this._activeUtteranceId) {
+      if (
+        utteranceId !== undefined &&
+        this._activeUtteranceId !== null &&
+        utteranceId !== this._activeUtteranceId
+      ) {
         return;
       }
       if (this.stopRequested) return;
@@ -301,8 +317,15 @@ class BibleTTSManager {
     // ── tts-finish ────────────────────────────────────────────────────────────
     Tts.addEventListener('tts-finish', (e?: any) => {
       const utteranceId = e && typeof e === 'object' ? e.utteranceId : e;
-      if (utteranceId !== undefined && this._activeUtteranceId !== null && utteranceId !== this._activeUtteranceId) {
-        console.log('[BibleTTS] tts-finish ignored for old utterance:', utteranceId);
+      if (
+        utteranceId !== undefined &&
+        this._activeUtteranceId !== null &&
+        utteranceId !== this._activeUtteranceId
+      ) {
+        console.log(
+          '[BibleTTS] tts-finish ignored for old utterance:',
+          utteranceId,
+        );
         return;
       }
       console.log('[BibleTTS] tts-finish event fired');
@@ -326,8 +349,15 @@ class BibleTTSManager {
     // ── tts-cancel ────────────────────────────────────────────────────────────
     Tts.addEventListener('tts-cancel', (e?: any) => {
       const utteranceId = e && typeof e === 'object' ? e.utteranceId : e;
-      if (utteranceId !== undefined && this._activeUtteranceId !== null && utteranceId !== this._activeUtteranceId) {
-        console.log('[BibleTTS] tts-cancel ignored for old utterance:', utteranceId);
+      if (
+        utteranceId !== undefined &&
+        this._activeUtteranceId !== null &&
+        utteranceId !== this._activeUtteranceId
+      ) {
+        console.log(
+          '[BibleTTS] tts-cancel ignored for old utterance:',
+          utteranceId,
+        );
         return;
       }
       console.log('[BibleTTS] tts-cancel event fired');
@@ -473,7 +503,9 @@ class BibleTTSManager {
       if (savedVoice) this.currentDeviceVoiceId = savedVoice;
 
       // Load saved Edge TTS voice preference
-      const savedEdgeVoice = await AsyncStorage.getItem(STORAGE_KEYS_EDGE.edgeVoiceId);
+      const savedEdgeVoice = await AsyncStorage.getItem(
+        STORAGE_KEYS_EDGE.edgeVoiceId,
+      );
       if (savedEdgeVoice) this._edgeVoiceId = savedEdgeVoice;
     } catch (err) {
       console.warn('[BibleTTS] Failed to load saved settings:', err);
@@ -492,6 +524,7 @@ class BibleTTSManager {
     }
 
     try {
+      await this.clearAudioCache();
       await Tts.setDefaultLanguage('en-US');
 
       if (this._rateCustomized) await Tts.setDefaultRate(this.currentRate);
@@ -523,7 +556,9 @@ class BibleTTSManager {
         }
       } catch {
         this._edgeEnabled = false;
-        console.log('[BibleTTS] Backend Edge TTS not available, using device TTS');
+        console.log(
+          '[BibleTTS] Backend Edge TTS not available, using device TTS',
+        );
       }
     } catch (err) {
       console.warn('[BibleTTS] Init failed:', err);
@@ -656,8 +691,12 @@ class BibleTTSManager {
         await this._speakViaBackend(cleanText, verseNum);
         return;
       } catch (err) {
-        console.warn('[BibleTTS] Edge TTS failed, falling back to device TTS:', err);
+        console.warn(
+          '[BibleTTS] Edge TTS failed, falling back to device TTS:',
+          err,
+        );
         this._edgeEnabled = false;
+        await this._clearBufferedAudio();
         // Fall through to device TTS path below
       }
     }
@@ -772,7 +811,7 @@ class BibleTTSManager {
           }, 30_000);
 
           Promise.resolve(Tts.speak(clean))
-            .then((id) => {
+            .then(id => {
               this._activeUtteranceId = id;
               console.log('[BibleTTS] Tts.speak resolved, utteranceId:', id);
             })
@@ -811,8 +850,91 @@ class BibleTTSManager {
     }
   }
 
+  // ── Backend Edge TTS rolling buffer ──────────────────────────────────────
+
+  private _audioBufferKey(cleanText: string): string {
+    return `${this._edgeVoiceId}|${this.currentRate}|${cleanText}`;
+  }
+
+  private async _removeBufferedFile(filePath: string): Promise<void> {
+    await RNFS.unlink(filePath).catch(() => {});
+  }
+
+  private _discardBufferedAudio(cleanText: string, filePath: string): void {
+    const key = this._audioBufferKey(cleanText);
+    if (this._audioBuffer.get(key) === filePath) {
+      this._audioBuffer.delete(key);
+    }
+    this._removeBufferedFile(filePath).catch(() => {});
+  }
+
+  private async _trimAudioBuffer(): Promise<void> {
+    while (this._audioBuffer.size > this._maxBufferedTracks) {
+      const oldest = [...this._audioBuffer.entries()].find(
+        ([, filePath]) => filePath !== this._edgeFilePath,
+      );
+      if (!oldest) return;
+      const [key, filePath] = oldest;
+      this._audioBuffer.delete(key);
+      await this._removeBufferedFile(filePath);
+    }
+  }
+
+  private _bufferAudio(cleanText: string): Promise<string | null> {
+    const key = this._audioBufferKey(cleanText);
+    const cached = this._audioBuffer.get(key);
+    if (cached) return Promise.resolve(cached);
+
+    const pending = this._bufferInFlight.get(key);
+    if (pending) return pending;
+
+    const generation = this._bufferGeneration;
+    let request: Promise<string | null>;
+    request = (async () => {
+      const arrayBuffer = await ttsService.speak(
+        cleanText,
+        this._edgeVoiceId || DEFAULT_EDGE_VOICE_ID,
+        this.currentRate,
+      );
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        throw new Error('Backend returned empty audio');
+      }
+
+      const base64 = fromByteArray(new Uint8Array(arrayBuffer));
+      const filePath = `${RNFS.CachesDirectoryPath}/tts_buffer_${Date.now()}_${this._bufferFileCounter++}.mp3`;
+      await RNFS.writeFile(filePath, base64, 'base64');
+
+      if (generation !== this._bufferGeneration) {
+        await this._removeBufferedFile(filePath);
+        return null;
+      }
+
+      this._audioBuffer.set(key, filePath);
+      await this._trimAudioBuffer();
+      return filePath;
+    })().finally(() => {
+      if (this._bufferInFlight.get(key) === request) {
+        this._bufferInFlight.delete(key);
+      }
+    });
+
+    this._bufferInFlight.set(key, request);
+    return request;
+  }
+
+  private async _clearBufferedAudio(): Promise<void> {
+    this._bufferGeneration++;
+    const files = [...new Set(this._audioBuffer.values())];
+    this._audioBuffer.clear();
+    this._bufferInFlight.clear();
+    await Promise.all(files.map(file => this._removeBufferedFile(file)));
+  }
+
   // ── Backend Edge TTS playback (react-native-sound) ────────────────────────
-  private async _speakViaBackend(cleanText: string, verseNum: number): Promise<void> {
+  private async _speakViaBackend(
+    cleanText: string,
+    verseNum: number,
+  ): Promise<void> {
     this._currentVerseNum = verseNum;
     this.state.currentText = cleanText;
     this.state.wordIndex = -1;
@@ -830,41 +952,43 @@ class BibleTTSManager {
     const verseWords = cleanText.match(/\S+/g) ?? [];
     this._pendingWordData = { prefixWords: [], verseWords };
 
-    // ── Use prefetched file if it matches, otherwise fetch now ──────────────
-    let filePath: string;
-
-    if (this._prefetchedFile && this._prefetchedText === cleanText) {
-      filePath = this._prefetchedFile;
-      this._prefetchedFile = null;
-      this._prefetchedText = null;
-    } else {
-      // No prefetch hit — clean up stale prefetch and fetch synchronously
-      if (this._prefetchedFile) {
-        RNFS.unlink(this._prefetchedFile).catch(() => {});
-        this._prefetchedFile = null;
-        this._prefetchedText = null;
-      }
-
-      const arrayBuffer = await ttsService.speak(
-        cleanText,
-        this._edgeVoiceId || DEFAULT_EDGE_VOICE_ID,
-        this.currentRate,
-      );
-      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
-        throw new Error('Backend returned empty audio');
-      }
-      const base64 = fromByteArray(new Uint8Array(arrayBuffer));
-      filePath = `${RNFS.CachesDirectoryPath}/tts_${Date.now()}.mp3`;
-      await RNFS.writeFile(filePath, base64, 'base64');
-    }
+    const filePath = await this._bufferAudio(cleanText);
+    if (!filePath) return;
 
     // ── Play ────────────────────────────────────────────────────────────────
     return new Promise<void>((resolve, reject) => {
       if (this.stopRequested) {
-        RNFS.unlink(filePath).catch(() => {});
         resolve();
         return;
       }
+
+      let settled = false;
+      let sound: Sound;
+      let finishPlayback: (success: boolean) => void;
+      const settleResolve = () => {
+        if (settled) return;
+        settled = true;
+        if (this._edgePlayCompletion === finishPlayback) {
+          this._edgePlayCompletion = null;
+        }
+        if (this._edgePendingResolve === settleResolve) {
+          this._edgePendingResolve = null;
+        }
+        resolve();
+      };
+      const settleReject = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        if (this._edgePlayCompletion === finishPlayback) {
+          this._edgePlayCompletion = null;
+        }
+        if (this._edgePendingResolve === settleResolve) {
+          this._edgePendingResolve = null;
+        }
+        reject(error);
+      };
+      this._edgePendingResolve = settleResolve;
+      this._edgeFilePath = filePath;
 
       this._isTtsSpeaking = true;
       this.setState({
@@ -878,35 +1002,55 @@ class BibleTTSManager {
       this._startWordTimers();
 
       const playStartTime = Date.now();
+      finishPlayback = (success: boolean) => {
+        if (settled) return;
+        const playDuration = Date.now() - playStartTime;
+        sound.release();
+        this._edgeSound = null;
+        this._edgeFilePath = null;
+        this._isTtsSpeaking = false;
+        this._clearWordTimers();
+        this.state.wordIndex = -1;
+        this.setState({
+          isPlaying: false,
+          isPaused: false,
+          tier: 'idle',
+          currentVerseNum: -1,
+        });
 
-      const sound = new Sound(filePath, '', (error) => {
+        if (!success || (playDuration < 500 && cleanText.length > 5)) {
+          this._discardBufferedAudio(cleanText, filePath);
+          settleReject(
+            new Error('Silent or failed playback (' + playDuration + 'ms)'),
+          );
+        } else {
+          settleResolve();
+        }
+      };
+      this._edgePlayCompletion = finishPlayback;
+
+      sound = new Sound(filePath, '', error => {
+        if (settled) return;
         if (error) {
           console.warn('[BibleTTS] react-native-sound load error:', error);
+          sound.release();
+          if (this._edgeSound === sound) this._edgeSound = null;
           this._isTtsSpeaking = false;
           this._clearWordTimers();
           this.state.wordIndex = -1;
-          this.setState({ isPlaying: false, isPaused: false, tier: 'idle', currentVerseNum: -1 });
-          RNFS.unlink(filePath).catch(() => {});
-          reject(new Error('Sound load failed'));
+          this.setState({
+            isPlaying: false,
+            isPaused: false,
+            tier: 'idle',
+            currentVerseNum: -1,
+          });
+          this._edgeFilePath = null;
+          this._discardBufferedAudio(cleanText, filePath);
+          settleReject(new Error('Sound load failed'));
           return;
         }
 
-        sound.play((success) => {
-          const playDuration = Date.now() - playStartTime;
-          sound.release();
-          this._edgeSound = null;
-          this._isTtsSpeaking = false;
-          this._clearWordTimers();
-          this.state.wordIndex = -1;
-          this.setState({ isPlaying: false, isPaused: false, tier: 'idle', currentVerseNum: -1 });
-          RNFS.unlink(filePath).catch(() => {});
-
-          if (!success || (playDuration < 500 && cleanText.length > 5)) {
-            reject(new Error('Silent or failed playback (' + playDuration + 'ms)'));
-          } else {
-            resolve();
-          }
-        });
+        sound.play(finishPlayback);
       });
 
       this._edgeSound = sound;
@@ -939,15 +1083,21 @@ class BibleTTSManager {
           ? `${prefixRaw}verse ${v.num}. ${v.text}`
           : `${prefixRaw}${v.text}`;
       } else {
-        fullText = readVerseNums
-          ? `${v.num}. ${v.text}`
-          : v.text;
+        fullText = readVerseNums ? `${v.num}. ${v.text}` : v.text;
       }
     } else {
       verseNum = verses[0].num;
       const joinedText = readVerseNums
-        ? verses.map(v => `verse ${v.num}. ${v.text}`).join(' ').replace(/\s{2,}/g, ' ').trim()
-        : verses.map(v => v.text).join(' ').replace(/\s{2,}/g, ' ').trim();
+        ? verses
+            .map(v => `verse ${v.num}. ${v.text}`)
+            .join(' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim()
+        : verses
+            .map(v => v.text)
+            .join(' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
       if (announce) {
         prefixRaw = `${book}, chapter ${chapter}. `;
         fullText = `${prefixRaw}${joinedText}`;
@@ -965,7 +1115,10 @@ class BibleTTSManager {
       } else {
         const firstWord = cleanedFull.match(/\S+/);
         if (firstWord) {
-          const idx = cleanedFull.indexOf(firstWord[0], Math.max(0, cleanedPrefix.length - 5));
+          const idx = cleanedFull.indexOf(
+            firstWord[0],
+            Math.max(0, cleanedPrefix.length - 5),
+          );
           prefixLen = idx >= 0 ? idx : 0;
         }
       }
@@ -991,27 +1144,19 @@ class BibleTTSManager {
   async prefetchAudio(text: string): Promise<void> {
     if (!this._edgeEnabled) return;
     const cleanText = this.prepareText(text);
-    if (this._prefetchedText === cleanText) return;
-
     try {
-      const arrayBuffer = await ttsService.speak(
-        cleanText,
-        this._edgeVoiceId || DEFAULT_EDGE_VOICE_ID,
-        this.currentRate,
-      );
-      if (!arrayBuffer || arrayBuffer.byteLength === 0) return;
-
-      if (this._prefetchedFile) {
-        RNFS.unlink(this._prefetchedFile).catch(() => {});
-      }
-
-      const base64 = fromByteArray(new Uint8Array(arrayBuffer));
-      const filePath = `${RNFS.CachesDirectoryPath}/tts_prefetch.mp3`;
-      await RNFS.writeFile(filePath, base64, 'base64');
-      this._prefetchedFile = filePath;
-      this._prefetchedText = cleanText;
+      await this._bufferAudio(cleanText);
     } catch {
       // silent — _speakViaBackend will fetch normally
+    }
+  }
+
+  async prefetchAudioBatch(texts: string[]): Promise<void> {
+    if (!this._edgeEnabled || texts.length === 0) return;
+    const generation = this._bufferGeneration;
+    for (const text of texts) {
+      if (!this._edgeEnabled || generation !== this._bufferGeneration) return;
+      await this.prefetchAudio(text);
     }
   }
 
@@ -1087,13 +1232,21 @@ class BibleTTSManager {
     return this._pausedText.length > 0;
   }
 
+  get hasPausedEdgeAudio(): boolean {
+    return !!this._edgeSound && this.state.isPaused;
+  }
+
   async resume(): Promise<void> {
     // If using Edge TTS (react-native-sound), resume the sound directly
     if (this._edgeSound && this.state.isPaused) {
       try {
-        this._edgeSound.play();
+        this._edgeSound.play(this._edgePlayCompletion ?? undefined);
       } catch {}
-      this.setState({ isPaused: false, isPlaying: true, currentVerseNum: this._currentVerseNum });
+      this.setState({
+        isPaused: false,
+        isPlaying: true,
+        currentVerseNum: this._currentVerseNum,
+      });
       return;
     }
 
@@ -1207,7 +1360,7 @@ class BibleTTSManager {
     }
   }
 
-  async stop(): Promise<void> {
+  async stop(clearBufferedAudio = true): Promise<void> {
     try {
       this.stopRequested = true;
       this._isTtsSpeaking = false;
@@ -1223,13 +1376,6 @@ class BibleTTSManager {
       this._clearWordTimers();
       this.state.wordIndex = -1;
 
-      // Clean up any prefetched file
-      if (this._prefetchedFile) {
-        RNFS.unlink(this._prefetchedFile).catch(() => {});
-        this._prefetchedFile = null;
-        this._prefetchedText = null;
-      }
-
       // Stop Edge TTS sound if playing
       if (this._edgeSound) {
         try {
@@ -1237,9 +1383,15 @@ class BibleTTSManager {
           this._edgeSound.release();
         } catch {}
         this._edgeSound = null;
+        this._edgeFilePath = null;
+        this._edgePlayCompletion = null;
         const edgeResolve = this._edgePendingResolve;
         this._edgePendingResolve = null;
         edgeResolve?.();
+      }
+
+      if (clearBufferedAudio) {
+        await this._clearBufferedAudio();
       }
 
       // Resolve any pending device-TTS promise
@@ -1268,6 +1420,7 @@ class BibleTTSManager {
 
   async setRate(rate: number): Promise<void> {
     this.currentRate = Math.max(0.1, Math.min(2.0, rate));
+    await this._clearBufferedAudio();
     this._rateCustomized = true;
     await AsyncStorage.setItem(
       STORAGE_KEYS.rate,
@@ -1320,11 +1473,15 @@ class BibleTTSManager {
   async setEdgeVoice(voiceId: string): Promise<void> {
     if (!voiceId) return;
     this._edgeVoiceId = voiceId;
-    await AsyncStorage.setItem(STORAGE_KEYS_EDGE.edgeVoiceId, voiceId).catch(() => {});
+    await this._clearBufferedAudio();
+    await AsyncStorage.setItem(STORAGE_KEYS_EDGE.edgeVoiceId, voiceId).catch(
+      () => {},
+    );
   }
 
   setEdgeEnabled(enabled: boolean): void {
     this._edgeEnabled = enabled;
+    if (!enabled) void this._clearBufferedAudio();
   }
 
   get edgeEnabled(): boolean {
@@ -1443,9 +1600,19 @@ class BibleTTSManager {
     Tts.removeAllListeners('tts-cancel');
   }
 
-  async clearAudioCache(): Promise<void> {}
+  async clearAudioCache(): Promise<void> {
+    await this._clearBufferedAudio();
+    try {
+      const files = await RNFS.readDir(RNFS.CachesDirectoryPath);
+      await Promise.all(
+        files
+          .filter(file => /^tts_buffer_.*\.mp3$/.test(file.name))
+          .map(file => this._removeBufferedFile(file.path)),
+      );
+    } catch {}
+  }
   async getCacheSize(): Promise<string> {
-    return 'N/A (device TTS)';
+    return `${this._audioBuffer.size} buffered track${this._audioBuffer.size === 1 ? '' : 's'}`;
   }
 
   setElevenLabsKey(_key: string): void {}

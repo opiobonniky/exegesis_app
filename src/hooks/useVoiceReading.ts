@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Animated } from 'react-native';
 import { bibleTTS } from '../utilits/bibleTTS';
 import { ttsService, TTSVoice } from '../services/ttsService';
 import { computeWordMap, WordSpan } from '../utilits/bibleUtils';
+
+const AUDIO_WINDOW_SIZE = 5;
+const BUFFER_AHEAD_WINDOWS = 2;
+const SLEEP_TIMER_VALUES = [0, 300, 600, 900, 1800, 60];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -56,8 +59,6 @@ export interface VoiceReadingResult {
 export function useVoiceReading({
   verses,
   versesArray,
-  currentBook,
-  currentChapter,
   currentBookRef,
   currentChapterRef,
   flatListRef,
@@ -99,6 +100,8 @@ export function useVoiceReading({
   const _userNavigatingRef = useRef<boolean>(false);
   const _targetVerseIndexRef = useRef<number>(-1);
   const _requestIdRef = useRef<number>(0);
+  const speechRateRef = useRef<number>(1.0);
+  const playbackSettingQueueRef = useRef<Promise<void>>(Promise.resolve());
   const sleepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Keep refs synced with state
@@ -114,6 +117,30 @@ export function useVoiceReading({
   useEffect(() => {
     afterPlayBehaviourRef.current = afterPlayBehaviour;
   }, [afterPlayBehaviour]);
+  useEffect(
+    () => () => {
+      if (sleepTimerRef.current) clearInterval(sleepTimerRef.current);
+    },
+    [],
+  );
+
+  const bufferUpcomingWindows = useCallback(
+    (playlist: Array<{ num: number; text: string }>, index: number) => {
+      if (!bibleTTS.edgeEnabled || playlist.length === 0) return;
+      const windowStart =
+        Math.floor(index / AUDIO_WINDOW_SIZE) * AUDIO_WINDOW_SIZE;
+      const end = Math.min(
+        playlist.length,
+        windowStart + AUDIO_WINDOW_SIZE * (BUFFER_AHEAD_WINDOWS + 1),
+      );
+      const upcoming = playlist
+        .slice(index + 1, end)
+        .map(verse => verse.text)
+        .filter(Boolean);
+      bibleTTS.prefetchAudioBatch(upcoming).catch(() => {});
+    },
+    [],
+  );
 
   // ── Voice list + selection ─────────────────────────────────────────────────
   useEffect(() => {
@@ -126,11 +153,6 @@ export function useVoiceReading({
         }
       }
     });
-  }, []);
-
-  const onVoiceSelect = useCallback((voiceId: string) => {
-    setCurrentVoiceId(voiceId);
-    bibleTTS.setEdgeVoice(voiceId);
   }, []);
 
   // ── Active verse word map (for word-level highlighting) ────────────────────
@@ -219,12 +241,9 @@ export function useVoiceReading({
           },
         );
 
-        // Prefetch the next verse while current one plays (eliminates transition gap)
-        const nextIndex = index + 1;
-        if (nextIndex < playlist.length && bibleTTS.edgeEnabled) {
-          const nextVerse = playlist[nextIndex];
-          bibleTTS.prefetchAudio(nextVerse.text).catch(() => {});
-        }
+        // Keep the remainder of this five-verse window plus two more windows
+        // ready locally while the current verse is playing.
+        bufferUpcomingWindows(playlist, index);
 
         await speakPromise;
       } catch (err) {
@@ -249,9 +268,10 @@ export function useVoiceReading({
 
       if (behaviour === 'repeat_one') {
         speakVerseAtIndex(index, false);
-      } else if (behaviour === 'repeat' && next >= playlist.length) {
-        _targetVerseIndexRef.current = 0;
-        speakVerseAtIndex(0, false);
+      } else if (behaviour === 'repeat') {
+        const repeatIndex = next < playlist.length ? next : 0;
+        _targetVerseIndexRef.current = repeatIndex;
+        speakVerseAtIndex(repeatIndex, false);
       } else if (behaviour === 'continue' && next < playlist.length) {
         speakVerseAtIndex(next, false);
       } else {
@@ -267,23 +287,34 @@ export function useVoiceReading({
         lastTTSVerseNumRef.current = null;
       }
     },
-    [], // eslint-disable-line react-hooks/exhaustive-deps
+    [bufferUpcomingWindows, currentBookRef, currentChapterRef, flatListRef],
   );
 
   // ── Internal launcher ──────────────────────────────────────────────────────
   const _startPlayback = useCallback(
     async (playlist: Array<{ num: number; text: string }>, startIndex = 0) => {
-      if (!playlist.length) return;
+      if (!playlist.length || startIndex < 0 || startIndex >= playlist.length)
+        return;
 
+      const requestId = _requestIdRef.current + 1;
+      _requestIdRef.current = requestId;
       _targetVerseIndexRef.current = startIndex;
       _userNavigatingRef.current = false;
-      _requestIdRef.current = 0;
 
       isPausedRef.current = false;
       stopRequestedRef.current = true;
-      ttsActiveRef.current = true;
+      ttsActiveRef.current = false;
       await bibleTTS.stop();
       stopRequestedRef.current = false;
+
+      const startVerse = playlist[startIndex];
+      const initialText =
+        audioScopeRef.current === 'chapter'
+          ? `${currentBookRef.current}, chapter ${currentChapterRef.current}. ${startVerse.text}`
+          : startVerse.text;
+      await bibleTTS.prefetchAudio(initialText);
+
+      if (requestId !== _requestIdRef.current) return;
 
       audioPlaylistRef.current = playlist;
       setAudioPlaylist(playlist);
@@ -291,22 +322,74 @@ export function useVoiceReading({
       audioVerseIndexRef.current = startIndex;
       setAudioVerseIndex(startIndex);
 
-      const startVerse = playlist[startIndex];
       setActiveAudioVerse(startVerse?.num ?? null);
 
       confirmedAudioIndexRef.current = startIndex;
+      ttsActiveRef.current = true;
       setShowAudioPlayer(true);
       setIsAudioPaused(false);
 
+      bufferUpcomingWindows(playlist, startIndex);
       speakVerseAtIndex(startIndex, false);
     },
+    [
+      bufferUpcomingWindows,
+      currentBookRef,
+      currentChapterRef,
+      speakVerseAtIndex,
+    ],
+  );
+
+  const applyPlaybackSetting = useCallback(
+    (applySetting: () => Promise<void>) => {
+      playbackSettingQueueRef.current = playbackSettingQueueRef.current.then(
+        async () => {
+          const shouldRestart =
+            audioPlaylistRef.current.length > 0 &&
+            (ttsActiveRef.current || isPausedRef.current);
+          const currentIndex = audioVerseIndexRef.current;
+          const requestId = shouldRestart
+            ? _requestIdRef.current + 1
+            : _requestIdRef.current;
+
+          if (shouldRestart) {
+            _requestIdRef.current = requestId;
+            isPausedRef.current = false;
+            setIsAudioPaused(false);
+            ttsActiveRef.current = true;
+            stopRequestedRef.current = true;
+            await bibleTTS.stop();
+          }
+
+          try {
+            await applySetting();
+          } catch (err) {
+            console.warn('[useVoiceReading] playback setting error:', err);
+          }
+
+          if (!shouldRestart || requestId !== _requestIdRef.current) return;
+          stopRequestedRef.current = false;
+          speakVerseAtIndex(currentIndex, true);
+        },
+      );
+      return playbackSettingQueueRef.current;
+    },
     [speakVerseAtIndex],
+  );
+
+  const onVoiceSelect = useCallback(
+    (voiceId: string) => {
+      setCurrentVoiceId(voiceId);
+      applyPlaybackSetting(() => bibleTTS.setEdgeVoice(voiceId));
+    },
+    [applyPlaybackSetting],
   );
 
   // ── Public audio API ───────────────────────────────────────────────────────
 
   const startReadingChapter = useCallback(() => {
     const playlist = versesArray.map(v => ({ num: v.num, text: v.text }));
+    audioScopeRef.current = 'chapter';
     setAudioScope('chapter');
     _startPlayback(playlist, 0);
   }, [versesArray, _startPlayback]);
@@ -320,6 +403,7 @@ export function useVoiceReading({
           text: verses[v] || '',
         }))
         .filter(v => v.text);
+      audioScopeRef.current = 'selection';
       setAudioScope('selection');
       _startPlayback(playlist, 0);
     },
@@ -327,9 +411,14 @@ export function useVoiceReading({
   );
 
   const handleAudioStop = useCallback(async () => {
+    if (sleepTimerRef.current) {
+      clearInterval(sleepTimerRef.current);
+      sleepTimerRef.current = null;
+    }
+    setSleepTimerRemaining(0);
     _targetVerseIndexRef.current = -1;
     _userNavigatingRef.current = false;
-    _requestIdRef.current = 0;
+    _requestIdRef.current++;
     isPausedRef.current = false;
     stopRequestedRef.current = true;
     ttsActiveRef.current = false;
@@ -358,6 +447,7 @@ export function useVoiceReading({
       const currentIndex = audioVerseIndexRef.current;
 
       if (bibleTTS.hasPausedText) {
+        const resumingBufferedAudio = bibleTTS.hasPausedEdgeAudio;
         try {
           await bibleTTS.resume();
         } catch (err) {
@@ -366,6 +456,9 @@ export function useVoiceReading({
 
         if (isPausedRef.current || stopRequestedRef.current) return;
         if (!ttsActiveRef.current) return;
+        // The original speakVerseAtIndex call is still awaiting this Sound
+        // instance and will advance the playlist when playback completes.
+        if (resumingBufferedAudio) return;
 
         const behaviour = afterPlayBehaviourRef.current;
         const next = currentIndex + 1;
@@ -403,31 +496,30 @@ export function useVoiceReading({
 
   // ── Skip next / previous ────────────────────────────────────────────────────
   const goToNextSelectedVerse = useCallback(async () => {
-    _userNavigatingRef.current = true;
-    _requestIdRef.current++;
-
     const playlist = audioPlaylistRef.current;
     const currentIndex =
       confirmedAudioIndexRef.current >= 0
         ? confirmedAudioIndexRef.current
         : audioVerseIndexRef.current;
-    const nextIndex = currentIndex + 1;
+    let nextIndex = currentIndex + 1;
 
     if (nextIndex >= playlist.length) {
-      if (afterPlayBehaviourRef.current === 'repeat') {
-        await speakVerseAtIndex(0, true);
-      }
-      return;
+      if (afterPlayBehaviourRef.current !== 'repeat') return;
+      nextIndex = 0;
     }
 
+    _userNavigatingRef.current = true;
+    _requestIdRef.current++;
+    isPausedRef.current = false;
+    setIsAudioPaused(false);
+    ttsActiveRef.current = true;
+    stopRequestedRef.current = true;
+    await bibleTTS.stop(false);
+    stopRequestedRef.current = false;
     await speakVerseAtIndex(nextIndex, true);
   }, [speakVerseAtIndex]);
 
   const goToPreviousSelectedVerse = useCallback(async () => {
-    _userNavigatingRef.current = true;
-    _requestIdRef.current++;
-
-    const playlist = audioPlaylistRef.current;
     const currentIndex =
       confirmedAudioIndexRef.current >= 0
         ? confirmedAudioIndexRef.current
@@ -436,67 +528,39 @@ export function useVoiceReading({
 
     if (prevIndex < 0) return;
 
+    _userNavigatingRef.current = true;
+    _requestIdRef.current++;
+    isPausedRef.current = false;
+    setIsAudioPaused(false);
+    ttsActiveRef.current = true;
+    stopRequestedRef.current = true;
+    await bibleTTS.stop(false);
+    stopRequestedRef.current = false;
     await speakVerseAtIndex(prevIndex, true);
   }, [speakVerseAtIndex]);
 
   // ── Speed ────────────────────────────────────────────────────────────────────
   const onSpeedToggle = useCallback(() => {
-    setSpeechRate(prev => {
-      const rates = [0.5, 1.0, 1.5, 2.0];
-      const next = rates[(rates.indexOf(prev) + 1) % rates.length];
-      bibleTTS
-        .setRate(next)
-        .then(() => {
-          if (
-            ttsActiveRef.current &&
-            !isPausedRef.current &&
-            !stopRequestedRef.current
-          ) {
-            const idx = audioVerseIndexRef.current;
-            stopRequestedRef.current = true;
-            bibleTTS
-              .stop()
-              .then(() => {
-                stopRequestedRef.current = false;
-                speakVerseAtIndex(idx, true);
-              })
-              .catch(console.warn);
-          }
-        })
-        .catch(console.warn);
-      return next;
-    });
-  }, [speakVerseAtIndex]);
+    const rates = [0.5, 1.0, 1.5, 2.0];
+    const next =
+      rates[(rates.indexOf(speechRateRef.current) + 1) % rates.length];
+    speechRateRef.current = next;
+    setSpeechRate(next);
+    applyPlaybackSetting(() => bibleTTS.setRate(next));
+  }, [applyPlaybackSetting]);
 
   const onSpeedReset = useCallback(() => {
+    speechRateRef.current = 1.0;
     setSpeechRate(1.0);
-    bibleTTS.setRate(1.0).then(() => {
-      if (
-        ttsActiveRef.current &&
-        !isPausedRef.current &&
-        !stopRequestedRef.current
-      ) {
-        const idx = audioVerseIndexRef.current;
-        stopRequestedRef.current = true;
-        bibleTTS
-          .stop()
-          .then(() => {
-            stopRequestedRef.current = false;
-            speakVerseAtIndex(idx, true);
-          })
-          .catch(console.warn);
-      }
-    });
-  }, [speakVerseAtIndex]);
+    applyPlaybackSetting(() => bibleTTS.setRate(1.0));
+  }, [applyPlaybackSetting]);
 
   // ── Sleep timer ──────────────────────────────────────────────────────────────
-  const sleepTimerValues = [0, 300, 600, 900, 1800, 60]; // 0 = off, then 5min, 10min, 15min, 30min, 1min
-
   const onSleepTimerToggle = useCallback(() => {
     setSleepTimerRemaining(prev => {
-      const currentIdx = sleepTimerValues.indexOf(prev);
-      const nextIdx = (currentIdx + 1) % sleepTimerValues.length;
-      const nextValue = sleepTimerValues[nextIdx];
+      const currentIdx = SLEEP_TIMER_VALUES.indexOf(prev);
+      const nextIdx = (currentIdx + 1) % SLEEP_TIMER_VALUES.length;
+      const nextValue = SLEEP_TIMER_VALUES[nextIdx];
 
       if (sleepTimerRef.current) clearInterval(sleepTimerRef.current);
 
@@ -507,6 +571,10 @@ export function useVoiceReading({
       sleepTimerRef.current = setInterval(() => {
         setSleepTimerRemaining(p => {
           if (p <= 1) {
+            if (sleepTimerRef.current) {
+              clearInterval(sleepTimerRef.current);
+              sleepTimerRef.current = null;
+            }
             handleAudioStop();
             return 0;
           }

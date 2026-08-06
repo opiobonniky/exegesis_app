@@ -82,6 +82,7 @@ jest.mock('react-native-fs', () => ({
     CachesDirectoryPath: '/tmp/cache',
     writeFile: jest.fn().mockResolvedValue(undefined),
     unlink: jest.fn().mockResolvedValue(undefined),
+    readDir: jest.fn().mockResolvedValue([]),
   },
 }));
 
@@ -111,7 +112,7 @@ jest.mock('../src/services/ttsService', () => ({
 import Tts from 'react-native-tts';
 import RNFS from 'react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { bibleTTS, DeviceVoice } from '../src/utilits/bibleTTS';
+import { bibleTTS } from '../src/utilits/bibleTTS';
 import { ttsService } from '../src/services/ttsService';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -183,11 +184,12 @@ let mockNow = 0;
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
   mockNow = 0;
   jest.spyOn(Date, 'now').mockImplementation(() => mockNow);
   bibleTTS.setEdgeEnabled(false);
+  await bibleTTS.clearAudioCache();
 });
 
 // Initialize once so device-TTS tests don't re-trigger init()
@@ -218,9 +220,7 @@ describe('prepareText', () => {
   });
 
   it('removes markdown artefacts', () => {
-    expect(bibleTTS.prepareText('**bold** [link](url)')).not.toMatch(
-      /[\*\[]/,
-    );
+    expect(bibleTTS.prepareText('**bold** [link](url)')).not.toMatch(/[\*\[]/);
   });
 
   it('replaces em-dashes and semicolons with commas', () => {
@@ -246,7 +246,14 @@ describe('Edge TTS — success path', () => {
   });
 
   it('uses Edge TTS when enabled and backend returns valid audio', async () => {
-    const speakPromise = bibleTTS.speak('Hello world', 0, 0, undefined, false, 1);
+    const speakPromise = bibleTTS.speak(
+      'Hello world',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
 
     // Yield so _speakViaBackend reaches new Sound()
     await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
@@ -265,6 +272,100 @@ describe('Edge TTS — success path', () => {
   });
 });
 
+describe('Edge TTS rolling buffer', () => {
+  beforeEach(() => {
+    bibleTTS.setEdgeEnabled(true);
+    jest.mocked(ttsService.speak).mockResolvedValue(new ArrayBuffer(48000));
+  });
+
+  it('prefetches multiple verse tracks and reuses the buffered audio', async () => {
+    await bibleTTS.prefetchAudioBatch([
+      'First buffered verse',
+      'Second buffered verse',
+    ]);
+
+    expect(ttsService.speak).toHaveBeenCalledTimes(2);
+    expect(RNFS.writeFile).toHaveBeenCalledTimes(2);
+
+    const speakPromise = bibleTTS.speak(
+      'First buffered verse',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+    fireSoundLoaded(null);
+    mockNow += 1000;
+    fireSoundPlayComplete(true);
+
+    await expect(speakPromise).resolves.toBeUndefined();
+    expect(ttsService.speak).toHaveBeenCalledTimes(2);
+  });
+
+  it('settles active buffered playback when stopped', async () => {
+    const speakPromise = bibleTTS.speak(
+      'Stop this buffered verse',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+    fireSoundLoaded(null);
+
+    await bibleTTS.stop();
+    await expect(speakPromise).resolves.toBeUndefined();
+  });
+
+  it('does not start playback when stopped before the sound loads', async () => {
+    const speakPromise = bibleTTS.speak(
+      'Stop before this buffered verse loads',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+
+    await bibleTTS.stop();
+    fireSoundLoaded(null);
+
+    await expect(speakPromise).resolves.toBeUndefined();
+    const SoundModule = require('react-native-sound') as {
+      default: SoundMockType;
+    };
+    expect(SoundModule.default._lastInstance.play).not.toHaveBeenCalled();
+  });
+
+  it('settles buffered playback after pause and resume', async () => {
+    const speakPromise = bibleTTS.speak(
+      'Pause and resume this buffered verse',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+    fireSoundLoaded(null);
+
+    await bibleTTS.pause();
+    await bibleTTS.resume();
+    mockNow += 1000;
+    fireSoundPlayComplete(true);
+
+    await expect(speakPromise).resolves.toBeUndefined();
+    const SoundModule = require('react-native-sound') as {
+      default: SoundMockType;
+    };
+    expect(SoundModule.default._lastInstance.play).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('Edge TTS → device TTS fallback', () => {
   beforeEach(() => {
     bibleTTS.setEdgeEnabled(true);
@@ -274,7 +375,14 @@ describe('Edge TTS → device TTS fallback', () => {
     jest.mocked(ttsService.speak).mockResolvedValue(new ArrayBuffer(0));
     bibleTTS.setEdgeEnabled(true);
 
-    const speakPromise = bibleTTS.speak('For God so loved the world', 0, 0, undefined, false, 1);
+    const speakPromise = bibleTTS.speak(
+      'For God so loved the world',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
     await completeDeviceTts();
 
     await expect(speakPromise).resolves.toBeUndefined();
@@ -285,7 +393,14 @@ describe('Edge TTS → device TTS fallback', () => {
     jest.mocked(ttsService.speak).mockRejectedValue(new Error('Network error'));
     bibleTTS.setEdgeEnabled(true);
 
-    const speakPromise = bibleTTS.speak('In the beginning', 0, 0, undefined, false, 1);
+    const speakPromise = bibleTTS.speak(
+      'In the beginning',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
     await completeDeviceTts();
 
     await expect(speakPromise).resolves.toBeUndefined();
@@ -296,7 +411,14 @@ describe('Edge TTS → device TTS fallback', () => {
     jest.mocked(ttsService.speak).mockResolvedValue(new ArrayBuffer(48000));
     bibleTTS.setEdgeEnabled(true);
 
-    const speakPromise = bibleTTS.speak('The Lord is my shepherd', 0, 0, undefined, false, 1);
+    const speakPromise = bibleTTS.speak(
+      'The Lord is my shepherd',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
 
     // Yield so _speakViaBackend reaches new Sound()
     await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
@@ -311,7 +433,14 @@ describe('Edge TTS → device TTS fallback', () => {
     jest.mocked(ttsService.speak).mockResolvedValue(new ArrayBuffer(48000));
     bibleTTS.setEdgeEnabled(true);
 
-    const speakPromise = bibleTTS.speak('Create in me a clean heart', 0, 0, undefined, false, 1);
+    const speakPromise = bibleTTS.speak(
+      'Create in me a clean heart',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
 
     // Yield so _speakViaBackend reaches new Sound()
     await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
@@ -328,7 +457,14 @@ describe('Edge TTS → device TTS fallback', () => {
     jest.mocked(ttsService.speak).mockResolvedValue(new ArrayBuffer(48000));
     bibleTTS.setEdgeEnabled(true);
 
-    const speakPromise = bibleTTS.speak('He leadeth me beside the still waters', 0, 0, undefined, false, 1);
+    const speakPromise = bibleTTS.speak(
+      'He leadeth me beside the still waters',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
 
     // Yield so _speakViaBackend reaches new Sound()
     await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
@@ -351,9 +487,9 @@ describe('Edge TTS state management', () => {
     expect(bibleTTS.edgeEnabled).toBe(false);
   });
 
-  it('setEdgeVoice / edgeVoiceId getter', () => {
+  it('setEdgeVoice / edgeVoiceId getter', async () => {
     expect(bibleTTS.edgeVoiceId).toBe('en-GB-RyanNeural');
-    bibleTTS.setEdgeVoice('en-US-JennyNeural');
+    await bibleTTS.setEdgeVoice('en-US-JennyNeural');
     expect(bibleTTS.edgeVoiceId).toBe('en-US-JennyNeural');
   });
 
@@ -393,11 +529,20 @@ describe('Edge TTS takes priority when both are available', () => {
     jest.mocked(ttsService.speak).mockRejectedValue(new Error('Backend down'));
     bibleTTS.setEdgeEnabled(true);
 
-    const speakPromise = bibleTTS.speak('Fallback test', 0, 0, undefined, false, 1);
+    const speakPromise = bibleTTS.speak(
+      'Fallback test',
+      0,
+      0,
+      undefined,
+      false,
+      1,
+    );
     await completeDeviceTts();
 
     await expect(speakPromise).resolves.toBeUndefined();
-    expect(Tts.speak).toHaveBeenCalledWith(expect.stringContaining('Fallback test'));
+    expect(Tts.speak).toHaveBeenCalledWith(
+      expect.stringContaining('Fallback test'),
+    );
     expect((bibleTTS as any)._edgeEnabled).toBe(false);
   });
 });
@@ -419,9 +564,33 @@ describe('getDeviceVoices', () => {
 
   it('filters non-English voices', async () => {
     jest.mocked(Tts.voices).mockResolvedValue([
-      { id: 'fr-FR-Thomas', language: 'fr-FR', name: 'Thomas', quality: 3, latency: 3, networkConnectionRequired: false, notInstalled: false },
-      { id: 'en-US-Samantha', language: 'en-US', name: 'Samantha', quality: 4, latency: 4, networkConnectionRequired: false, notInstalled: false },
-      { id: 'de-DE-Hanna', language: 'de-DE', name: 'Hanna', quality: 3, latency: 3, networkConnectionRequired: false, notInstalled: false },
+      {
+        id: 'fr-FR-Thomas',
+        language: 'fr-FR',
+        name: 'Thomas',
+        quality: 3,
+        latency: 3,
+        networkConnectionRequired: false,
+        notInstalled: false,
+      },
+      {
+        id: 'en-US-Samantha',
+        language: 'en-US',
+        name: 'Samantha',
+        quality: 4,
+        latency: 4,
+        networkConnectionRequired: false,
+        notInstalled: false,
+      },
+      {
+        id: 'de-DE-Hanna',
+        language: 'de-DE',
+        name: 'Hanna',
+        quality: 3,
+        latency: 3,
+        networkConnectionRequired: false,
+        notInstalled: false,
+      },
     ]);
     const voices = await bibleTTS.getDeviceVoices();
     expect(voices).toHaveLength(1);
@@ -430,8 +599,24 @@ describe('getDeviceVoices', () => {
 
   it('excludes uninstalled voices', async () => {
     jest.mocked(Tts.voices).mockResolvedValue([
-      { id: 'en-US-Installed', language: 'en-US', name: 'Installed', quality: 4, latency: 4, networkConnectionRequired: false, notInstalled: false },
-      { id: 'en-US-NotInstalled', language: 'en-US', name: 'Not Installed', quality: 3, latency: 3, networkConnectionRequired: false, notInstalled: true },
+      {
+        id: 'en-US-Installed',
+        language: 'en-US',
+        name: 'Installed',
+        quality: 4,
+        latency: 4,
+        networkConnectionRequired: false,
+        notInstalled: false,
+      },
+      {
+        id: 'en-US-NotInstalled',
+        language: 'en-US',
+        name: 'Not Installed',
+        quality: 3,
+        latency: 3,
+        networkConnectionRequired: false,
+        notInstalled: true,
+      },
     ]);
     const voices = await bibleTTS.getDeviceVoices();
     expect(voices).toHaveLength(1);
