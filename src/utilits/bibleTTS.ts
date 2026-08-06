@@ -28,7 +28,7 @@ const STORAGE_KEYS = {
 };
 
 // ─── Narration defaults ───────────────────────────────────────────────────────
-const DEFAULT_RATE = 0.9; // slightly slower for natural pacing
+const DEFAULT_RATE = 0.75; // slower, steady narration pace
 const DEFAULT_PITCH = 1.0; // neutral pitch sounds less robotic
 
 // ─── AsyncStorage keys — Edge TTS ────────────────────────────────────────────
@@ -167,6 +167,7 @@ class BibleTTSManager {
   private _isTtsSpeaking = false;
   private _pauseInProgress = false;
   private _currentVerseNum = -1;
+  private _verseWordBoundaries: Array<{ start: number; verseNum: number }> = [];
   // Absolute char position in the cleaned text where speech was paused.
   // Computed from the last raw engine charIndex + _charIndexBase (= -prefixLen).
   // -1 means unknown (no progress events fired before pause).
@@ -182,10 +183,13 @@ class BibleTTSManager {
 
   // ── Rolling audio buffer ──────────────────────────────────────────────────
   private _audioBuffer = new Map<string, string>();
+  private _audioWordOffsets = new Map<string, number[]>();
   private _bufferInFlight = new Map<string, Promise<string | null>>();
   private _bufferGeneration = 0;
   private _bufferFileCounter = 0;
   private _edgeFilePath: string | null = null;
+  private _activeWordOffsets: number[] = [];
+  private _activePrefixWordCount = 0;
   private readonly _maxBufferedTracks = 15;
 
   // ── Pause / resume state ──────────────────────────────────────────────────
@@ -309,6 +313,7 @@ class BibleTTSManager {
         const absoluteWordIdx = wordIdx + this._baseWordIndex;
         if (absoluteWordIdx !== this.state.wordIndex) {
           this.state.wordIndex = absoluteWordIdx;
+          this._updateVerseForWord(absoluteWordIdx);
           this.notifyListeners();
         }
       }
@@ -449,8 +454,45 @@ class BibleTTSManager {
     this._timersStarted = false;
   }
 
-  // Called from tts-start so timers fire exactly when audio begins.
-  private _startWordTimers(immediateResume = false) {
+  private _updateVerseForWord(wordIndex: number): void {
+    for (let i = this._verseWordBoundaries.length - 1; i >= 0; i--) {
+      const boundary = this._verseWordBoundaries[i];
+      if (wordIndex >= boundary.start) {
+        if (boundary.verseNum !== this._currentVerseNum) {
+          this._currentVerseNum = boundary.verseNum;
+          this.state.currentVerseNum = boundary.verseNum;
+        }
+        return;
+      }
+    }
+  }
+
+  private _startExactVerseTimers(
+    wordOffsetsMs: number[],
+    prefixWordCount: number,
+    positionMs = 0,
+  ): void {
+    this._clearWordTimers();
+    this._timersStarted = true;
+    this._verseWordBoundaries.slice(1).forEach(boundary => {
+      const offset = wordOffsetsMs[prefixWordCount + boundary.start];
+      if (!Number.isFinite(offset) || offset < positionMs) return;
+      const timer = setTimeout(() => {
+        if (this.stopRequested) return;
+        this._currentVerseNum = boundary.verseNum;
+        this.state.currentVerseNum = boundary.verseNum;
+        this.notifyListeners();
+      }, Math.max(0, offset - positionMs));
+      this._wordTimers.push(timer);
+    });
+  }
+
+  // Called when audio begins; Edge playback supplies its actual duration so
+  // verse transitions stay aligned with the recorded stream.
+  private _startWordTimers(
+    immediateResume = false,
+    totalDurationMs?: number,
+  ) {
     this._clearWordTimers();
     this._timersStarted = true;
     const data = this._pendingWordData;
@@ -458,10 +500,20 @@ class BibleTTSManager {
 
     // Use a slightly faster estimation for the prefix words to ensure
     // we don't "miss" the start of the verse.
-    const prefixMs = data.prefixWords.reduce(
+    const estimatedPrefixMs = data.prefixWords.reduce(
       (sum, w) => sum + this._wordMs(w) * 0.92,
       0,
     );
+    const estimatedVerseMs = data.verseWords.reduce(
+      (sum, word) => sum + this._wordMs(word),
+      0,
+    );
+    const estimatedTotalMs = estimatedPrefixMs + estimatedVerseMs;
+    const timingScale =
+      totalDurationMs && estimatedTotalMs > 0
+        ? totalDurationMs / estimatedTotalMs
+        : 1;
+    const prefixMs = estimatedPrefixMs * timingScale;
 
     // Initial delay for the very first word of the verse.
     // If it's an immediate resume, we ignore the prefix delay entirely.
@@ -471,11 +523,12 @@ class BibleTTSManager {
       const t = setTimeout(() => {
         if (!this.stopRequested) {
           this.state.wordIndex = i + this._baseWordIndex;
+          this._updateVerseForWord(this.state.wordIndex);
           this.notifyListeners();
         }
       }, elapsed);
       this._wordTimers.push(t);
-      elapsed += this._wordMs(word);
+      elapsed += this._wordMs(word) * timingScale;
     });
 
     // Clear pending data only if we didn't start them early
@@ -657,6 +710,13 @@ class BibleTTSManager {
       .trim();
   }
 
+  private _prepareTrackText(text: string, alreadyClean = false): string {
+    const cleanText = alreadyClean ? text : this.prepareText(text);
+    // Each verse is its own audio track, so a final full stop only adds
+    // synthetic silence before the next buffered track begins.
+    return cleanText.replace(/\.+(["'\u2019\u201d)\]]*)$/, '$1').trim();
+  }
+
   private _utteranceTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   private _clearUtteranceTimeout() {
@@ -676,6 +736,7 @@ class BibleTTSManager {
     onProgress?: (charIndex: number) => void,
     alreadyClean = false,
     verseNum = -1,
+    verseBoundaries?: Array<{ start: number; verseNum: number }>,
   ): Promise<void> {
     if (!text) {
       console.warn('[BibleTTS] speak called with empty text');
@@ -683,12 +744,14 @@ class BibleTTSManager {
     }
 
     this.stopRequested = false;
+    this._verseWordBoundaries =
+      verseBoundaries ?? (verseNum >= 0 ? [{ start: 0, verseNum }] : []);
 
     // ── Edge TTS (backend) ──────────────────────────────────────────────────
     if (this._edgeEnabled) {
       try {
-        const cleanText = alreadyClean ? text : this.prepareText(text);
-        await this._speakViaBackend(cleanText, verseNum);
+        const cleanText = this._prepareTrackText(text, alreadyClean);
+        await this._speakViaBackend(cleanText, verseNum, prefixLen);
         return;
       } catch (err) {
         console.warn(
@@ -720,7 +783,7 @@ class BibleTTSManager {
     this._activeUtteranceId = 'transitioning';
 
     this.stopRequested = false;
-    const clean = alreadyClean ? text : this.prepareText(text);
+    const clean = this._prepareTrackText(text, alreadyClean);
     console.log('[BibleTTS] prepared text:', clean.substring(0, 50), '...');
     this.state.currentText = clean;
     this.state.wordIndex = -1;
@@ -730,6 +793,7 @@ class BibleTTSManager {
     this._charIndexBase = -prefixLen;
     this._lastRawCharIndex = -1;
 
+    const prefixText = clean.slice(0, prefixLen);
     const verseText = clean.slice(prefixLen);
     const spanRe = /\S+/g;
     let sm: RegExpExecArray | null;
@@ -741,7 +805,7 @@ class BibleTTSManager {
 
     const verseWords = clean.slice(prefixLen).match(/\S+/g) ?? [];
     this._pendingWordData = {
-      prefixWords: [],
+      prefixWords: prefixText.match(/\S+/g) ?? [],
       verseWords,
     };
 
@@ -864,6 +928,7 @@ class BibleTTSManager {
     const key = this._audioBufferKey(cleanText);
     if (this._audioBuffer.get(key) === filePath) {
       this._audioBuffer.delete(key);
+      this._audioWordOffsets.delete(key);
     }
     this._removeBufferedFile(filePath).catch(() => {});
   }
@@ -876,6 +941,7 @@ class BibleTTSManager {
       if (!oldest) return;
       const [key, filePath] = oldest;
       this._audioBuffer.delete(key);
+      this._audioWordOffsets.delete(key);
       await this._removeBufferedFile(filePath);
     }
   }
@@ -891,11 +957,30 @@ class BibleTTSManager {
     const generation = this._bufferGeneration;
     let request: Promise<string | null>;
     request = (async () => {
-      const arrayBuffer = await ttsService.speak(
-        cleanText,
-        this._edgeVoiceId || DEFAULT_EDGE_VOICE_ID,
-        this.currentRate,
-      );
+      const timedSpeak = (ttsService as typeof ttsService & {
+        speakWithTimings?: typeof ttsService.speakWithTimings;
+      }).speakWithTimings;
+      let timedResult: Awaited<
+        ReturnType<typeof ttsService.speakWithTimings>
+      > | null = null;
+      if (timedSpeak) {
+        try {
+          timedResult = await timedSpeak(
+            cleanText,
+            this._edgeVoiceId || DEFAULT_EDGE_VOICE_ID,
+            this.currentRate,
+          );
+        } catch {
+          // Older backend deployments may not expose timed synthesis yet.
+        }
+      }
+      const arrayBuffer = timedResult
+        ? timedResult.audio
+        : await ttsService.speak(
+            cleanText,
+            this._edgeVoiceId || DEFAULT_EDGE_VOICE_ID,
+            this.currentRate,
+          );
       if (!arrayBuffer || arrayBuffer.byteLength === 0) {
         throw new Error('Backend returned empty audio');
       }
@@ -910,6 +995,9 @@ class BibleTTSManager {
       }
 
       this._audioBuffer.set(key, filePath);
+      if (timedResult?.wordOffsetsMs.length) {
+        this._audioWordOffsets.set(key, timedResult.wordOffsetsMs);
+      }
       await this._trimAudioBuffer();
       return filePath;
     })().finally(() => {
@@ -926,6 +1014,7 @@ class BibleTTSManager {
     this._bufferGeneration++;
     const files = [...new Set(this._audioBuffer.values())];
     this._audioBuffer.clear();
+    this._audioWordOffsets.clear();
     this._bufferInFlight.clear();
     await Promise.all(files.map(file => this._removeBufferedFile(file)));
   }
@@ -934,26 +1023,37 @@ class BibleTTSManager {
   private async _speakViaBackend(
     cleanText: string,
     verseNum: number,
+    prefixLen: number,
   ): Promise<void> {
     this._currentVerseNum = verseNum;
     this.state.currentText = cleanText;
     this.state.wordIndex = -1;
     this.state.currentVerseNum = verseNum;
 
+    const prefixText = cleanText.slice(0, prefixLen);
+    const verseText = cleanText.slice(prefixLen);
     const spanRe = /\S+/g;
     let sm: RegExpExecArray | null;
     const spans: Array<{ start: number; end: number }> = [];
-    while ((sm = spanRe.exec(cleanText)) !== null) {
+    while ((sm = spanRe.exec(verseText)) !== null) {
       spans.push({ start: sm.index, end: sm.index + sm[0].length });
     }
     this._cleanVerseWordSpans = spans;
-    this._cleanPrefixCharLen = 0;
+    this._cleanPrefixCharLen = prefixLen;
 
-    const verseWords = cleanText.match(/\S+/g) ?? [];
-    this._pendingWordData = { prefixWords: [], verseWords };
+    const verseWords = verseText.match(/\S+/g) ?? [];
+    this._pendingWordData = {
+      prefixWords: prefixText.match(/\S+/g) ?? [],
+      verseWords,
+    };
 
     const filePath = await this._bufferAudio(cleanText);
     if (!filePath) return;
+    const wordOffsetsMs =
+      this._audioWordOffsets.get(this._audioBufferKey(cleanText)) || [];
+    const prefixWordCount = prefixText.match(/\S+/g)?.length ?? 0;
+    this._activeWordOffsets = wordOffsetsMs;
+    this._activePrefixWordCount = prefixWordCount;
 
     // ── Play ────────────────────────────────────────────────────────────────
     return new Promise<void>((resolve, reject) => {
@@ -999,9 +1099,8 @@ class BibleTTSManager {
       });
 
       this._clearWordTimers();
-      this._startWordTimers();
 
-      const playStartTime = Date.now();
+      let playStartTime = 0;
       finishPlayback = (success: boolean) => {
         if (settled) return;
         const playDuration = Date.now() - playStartTime;
@@ -1050,6 +1149,18 @@ class BibleTTSManager {
           return;
         }
 
+        playStartTime = Date.now();
+        if (wordOffsetsMs.length) {
+          this._startExactVerseTimers(wordOffsetsMs, prefixWordCount);
+        } else {
+          const durationMs = sound.getDuration() * 1000;
+          this._startWordTimers(
+            false,
+            Number.isFinite(durationMs) && durationMs > 0
+              ? durationMs
+              : undefined,
+          );
+        }
         sound.play(finishPlayback);
       });
 
@@ -1069,6 +1180,18 @@ class BibleTTSManager {
 
     const announce = opts.announceLocation ?? verses.length === 1;
     const readVerseNums = opts.announceVerseNumbers ?? false;
+    const verseSegments = verses.map(v =>
+      readVerseNums
+        ? `verse ${v.num}, ${this._prepareTrackText(v.text)}`
+        : this._prepareTrackText(v.text),
+    );
+
+    let wordStart = 0;
+    const verseBoundaries = verses.map((verse, index) => {
+      const boundary = { start: wordStart, verseNum: verse.num };
+      wordStart += verseSegments[index].match(/\S+/g)?.length ?? 0;
+      return boundary;
+    });
 
     let fullText: string;
     let prefixRaw = '';
@@ -1078,28 +1201,16 @@ class BibleTTSManager {
       const v = verses[0];
       verseNum = v.num;
       if (announce) {
-        prefixRaw = `${book}, chapter ${chapter}. `;
-        fullText = readVerseNums
-          ? `${prefixRaw}verse ${v.num}. ${v.text}`
-          : `${prefixRaw}${v.text}`;
+        prefixRaw = `${book}, chapter ${chapter}, `;
+        fullText = `${prefixRaw}${verseSegments[0]}`;
       } else {
-        fullText = readVerseNums ? `${v.num}. ${v.text}` : v.text;
+        fullText = verseSegments[0];
       }
     } else {
       verseNum = verses[0].num;
-      const joinedText = readVerseNums
-        ? verses
-            .map(v => `verse ${v.num}. ${v.text}`)
-            .join(' ')
-            .replace(/\s{2,}/g, ' ')
-            .trim()
-        : verses
-            .map(v => v.text)
-            .join(' ')
-            .replace(/\s{2,}/g, ' ')
-            .trim();
+      const joinedText = verseSegments.join(', ').replace(/\s{2,}/g, ' ').trim();
       if (announce) {
-        prefixRaw = `${book}, chapter ${chapter}. `;
+        prefixRaw = `${book}, chapter ${chapter}, `;
         fullText = `${prefixRaw}${joinedText}`;
       } else {
         fullText = joinedText;
@@ -1124,7 +1235,15 @@ class BibleTTSManager {
       }
     }
 
-    await this.speak(fullText, prefixLen, 0, undefined, false, verseNum);
+    await this.speak(
+      fullText,
+      prefixLen,
+      0,
+      undefined,
+      false,
+      verseNum,
+      verseBoundaries,
+    );
   }
 
   async speakVerseOfDay(text: string, reference: string): Promise<void> {
@@ -1143,7 +1262,7 @@ class BibleTTSManager {
 
   async prefetchAudio(text: string): Promise<void> {
     if (!this._edgeEnabled) return;
-    const cleanText = this.prepareText(text);
+    const cleanText = this._prepareTrackText(text);
     try {
       await this._bufferAudio(cleanText);
     } catch {
@@ -1240,6 +1359,15 @@ class BibleTTSManager {
     // If using Edge TTS (react-native-sound), resume the sound directly
     if (this._edgeSound && this.state.isPaused) {
       try {
+        if (this._activeWordOffsets.length) {
+          this._edgeSound.getCurrentTime(seconds => {
+            this._startExactVerseTimers(
+              this._activeWordOffsets,
+              this._activePrefixWordCount,
+              seconds * 1000,
+            );
+          });
+        }
         this._edgeSound.play(this._edgePlayCompletion ?? undefined);
       } catch {}
       this.setState({
@@ -1372,6 +1500,8 @@ class BibleTTSManager {
       this._pausedBaseWordIndex = 0;
       this._pausedAbsoluteCharPos = -1;
       this._pausedVerseNum = -1;
+      this._activeWordOffsets = [];
+      this._activePrefixWordCount = 0;
       this._clearUtteranceTimeout();
       this._clearWordTimers();
       this.state.wordIndex = -1;

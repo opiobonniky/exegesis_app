@@ -245,6 +245,7 @@ export const useBible = () => {
   } = useVoiceReading({
     verses,
     versesArray,
+    chapterHeadings,
     currentBook,
     currentChapter,
     currentBookRef,
@@ -398,10 +399,8 @@ export const useBible = () => {
           .map(([num, text]) => ({ num: parseInt(num), text }))
           .sort((a, b) => a.num - b.num),
       );
-    } finally {
-      setLoading(false);
     }
-    // Section headings are independent of the active translation
+    // Section headings are bundled, so they remain available offline.
     try {
       const headings = await bibleApi.getChapterHeadings(
         activeVersionId,
@@ -409,8 +408,10 @@ export const useBible = () => {
         currentChapter,
       );
       setChapterHeadings(headings || []);
-    } catch (e) {
+    } catch {
       setChapterHeadings([]);
+    } finally {
+      setLoading(false);
     }
   }, [activeVersionId, currentBook, currentChapter, books]);
 

@@ -64,6 +64,26 @@ export interface ChapterHeadingsData {
   headings: ChapterHeading[];
 }
 
+type LocalChapterHeadings = Record<
+  string,
+  Record<string, ChapterHeading[]>
+>;
+
+const getLocalBookHeadings = (
+  bookName: string,
+): Record<number, ChapterHeading[]> | null => {
+  const allHeadings = require('../assets/bibleVersion/json/chapter-headings.json') as LocalChapterHeadings;
+  const localBook = allHeadings[bookName];
+  if (!localBook) return null;
+
+  const result: Record<number, ChapterHeading[]> = {};
+  Object.entries(localBook).forEach(([chapter, headings]) => {
+    const chapterNumber = Number(chapter);
+    if (Number.isInteger(chapterNumber)) result[chapterNumber] = headings;
+  });
+  return result;
+};
+
 export interface SearchResult {
   bookNumber: number;
   bookName: string;
@@ -607,6 +627,9 @@ export const bibleApi = {
     bookName: string,
     chapter: number,
   ): Promise<ChapterHeading[]> => {
+    const localBook = getLocalBookHeadings(bookName);
+    if (localBook) return localBook[chapter] || [];
+
     const backendId = mapTranslationId(translationId);
     try {
       const response = await api.post(
@@ -634,6 +657,9 @@ export const bibleApi = {
     translationId: string,
     bookName: string,
   ): Promise<Record<number, ChapterHeading[]>> => {
+    const localBook = getLocalBookHeadings(bookName);
+    if (localBook) return localBook;
+
     const backendId = mapTranslationId(translationId);
     try {
       const response = await api.post(

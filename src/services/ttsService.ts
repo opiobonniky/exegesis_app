@@ -74,6 +74,41 @@ export const ttsService = {
     const bytes = toByteArray(base64);
     return bytes.buffer as ArrayBuffer;
   },
+
+  speakWithTimings: async (
+    text: string,
+    voiceId?: string,
+    speed?: number,
+  ): Promise<{ audio: ArrayBuffer; wordOffsetsMs: number[] }> => {
+    const baseURL: string = (api.defaults.baseURL as string) ?? '';
+    const authHeader =
+      (api.defaults.headers?.common?.['Authorization'] as string) ||
+      (api.defaults.headers?.['Authorization'] as string) ||
+      '';
+    const res = await RNBlobUtil.fetch(
+      'POST',
+      `${baseURL}/tts/speak-with-timings`,
+      {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
+      JSON.stringify({
+        text,
+        voiceId: voiceId || DEFAULT_VOICE_ID,
+        speed: speed ?? 1.0,
+      }),
+    );
+    const payload = JSON.parse(await res.text());
+    if (!payload.audioBase64) throw new Error('Timed TTS returned empty audio');
+    const bytes = toByteArray(payload.audioBase64);
+    return {
+      audio: bytes.buffer as ArrayBuffer,
+      wordOffsetsMs: Array.isArray(payload.wordOffsetsMs)
+        ? payload.wordOffsetsMs
+        : [],
+    };
+  },
 };
 
 function getEdgeVoices(): TTSVoice[] {

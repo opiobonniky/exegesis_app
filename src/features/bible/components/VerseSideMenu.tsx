@@ -7,23 +7,25 @@ import {
   Animated,
   StyleSheet,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import {
   BookMarked,
   BookOpen,
   BookText,
+  ChevronRight,
   Copy,
-  Edit3,
   FileText,
+  FlaskConical,
   Hash,
   Headphones,
-  HelpCircle,
+  Highlighter,
+  Landmark,
   Lightbulb,
   Link2,
   Repeat2,
   Search,
   Share2,
-  Sparkles,
   Star,
   Sun,
   X,
@@ -32,33 +34,33 @@ import {
   getColors,
   SPACING,
   FONT_SIZES,
-  BORDER_RADIUS,
 } from '../../../constants/theme';
 import { useLanguage } from '../../../component/language-translation/LanguageProvider';
 import { useSubscription } from '../../../hooks/useSubscription';
 import { route } from '../../../component/navigations/routes';
 import VerseRangeSlider from '../modals/VerseRangeSlider';
 
-const PANEL_WIDTH = 260;
+const MAX_PANEL_WIDTH = 430;
 
 type ActionItem = {
   key: string;
   label: string;
+  description: string;
   icon: React.ReactNode;
+  iconBackground: string;
   onPress: () => void;
-  isPrimary?: boolean;
-  section: 'primary' | 'tools' | 'discover' | 'share';
+  section: 'study' | 'resources' | 'save' | 'share';
 };
 
 const SECTION_ORDER: Record<string, { label: string; order: number }> = {
-  primary: { label: 'Actions', order: 0 },
-  tools: { label: 'Study Tools', order: 1 },
-  discover: { label: 'Discover', order: 2 },
+  study: { label: 'Study Tools', order: 0 },
+  resources: { label: 'Resources', order: 1 },
+  save: { label: 'Listen, Highlight & Save', order: 2 },
   share: { label: 'Share & Export', order: 3 },
 };
 
 const SECTION_KEYS: (keyof typeof SECTION_ORDER)[] = [
-  'primary', 'tools', 'discover', 'share',
+  'study', 'resources', 'save', 'share',
 ];
 
 export interface VerseSideMenuProps {
@@ -99,75 +101,63 @@ export interface VerseSideMenuProps {
 
 function ActionButton({
   label,
+  description,
   icon,
+  iconBackground,
   onPress,
-  isPrimary,
   COLORS,
+  isRtl,
 }: {
   label: string;
+  description: string;
   icon: React.ReactNode;
+  iconBackground: string;
   onPress: () => void;
-  isPrimary?: boolean;
   COLORS: ReturnType<typeof getColors>;
+  isRtl: boolean;
 }) {
-  const bgAnim = useRef(new Animated.Value(0)).current;
-
-  const handlePressIn = () =>
-    Animated.timing(bgAnim, { toValue: 1, duration: 150, useNativeDriver: false }).start();
-
-  const handlePressOut = () =>
-    Animated.timing(bgAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
-
-  const bgColor = bgAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(255,255,255,0)', 'rgba(255,255,255,0.08)'],
-  });
-
   return (
     <TouchableOpacity
       onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      activeOpacity={1}
+      activeOpacity={0.62}
+      accessibilityRole="button"
+      accessibilityLabel={label}
     >
-      <Animated.View
+      <View
         style={[
           localStyles.actionRow,
-          {
-            backgroundColor: isPrimary ? bgColor : COLORS.background,
-            borderColor: COLORS.border,
-          },
+          isRtl && localStyles.actionRowRtl,
         ]}
       >
         <View
           style={[
             localStyles.actionIcon,
-            isPrimary
-              ? {
-                  backgroundColor: isPrimary ? COLORS.primary : COLORS.background,
-                  borderColor: isPrimary ? COLORS.primary : COLORS.border,
-                }
-              : {
-                  backgroundColor: `${COLORS.primary}15`,
-                  borderColor: `${COLORS.primary}30`,
-                },
+            { backgroundColor: iconBackground },
           ]}
         >
           {icon}
         </View>
-        <Text
-          style={[
-            localStyles.actionLabel,
-            {
-              color: isPrimary ? COLORS.primary : COLORS.text,
-              fontWeight: isPrimary ? '700' : '600',
-            },
-          ]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </Animated.View>
+        <View style={localStyles.actionTextGroup}>
+          <Text
+            style={[localStyles.actionLabel, { color: COLORS.text }]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+          <Text
+            style={[localStyles.actionDescription, { color: COLORS.muted }]}
+            numberOfLines={2}
+          >
+            {description}
+          </Text>
+        </View>
+        <ChevronRight
+          size={19}
+          color={COLORS.primary}
+          strokeWidth={2.4}
+          style={isRtl ? { transform: [{ rotate: '180deg' }] } : undefined}
+        />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -184,7 +174,6 @@ export default function VerseSideMenu({
   isRtl = false,
   isGuest = false,
   onGuestAction,
-  selectedCount = 1,
   selectedVerses = [],
   totalVerses = 1,
   onRangeChange,
@@ -202,11 +191,13 @@ export default function VerseSideMenu({
   onOpenStudyTools,
 }: VerseSideMenuProps) {
   const COLORS = getColors(isDark);
+  const { width: screenWidth } = useWindowDimensions();
+  const panelWidth = Math.min(screenWidth * 0.72, MAX_PANEL_WIDTH);
   const { translations } = useLanguage();
   const bc = translations?.bible;
   const { hasAccess } = useSubscription();
 
-  const slideAnim = useRef(new Animated.Value(PANEL_WIDTH)).current;
+  const slideAnim = useRef(new Animated.Value(panelWidth)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -225,10 +216,10 @@ export default function VerseSideMenu({
         }),
       ]).start();
     } else {
-      slideAnim.setValue(PANEL_WIDTH);
+      slideAnim.setValue(panelWidth);
       backdropOpacity.setValue(0);
     }
-  }, [visible, slideAnim, backdropOpacity]);
+  }, [visible, slideAnim, backdropOpacity, panelWidth]);
 
   const sortedVerses = useMemo(
     () => [...selectedVerses].sort((a, b) => a - b),
@@ -291,6 +282,18 @@ export default function VerseSideMenu({
     });
   }, [guard, navigation, currentBook, currentChapter, verseNumber, dismiss]);
 
+  const handleBackground = useCallback(() => {
+    guard('Background and context requires a free account.', () => {
+      navigation?.navigate('VerseResources', {
+        bookName: currentBook,
+        chapter: currentChapter,
+        verseNumber,
+        tab: 'commentaries',
+      });
+      dismiss();
+    });
+  }, [guard, navigation, currentBook, currentChapter, verseNumber, dismiss]);
+
   const handleCompareTranslations = useCallback(() => {
     guard('Translation comparison requires a free account.', () => {
       navigation?.navigate('VerseResources', {
@@ -316,10 +319,6 @@ export default function VerseSideMenu({
     dismiss();
   }, [onOpenStudyTools, sortedVerses, verseNumber, dismiss]);
 
-  const handleTrivia = useCallback(() => {
-    dismiss();
-  }, [dismiss]);
-
   const handleSearchVerse = useCallback(() => {
     dismiss();
     navigation?.navigate('Search', {
@@ -327,135 +326,179 @@ export default function VerseSideMenu({
     });
   }, [dismiss, navigation, verseText]);
 
+  const iconColors = {
+    navy: isDark ? '#8AB4F8' : '#123D72',
+    blue: isDark ? '#68A7FF' : '#0878E8',
+    green: isDark ? '#5FE3A1' : '#16A765',
+    amber: isDark ? '#FFD166' : '#E9A719',
+    purple: isDark ? '#D59CFF' : '#8E35D2',
+  };
+
+  const iconBackgrounds = {
+    navy: isDark ? '#182B47' : '#EEF0FA',
+    blue: isDark ? '#132E50' : '#EAF3FF',
+    green: isDark ? '#123B2C' : '#EAF8F0',
+    amber: isDark ? '#423616' : '#FFF8E7',
+    purple: isDark ? '#362044' : '#F8EAFE',
+  };
+
   const actions: ActionItem[] = [
-    {
-      key: 'listen',
-      label: bc?.audioBible || bc?.playAudio || 'Listen',
-      icon: <Headphones size={16} color={COLORS.primary} strokeWidth={2} />,
-      onPress: () => { guard('Audio narration requires a free account.', () => { onListen?.(); dismiss(); }); },
-      isPrimary: true,
-      section: 'primary',
-    },
-    {
-      key: 'study',
-      label: sortedVerses.length > 1 ? 'Open Selection in Lab' : 'Open Verse in Lab',
-      icon: <Sparkles size={16} color={COLORS.primary} strokeWidth={2} />,
-      onPress: handleStudy,
-      section: 'primary',
-    },
     {
       key: 'explain',
       label: bc?.explain || 'Explain',
-      icon: <Lightbulb size={16} color={COLORS.textSecondary} strokeWidth={2} />,
+      description: 'Understand the meaning of this verse.',
+      icon: <Lightbulb size={24} color={iconColors.navy} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.navy,
       onPress: () => { onExplain?.(); dismiss(); },
-      section: 'primary',
-    },
-    {
-      key: 'journal',
-      label: bc?.journal || 'Journal',
-      icon: <BookText size={16} color={COLORS.textSecondary} strokeWidth={2} />,
-      onPress: () => {
-        if (!hasAccess('legacy_sower')) { dismiss(); navigation?.navigate(route.sower); return; }
-        guard('Journal requires a free account.', () => { onJournal?.(); dismiss(); });
-      },
-      section: 'primary',
+      section: 'study',
     },
     {
       key: 'strongs',
-      label: "Open Strong's",
-      icon: <Hash size={16} color={COLORS.textSecondary} strokeWidth={2} />,
+      label: "Strong's Concordance",
+      description: "Explore original language and Strong's references.",
+      icon: <Hash size={25} color={iconColors.navy} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.navy,
       onPress: handleStrongs,
-      section: 'tools',
+      section: 'study',
+    },
+    {
+      key: 'study',
+      label: 'Study Tools',
+      description: 'Abide: look, listen, learn, abide, apply.',
+      icon: <FlaskConical size={23} color={iconColors.navy} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.navy,
+      onPress: handleStudy,
+      section: 'study',
     },
     {
       key: 'note',
-      label: bc?.notes || 'Note',
-      icon: <FileText size={16} color={COLORS.textSecondary} strokeWidth={2} />,
-      onPress: () => { guard('Notes require a free account.', () => { onNote?.(); dismiss(); }); },
-      section: 'tools',
-    },
-    {
-      key: 'highlight',
-      label: bc?.highlight || 'Highlight',
-      icon: <Edit3 size={16} color={COLORS.textSecondary} strokeWidth={2} />,
-      onPress: () => { guard('Highlights require a free account.', () => { onHighlight?.(); dismiss(); }); },
-      section: 'tools',
-    },
-    {
-      key: 'favorite',
-      label: bc?.favorites || 'Favorite',
-      icon: <Star size={16} color={COLORS.textSecondary} strokeWidth={2} />,
-      onPress: () => { guard('Favourites require a free account.', () => { onFavorite?.(); dismiss(); }); },
-      section: 'tools',
+      label: bc?.notes || 'Notes',
+      description: 'Add and view your verse notes.',
+      icon: <FileText size={23} color={iconColors.navy} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.navy,
+      onPress: () => { guard('Notes require a free account.', () => { if (onNote) onNote(); else onOpenNoteModal?.(verseNumber); dismiss(); }); },
+      section: 'study',
     },
     {
       key: 'crossrefs',
       label: 'Cross References',
-      icon: <Link2 size={16} color={COLORS.textSecondary} strokeWidth={2} />,
+      description: 'See related verses.',
+      icon: <Link2 size={23} color={iconColors.blue} strokeWidth={2.2} />,
+      iconBackground: iconBackgrounds.blue,
       onPress: handleCrossRefs,
-      section: 'discover',
+      section: 'resources',
+    },
+    {
+      key: 'background',
+      label: 'Background & Context',
+      description: 'Historical and cultural insights.',
+      icon: <Landmark size={23} color={iconColors.blue} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.blue,
+      onPress: handleBackground,
+      section: 'resources',
     },
     {
       key: 'compare',
       label: 'Compare Translations',
-      icon: <Repeat2 size={16} color={COLORS.textSecondary} strokeWidth={2} />,
+      description: 'See this verse in other versions.',
+      icon: <Repeat2 size={23} color={iconColors.blue} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.blue,
       onPress: handleCompareTranslations,
-      section: 'discover',
+      section: 'resources',
     },
     {
       key: 'devotional',
       label: 'Devotional on This Verse',
-      icon: <Sun size={16} color={COLORS.textSecondary} strokeWidth={2} />,
+      description: 'Read a devotional insight.',
+      icon: <Sun size={24} color={iconColors.blue} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.blue,
       onPress: handleDevotional,
-      section: 'discover',
+      section: 'resources',
     },
     {
       key: 'studytools',
       label: sortedVerses.length > 1 ? 'Study Tools for Selection' : 'Study Tools for Verse',
-      icon: <BookMarked size={16} color={COLORS.textSecondary} strokeWidth={2} />,
+      description: 'In-depth tools and commentaries.',
+      icon: <BookMarked size={23} color={iconColors.navy} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.navy,
       onPress: handleOpenStudyTools,
-      section: 'discover',
+      section: 'resources',
     },
     {
-      key: 'trivia',
-      label: 'Trivia from This Verse',
-      icon: <HelpCircle size={16} color={COLORS.textSecondary} strokeWidth={2} />,
-      onPress: handleTrivia,
-      section: 'discover',
+      key: 'listen',
+      label: bc?.audioBible || bc?.playAudio || 'Listen to Audio',
+      description: 'Hear this verse read aloud.',
+      icon: <Headphones size={23} color={iconColors.green} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.green,
+      onPress: () => { guard('Audio narration requires a free account.', () => { onListen?.(); dismiss(); }); },
+      section: 'save',
+    },
+    {
+      key: 'highlight',
+      label: bc?.highlight || 'Highlight Verse',
+      description: 'Highlight and color code.',
+      icon: <Highlighter size={23} color={iconColors.amber} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.amber,
+      onPress: () => { guard('Highlights require a free account.', () => { if (onHighlight) onHighlight(); else onOpenHighlightPicker?.(verseNumber); dismiss(); }); },
+      section: 'save',
+    },
+    {
+      key: 'favorite',
+      label: bc?.favorites || 'Add to Favorites',
+      description: 'Save this verse.',
+      icon: <Star size={24} color={iconColors.purple} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.purple,
+      onPress: () => { guard('Favourites require a free account.', () => { onFavorite?.(); dismiss(); }); },
+      section: 'save',
+    },
+    {
+      key: 'journal',
+      label: bc?.journal || 'Save to Journal',
+      description: 'Keep this verse in your journal.',
+      icon: <BookText size={23} color={iconColors.purple} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.purple,
+      onPress: () => {
+        if (!hasAccess('legacy_sower')) { dismiss(); navigation?.navigate(route.sower); return; }
+        guard('Journal requires a free account.', () => { onJournal?.(); dismiss(); });
+      },
+      section: 'save',
     },
     {
       key: 'search',
       label: 'Search This Text',
-      icon: <Search size={16} color={COLORS.textSecondary} strokeWidth={2} />,
+      description: 'Find related words and passages.',
+      icon: <Search size={22} color={iconColors.navy} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.navy,
       onPress: handleSearchVerse,
       section: 'share',
     },
     {
       key: 'share',
-      label: bc?.share || 'Share',
-      icon: <Share2 size={16} color={COLORS.textSecondary} strokeWidth={2} />,
+      label: bc?.share || 'Share Verse',
+      description: 'Share this verse with others.',
+      icon: <Share2 size={22} color={iconColors.blue} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.blue,
       onPress: () => { guard('Sharing requires a free account.', () => { onShare?.(); dismiss(); }); },
       section: 'share',
     },
     {
       key: 'copy',
-      label: bc?.copy || 'Copy',
-      icon: <Copy size={16} color={COLORS.textSecondary} strokeWidth={2} />,
+      label: bc?.copy || 'Copy Verse',
+      description: 'Copy the verse text and reference.',
+      icon: <Copy size={22} color={iconColors.blue} strokeWidth={2} />,
+      iconBackground: iconBackgrounds.blue,
       onPress: () => { guard('Copying requires a free account.', () => { onCopy?.(); dismiss(); }); },
       section: 'share',
     },
   ];
 
-  const groupedActions = useMemo(() => {
-    const groups: { section: string; items: ActionItem[] }[] = [];
-    for (const sectionKey of SECTION_KEYS) {
-      const sectionActions = actions.filter((a) => a.section === sectionKey);
-      if (sectionActions.length > 0) {
-        groups.push({ section: sectionKey, items: sectionActions });
-      }
+  const groupedActions: { section: string; items: ActionItem[] }[] = [];
+  for (const sectionKey of SECTION_KEYS) {
+    const sectionActions = actions.filter(action => action.section === sectionKey);
+    if (sectionActions.length > 0) {
+      groupedActions.push({ section: sectionKey, items: sectionActions });
     }
-    return groups;
-  }, [actions]);
+  }
 
   if (!visible) return null;
 
@@ -478,7 +521,8 @@ export default function VerseSideMenu({
         style={[
           localStyles.container,
           {
-            backgroundColor: COLORS.cardBackground,
+            width: panelWidth,
+            backgroundColor: COLORS.surface,
             borderLeftColor: COLORS.border,
             transform: [{ translateX: slideAnim }],
             shadowColor: COLORS.shadowColor,
@@ -487,14 +531,22 @@ export default function VerseSideMenu({
       >
         {/* Header */}
         <View style={[localStyles.header, isRtl && localStyles.headerRtl]}>
-          <View style={[localStyles.headerLeft, isRtl && localStyles.headerLeftRtl]}>
+          <View
+            style={[localStyles.headerLeft, isRtl && localStyles.headerLeftRtl]}
+          >
             <View
               style={[
                 localStyles.bookIconWrap,
-                { backgroundColor: `${COLORS.primary}15` },
+                isDark
+                  ? localStyles.bookIconDark
+                  : localStyles.bookIconLight,
               ]}
             >
-              <BookOpen size={14} color={COLORS.primary} strokeWidth={2.5} />
+              <BookOpen
+                size={23}
+                color={isDark ? '#8AB4F8' : '#123D72'}
+                strokeWidth={2}
+              />
             </View>
             <View style={localStyles.headerTextGroup}>
               <Text style={[localStyles.countText, { color: COLORS.text }]}>
@@ -504,7 +556,7 @@ export default function VerseSideMenu({
                 style={[localStyles.versePreview, { color: COLORS.muted }]}
                 numberOfLines={1}
               >
-                "{verseText.slice(0, 60)}{verseText.length > 60 ? '…' : ''}"
+                “{verseText.slice(0, 60)}{verseText.length > 60 ? '…' : ''}”
               </Text>
             </View>
           </View>
@@ -512,11 +564,11 @@ export default function VerseSideMenu({
             onPress={onClose}
             style={[
               localStyles.closeBtn,
-              { backgroundColor: `${COLORS.muted}18` },
+              isDark ? localStyles.closeBtnDark : localStyles.closeBtnLight,
             ]}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <X size={16} color={COLORS.muted} strokeWidth={2.5} />
+            <X size={20} color={COLORS.text} strokeWidth={2.2} />
           </TouchableOpacity>
         </View>
 
@@ -544,8 +596,16 @@ export default function VerseSideMenu({
           style={localStyles.scrollView}
           keyboardShouldPersistTaps="handled"
         >
-          {groupedActions.map((group) => (
+          {groupedActions.map((group, groupIndex) => (
             <View key={group.section} style={localStyles.sectionGroup}>
+              {groupIndex > 0 ? (
+                <View
+                  style={[
+                    localStyles.sectionDivider,
+                    { backgroundColor: COLORS.border },
+                  ]}
+                />
+              ) : null}
               <Text style={[localStyles.sectionHeader, { color: COLORS.muted }]}>
                 {SECTION_ORDER[group.section]?.label || group.section}
               </Text>
@@ -553,17 +613,25 @@ export default function VerseSideMenu({
                 <ActionButton
                   key={action.key}
                   label={action.label}
+                  description={action.description}
                   icon={action.icon}
+                  iconBackground={action.iconBackground}
                   onPress={action.onPress}
-                  isPrimary={action.isPrimary}
                   COLORS={COLORS}
+                  isRtl={isRtl}
                 />
               ))}
             </View>
           ))}
 
           {/* Bottom safe padding */}
-          <View style={{ height: Platform.OS === 'ios' ? 20 : 12 }} />
+          <View
+            style={
+              Platform.OS === 'ios'
+                ? localStyles.bottomSafeIos
+                : localStyles.bottomSafeAndroid
+            }
+          />
         </ScrollView>
       </Animated.View>
     </View>
@@ -580,24 +648,22 @@ const localStyles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    width: PANEL_WIDTH,
     paddingTop: Platform.OS === 'ios' ? 60 : 28,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
     borderLeftWidth: StyleSheet.hairlineWidth,
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
+    borderTopLeftRadius: 28,
     zIndex: 200,
     shadowOffset: { width: -4, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 20,
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 24,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
   },
   headerRtl: {
     flexDirection: 'row-reverse',
@@ -605,7 +671,7 @@ const localStyles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 13,
     flex: 1,
     minWidth: 0,
   },
@@ -617,33 +683,46 @@ const localStyles = StyleSheet.create({
     minWidth: 0,
   },
   bookIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: BORDER_RADIUS.sm,
+    width: 44,
+    height: 44,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  bookIconLight: {
+    backgroundColor: '#EEF0FA',
+  },
+  bookIconDark: {
+    backgroundColor: '#182B47',
+  },
   countText: {
-    fontSize: FONT_SIZES.sm,
+    fontSize: FONT_SIZES.lg,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: -0.15,
   },
   versePreview: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '500',
-    marginTop: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '600',
+    marginTop: 2,
     fontStyle: 'italic',
   },
   closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  closeBtnLight: {
+    backgroundColor: '#F1F2F7',
+  },
+  closeBtnDark: {
+    backgroundColor: '#263248',
+  },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginHorizontal: SPACING.lg,
+    marginHorizontal: 18,
   },
   sliderContainer: {
     paddingHorizontal: SPACING.lg,
@@ -653,43 +732,62 @@ const localStyles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: SPACING.sm,
-    paddingTop: SPACING.xs,
+    paddingHorizontal: 18,
+    paddingTop: SPACING.sm,
   },
   sectionGroup: {
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.sm,
+  },
+  sectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   sectionHeader: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.55,
     textTransform: 'uppercase',
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.xs,
+    paddingTop: SPACING.xs,
+    paddingBottom: SPACING.md,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: SPACING.md,
-    gap: 10,
-    marginHorizontal: 2,
-    borderRadius: BORDER_RADIUS.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 4,
+    minHeight: 64,
+    paddingVertical: 7,
+    gap: 13,
+  },
+  actionRowRtl: {
+    flexDirection: 'row-reverse',
   },
   actionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: BORDER_RADIUS.sm,
+    width: 44,
+    height: 44,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+  },
+  actionTextGroup: {
+    flex: 1,
+    minWidth: 0,
   },
   actionLabel: {
-    fontSize: FONT_SIZES.sm,
-    letterSpacing: 0.1,
-    flex: 1,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '800',
+    letterSpacing: -0.1,
+  },
+  actionDescription: {
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  bottomSafeIos: {
+    height: 20,
+  },
+  bottomSafeAndroid: {
+    height: 12,
   },
 });

@@ -51,6 +51,8 @@ jest.mock('react-native-sound', () => {
     pause: jest.fn(),
     stop: jest.fn(),
     release: jest.fn(),
+    getDuration: jest.fn().mockReturnValue(1),
+    getCurrentTime: jest.fn((cb: (seconds: number) => void) => cb(0)),
     currentTime: 0,
     duration: 0,
     numberOfChannels: 1,
@@ -269,6 +271,78 @@ describe('Edge TTS — success path', () => {
     );
     expect(RNFS.writeFile).toHaveBeenCalled();
     expect(bibleTTS.edgeEnabled).toBe(true);
+  });
+
+  it('removes the trailing full-stop pause from a chapter track', async () => {
+    const speakPromise = bibleTTS.speakVerses(
+      [{ num: 1, text: 'The Creation, In the beginning.' }],
+      'Genesis',
+      1,
+      { announceLocation: true },
+    );
+
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+    fireSoundLoaded(null);
+    mockNow += 1000;
+    fireSoundPlayComplete(true);
+
+    await expect(speakPromise).resolves.toBeUndefined();
+    expect(ttsService.speak).toHaveBeenCalledWith(
+      'Genesis, chapter 1, The Creation, In the beginning',
+      expect.any(String),
+      expect.any(Number),
+    );
+  });
+
+  it('joins consecutive verses into one continuous track', async () => {
+    const speakPromise = bibleTTS.speakVerses(
+      [
+        { num: 1, text: 'First verse.' },
+        { num: 2, text: 'Second verse.' },
+      ],
+      'Genesis',
+      1,
+      { announceLocation: false },
+    );
+
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+    fireSoundLoaded(null);
+    mockNow += 1000;
+    fireSoundPlayComplete(true);
+
+    await expect(speakPromise).resolves.toBeUndefined();
+    expect(ttsService.speak).toHaveBeenCalledWith(
+      'First verse, Second verse',
+      expect.any(String),
+      expect.any(Number),
+    );
+    expect((bibleTTS as any)._verseWordBoundaries).toEqual([
+      { start: 0, verseNum: 1 },
+      { start: 2, verseNum: 2 },
+    ]);
+  });
+
+  it('updates the active verse from exact provider timestamps', () => {
+    jest.useFakeTimers();
+    const manager = bibleTTS as any;
+    manager.stopRequested = false;
+    manager._currentVerseNum = 1;
+    manager.state.currentVerseNum = 1;
+    manager._verseWordBoundaries = [
+      { start: 0, verseNum: 1 },
+      { start: 2, verseNum: 2 },
+    ];
+
+    manager._startExactVerseTimers([0, 200, 500], 0);
+    jest.advanceTimersByTime(499);
+    expect(bibleTTS.getState().currentVerseNum).toBe(1);
+    jest.advanceTimersByTime(1);
+    expect(bibleTTS.getState().currentVerseNum).toBe(2);
+
+    manager._clearWordTimers();
+    manager._currentVerseNum = -1;
+    manager.state.currentVerseNum = -1;
+    jest.useRealTimers();
   });
 });
 

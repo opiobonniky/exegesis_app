@@ -8,7 +8,7 @@ import { showToast } from '../helpers/Toash.helper';
 import { navigationRef } from './navigationRef';
 import { route } from '../component/navigations/routes';
 
-const DEV_BACKEND_HOST = '192.168.100.22';
+const DEV_BACKEND_HOST = '192.168.100.128';
 const DEV_BACKEND_PORT = '5001';
 
 export interface GenericResponse<T = any> {
