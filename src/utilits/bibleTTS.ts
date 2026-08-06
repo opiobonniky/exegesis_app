@@ -1170,14 +1170,23 @@ class BibleTTSManager {
 
   // ── Public narration API ──────────────────────────────────────────────────
 
-  async speakVerses(
+  /**
+   * Builds the exact prepared text (and prefix/verse metadata) that
+   * `speakVerses` will feed to the backend. Exposed so the player can
+   * prefetch the identical buffer key before playback starts.
+   */
+  private _buildSpeakVersesText(
     verses: Array<{ num: number; text: string }>,
     book: string,
     chapter: number,
-    opts: { announceLocation?: boolean; announceVerseNumbers?: boolean } = {},
-  ): Promise<void> {
-    if (!verses.length) return;
-
+    opts: { announceLocation?: boolean; announceVerseNumbers?: boolean },
+  ): {
+    cleanText: string;
+    rawFullText: string;
+    prefixLen: number;
+    verseNum: number;
+    verseBoundaries: Array<{ start: number; verseNum: number }>;
+  } {
     const announce = opts.announceLocation ?? verses.length === 1;
     const readVerseNums = opts.announceVerseNumbers ?? false;
     const verseSegments = verses.map(v =>
@@ -1235,8 +1244,38 @@ class BibleTTSManager {
       }
     }
 
+    return {
+      cleanText: this._prepareTrackText(cleanedFull, true),
+      rawFullText: fullText,
+      prefixLen,
+      verseNum,
+      verseBoundaries,
+    };
+  }
+
+  /** Returns the exact prepared text that `speakVerses` will synthesize. */
+  getSpeakVersesText(
+    verses: Array<{ num: number; text: string }>,
+    book: string,
+    chapter: number,
+    opts: { announceLocation?: boolean; announceVerseNumbers?: boolean } = {},
+  ): string {
+    return this._buildSpeakVersesText(verses, book, chapter, opts).cleanText;
+  }
+
+  async speakVerses(
+    verses: Array<{ num: number; text: string }>,
+    book: string,
+    chapter: number,
+    opts: { announceLocation?: boolean; announceVerseNumbers?: boolean } = {},
+  ): Promise<void> {
+    if (!verses.length) return;
+
+    const { rawFullText, prefixLen, verseNum, verseBoundaries } =
+      this._buildSpeakVersesText(verses, book, chapter, opts);
+
     await this.speak(
-      fullText,
+      rawFullText,
       prefixLen,
       0,
       undefined,
@@ -1260,9 +1299,9 @@ class BibleTTSManager {
     await this.speak(fullText, prefixLen);
   }
 
-  async prefetchAudio(text: string): Promise<void> {
+  async prefetchAudio(text: string, alreadyClean = false): Promise<void> {
     if (!this._edgeEnabled) return;
-    const cleanText = this._prepareTrackText(text);
+    const cleanText = alreadyClean ? text : this._prepareTrackText(text);
     try {
       await this._bufferAudio(cleanText);
     } catch {

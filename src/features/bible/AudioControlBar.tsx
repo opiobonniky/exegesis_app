@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  ActivityIndicator,
   FlatList,
   Modal,
   Platform,
@@ -32,6 +33,7 @@ export type AfterPlayBehaviour = 'continue' | 'repeat' | 'repeat_one' | 'stop';
 export interface AudioControlBarProps {
   isPlaying: boolean;
   isPaused?: boolean;
+  isPreparing?: boolean;
   nowPlayingLabel: string;
   scope: AudioScope;
   afterPlay: AfterPlayBehaviour;
@@ -321,6 +323,7 @@ function CtrlBtn({
 export default function AudioControlBar({
   isPlaying,
   isPaused = false,
+  isPreparing = false,
   nowPlayingLabel,
   scope,
   afterPlay,
@@ -352,7 +355,7 @@ export default function AudioControlBar({
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (isPlaying || isPaused) {
+    if (isPreparing || isPlaying || isPaused) {
       Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
@@ -380,10 +383,10 @@ export default function AudioControlBar({
         }),
       ]).start();
     }
-  }, [isPlaying, isPaused, opacity, translateY]);
+  }, [isPreparing, isPlaying, isPaused, opacity, translateY]);
 
-  const disablePrev = verseIndex <= 0;
-  const disableNext = verseIndex >= verseCount - 1;
+  const disablePrev = isPreparing || verseIndex <= 0;
+  const disableNext = isPreparing || verseIndex >= verseCount - 1;
 
   const progress = verseCount > 0 ? (verseIndex + 1) / verseCount : 0;
   const progressPct = Math.min(1, Math.max(0, progress));
@@ -449,11 +452,11 @@ export default function AudioControlBar({
         {
           backgroundColor: isDark ? '#1A1A1E' : '#FFFFFF',
           transform: [{ translateY }],
-          opacity,
-        },
-      ]}
-      pointerEvents={isPlaying || isPaused ? 'auto' : 'none'}
-    >
+      opacity,
+    },
+  ]}
+  pointerEvents={isPreparing || isPlaying || isPaused ? 'auto' : 'none'}
+>
       <LinearGradient
         colors={isDark ? ['#252528', '#1A1A1E'] : ['#FAFAFA', '#FFFFFF']}
         style={styles.gradient}
@@ -532,12 +535,24 @@ export default function AudioControlBar({
 
           {/* Now playing */}
           <View style={styles.titleRow}>
-            <Text
-              style={[styles.nowPlaying, { color: COLORS.text }]}
-              numberOfLines={1}
-            >
-              {nowPlayingLabel}
-            </Text>
+            {isPreparing ? (
+              <View style={styles.preparingRow}>
+                <ActivityIndicator size="small" color={accent} />
+                <Text
+                  style={[styles.nowPlaying, { color: COLORS.text }]}
+                  numberOfLines={1}
+                >
+                  Preparing audio…
+                </Text>
+              </View>
+            ) : (
+              <Text
+                style={[styles.nowPlaying, { color: COLORS.text }]}
+                numberOfLines={1}
+              >
+                {nowPlayingLabel}
+              </Text>
+            )}
           </View>
 
           <View style={styles.statusRow}>
@@ -576,9 +591,17 @@ export default function AudioControlBar({
               activeOpacity={0.82}
               style={[styles.playBtn, { backgroundColor: accent }]}
               accessibilityRole="button"
-              accessibilityLabel={isPaused ? 'Play audio' : 'Pause audio'}
+              accessibilityLabel={
+                isPreparing
+                  ? 'Preparing audio'
+                  : isPaused
+                    ? 'Play audio'
+                    : 'Pause audio'
+              }
             >
-              {isPaused ? (
+              {isPreparing ? (
+                <ActivityIndicator size="large" color="#FFF" />
+              ) : isPaused ? (
                 <Play size={30} color="#FFF" fill="#FFF" />
               ) : (
                 <Pause size={30} color="#FFF" fill="#FFF" />
@@ -957,6 +980,11 @@ const styles = StyleSheet.create({
   titleRow: {
     marginBottom: 12,
     marginTop: 2,
+  },
+  preparingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   nowPlaying: {
     fontSize: 17,

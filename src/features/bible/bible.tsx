@@ -257,6 +257,7 @@ export default function Bible() {
     afterPlayBehaviour,
     audioVerseIndex,
     isAudioPaused,
+    audioIsPreparing,
     speechRate,
     sleepTimerRemaining,
     onSpeedToggle,
@@ -636,6 +637,10 @@ export default function Bible() {
   const [studyToolHighlights, setStudyToolHighlights] = useState<
     Record<number, { label: string; color: string }>
   >({});
+  // Last highlight color applied — shown as a circle ball on the multi-select bar.
+  const [lastHighlightColor, setLastHighlightColor] = useState<
+    string | undefined
+  >(undefined);
 
   useEffect(() => {
     setStudyToolHighlights({});
@@ -1220,6 +1225,7 @@ export default function Bible() {
               // highlightVerses prioritises pendingVersesRef, so the whole
               // multi-selection is highlighted — not just the displayed range.
               highlightVerses(colorId, color, rangeStart, rangeEnd);
+              setLastHighlightColor(colorId === 0 ? undefined : color);
               setPendingVerses([]);
               clearSelection();
               exitMultiSelect();
@@ -1468,6 +1474,7 @@ export default function Bible() {
           <AudioControlBar
             isPlaying={showAudioPlayer}
             isPaused={isAudioPaused}
+            isPreparing={audioIsPreparing}
             nowPlayingLabel={`${currentBook} ${currentChapter}:${activeAudioVerse ?? ''}`}
             scope={audioScope}
             afterPlay={afterPlayBehaviour}
@@ -1554,6 +1561,8 @@ export default function Bible() {
               <VerseMultiSelectBar
                 count={selectedVerses.length}
                 colors={COLORS}
+                isDark={isDark}
+                highlightColor={lastHighlightColor}
                 onHighlight={() =>
                   guard(
                     'Highlights are saved to your account. Sign in to use this feature.',

@@ -37,6 +37,7 @@ export interface VoiceReadingResult {
   currentVoiceId: string;
   voiceList: TTSVoice[];
   edgeEnabled: boolean;
+  audioIsPreparing: boolean;
 
   // ── Callbacks ────────────────────────────────────────────────────────────
   startReadingChapter: () => void;
@@ -87,6 +88,7 @@ export function useVoiceReading({
     bibleTTS.edgeVoiceId,
   );
   const [voiceList, setVoiceList] = useState<TTSVoice[]>([]);
+  const [audioIsPreparing, setAudioIsPreparing] = useState<boolean>(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const audioPlaylistRef = useRef<Array<{ num: number; text: string }>>([]);
@@ -192,6 +194,7 @@ export function useVoiceReading({
   useEffect(() => {
     const unsub = bibleTTS.subscribe(ttsState => {
       if (ttsState.isPlaying) {
+        setAudioIsPreparing(false);
         if (ttsState.currentVerseNum >= 0) {
           const idx = audioPlaylistRef.current.findIndex(
             v => v.num === ttsState.currentVerseNum,
@@ -219,6 +222,7 @@ export function useVoiceReading({
         setShowAudioPlayer(true);
         setIsAudioPaused(true);
       } else if (ttsState.tier === 'idle') {
+        setAudioIsPreparing(false);
         if (!isPausedRef.current && !ttsActiveRef.current) {
           setShowAudioPlayer(false);
           setIsAudioPaused(false);
@@ -356,38 +360,40 @@ export function useVoiceReading({
       isPausedRef.current = false;
       stopRequestedRef.current = true;
       ttsActiveRef.current = false;
+
+      // Show the player immediately with a loading state so the user gets
+      // instant feedback instead of a silent wait while Edge TTS synthesizes.
+      setShowAudioPlayer(true);
+      setAudioIsPreparing(true);
+      setIsAudioPaused(false);
+      setAudioPlaylist(playlist);
+      audioPlaylistRef.current = playlist;
+      setAudioVerseIndex(startIndex);
+      audioVerseIndexRef.current = startIndex;
+      setActiveAudioVerse(startIndex >= 0 ? playlist[startIndex]?.num ?? null : null);
+
       await bibleTTS.stop();
       stopRequestedRef.current = false;
 
-      const startVerse = playlist[startIndex];
-      const narrationText = getContinuousText(
-        playlist.slice(
-          startIndex,
-          bibleTTS.edgeEnabled
-            ? playlist.length
-            : startIndex + AUDIO_WINDOW_SIZE,
-        ),
-      );
-      const initialText =
-        audioScopeRef.current === 'chapter'
-          ? `${currentBookRef.current}, chapter ${currentChapterRef.current}, ${narrationText}`
-          : narrationText;
-      await bibleTTS.prefetchAudio(initialText);
-
       if (requestId !== _requestIdRef.current) return;
 
-      audioPlaylistRef.current = playlist;
-      setAudioPlaylist(playlist);
-
-      audioVerseIndexRef.current = startIndex;
-      setAudioVerseIndex(startIndex);
-
-      setActiveAudioVerse(startVerse?.num ?? null);
+      // Prefetch the EXACT track the first speak() call will synthesize, so
+      // playback starts as soon as the audio is ready (single synthesis, no
+      // redundant duplicate fetch on the first tap).
+      if (bibleTTS.edgeEnabled) {
+        const initialText = bibleTTS.getSpeakVersesText(
+          playlist.slice(startIndex),
+          currentBookRef.current,
+          currentChapterRef.current,
+          { announceLocation: startIndex === 0 && audioScopeRef.current === 'chapter' },
+        );
+        void bibleTTS.prefetchAudio(initialText, true);
+      }
 
       confirmedAudioIndexRef.current = startIndex;
       ttsActiveRef.current = true;
-      setShowAudioPlayer(true);
       setIsAudioPaused(false);
+      setAudioIsPreparing(true);
 
       bufferUpcomingWindows(playlist, startIndex);
       speakVerseAtIndex(startIndex, false);
@@ -396,7 +402,6 @@ export function useVoiceReading({
       bufferUpcomingWindows,
       currentBookRef,
       currentChapterRef,
-      getContinuousText,
       speakVerseAtIndex,
     ],
   );
@@ -487,6 +492,7 @@ export function useVoiceReading({
     stopRequestedRef.current = false;
     lastTTSVerseNumRef.current = null;
     setShowAudioPlayer(false);
+    setAudioIsPreparing(false);
     setActiveAudioVerse(null);
     setAudioPlaylist([]);
     audioPlaylistRef.current = [];
@@ -679,6 +685,7 @@ export function useVoiceReading({
     currentVoiceId,
     voiceList,
     edgeEnabled: bibleTTS.edgeEnabled,
+    audioIsPreparing,
     startReadingChapter,
     startReadingSelectedVerses,
     handleAudioStop,
