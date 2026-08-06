@@ -6,19 +6,26 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import {
   BookOpen,
   ChevronDown,
-  ChevronRight,
   Eye,
   Headphones,
   Sprout,
   Check,
   CalendarDays,
+  CircleAlert,
+  Clock3,
+  FileText,
+  Heart,
+  Lock,
+  RefreshCw,
+  ScrollText,
+  Tag,
+  Target,
+  Volume2,
 } from 'lucide-react-native';
 import { sendPostRequest } from '../../../services/api';
-import { route } from '../../../component/navigations/routes';
 import { STAGE_ORDER } from '../../lab/constants';
 import type { LabStage } from '../../lab/types';
 import StudyRollPanel from './StudyRollPanel';
@@ -34,6 +41,27 @@ interface LabSession {
   completed: boolean;
   createdOn?: string;
   updatedOn?: string;
+  lookNotes?: string | null;
+  lookPromptsJson?: string | null;
+  listenCompleted?: boolean;
+  listenDuration?: number | null;
+  listenElapsed?: number | null;
+  learnNotes?: string | null;
+  abideReflection?: string | null;
+  abidePrayer?: string | null;
+  abideApplication?: string | null;
+  abideTags?: string | null;
+  strongsWords?: string | null;
+  strongsIds?: string | null;
+  isPublic?: boolean;
+  journalEntryId?: string | number | null;
+}
+
+interface StrongsWord {
+  strongsId?: string;
+  surfaceText?: string;
+  lemma?: string;
+  originalWord?: string;
 }
 
 interface Props {
@@ -76,14 +104,90 @@ const formatStudyDate = (value?: string) => {
   });
 };
 
+const formatDuration = (seconds?: number | null) => {
+  if (!seconds || seconds < 1) return 'Not recorded';
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  if (!minutes) return `${remainder} sec`;
+  return remainder ? `${minutes} min ${remainder} sec` : `${minutes} min`;
+};
+
+const parseStringArray = (value?: string | null): string[] => {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const parseStrongsWords = (value?: string | null): StrongsWord[] => {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const parseLookAnswers = (value?: string | null) => {
+  if (!value) return { answers: {} as Record<string, string>, plain: '' };
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const answers = Object.fromEntries(
+        Object.entries(parsed)
+          .filter(([, answer]) => String(answer || '').trim())
+          .map(([key, answer]) => [key, String(answer).trim()]),
+      );
+      return { answers, plain: '' };
+    }
+  } catch {
+    // Older mobile sessions stored one plain-text observation.
+  }
+  return { answers: {}, plain: value.trim() };
+};
+
+function DetailBlock({
+  icon: Icon,
+  label,
+  value,
+  colors,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value?: string | null;
+  colors: any;
+}) {
+  return (
+    <View style={[styles.detailBlock, { borderColor: colors.border }]}>
+      <View style={styles.detailHeading}>
+        <Icon size={14} color={colors.primary} strokeWidth={2.2} />
+        <Text style={[styles.detailLabel, { color: colors.text }]}>
+          {label}
+        </Text>
+      </View>
+      <Text
+        style={[
+          styles.detailValue,
+          { color: value?.trim() ? colors.textSecondary : colors.muted },
+        ]}
+      >
+        {value?.trim() || 'Nothing was recorded for this part of the study.'}
+      </Text>
+    </View>
+  );
+}
+
 /**
  * "YOUR LAB STUDIES" — shows the Exegesis Lab sessions the user has done on
- * this exact verse. Each study card is an accordion (like the VERSE STUDY
- * TOOLS list): tapping the header expands it to reveal ALL five stage items —
- * Look / Listen / Learn / Abide / Apply — each showing its completion state.
- * Done and current stages resume the study at that stage; a Resume button
- * continues from where the study left off. Hidden when there are no sessions
- * for the verse.
+ * this exact verse. Each study card expands in place and loads the complete
+ * session. Look / Listen / Learn / Abide / Apply are nested accordions so the
+ * user's saved work can be reviewed without leaving the dictionary.
  */
 export default function LabStudiesSection({
   bookName,
@@ -91,10 +195,15 @@ export default function LabStudiesSection({
   verse,
   colors,
 }: Props) {
-  const navigation = useNavigation<any>();
   const [sessions, setSessions] = useState<LabSession[]>([]);
   const [loading, setLoading] = useState(false);
   const [openSessionId, setOpenSessionId] = useState<string | null>(null);
+  const [openStage, setOpenStage] = useState<LabStage | null>(null);
+  const [sessionDetails, setSessionDetails] = useState<
+    Record<string, LabSession>
+  >({});
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null);
+  const [detailErrorId, setDetailErrorId] = useState<string | null>(null);
 
   const loadStudies = useCallback(async () => {
     setLoading(true);
@@ -125,8 +234,49 @@ export default function LabStudiesSection({
   }, [bookName, chapter, verse]);
 
   useEffect(() => {
+    setOpenSessionId(null);
+    setOpenStage(null);
+    setSessionDetails({});
+    setDetailErrorId(null);
     loadStudies();
   }, [loadStudies]);
+
+  const loadSessionDetail = useCallback(
+    async (session: LabSession, force = false) => {
+      if (!force && sessionDetails[session.id]) return;
+      setDetailLoadingId(session.id);
+      setDetailErrorId(null);
+      try {
+        const res = await sendPostRequest<LabSession>(
+          'exegesis',
+          session.id,
+          {},
+        );
+        if (res.returnCode !== 200 || !res.returnData) {
+          throw new Error(res.returnMessage || 'Unable to load study');
+        }
+        setSessionDetails(prev => ({
+          ...prev,
+          [session.id]: { ...session, ...res.returnData },
+        }));
+      } catch {
+        setDetailErrorId(session.id);
+      } finally {
+        setDetailLoadingId(prev => (prev === session.id ? null : prev));
+      }
+    },
+    [sessionDetails],
+  );
+
+  const toggleSession = useCallback(
+    (session: LabSession) => {
+      const opening = openSessionId !== session.id;
+      setOpenSessionId(opening ? session.id : null);
+      setOpenStage(null);
+      if (opening) loadSessionDetail(session);
+    },
+    [loadSessionDetail, openSessionId],
+  );
 
   const stageState = useCallback(
     (session: LabSession, stage: LabStage): 'done' | 'current' | 'pending' => {
@@ -147,17 +297,14 @@ export default function LabStudiesSection({
     [],
   );
 
-  const stageProgress = useCallback(
-    (session: LabSession) => {
-      if (session.completed || session.currentStage === 'completed')
-        return STAGE_ORDER.length;
-      // 'abandoned' is not in STAGE_ORDER — treat it as no completed stages.
-      if (session.currentStage === 'abandoned') return 0;
-      const curIdx = STAGE_ORDER.indexOf(session.currentStage as LabStage);
-      return curIdx < 0 ? 0 : curIdx;
-    },
-    [],
-  );
+  const stageProgress = useCallback((session: LabSession) => {
+    if (session.completed || session.currentStage === 'completed')
+      return STAGE_ORDER.length;
+    // 'abandoned' is not in STAGE_ORDER — treat it as no completed stages.
+    if (session.currentStage === 'abandoned') return 0;
+    const curIdx = STAGE_ORDER.indexOf(session.currentStage as LabStage);
+    return curIdx < 0 ? 0 : curIdx;
+  }, []);
 
   const statusLabel = useMemo(
     () => (session: LabSession) => {
@@ -172,20 +319,288 @@ export default function LabStudiesSection({
     [],
   );
 
-  const openStudy = useCallback(
-    (session: LabSession, stage?: LabStage) => {
-      navigation.navigate(route.bibleStudy, {
-        sessionId: session.id,
-        stage: stage || session.currentStage,
-        passageRef: session.passageRef,
-        bookName: session.bookName,
-        chapter: Number(session.chapter),
-        verseStart: Number(session.verseStart || 0),
-        verseEnd: Number(session.verseEnd || session.verseStart || 0),
-      });
-    },
-    [navigation],
-  );
+  const renderStageContent = (stage: LabStage, session: LabSession) => {
+    const prompts = parseStringArray(session.lookPromptsJson);
+    const look = parseLookAnswers(session.lookNotes);
+    const strongsWords = parseStrongsWords(session.strongsWords);
+    const strongsIds = (session.strongsIds || '')
+      .split(',')
+      .map(id => id.trim())
+      .filter(Boolean);
+    const displayedStrongsWords: StrongsWord[] =
+      strongsWords.length > 0
+        ? strongsWords
+        : strongsIds.map(strongsId => ({ strongsId }));
+
+    if (stage === 'look') {
+      return (
+        <View style={styles.stagePanel}>
+          <Text style={[styles.stageIntro, { color: colors.textSecondary }]}>
+            A record of what stood out while carefully observing the passage.
+          </Text>
+          {!!look.plain && (
+            <DetailBlock
+              icon={Eye}
+              label="Observations and responses"
+              value={look.plain}
+              colors={colors}
+            />
+          )}
+          {(prompts.length > 0 || Object.keys(look.answers).length > 0) && (
+            <View style={[styles.detailBlock, { borderColor: colors.border }]}>
+              <View style={styles.detailHeading}>
+                <ScrollText size={14} color={colors.primary} />
+                <Text style={[styles.detailLabel, { color: colors.text }]}>
+                  Guided observations
+                </Text>
+              </View>
+              {(prompts.length > 0
+                ? prompts.map((question, index) => ({
+                    question,
+                    answer: look.answers[String(index)],
+                    key: String(index),
+                  }))
+                : Object.entries(look.answers).map(([key, answer]) => ({
+                    question: `Observation ${Number(key) + 1}`,
+                    answer,
+                    key,
+                  }))
+              ).map(({ question, answer, key }, index) => (
+                <View key={key} style={styles.promptRow}>
+                  <Text
+                    style={[styles.promptNumber, { color: colors.primary }]}
+                  >
+                    {index + 1}
+                  </Text>
+                  <View style={styles.promptContent}>
+                    <Text
+                      style={[styles.promptQuestion, { color: colors.text }]}
+                    >
+                      {question}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.promptText,
+                        { color: answer ? colors.textSecondary : colors.muted },
+                      ]}
+                    >
+                      {answer || 'No response recorded.'}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+          {!look.plain &&
+            prompts.length === 0 &&
+            Object.keys(look.answers).length === 0 && (
+              <DetailBlock
+                icon={Eye}
+                label="Observations and responses"
+                colors={colors}
+              />
+            )}
+        </View>
+      );
+    }
+
+    if (stage === 'listen') {
+      const listenedFor = formatDuration(session.listenElapsed);
+      const plannedDuration = formatDuration(session.listenDuration);
+      return (
+        <View style={styles.stagePanel}>
+          <Text style={[styles.stageIntro, { color: colors.textSecondary }]}>
+            Time set aside to hear, repeat, and dwell on the passage.
+          </Text>
+          <View style={styles.metricGrid}>
+            <View
+              style={[
+                styles.metricCard,
+                {
+                  backgroundColor: `${colors.primary}0D`,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Clock3 size={15} color={colors.primary} />
+              <Text style={[styles.metricLabel, { color: colors.muted }]}>
+                Planned
+              </Text>
+              <Text style={[styles.metricValue, { color: colors.text }]}>
+                {plannedDuration}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.metricCard,
+                {
+                  backgroundColor: `${colors.primary}0D`,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Volume2 size={15} color={colors.primary} />
+              <Text style={[styles.metricLabel, { color: colors.muted }]}>
+                Listened
+              </Text>
+              <Text style={[styles.metricValue, { color: colors.text }]}>
+                {listenedFor}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.completionRow}>
+            <Check
+              size={14}
+              color={session.listenCompleted ? colors.success : colors.muted}
+            />
+            <Text
+              style={[
+                styles.completionText,
+                {
+                  color: session.listenCompleted
+                    ? colors.success
+                    : colors.textSecondary,
+                },
+              ]}
+            >
+              {session.listenCompleted
+                ? 'Listening practice completed'
+                : 'Listening practice was not marked complete'}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (stage === 'learn') {
+      return (
+        <View style={styles.stagePanel}>
+          <Text style={[styles.stageIntro, { color: colors.textSecondary }]}>
+            Insights gathered from context, language, cross-references, and
+            study resources.
+          </Text>
+          <DetailBlock
+            icon={BookOpen}
+            label="Study notes and insights"
+            value={session.learnNotes}
+            colors={colors}
+          />
+          {(strongsWords.length > 0 || strongsIds.length > 0) && (
+            <View style={[styles.detailBlock, { borderColor: colors.border }]}>
+              <View style={styles.detailHeading}>
+                <FileText size={14} color={colors.primary} />
+                <Text style={[styles.detailLabel, { color: colors.text }]}>
+                  Original-language words studied
+                </Text>
+              </View>
+              <View style={styles.chipWrap}>
+                {displayedStrongsWords.map((word, index) => {
+                  const id = word.strongsId || strongsIds[index] || 'Word';
+                  const term =
+                    word.surfaceText || word.lemma || word.originalWord;
+                  return (
+                    <View
+                      key={`${id}-${index}`}
+                      style={[
+                        styles.wordChip,
+                        { backgroundColor: `${colors.primary}12` },
+                      ]}
+                    >
+                      <Text style={[styles.wordId, { color: colors.primary }]}>
+                        {id}
+                      </Text>
+                      {!!term && (
+                        <Text
+                          style={[
+                            styles.wordTerm,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {term}
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    if (stage === 'abide') {
+      return (
+        <View style={styles.stagePanel}>
+          <Text style={[styles.stageIntro, { color: colors.textSecondary }]}>
+            The personal response formed by dwelling on the truth of the
+            passage.
+          </Text>
+          <DetailBlock
+            icon={Heart}
+            label="Reflection"
+            value={session.abideReflection}
+            colors={colors}
+          />
+          <DetailBlock
+            icon={Sprout}
+            label="Prayer"
+            value={session.abidePrayer}
+            colors={colors}
+          />
+          {!!session.abideTags?.trim() && (
+            <View style={styles.tagRow}>
+              <Tag size={13} color={colors.muted} />
+              <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+                {session.abideTags}
+              </Text>
+            </View>
+          )}
+          <View style={styles.privacyRow}>
+            <Lock size={13} color={colors.muted} />
+            <Text style={[styles.privacyText, { color: colors.muted }]}>
+              {session.isPublic ? 'Shared publicly' : 'Private study'}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.stagePanel}>
+        <Text style={[styles.stageIntro, { color: colors.textSecondary }]}>
+          The practical response chosen to carry this passage into daily life.
+        </Text>
+        <DetailBlock
+          icon={Target}
+          label="Practical application"
+          value={session.abideApplication}
+          colors={colors}
+        />
+        <View
+          style={[
+            styles.outcomeCard,
+            {
+              backgroundColor: `${colors.success}10`,
+              borderColor: `${colors.success}35`,
+            },
+          ]}
+        >
+          <Check size={15} color={colors.success} strokeWidth={2.5} />
+          <View style={styles.outcomeTextWrap}>
+            <Text style={[styles.outcomeTitle, { color: colors.text }]}>
+              {session.completed ? 'Study completed' : 'Study in progress'}
+            </Text>
+            <Text style={[styles.outcomeText, { color: colors.textSecondary }]}>
+              {session.journalEntryId
+                ? 'This study was saved to your Legacy Ledger.'
+                : 'No Legacy Ledger entry is linked to this study yet.'}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   if (loading) {
     return (
@@ -209,9 +624,7 @@ export default function LabStudiesSection({
           session.completed || session.currentStage === 'completed';
         const abandoned = session.currentStage === 'abandoned';
         const status = statusLabel(session);
-        const date = formatStudyDate(
-          session.updatedOn || session.createdOn,
-        );
+        const date = formatStudyDate(session.updatedOn || session.createdOn);
         const open = openSessionId === session.id;
 
         return (
@@ -225,9 +638,10 @@ export default function LabStudiesSection({
             {/* ── Header — toggles the accordion ── */}
             <TouchableOpacity
               activeOpacity={0.75}
-              onPress={() =>
-                setOpenSessionId(prev => (prev === session.id ? null : session.id))
-              }
+              accessibilityRole="button"
+              accessibilityState={{ expanded: open }}
+              accessibilityLabel={`${session.passageRef}, ${status}`}
+              onPress={() => toggleSession(session)}
             >
               {/* Header: icon + ref + status pill */}
               <View style={styles.cardHeader}>
@@ -237,7 +651,11 @@ export default function LabStudiesSection({
                     { backgroundColor: `${colors.primary}14` },
                   ]}
                 >
-                  <BookOpen size={17} color={colors.primary} strokeWidth={2.2} />
+                  <BookOpen
+                    size={17}
+                    color={colors.primary}
+                    strokeWidth={2.2}
+                  />
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={[styles.cardRef, { color: colors.text }]}>
@@ -251,7 +669,9 @@ export default function LabStudiesSection({
                           color={colors.muted}
                           strokeWidth={2.2}
                         />
-                        <Text style={[styles.cardStatus, { color: colors.muted }]}>
+                        <Text
+                          style={[styles.cardStatus, { color: colors.muted }]}
+                        >
                           {date}
                         </Text>
                       </View>
@@ -303,7 +723,9 @@ export default function LabStudiesSection({
                     styles.progressFill,
                     {
                       width: `${pct}%`,
-                      backgroundColor: abandoned ? colors.muted : colors.primary,
+                      backgroundColor: abandoned
+                        ? colors.muted
+                        : colors.primary,
                     },
                   ]}
                 />
@@ -323,109 +745,156 @@ export default function LabStudiesSection({
             {/* ── Expanded stage items (accordion body) ── */}
             <StudyRollPanel open={open}>
               <View style={styles.stageList}>
-                {STAGE_ORDER.map(stage => {
-                  const meta = STAGE_META[stage];
-                  const Icon = meta.icon;
-                  const state = stageState(session, stage);
-                  const isStageDone = state === 'done' && !abandoned;
-                  const isCurrent = state === 'current';
-                  const tappable = !abandoned && (isStageDone || isCurrent);
-                  const rowColor = isStageDone
-                    ? colors.success
-                    : isCurrent
-                      ? colors.primary
-                      : colors.muted;
-
-                  return (
-                    <TouchableOpacity
-                      key={stage}
-                      style={styles.stageRow}
-                      activeOpacity={0.7}
-                      disabled={!tappable}
-                      onPress={() => openStudy(session, stage)}
+                {detailLoadingId === session.id && (
+                  <View style={styles.detailLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text
+                      style={[
+                        styles.detailLoadingText,
+                        { color: colors.muted },
+                      ]}
                     >
+                      Loading your complete study...
+                    </Text>
+                  </View>
+                )}
+
+                {detailErrorId === session.id && (
+                  <View
+                    style={[
+                      styles.detailError,
+                      { backgroundColor: `${colors.muted}0D` },
+                    ]}
+                  >
+                    <CircleAlert size={17} color={colors.muted} />
+                    <Text
+                      style={[
+                        styles.detailErrorText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      The full study could not be loaded.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.retryButton}
+                      onPress={() => loadSessionDetail(session, true)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Retry loading study"
+                    >
+                      <RefreshCw size={13} color={colors.primary} />
+                      <Text
+                        style={[styles.retryText, { color: colors.primary }]}
+                      >
+                        Retry
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {!!sessionDetails[session.id] &&
+                  STAGE_ORDER.map(stage => {
+                    const detail = sessionDetails[session.id];
+                    const meta = STAGE_META[stage];
+                    const Icon = meta.icon;
+                    const state = stageState(detail, stage);
+                    const isStageDone = state === 'done' && !abandoned;
+                    const isCurrent = state === 'current';
+                    const stageOpen = openStage === stage;
+                    const rowColor = isStageDone
+                      ? colors.success
+                      : isCurrent
+                        ? colors.primary
+                        : colors.muted;
+
+                    return (
                       <View
+                        key={stage}
                         style={[
-                          styles.stageIcon,
-                          {
-                            backgroundColor: isStageDone
-                              ? `${colors.success}16`
-                              : isCurrent
-                                ? `${colors.primary}16`
-                                : `${colors.muted}12`,
-                          },
+                          styles.stageItem,
+                          { borderColor: colors.border },
                         ]}
                       >
-                        <Icon
-                          size={15}
-                          color={rowColor}
-                          strokeWidth={isCurrent ? 2.4 : 2.1}
-                        />
-                      </View>
-                      <View style={styles.stageTextWrap}>
-                        <Text style={[styles.stageLabel, { color: rowColor }]}>
-                          {meta.label}
-                        </Text>
-                        <Text
-                          style={[styles.stageDesc, { color: colors.muted }]}
-                        >
-                          {meta.desc}
-                        </Text>
-                      </View>
-                      {isStageDone && (
-                        <View
+                        <TouchableOpacity
                           style={[
-                            styles.stageStatePill,
-                            { backgroundColor: `${colors.success}14` },
+                            styles.stageRow,
+                            stageOpen && {
+                              backgroundColor: `${colors.primary}08`,
+                            },
                           ]}
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                          accessibilityState={{ expanded: stageOpen }}
+                          accessibilityLabel={`${meta.label}, ${
+                            isStageDone
+                              ? 'completed'
+                              : isCurrent
+                                ? 'current stage'
+                                : 'not started'
+                          }`}
+                          onPress={() =>
+                            setOpenStage(prev =>
+                              prev === stage ? null : stage,
+                            )
+                          }
                         >
-                          <Check size={11} color={colors.success} strokeWidth={3} />
-                          <Text
-                            style={[styles.stageStateText, { color: colors.success }]}
+                          <View
+                            style={[
+                              styles.stageIcon,
+                              {
+                                backgroundColor: isStageDone
+                                  ? `${colors.success}16`
+                                  : isCurrent
+                                    ? `${colors.primary}16`
+                                    : `${colors.muted}12`,
+                              },
+                            ]}
                           >
-                            Done
-                          </Text>
-                        </View>
-                      )}
-                      {isCurrent && (
-                        <View style={styles.stageCurrentWrap}>
+                            <Icon
+                              size={15}
+                              color={rowColor}
+                              strokeWidth={isCurrent ? 2.4 : 2.1}
+                            />
+                          </View>
+                          <View style={styles.stageTextWrap}>
+                            <Text
+                              style={[styles.stageLabel, { color: rowColor }]}
+                            >
+                              {meta.label}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.stageDesc,
+                                { color: colors.muted },
+                              ]}
+                            >
+                              {meta.desc}
+                            </Text>
+                          </View>
                           <Text
-                            style={[styles.stageStateText, { color: colors.primary }]}
+                            style={[styles.stageStateText, { color: rowColor }]}
                           >
-                            Continue
+                            {isStageDone
+                              ? 'Done'
+                              : isCurrent
+                                ? 'Current'
+                                : 'Not started'}
                           </Text>
-                          <ChevronRight size={14} color={colors.primary} />
-                        </View>
-                      )}
-                      {!isStageDone && !isCurrent && (
-                        <Text
-                          style={[styles.stageStateText, { color: colors.muted }]}
-                        >
-                          Not started
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-
-                {/* Resume — continues from where the study left off */}
-                <TouchableOpacity
-                  style={[
-                    styles.resumeBtn,
-                    { backgroundColor: `${colors.primary}14` },
-                  ]}
-                  activeOpacity={0.75}
-                  onPress={() => openStudy(session)}
-                >
-                  <Text style={[styles.resumeText, { color: colors.primary }]}>
-                    {isDone
-                      ? 'Review study'
-                      : abandoned
-                        ? 'Start over'
-                        : `Resume at ${STAGE_META[session.currentStage as LabStage]?.label || 'current stage'}`}
-                  </Text>
-                  <ChevronRight size={15} color={colors.primary} />
-                </TouchableOpacity>
+                          <ChevronDown
+                            size={15}
+                            color={stageOpen ? colors.primary : colors.muted}
+                            style={{
+                              transform: [
+                                { rotate: stageOpen ? '180deg' : '0deg' },
+                              ],
+                            }}
+                          />
+                        </TouchableOpacity>
+                        <StudyRollPanel open={stageOpen}>
+                          {renderStageContent(stage, detail)}
+                        </StudyRollPanel>
+                      </View>
+                    );
+                  })}
               </View>
             </StudyRollPanel>
           </View>
@@ -525,14 +994,19 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'transparent',
-    gap: 2,
+    gap: 8,
+  },
+  stageItem: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   stageRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    gap: 9,
   },
   stageIcon: {
     width: 32,
@@ -552,34 +1026,183 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 1,
   },
-  stageStatePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  stageCurrentWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
   stageStateText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
   },
-  resumeBtn: {
+  detailLoading: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    marginTop: 8,
-    paddingVertical: 10,
-    borderRadius: 11,
+    gap: 8,
+    paddingVertical: 20,
   },
-  resumeText: {
+  detailLoadingText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  detailError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    padding: 12,
+  },
+  detailErrorText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+  },
+  retryText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  stagePanel: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+  },
+  stageIntro: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  detailBlock: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 10,
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  detailHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 5,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  detailValue: {
+    fontSize: 12.5,
+    lineHeight: 19,
+  },
+  promptRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 7,
+  },
+  promptNumber: {
+    width: 18,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  promptContent: {
+    flex: 1,
+  },
+  promptQuestion: {
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  promptText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  metricGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  metricCard: {
+    flex: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    padding: 10,
+  },
+  metricLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  metricValue: {
     fontSize: 12.5,
     fontWeight: '800',
+    marginTop: 2,
+  },
+  completionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  completionText: {
+    flex: 1,
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  wordChip: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  wordId: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  wordTerm: {
+    fontSize: 10.5,
+    marginTop: 1,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginBottom: 8,
+  },
+  tagText: {
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 17,
+  },
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  privacyText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  outcomeCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    padding: 10,
+  },
+  outcomeTextWrap: {
+    flex: 1,
+  },
+  outcomeTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  outcomeText: {
+    fontSize: 11.5,
+    lineHeight: 16,
+    marginTop: 2,
   },
 });
