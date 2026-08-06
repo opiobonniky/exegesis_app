@@ -766,71 +766,18 @@ export default function VerseCard({
               </View>
             )}
 
-            {explanationVisible && (
-              <View style={{ position: 'relative' }}>
-                {/* Hidden measurer — always present, tracks true content height.
-                    Renders the SAME props as the display below (incl. onHide) so
-                    the measured height matches the visible card exactly. */}
-                <View
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    opacity: 0,
-                    pointerEvents: 'none',
-                  }}
-                  onLayout={e => {
-                    const h = e.nativeEvent.layout.height;
-                    if (!expAnimReady) {
-                      setExpAnimReady(true);
-                      expAnim.setValue(0);
-                      Animated.timing(expAnim, {
-                        toValue: h,
-                        duration: 1000,
-                        easing: Easing.out(Easing.ease),
-                        useNativeDriver: false,
-                      }).start(() => setExpAnimDone(true));
-                    } else if (expAnimDone && !expClosing) {
-                      expAnim.setValue(h);
-                    }
-                  }}
-                >
-                  <VerseExplanationContent
-                    explanationData={explanationData}
-                    colors={colors}
-                    isRtl={isRtl}
-                    bc={bc}
-                    journalPrompts={journalPrompts}
-                    navigation={navigation}
-                    currentBook={currentBook}
-                    currentChapter={currentChapter}
-                    verseNumber={verseNumber}
-                  />
-                </View>
-
-                {/* Animated display */}
-                <Animated.View
-                  style={[
-                    (!expAnimDone || expClosing) && {
-                      height: expAnim,
-                      overflow: 'hidden',
-                    },
-                  ]}
-                >
-                  <VerseExplanationContent
-                    explanationData={explanationData}
-                    colors={colors}
-                    isRtl={isRtl}
-                    bc={bc}
-                    journalPrompts={journalPrompts}
-                    navigation={navigation}
-                    currentBook={currentBook}
-                    currentChapter={currentChapter}
-                    verseNumber={verseNumber}
-                  />
-                </Animated.View>
-              </View>
+            {explanationData?.explanation && (
+              <VerseExplanationContent
+                explanationData={explanationData}
+                colors={colors}
+                isRtl={isRtl}
+                bc={bc}
+                journalPrompts={journalPrompts}
+                navigation={navigation}
+                currentBook={currentBook}
+                currentChapter={currentChapter}
+                verseNumber={verseNumber}
+              />
             )}
 
             {/* Inline Strong's Concordance — replaces the old bottom sheet */}
