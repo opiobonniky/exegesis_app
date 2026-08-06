@@ -4,6 +4,12 @@ import { ttsService, TTSVoice } from '../services/ttsService';
 import { computeWordMap, WordSpan } from '../utilits/bibleUtils';
 
 const AUDIO_WINDOW_SIZE = 5;
+/** Edge TTS window: a chapter is synthesized in chunks of this many verses so
+ *  playback can start after just a small track instead of the whole chapter. */
+const EDGE_WINDOW_SIZE = 10;
+/** Tiny first utterance used at the start of playback so the reader hears audio
+ *  within ~1s while the rest of the chapter buffers in the background. */
+const EDGE_START_SIZE = 2;
 const SLEEP_TIMER_VALUES = [0, 300, 600, 900, 1800, 60];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -152,23 +158,40 @@ export function useVoiceReading({
     [headingsByVerse],
   );
 
-  const getContinuousText = useCallback(
-    (versesToJoin: Array<{ num: number; text: string }>) =>
-      versesToJoin
-        .map(getNarrationText)
-        .map(text => text.replace(/\.+(["'\u2019\u201d)\]]*)$/, '$1').trim())
-        .join(', '),
-    [getNarrationText],
+  /**
+   * Builds the EXACT prepared text that `speakVerseAtIndex` will synthesize for
+   * the given verses (same narration + same builder), so prefetching it hits the
+   * audio buffer cache and the next window is ready when playback reaches it.
+   */
+  const speakTextFor = useCallback(
+    (
+      versesToSpeak: Array<{ num: number; text: string }>,
+      opts: { announceLocation?: boolean; announceVerseNumbers?: boolean } = {},
+    ) =>
+      bibleTTS.getSpeakVersesText(
+        versesToSpeak.map(v => ({ ...v, text: getNarrationText(v) })),
+        currentBookRef.current,
+        currentChapterRef.current,
+        opts,
+      ),
+    [getNarrationText, currentBookRef, currentChapterRef],
   );
 
   const bufferUpcomingWindows = useCallback(
-    (playlist: Array<{ num: number; text: string }>, index: number) => {
+    (playlist: Array<{ num: number; text: string }>, fromIndex: number) => {
       if (!bibleTTS.edgeEnabled || playlist.length === 0) return;
-      bibleTTS
-        .prefetchAudio(getContinuousText(playlist.slice(index)))
-        .catch(() => {});
+      // Prefetch every window starting at `fromIndex` in small Edge chunks so
+      // each background synthesis is quick and playback never waits for a whole
+      // chapter to be generated.
+      for (let w = fromIndex; w < playlist.length; w += EDGE_WINDOW_SIZE) {
+        const windowText = speakTextFor(
+          playlist.slice(w, w + EDGE_WINDOW_SIZE),
+          {},
+        );
+        bibleTTS.prefetchAudio(windowText, true).catch(() => {});
+      }
     },
-    [getContinuousText],
+    [speakTextFor],
   );
 
   // ── Voice list + selection ─────────────────────────────────────────────────
@@ -234,7 +257,7 @@ export function useVoiceReading({
 
   // ── Core verse playback loop ───────────────────────────────────────────────
   const speakVerseAtIndex = useCallback(
-    async (index: number, fromUserNav = false) => {
+    async (index: number, fromUserNav = false, isStart = false) => {
       const requestId = _requestIdRef.current;
 
       const playlist = audioPlaylistRef.current;
@@ -257,7 +280,9 @@ export function useVoiceReading({
       const chunkSize =
         behaviour === 'continue' || behaviour === 'repeat'
           ? bibleTTS.edgeEnabled
-            ? playlist.length - index
+            ? isStart
+              ? EDGE_START_SIZE
+              : EDGE_WINDOW_SIZE
             : AUDIO_WINDOW_SIZE
           : 1;
       const chunk = playlist.slice(index, index + chunkSize);
@@ -292,8 +317,9 @@ export function useVoiceReading({
           },
         );
 
-        // Reuse the continuous chapter track prepared at startup.
-        bufferUpcomingWindows(playlist, index);
+        // Prefetch every window AFTER the one being played right now, so the
+        // next chunk is already buffered when this one ends.
+        bufferUpcomingWindows(playlist, index + chunk.length);
 
         await speakPromise;
       } catch (err) {
@@ -377,17 +403,19 @@ export function useVoiceReading({
 
       if (requestId !== _requestIdRef.current) return;
 
-      // Prefetch the EXACT track the first speak() call will synthesize, so
-      // playback starts as soon as the audio is ready (single synthesis, no
-      // redundant duplicate fetch on the first tap).
+      // Prefetch the EXACT tiny first-utterance track speak() will synthesize.
+      // It's only EDGE_START_SIZE verses (with the "book, chapter" announce), so
+      // it's ready in well under a second. The rest of the chapter buffers
+      // below while it plays.
       if (bibleTTS.edgeEnabled) {
-        const initialText = bibleTTS.getSpeakVersesText(
-          playlist.slice(startIndex),
-          currentBookRef.current,
-          currentChapterRef.current,
-          { announceLocation: startIndex === 0 && audioScopeRef.current === 'chapter' },
+        const startText = speakTextFor(
+          playlist.slice(startIndex, startIndex + EDGE_START_SIZE),
+          {
+            announceLocation:
+              startIndex === 0 && audioScopeRef.current === 'chapter',
+          },
         );
-        void bibleTTS.prefetchAudio(initialText, true);
+        void bibleTTS.prefetchAudio(startText, true, 'high');
       }
 
       confirmedAudioIndexRef.current = startIndex;
@@ -395,13 +423,14 @@ export function useVoiceReading({
       setIsAudioPaused(false);
       setAudioIsPreparing(true);
 
-      bufferUpcomingWindows(playlist, startIndex);
-      speakVerseAtIndex(startIndex, false);
+      // Buffer the current window (following the start utterance) and every
+      // window after it so there's little or no pause when the start ends.
+      bufferUpcomingWindows(playlist, startIndex + EDGE_START_SIZE);
+      speakVerseAtIndex(startIndex, false, true);
     },
     [
       bufferUpcomingWindows,
-      currentBookRef,
-      currentChapterRef,
+      speakTextFor,
       speakVerseAtIndex,
     ],
   );

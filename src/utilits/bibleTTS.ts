@@ -946,7 +946,10 @@ class BibleTTSManager {
     }
   }
 
-  private _bufferAudio(cleanText: string): Promise<string | null> {
+  private _bufferAudio(
+    cleanText: string,
+    priority: 'high' | 'low' = 'low',
+  ): Promise<string | null> {
     const key = this._audioBufferKey(cleanText);
     const cached = this._audioBuffer.get(key);
     if (cached) return Promise.resolve(cached);
@@ -969,6 +972,7 @@ class BibleTTSManager {
             cleanText,
             this._edgeVoiceId || DEFAULT_EDGE_VOICE_ID,
             this.currentRate,
+            priority,
           );
         } catch {
           // Older backend deployments may not expose timed synthesis yet.
@@ -1047,7 +1051,7 @@ class BibleTTSManager {
       verseWords,
     };
 
-    const filePath = await this._bufferAudio(cleanText);
+    const filePath = await this._bufferAudio(cleanText, 'high');
     if (!filePath) return;
     const wordOffsetsMs =
       this._audioWordOffsets.get(this._audioBufferKey(cleanText)) || [];
@@ -1299,11 +1303,15 @@ class BibleTTSManager {
     await this.speak(fullText, prefixLen);
   }
 
-  async prefetchAudio(text: string, alreadyClean = false): Promise<void> {
+  async prefetchAudio(
+    text: string,
+    alreadyClean = false,
+    priority: 'high' | 'low' = 'low',
+  ): Promise<void> {
     if (!this._edgeEnabled) return;
     const cleanText = alreadyClean ? text : this._prepareTrackText(text);
     try {
-      await this._bufferAudio(cleanText);
+      await this._bufferAudio(cleanText, priority);
     } catch {
       // silent — _speakViaBackend will fetch normally
     }

@@ -79,6 +79,7 @@ export const ttsService = {
     text: string,
     voiceId?: string,
     speed?: number,
+    priority: 'high' | 'low' = 'low',
   ): Promise<{ audio: ArrayBuffer; wordOffsetsMs: number[] }> => {
     const baseURL: string = (api.defaults.baseURL as string) ?? '';
     const authHeader =
@@ -97,6 +98,7 @@ export const ttsService = {
         text,
         voiceId: voiceId || DEFAULT_VOICE_ID,
         speed: speed ?? 1.0,
+        priority,
       }),
     );
     const payload = JSON.parse(await res.text());

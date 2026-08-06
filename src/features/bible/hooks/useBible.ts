@@ -74,6 +74,7 @@ type RootStackParamList = {
   [route.bible]: { bookName: string; chapter: number; verseNumber: number };
   [route.journalEntry]: any;
   [route.fullVerseExplanation]: any;
+  [route.sower]: any;
 };
 
 export const useBible = () => {

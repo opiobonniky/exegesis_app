@@ -305,15 +305,24 @@ export default function Bible() {
         }).start();
       }
 
-      // Scrolling dismisses the verse selection (and any open panels).
-      if (selectedVerses.length > 0) {
+      // Scrolling dismisses a single-tap verse selection, but keeps multi-select
+      // mode active so the reader can keep tapping verses further up/down the
+      // chapter without re-entering the mode.
+      if (selectedVerses.length > 0 && !multiSelectMode) {
         clearSelection();
         exitMultiSelect();
       }
 
       scrollY.current = currentOffset;
     },
-    [bottomTabVisible, tabBarAnimation, selectedVerses, clearSelection, exitMultiSelect],
+    [
+      bottomTabVisible,
+      tabBarAnimation,
+      selectedVerses,
+      multiSelectMode,
+      clearSelection,
+      exitMultiSelect,
+    ],
   );
 
   const { language, translations } = useLanguage();
@@ -815,7 +824,14 @@ export default function Bible() {
       toggleVerseSelection(verseNumber);
       addReadHistory(verseNumber);
     },
-    [isGuest, showAudioPlayer, hasOpenPanel, closeAllPanels, toggleVerseSelection, addReadHistory],
+    [
+      isGuest,
+      showAudioPlayer,
+      hasOpenPanel,
+      closeAllPanels,
+      toggleVerseSelection,
+      addReadHistory,
+    ],
   );
 
   /** Long-press enters multi-select mode with the verse selected. */
@@ -826,7 +842,13 @@ export default function Bible() {
       clearSelection();
       enterMultiSelect(verseNumber);
     },
-    [isGuest, showAudioPlayer, closeAllPanels, clearSelection, enterMultiSelect],
+    [
+      isGuest,
+      showAudioPlayer,
+      closeAllPanels,
+      clearSelection,
+      enterMultiSelect,
+    ],
   );
 
   return (
@@ -947,6 +969,86 @@ export default function Bible() {
               {...panResponder.panHandlers}
             >
               {wrapDismissPressable(
+                <VerseList
+                  versesArray={versesArray}
+                  selectedVerses={selectedVerses}
+                  highlights={highlights}
+                  favorites={favorites}
+                  highlightedVerse={highlightedVerse}
+                  activeAudioVerse={activeAudioVerse}
+                  activeVerseWordMap={activeVerseWordMap}
+                  highlightAnim={highlightAnim}
+                  fadeAnim={fadeAnim}
+                  fontSize={fontSize}
+                  currentBook={currentBook}
+                  currentChapter={currentChapter}
+                  chapterHeadings={chapterHeadings}
+                  colors={COLORS}
+                  styles={styles}
+                  flatListRef={flatListRef as React.RefObject<any>}
+                  loading={loading}
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  onScroll={handleScroll}
+                  scrollEventThrottle={16}
+                  onVersePress={handleTapVerse}
+                  onRemoveHighlight={removeHighlight}
+                  onExplain={async vn => {
+                    if (isGuest) {
+                      showGate('Sign in to see explanations.');
+                      return;
+                    }
+                    const found = await getverseExplanation(
+                      [vn],
+                      currentBook,
+                      currentChapter,
+                    );
+                    if (found) clearSelection();
+                  }}
+                  onStrongs={handleVerseStrongs}
+                  onBackground={handleVerseBackground}
+                  onStudyTools={handleVerseStudyTools}
+                  onJournal={handleVerseJournal}
+                  onDoubleTap={verseNumber => {
+                    openVerseMenu(verseNumber);
+                  }}
+                  onLongPress={handleLongPressVerse}
+                  multiSelectMode={multiSelectMode}
+                  explanationMap={verseExplanationMap}
+                  onDailyVerse={vn => {
+                    getDailyVerseRef(vn, currentBook, currentChapter);
+                  }}
+                  onCloseDailyVerse={vn => {
+                    clearDailyVerseRef(vn);
+                  }}
+                  dailyVerseRefMap={dailyVerseRefMap}
+                  verseJournalPrompts={verseJournalPrompts}
+                  explainingVerse={explainingVerse}
+                  navigation={navigation}
+                  verseWordMap={verseWordMap}
+                  onWordPress={handleWordPress}
+                  studyToolHighlights={studyToolHighlights}
+                  strongsMap={verseStrongsMap}
+                  onCloseStrongs={vn => clearVerseStrongsForVerse(vn)}
+                  backgroundMap={verseBackgroundMap}
+                  onCloseBackground={vn => clearVerseBackgroundForVerse(vn)}
+                  journalOpenVerse={journalOpenVerse}
+                  chapterJournalPrompts={chapterJournalPrompts}
+                  onCloseJournal={handleCloseVerseJournal}
+                  onOpenFullJournal={vn =>
+                    navigation.navigate(route.journalEntry, {
+                      bookName: currentBook,
+                      chapter: currentChapter,
+                      verseStart: vn,
+                      verseEnd: vn,
+                    })
+                  }
+                  listFooter={chapterJournalFooter}
+                />,
+              )}
+            </View>
+          ) : (
+            wrapDismissPressable(
               <VerseList
                 versesArray={versesArray}
                 selectedVerses={selectedVerses}
@@ -958,6 +1060,7 @@ export default function Bible() {
                 highlightAnim={highlightAnim}
                 fadeAnim={fadeAnim}
                 fontSize={fontSize}
+                navigation={navigation}
                 currentBook={currentBook}
                 currentChapter={currentChapter}
                 chapterHeadings={chapterHeadings}
@@ -1002,7 +1105,6 @@ export default function Bible() {
                 dailyVerseRefMap={dailyVerseRefMap}
                 verseJournalPrompts={verseJournalPrompts}
                 explainingVerse={explainingVerse}
-                navigation={navigation}
                 verseWordMap={verseWordMap}
                 onWordPress={handleWordPress}
                 studyToolHighlights={studyToolHighlights}
@@ -1022,87 +1124,7 @@ export default function Bible() {
                   })
                 }
                 listFooter={chapterJournalFooter}
-              />
-              )}
-            </View>
-          ) : (
-            wrapDismissPressable(
-            <VerseList
-              versesArray={versesArray}
-              selectedVerses={selectedVerses}
-              highlights={highlights}
-              favorites={favorites}
-              highlightedVerse={highlightedVerse}
-              activeAudioVerse={activeAudioVerse}
-              activeVerseWordMap={activeVerseWordMap}
-              highlightAnim={highlightAnim}
-              fadeAnim={fadeAnim}
-              fontSize={fontSize}
-              navigation={navigation}
-              currentBook={currentBook}
-              currentChapter={currentChapter}
-              chapterHeadings={chapterHeadings}
-              colors={COLORS}
-              styles={styles}
-              flatListRef={flatListRef as React.RefObject<any>}
-              loading={loading}
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              onVersePress={handleTapVerse}
-              onRemoveHighlight={removeHighlight}
-              onExplain={async vn => {
-                if (isGuest) {
-                  showGate('Sign in to see explanations.');
-                  return;
-                }
-                const found = await getverseExplanation(
-                  [vn],
-                  currentBook,
-                  currentChapter,
-                );
-                if (found) clearSelection();
-              }}
-              onStrongs={handleVerseStrongs}
-              onBackground={handleVerseBackground}
-              onStudyTools={handleVerseStudyTools}
-              onJournal={handleVerseJournal}
-              onDoubleTap={verseNumber => {
-                openVerseMenu(verseNumber);
-              }}
-              onLongPress={handleLongPressVerse}
-              multiSelectMode={multiSelectMode}
-              explanationMap={verseExplanationMap}
-              onDailyVerse={vn => {
-                getDailyVerseRef(vn, currentBook, currentChapter);
-              }}
-              onCloseDailyVerse={vn => {
-                clearDailyVerseRef(vn);
-              }}
-              dailyVerseRefMap={dailyVerseRefMap}
-              verseJournalPrompts={verseJournalPrompts}
-              explainingVerse={explainingVerse}
-              verseWordMap={verseWordMap}
-              onWordPress={handleWordPress}
-              studyToolHighlights={studyToolHighlights}
-              strongsMap={verseStrongsMap}
-              onCloseStrongs={vn => clearVerseStrongsForVerse(vn)}
-              backgroundMap={verseBackgroundMap}
-              onCloseBackground={vn => clearVerseBackgroundForVerse(vn)}
-              journalOpenVerse={journalOpenVerse}
-              chapterJournalPrompts={chapterJournalPrompts}
-              onCloseJournal={handleCloseVerseJournal}
-              onOpenFullJournal={vn =>
-                navigation.navigate(route.journalEntry, {
-                  bookName: currentBook,
-                  chapter: currentChapter,
-                  verseStart: vn,
-                  verseEnd: vn,
-                })
-              }
-              listFooter={chapterJournalFooter}
-            />
+              />,
             )
           )}
 
@@ -1531,6 +1553,85 @@ export default function Bible() {
         freeTranslationsOnly={freeTranslationsOnly}
       />
 
+      {multiSelectMode && selectedVerses.length > 0 && (
+        <View
+          style={[styles.multiSelectWrap, isRtl && styles.multiSelectWrapRtl]}
+        >
+          <VerseMultiSelectBar
+            count={selectedVerses.length}
+            colors={COLORS}
+            isDark={isDark}
+            highlightColor={lastHighlightColor}
+            onHighlight={() =>
+              guard(
+                'Highlights are saved to your account. Sign in to use this feature.',
+                () => {
+                  // Batch: the whole selection is queued via pendingVerses,
+                  // so every selected verse receives the chosen color.
+                  setPendingVerses([...selectedVerses]);
+                  setShowHighlightPicker(true);
+                },
+              )
+            }
+            onNote={() =>
+              guard(
+                'Notes are saved to your account. Sign in to use this feature.',
+                () => {
+                  // Batch: the whole selection is queued via pendingVerses,
+                  // so every selected verse receives the note.
+                  setPendingVerses([...selectedVerses]);
+                  if (selectedVerses.length === 1)
+                    setVerseRangeSelection(
+                      selectedVerses[0],
+                      selectedVerses[0],
+                    );
+                  openNoteModal();
+                },
+              )
+            }
+            onFavorite={() =>
+              guard(
+                'Favourites are saved to your account. Sign in to use this feature.',
+                () => {
+                  const verses = [...selectedVerses];
+                  clearSelection();
+                  exitMultiSelect();
+                  addFavorite(verses);
+                },
+              )
+            }
+            onCopy={() =>
+              guard('Copying requires a free account.', () => {
+                const verses = [...selectedVerses];
+                clearSelection();
+                exitMultiSelect();
+                copyVerses(verses);
+              })
+            }
+            onShare={() =>
+              guard('Sharing requires a free account.', () => {
+                const verses = [...selectedVerses];
+                clearSelection();
+                exitMultiSelect();
+                shareVerses(verses);
+              })
+            }
+            onListen={() =>
+              guard('Audio narration requires a free account.', () => {
+                const verses = [...selectedVerses];
+                clearSelection();
+                exitMultiSelect();
+                startReadingSelectedVerses(verses);
+              })
+            }
+            onClear={() => {
+              clearSelection();
+              exitMultiSelect();
+            }}
+          />
+        </View>
+      )}
+
       {/* ── Bottom Action Bar + Bottom Tab — only during reading ────────── */}
       {!isFromReadingPlan && selectionStage === 'reading' && (
         <Animated.View
@@ -1550,88 +1651,6 @@ export default function Bible() {
             opacity: tabBarAnimation,
           }}
         >
-          {/* ── Multi-select floating bar (long-press mode) ─────────────── */}
-          {multiSelectMode && selectedVerses.length > 0 && (
-            <View
-              style={[
-                styles.multiSelectWrap,
-                isRtl && styles.multiSelectWrapRtl,
-              ]}
-            >
-              <VerseMultiSelectBar
-                count={selectedVerses.length}
-                colors={COLORS}
-                isDark={isDark}
-                highlightColor={lastHighlightColor}
-                onHighlight={() =>
-                  guard(
-                    'Highlights are saved to your account. Sign in to use this feature.',
-                    () => {
-                      // Batch: the whole selection is queued via pendingVerses,
-                      // so every selected verse receives the chosen color.
-                      setPendingVerses([...selectedVerses]);
-                      setShowHighlightPicker(true);
-                    },
-                  )
-                }
-                onNote={() =>
-                  guard(
-                    'Notes are saved to your account. Sign in to use this feature.',
-                    () => {
-                      // Batch: the whole selection is queued via pendingVerses,
-                      // so every selected verse receives the note.
-                      setPendingVerses([...selectedVerses]);
-                      if (selectedVerses.length === 1)
-                        setVerseRangeSelection(
-                          selectedVerses[0],
-                          selectedVerses[0],
-                        );
-                      openNoteModal();
-                    },
-                  )
-                }
-                onFavorite={() =>
-                  guard(
-                    'Favourites are saved to your account. Sign in to use this feature.',
-                    () => {
-                      const verses = [...selectedVerses];
-                      clearSelection();
-                      exitMultiSelect();
-                      addFavorite(verses);
-                    },
-                  )
-                }
-                onCopy={() =>
-                  guard('Copying requires a free account.', () => {
-                    const verses = [...selectedVerses];
-                    clearSelection();
-                    exitMultiSelect();
-                    copyVerses(verses);
-                  })
-                }
-                onShare={() =>
-                  guard('Sharing requires a free account.', () => {
-                    const verses = [...selectedVerses];
-                    clearSelection();
-                    exitMultiSelect();
-                    shareVerses(verses);
-                  })
-                }
-                onListen={() =>
-                  guard('Audio narration requires a free account.', () => {
-                    const verses = [...selectedVerses];
-                    clearSelection();
-                    exitMultiSelect();
-                    startReadingSelectedVerses(verses);
-                  })
-                }
-                onClear={() => {
-                  clearSelection();
-                  exitMultiSelect();
-                }}
-              />
-            </View>
-          )}
 
           {selectionStage === 'reading' && (
             <BibleActionBar

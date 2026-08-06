@@ -16,7 +16,6 @@ import {
   Volume2,
   X,
 } from 'lucide-react-native';
-import { useLanguage, isRtlLanguage } from '../../../component/language-translation/LanguageProvider';
 
 export interface VerseMultiSelectBarProps {
   count: number;
@@ -126,9 +125,6 @@ export default function VerseMultiSelectBar({
   onListen,
   onClear,
 }: VerseMultiSelectBarProps) {
-  const { language } = useLanguage();
-  const isRtl = isRtlLanguage(language);
-
   const accent = colors.primary;
 
   const actions = useMemo<ActionItem[]>(
@@ -212,31 +208,36 @@ export default function VerseMultiSelectBar({
         </TouchableOpacity>
       </View>
 
-      {/* Actions row: horizontal scroll of tiles */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.actionsScroll}
-        contentContainerStyle={[
-          styles.actions,
-          isRtl && styles.actionsRtl,
-        ]}
-      >
-        {actions.map(a => (
-          <ActionTile
-            key={a.id}
-            item={a}
-            isDark={isDark}
-            textSecondary={colors.textSecondary ?? colors.muted}
-          />
-        ))}
-      </ScrollView>
+      {/* Actions row: horizontal scroll of tiles.
+          The ScrollView is clamped to the bar's width by the wrapper below, so
+          when the six tiles exceed the available space the last ones are
+          reachable by swiping sideways. A horizontal ScrollView mirrors itself
+          in RTL automatically, so no manual row-reverse is needed. */}
+      <View style={styles.actionsWrap}>
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          bounces={false}
+          style={styles.actionsScroll}
+          contentContainerStyle={styles.actions}
+        >
+          {actions.map(a => (
+            <ActionTile
+              key={a.id}
+              item={a}
+              isDark={isDark}
+              textSecondary={colors.textSecondary ?? colors.muted}
+            />
+          ))}
+        </ScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   bar: {
+    width: '100%',
     borderRadius: 20,
     borderWidth: 1,
     paddingVertical: 10,
@@ -282,6 +283,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  actionsWrap: {
+    width: '100%',
+    overflow: 'hidden',
+  },
   actionsScroll: {
     flexGrow: 0,
   },
@@ -289,9 +294,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     paddingVertical: 2,
-  },
-  actionsRtl: {
-    flexDirection: 'row-reverse',
   },
   action: {
     alignItems: 'center',
