@@ -145,8 +145,8 @@ function getEdgeVoices(): TTSVoice[] {
       category: 'Neural',
     },
     {
-      name: 'Davis (Male)',
-      voiceId: 'en-US-DavisNeural',
+      name: 'Christopher (Male)',
+      voiceId: 'en-US-ChristopherNeural',
       source: 'edge',
       category: 'Neural',
     },
