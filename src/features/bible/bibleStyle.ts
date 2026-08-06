@@ -202,7 +202,7 @@ export const createBibleStyles = (isDark: boolean, isRtl?: boolean) => {
       position: 'absolute',
       left: SPACING.lg,
       right: SPACING.lg,
-      bottom: 110,
+      bottom: 20,
       zIndex: 90,
     },
     multiSelectWrapRtl: {

@@ -1554,9 +1554,7 @@ export default function Bible() {
       />
 
       {multiSelectMode && selectedVerses.length > 0 && (
-        <View
-          style={[styles.multiSelectWrap, isRtl && styles.multiSelectWrapRtl]}
-        >
+        <View style={[styles.multiSelectWrap, isRtl && styles.multiSelectWrapRtl]}>
           <VerseMultiSelectBar
             count={selectedVerses.length}
             colors={COLORS}
@@ -1566,8 +1564,6 @@ export default function Bible() {
               guard(
                 'Highlights are saved to your account. Sign in to use this feature.',
                 () => {
-                  // Batch: the whole selection is queued via pendingVerses,
-                  // so every selected verse receives the chosen color.
                   setPendingVerses([...selectedVerses]);
                   setShowHighlightPicker(true);
                 },
@@ -1577,14 +1573,9 @@ export default function Bible() {
               guard(
                 'Notes are saved to your account. Sign in to use this feature.',
                 () => {
-                  // Batch: the whole selection is queued via pendingVerses,
-                  // so every selected verse receives the note.
                   setPendingVerses([...selectedVerses]);
                   if (selectedVerses.length === 1)
-                    setVerseRangeSelection(
-                      selectedVerses[0],
-                      selectedVerses[0],
-                    );
+                    setVerseRangeSelection(selectedVerses[0], selectedVerses[0]);
                   openNoteModal();
                 },
               )
@@ -1631,9 +1622,8 @@ export default function Bible() {
           />
         </View>
       )}
-
       {/* ── Bottom Action Bar + Bottom Tab — only during reading ────────── */}
-      {!isFromReadingPlan && selectionStage === 'reading' && (
+      {!isFromReadingPlan && selectionStage === 'reading' && !multiSelectMode && (
         <Animated.View
           style={{
             position: 'absolute',
