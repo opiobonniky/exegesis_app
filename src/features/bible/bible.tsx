@@ -391,6 +391,8 @@ export default function Bible() {
   const BIBLE_POSITION_KEY = 'bible_last_position';
   // Book the user last read — highlighted in the book selector for quick return.
   const [lastReadBook, setLastReadBook] = useState<string | null>(null);
+  // Latest verse consumed (tap or audio) so Home can show a per-chapter %.
+  const [lastReadVerse, setLastReadVerse] = useState<number | null>(null);
 
   // On mount: check route params first, then AsyncStorage for saved position
   useEffect(() => {
@@ -429,16 +431,38 @@ export default function Bible() {
   useEffect(() => {
     if (initialLoading) return;
     if (!currentBook || !currentChapter) return;
+    const verseNumber = lastReadVerse ?? 1;
+    const totalVerses = Object.keys(verses).length;
     AsyncStorage.setItem(
       BIBLE_POSITION_KEY,
-      JSON.stringify({ bookName: currentBook, chapter: currentChapter }),
+      JSON.stringify({
+        bookName: currentBook,
+        chapter: currentChapter,
+        verseNumber,
+        totalVerses,
+      }),
     ).catch(() => {});
     // Only mark a 'last read' book once the user has actually entered reading
     // (avoids highlighting the default Genesis on a first-ever launch).
     if (hasEnteredReadingRef.current) {
       setLastReadBook(currentBook);
     }
-  }, [currentBook, currentChapter, initialLoading]);
+  }, [currentBook, currentChapter, initialLoading, verses, lastReadVerse]);
+
+  // Record read history as audio narration advances so Home stats stay in
+  // sync while the user listens (previously only manual taps counted).
+  const lastAudioVerseRecordedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (isGuest) return;
+    if (activeAudioVerse == null) {
+      lastAudioVerseRecordedRef.current = null;
+      return;
+    }
+    if (lastAudioVerseRecordedRef.current === activeAudioVerse) return;
+    lastAudioVerseRecordedRef.current = activeAudioVerse;
+    setLastReadVerse(activeAudioVerse);
+    addReadHistory(activeAudioVerse);
+  }, [activeAudioVerse, addReadHistory, isGuest]);
 
   // ── One-time long-press hint (first time the reader opens) ────────────────
   // Shown once ever (AsyncStorage flag) so new readers discover that long-
@@ -823,6 +847,7 @@ export default function Bible() {
       }
       toggleVerseSelection(verseNumber);
       addReadHistory(verseNumber);
+      setLastReadVerse(verseNumber);
     },
     [
       isGuest,

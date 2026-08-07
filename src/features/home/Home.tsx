@@ -176,7 +176,16 @@ const BOOK_CHAPTER_COUNTS: Record<string, number> = {
 const computeReadingProgress = (pos: {
   bookName: string;
   chapter: number;
+  verseNumber?: number;
+  totalVerses?: number;
 }): number => {
+  // When we know where the user is inside the chapter, report chapter %
+  // (how much of the current chapter has been read).
+  if (pos.verseNumber && pos.totalVerses && pos.totalVerses > 0) {
+    const pct = (pos.verseNumber / pos.totalVerses) * 100;
+    return Math.min(100, Math.max(0, Math.round(pct)));
+  }
+  // Fallback: progress across the whole book by chapter.
   const total = BOOK_CHAPTER_COUNTS[pos.bookName] || 1;
   const pct = (pos.chapter / total) * 100;
   return Math.min(100, Math.max(0, Math.round(pct)));
@@ -207,6 +216,8 @@ export default function Home() {
   const [lastBiblePosition, setLastBiblePosition] = useState<{
     bookName: string;
     chapter: number;
+    verseNumber?: number;
+    totalVerses?: number;
   } | null>(null);
   const [todaysVerse, setTodaysVerse] = useState<any | null>(null);
   const [todaysDevotion, setTodaysDevotion] = useState<any | null>(null);
@@ -345,15 +356,6 @@ export default function Home() {
           time: formatActivityTime(act),
         }));
         setRecentActivity(activities);
-
-        // Approximate "Books Read" from distinct books in recent activity
-        // (the backend doesn't expose a booksRead field yet)
-        const booksRead = new Set(
-          activityRes.returnData.map((act: any) => act.book).filter(Boolean),
-        ).size;
-        if (booksRead > 0) {
-          setStats(prev => ({ ...prev, booksRead }));
-        }
       }
 
       // Today's verse — cache on success, fallback to cache on failure
@@ -431,6 +433,8 @@ export default function Home() {
           setLastBiblePosition({
             bookName: pos.bookName,
             chapter: Number(pos.chapter),
+            verseNumber: pos.verseNumber ? Number(pos.verseNumber) : undefined,
+            totalVerses: pos.totalVerses ? Number(pos.totalVerses) : undefined,
           });
           return;
         }
