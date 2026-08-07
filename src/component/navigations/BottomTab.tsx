@@ -102,7 +102,7 @@ export default function BottomTab({
         },
         {
           id: 'studyBible',
-          label: translations?.bottomTab?.lab || 'LAB',
+          label: translations?.bottomTab?.lab || 'TOOLS',
           icon: NotebookTabs,
           onPress: () =>
             hasAccess('legacy_sower')

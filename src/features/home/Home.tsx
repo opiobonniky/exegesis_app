@@ -25,6 +25,7 @@ import {
   GraduationCap,
   BookText,
   CalendarCheck,
+  Heart,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { AppContext } from '../../common/AppContext';
@@ -264,12 +265,12 @@ export default function Home() {
         icon: GraduationCap,
         onPress: () => navigation.navigate(route.lab),
       },
-      // {
-      //   id: 'lordsbook',
-      //   label: 'LordsBook',
-      //   icon: Heart,
-      //   onPress: () => navigation.navigate(route.home),
-      // },
+      {
+        id: 'lordsbook',
+        label: 'LordsBook',
+        icon: Heart,
+        onPress: () => navigation.navigate(route.home),
+      },
       {
         id: 'resources',
         label: 'Resources',
