@@ -41,6 +41,7 @@ import {
   StrongsWordData,
 } from '../../services/strongsService';
 import { bibleTTS } from '../../utilits/bibleTTS';
+import { ttsService, TTSVoice } from '../../services/ttsService';
 import StrongsWordModal from './components/StrongsWordModal';
 import PassageSelectionStep from './components/PassageSelectionStep';
 import StageStepper from './components/StageStepper';
@@ -277,6 +278,50 @@ export default function LabFlowScreen() {
     return unsub;
   }, []);
 
+  // ── Listen voice selection ──────────────────────────────────────────────
+  const [listenVoiceList, setListenVoiceList] = useState<TTSVoice[]>([]);
+  const [listenVoiceId, setListenVoiceId] = useState<string>(
+    bibleTTS.edgeVoiceId,
+  );
+
+  // Load available narration voices (backend Edge voices, same as the Bible
+  // reader's audio bar) so the Listen stage can switch the reading voice.
+  useEffect(() => {
+    let cancelled = false;
+    ttsService
+      .getVoices()
+      .then(list => {
+        if (cancelled || !list.length) return;
+        setListenVoiceList(list);
+        setListenVoiceId(prev =>
+          list.some(v => v.voiceId === prev)
+            ? prev
+            : list[0].voiceId,
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleListenVoiceSelect = useCallback(async (voiceId: string) => {
+    setListenVoiceId(voiceId);
+    // Stop current playback before switching so the change doesn't clip.
+    isLoopActiveRef.current = false;
+    setListenComplete(false);
+    bibleTTS.stop().catch(() => {});
+    setIsPlaying(false);
+    setIsPaused(false);
+    // Apply the backend Edge voice if available, otherwise fall back to a
+    // device voice with the same id (defensive).
+    if (bibleTTS.edgeEnabled) {
+      await bibleTTS.setEdgeVoice(voiceId);
+    } else {
+      await bibleTTS.setVoice(voiceId);
+    }
+  }, []);
+
   // ── Abide stage ───────────────────────────────────────────────────────────
   const [reflection, setReflection] = useState('');
   const [prayer, setPrayer] = useState('');
@@ -340,10 +385,23 @@ export default function LabFlowScreen() {
   const goToStage = useCallback((newStage: string, animated = true) => {
     const idx = STAGE_ORDER.indexOf(newStage as (typeof STAGE_ORDER)[number]);
     if (idx < 0) return;
+    // Require the user to fill in "Your Observations" before leaving the
+    // Look stage and moving on to the later stages.
+    if (
+      pageIndex === 0 &&
+      idx > 0 &&
+      !(observations ?? '').trim()
+    ) {
+      showToast(
+        'warning',
+        'Please write your observations before continuing.',
+      );
+      return;
+    }
     setStage(newStage);
     setPageIndex(idx);
     carouselRef.current?.scrollTo({ x: idx * SCREEN_WIDTH, animated });
-  }, []);
+  }, [pageIndex, observations]);
 
   // ── Auto-scroll Learn stage tab row when the active tab changes ──────
   useEffect(() => {
@@ -354,8 +412,14 @@ export default function LabFlowScreen() {
   }, [learnTab]);
 
   // ── Sync carousel to the correct page on mount (resuming a study) ────
+  // Runs only once on mount. Re-running on every pageIndex change would issue
+  // a competing non-animated scrollTo that cancels goToStage's animated scroll
+  // mid-flight, causing onMomentumScrollEnd to snap back to the previous page.
+  const hasPositionedCarouselRef = useRef(false);
   useEffect(() => {
+    if (hasPositionedCarouselRef.current) return;
     if (pageIndex > 0 && carouselRef.current) {
+      hasPositionedCarouselRef.current = true;
       // Use requestAnimationFrame to ensure the carousel is laid out before scrolling
       const raf = requestAnimationFrame(() => {
         carouselRef.current?.scrollTo({
@@ -541,7 +605,10 @@ const handleBackToBooks = useCallback(() => {
   }, [sessionId, lookNotes, observations, goToStage]);
 
   const saveListen = useCallback(async () => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      goToStage('learn');
+      return;
+    }
     setSaving(true);
     try {
       await sendPostRequest('exegesis', `${sessionId}/listen`, {
@@ -554,6 +621,24 @@ const handleBackToBooks = useCallback(() => {
       setSaving(false);
     }
   }, [sessionId, selectedRepeats, goToStage]);
+
+  // Skip the remaining repeats and advance to the next stage (stops audio).
+  const handleSkipListen = useCallback(async () => {
+    isLoopActiveRef.current = false;
+    bibleTTS.stop().catch(() => {});
+    setIsPlaying(false);
+    setIsPaused(false);
+    await saveListen();
+  }, [saveListen]);
+
+  // Move back to the Look stage (stops audio).
+  const handleBackToLook = useCallback(() => {
+    isLoopActiveRef.current = false;
+    bibleTTS.stop().catch(() => {});
+    setIsPlaying(false);
+    setIsPaused(false);
+    goToStage('look');
+  }, [goToStage]);
 
   const saveLearn = useCallback(async () => {
     if (!sessionId) return;
@@ -679,18 +764,11 @@ const handleBackToBooks = useCallback(() => {
   // ── TTS passage playback for Listen stage ─────────────────────────────
   const speakPassageWithPreferredVoice = useCallback(async () => {
     if (!passageVerses.length) return;
-    const firstNum = passageVerses[0].verseNumber;
-    const lastNum = passageVerses[passageVerses.length - 1].verseNumber;
-    const rangeStr =
-      firstNum === lastNum
-        ? `verse ${firstNum}`
-        : `verses ${firstNum} to ${lastNum}`;
-    const prefixRaw = `${bookName}, chapter ${chapter}, ${rangeStr}. `;
-    const fullRaw = prefixRaw + passageVerses.map(v => v.text).join(' ');
+    // Read only the verse text — no book/chapter reference or verse numbers.
+    const fullRaw = passageVerses.map(v => v.text).join(' ');
     const fullPrepared = bibleTTS.prepareText(fullRaw);
-    const prefixLen = bibleTTS.prepareText(prefixRaw).length;
+    const prefixLen = 0;
 
-    bibleTTS.setEdgeEnabled(false);
     await bibleTTS.init();
     await bibleTTS.stop();
     await bibleTTS.speak(fullPrepared, prefixLen, 0, undefined, true);
@@ -1031,6 +1109,11 @@ const handleBackToBooks = useCallback(() => {
       onToggle={handleToggle}
       onReset={handleReset}
       onAdvance={saveListen}
+      onSkip={handleSkipListen}
+      onBack={handleBackToLook}
+      voiceList={listenVoiceList}
+      currentVoiceId={listenVoiceId}
+      onVoiceSelect={handleListenVoiceSelect}
     />
   );
 
@@ -1368,18 +1451,18 @@ const handleBackToBooks = useCallback(() => {
                   text: 'Save & Exit',
                   onPress: async () => {
                     await saveCurrentProgress();
-                    navigation.goBack();
+                    navigation.navigate(route.lab, { stage });
                   },
                 },
                 {
                   text: 'Exit Without Saving',
                   style: 'destructive',
-                  onPress: () => navigation.goBack(),
+                  onPress: () => navigation.navigate(route.lab, { stage }),
                 },
               ],
             );
           } else {
-            navigation.goBack();
+            navigation.navigate(route.lab, { stage });
           }
         }}
       />
@@ -1436,6 +1519,23 @@ const handleBackToBooks = useCallback(() => {
             const page = Math.round(
               e.nativeEvent.contentOffset.x / SCREEN_WIDTH,
             );
+            // Block swiping forward from the Look stage until observations
+            // are filled in (snap back to Look and notify the user).
+            if (
+              pageIndex === 0 &&
+              page > 0 &&
+              !(observations ?? '').trim()
+            ) {
+              carouselRef.current?.scrollTo({
+                x: 0,
+                animated: true,
+              });
+              showToast(
+                'warning',
+                'Please write your observations before continuing.',
+              );
+              return;
+            }
             if (page !== pageIndex) {
               setPageIndex(page);
               // Short haptic tap on page change (iOS & Android)
@@ -2335,4 +2435,62 @@ const createStyles = (COLORS: any) =>
       paddingVertical: SPACING.sm,
     },
 
+    // Listen stage - reading voice selector
+    listenVoiceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.md,
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.lg,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.sm,
+      marginBottom: SPACING.md,
+    },
+    listenVoiceIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    listenVoiceLabel: {
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    listenVoiceName: {
+      fontSize: FONT_SIZES.md,
+      fontWeight: '800',
+      marginTop: 1,
+    },
+
+    // Listen stage - stage navigation row
+    listenStageNav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: SPACING.md,
+      paddingVertical: SPACING.md,
+      marginTop: SPACING.sm,
+    },
+    listenStageNavBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderWidth: 1,
+      borderRadius: BORDER_RADIUS.round,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: 8,
+      minHeight: 40,
+    },
+    listenStageNavText: {
+      fontSize: FONT_SIZES.sm,
+      fontWeight: '800',
+    },
+    listenStageNavTitle: {
+      fontSize: FONT_SIZES.xs,
+      fontWeight: '700',
+      letterSpacing: 0.3,
+    },
   });

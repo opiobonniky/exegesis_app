@@ -6,8 +6,6 @@ import {
   BookText,
   Sparkles,
 } from 'lucide-react-native';
-import RichText from '../../../reusable/RichText';
-import VerseReadMore from './VerseReadMore';
 import { route } from '../../../component/navigations/routes';
 import { BORDER_RADIUS } from '../../../constants/theme';
 
@@ -96,14 +94,8 @@ export default function VerseExplanationContent({
 
   return (
     <View style={[s.card, { backgroundColor: `${colors.primary}06` }]}>
-      {/* ── Body — collapsed under ONE Read More at the end ────────────── */}
-      <VerseReadMore
-        collapsedLines={4}
-        colors={colors}
-        isRtl={isRtl}
-        readMoreLabel={bc?.readMore || 'Read more'}
-        showLessLabel={bc?.showLess || 'Show less'}
-      >
+      {/* ── Body ──────────────────────────────────────────────────────── */}
+      <View>
         {/* ── Section 1: Verse Introduction ─────────────────────────── */}
         {hasIntro && (
           <View style={s.section}>
@@ -111,12 +103,7 @@ export default function VerseExplanationContent({
               BookText,
               bc?.verseIntroduction || 'Verse Introduction',
             )}
-            <RichText
-              text={intro}
-              textStyle={[s.bodyText, { color: colors.text }]}
-              accentColor={colors.primary}
-              paragraphGap={8}
-            />
+            <Text style={[s.bodyText, { color: colors.text }]}>{intro}</Text>
           </View>
         )}
 
@@ -142,12 +129,9 @@ export default function VerseExplanationContent({
               bc?.explanation || 'Explanation',
               true,
             )}
-            <RichText
-              text={explanation}
-              textStyle={[s.bodyText, { color: colors.text }]}
-              accentColor={colors.primary}
-              paragraphGap={8}
-            />
+            <Text style={[s.bodyText, { color: colors.text }]}>
+              {explanation}
+            </Text>
           </View>
         )}
 
@@ -175,16 +159,12 @@ export default function VerseExplanationContent({
         {hasApplication && (
           <View style={s.section}>
             {renderSectionHeader(Compass, bc?.application || 'Application')}
-            <RichText
-              text={application}
-              textStyle={[s.bodyText, { color: colors.text }]}
-              accentColor={colors.primary}
-              paragraphGap={8}
-            />
+            <Text style={[s.bodyText, { color: colors.text }]}>
+              {application}
+            </Text>
           </View>
         )}
-
-      </VerseReadMore>
+      </View>
 
       {/* ── Journal prompts ────────────────────────────────────────────── */}
       {journalPrompts.length > 0 && (

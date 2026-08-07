@@ -19,8 +19,6 @@ import {
   Target,
   Quote,
 } from 'lucide-react-native';
-import RichText from '../../../reusable/RichText';
-import VerseReadMore from './VerseReadMore';
 import { SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
 import { StrongsWordData, StrongsEntry } from '../../../services/strongsService';
 import { useLanguage } from '../../../component/language-translation/LanguageProvider';
@@ -292,15 +290,9 @@ export default function VerseStrongsContent({
         </>
       )}
 
-      {/* ── Rich AI study sections — collapsed under ONE Read More ──── */}
+      {/* ── Rich AI study sections ─────────────────────────────────── */}
       {hasRichStudy && (
-        <VerseReadMore
-          collapsedLines={4}
-          colors={colors}
-          isRtl={isRtl}
-          readMoreLabel={bc?.readMore || 'Read more'}
-          showLessLabel={bc?.showLess || 'Show less'}
-        >
+        <View>
           {/* Word Study — the per-word concordance list */}
           {wordStudy && (
             <View style={s.section}>
@@ -312,12 +304,9 @@ export default function VerseStrongsContent({
                   {bc?.strongsWordStudy || 'Strong Concordance Word Study'}
                 </Text>
               </View>
-              <RichText
-                text={wordStudy}
-                textStyle={[s.richText, { color: colors.text }]}
-                accentColor={colors.primary}
-                paragraphGap={10}
-              />
+              <Text style={[s.richText, { color: colors.text }]}>
+                {wordStudy}
+              </Text>
             </View>
           )}
 
@@ -332,12 +321,9 @@ export default function VerseStrongsContent({
                   {bc?.practicalApplications || 'Practical Applications'}
                 </Text>
               </View>
-              <RichText
-                text={applications}
-                textStyle={[s.richText, { color: colors.text }]}
-                accentColor={colors.success}
-                paragraphGap={8}
-              />
+              <Text style={[s.richText, { color: colors.text }]}>
+                {applications}
+              </Text>
             </View>
           )}
 
@@ -352,12 +338,9 @@ export default function VerseStrongsContent({
                   {bc?.keyInsights || 'Key Insights'}
                 </Text>
               </View>
-              <RichText
-                text={insights}
-                textStyle={[s.richText, { color: colors.text }]}
-                accentColor={colors.accent}
-                paragraphGap={8}
-              />
+              <Text style={[s.richText, { color: colors.text }]}>
+                {insights}
+              </Text>
             </View>
           )}
 
@@ -372,15 +355,12 @@ export default function VerseStrongsContent({
                   {bc?.crossReferences || 'Cross References'}
                 </Text>
               </View>
-              <RichText
-                text={crossRefsRich}
-                textStyle={[s.richText, { color: colors.text }]}
-                accentColor={colors.primary}
-                paragraphGap={8}
-              />
+              <Text style={[s.richText, { color: colors.text }]}>
+                {crossRefsRich}
+              </Text>
             </View>
           )}
-        </VerseReadMore>
+        </View>
       )}
 
       {/* ── Entry cross-reference chips (when no rich cross refs) ── */}

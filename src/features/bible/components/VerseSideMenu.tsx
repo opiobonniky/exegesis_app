@@ -228,7 +228,10 @@ export default function VerseSideMenu({
   const startVerse = sortedVerses[0] ?? verseNumber;
   const endVerse = sortedVerses[sortedVerses.length - 1] ?? verseNumber;
 
-  const verseRef = `${currentBook} ${currentChapter}:${verseNumber}`;
+  const verseRef =
+    sortedVerses.length > 1 && startVerse !== endVerse
+      ? `${currentBook} ${currentChapter}:${startVerse}-${endVerse}`
+      : `${currentBook} ${currentChapter}:${verseNumber}`;
 
   const guard = useCallback(
     (msg: string, callback: () => void) => {

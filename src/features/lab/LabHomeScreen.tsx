@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { AppContext } from '../../common/AppContext';
 import { getColors, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../constants/theme';
 import { route } from '../../component/navigations/routes';
@@ -36,6 +36,7 @@ import { STAGE_DESC, STAGE_TIME } from './constants';
 
 export default function LabHomeScreen() {
   const navigation = useNavigation<any>();
+  const navRoute = useRoute<any>();
   const app = useContext(AppContext);
   const isDark = app?.isDark ?? false;
   const COLORS = getColors(isDark);
@@ -46,6 +47,11 @@ export default function LabHomeScreen() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // The stage passed from the active study that we were just on — used to
+  // highlight the "recently passed" stage on the Lab home.
+  const recentStage =
+    (navRoute?.params?.stage as string) || activeSession?.currentStage || '';
 
   const loadData = useCallback(async () => {
     if (!userInfo) {
@@ -175,7 +181,7 @@ export default function LabHomeScreen() {
               <View style={styles.activeCardStageWrap}>
                 <Clock size={12} color="rgba(255,255,255,0.85)" />
                 <Text style={styles.activeCardStage}>
-                  Current: {stageLabels[activeSession.currentStage] || activeSession.currentStage}
+                  Current: {stageLabels[recentStage] || recentStage || stageLabels[activeSession.currentStage] || activeSession.currentStage}
                 </Text>
               </View>
               <Text style={styles.activeCardCta}>Continue Study</Text>
@@ -193,17 +199,25 @@ export default function LabHomeScreen() {
         <View style={styles.stepsList}>
           {(['look', 'listen', 'learn', 'abide', 'apply'] as const).map((step, idx) => {
             const StageIcon = stageIcons[step];
+            const isCurrent = recentStage === step;
             return (
               <View key={step} style={styles.stepRow}>
-                <View style={[styles.stepIconBadge, { backgroundColor: `${COLORS.primary}15` }]}>
-                  <StageIcon size={20} color={COLORS.primary} />
+                <View style={[styles.stepIconBadge, {
+                  backgroundColor: isCurrent ? `${COLORS.accent}22` : `${COLORS.primary}15`,
+                }]}>
+                  <StageIcon size={20} color={isCurrent ? COLORS.accent : COLORS.primary} />
                 </View>
                 <View style={styles.stepBody}>
                   <View style={styles.stepTitleRow}>
-                    <Text style={[styles.stepNum, { color: COLORS.primary }]}>
+                    <Text style={[styles.stepNum, { color: isCurrent ? COLORS.accent : COLORS.primary }]}>
                       {String(idx + 1).padStart(2, '0')}
                     </Text>
                     <Text style={[styles.stepName, { color: COLORS.text }]}>{stageLabels[step]}</Text>
+                    {isCurrent && (
+                      <View style={[styles.recentBadge, { backgroundColor: `${COLORS.accent}18` }]}>
+                        <Text style={[styles.recentBadgeText, { color: COLORS.accent }]}>You're here</Text>
+                      </View>
+                    )}
                   </View>
                   <Text style={[styles.stepDesc, { color: COLORS.textSecondary }]}>
                     {STAGE_DESC[step]}
@@ -536,6 +550,16 @@ const createStyles = (COLORS: any) =>
     },
     stepTimeText: {
       fontSize: 9,
+      fontWeight: '800',
+    },
+    recentBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: BORDER_RADIUS.round,
+      marginLeft: SPACING.xs,
+    },
+    recentBadgeText: {
+      fontSize: 10,
       fontWeight: '800',
     },
 

@@ -13,8 +13,6 @@ import {
   Sparkles,
   X,
 } from 'lucide-react-native';
-import RichText from '../../../reusable/RichText';
-import VerseReadMore from './VerseReadMore';
 import { BookPrologue } from '../../../services/bookProloguesApi';
 import { SPACING, FONT_SIZES, BORDER_RADIUS } from '../../../constants/theme';
 
@@ -144,23 +142,14 @@ export default function VerseBackgroundContent({
         </View>
       ) : (
         <View>
-          <VerseReadMore
-            collapsedLines={4}
-            colors={COLORS}
-            isRtl={isRtl}
-            readMoreLabel={bc?.readMore || 'Read more'}
-            showLessLabel={bc?.showLess || 'Show less'}
-          >
+          <View>
             {/* ── About this verse ─────────────────────────────────── */}
             {hasVerseContent && (
               <View style={s.section}>
                 {sectionLabel(bc?.aboutVerseLabel || 'About this verse')}
-                <RichText
-                  text={background}
-                  textStyle={[s.sectionValue, { color: COLORS.text }]}
-                  accentColor={COLORS.primary}
-                  paragraphGap={8}
-                />
+                <Text style={[s.sectionValue, { color: COLORS.text }]}>
+                  {background}
+                </Text>
               </View>
             )}
 
@@ -172,12 +161,9 @@ export default function VerseBackgroundContent({
                 </View>
                 <View style={s.rowBody}>
                   {sectionLabel(bc?.authorLabel || 'Author')}
-                  <RichText
-                    text={author}
-                    textStyle={[s.rowValue, { color: COLORS.text }]}
-                    accentColor={COLORS.primary}
-                    paragraphGap={6}
-                  />
+                  <Text style={[s.rowValue, { color: COLORS.text }]}>
+                    {author}
+                  </Text>
                 </View>
               </View>
             )}
@@ -189,12 +175,9 @@ export default function VerseBackgroundContent({
                 </View>
                 <View style={s.rowBody}>
                   {sectionLabel(bc?.bookContextLabel || 'Book')}
-                  <RichText
-                    text={bookDesc}
-                    textStyle={[s.rowValue, { color: COLORS.text }]}
-                    accentColor={COLORS.primary}
-                    paragraphGap={6}
-                  />
+                  <Text style={[s.rowValue, { color: COLORS.text }]}>
+                    {bookDesc}
+                  </Text>
                 </View>
               </View>
             )}
@@ -206,16 +189,13 @@ export default function VerseBackgroundContent({
                 </View>
                 <View style={s.rowBody}>
                   {sectionLabel(bc?.contextLabel || 'Context')}
-                  <RichText
-                    text={contextDesc}
-                    textStyle={[s.rowValue, { color: COLORS.text }]}
-                    accentColor={COLORS.primary}
-                    paragraphGap={6}
-                  />
+                  <Text style={[s.rowValue, { color: COLORS.text }]}>
+                    {contextDesc}
+                  </Text>
                 </View>
               </View>
             )}
-          </VerseReadMore>
+          </View>
 
         </View>
       )}

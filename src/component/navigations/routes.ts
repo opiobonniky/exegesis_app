@@ -104,7 +104,7 @@ export type RootStackParamList = {
   [route.notificationSettings]: undefined;
   [route.readingSettings]: undefined;
   [route.bibleStudy]: { bookName: string; chapter: number; verseStart: number; verseEnd: number; stage?: string; learnTab?: string };
-  [route.lab]: undefined;
+  [route.lab]: { stage?: string } | undefined;
   [route.studyGuide]: undefined;
   [route.legacyLedger]: undefined;
   [route.trivia]: undefined;

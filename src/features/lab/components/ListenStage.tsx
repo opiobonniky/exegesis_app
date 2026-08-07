@@ -3,7 +3,11 @@ import {
   ActivityIndicator,
   Animated,
   Clipboard,
+  FlatList,
+  Modal,
+  StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -13,6 +17,8 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Ear,
   Languages,
@@ -26,6 +32,7 @@ import { LISTEN_OPTIONS } from '../constants';
 import WaveformAnimation from '../../../components/WaveformAnimation';
 import { showToast } from '../../../helpers/Toash.helper';
 import StageHeader from './StageHeader';
+import { TTSVoice } from '../../../services/ttsService';
 import {
   getTranslationComparison,
   getVerseResources,
@@ -62,6 +69,14 @@ interface ListenStageProps {
   onToggle: () => void;
   onReset: () => void;
   onAdvance: () => void;
+  /** Stop audio and move to the next stage (skip remaining repeats). */
+  onSkip: () => void;
+  /** Stop audio and move back to the previous stage (Look). */
+  onBack: () => void;
+  /** Available narration voices (same list as the Bible reader's audio bar). */
+  voiceList: TTSVoice[];
+  currentVoiceId?: string;
+  onVoiceSelect?: (voiceId: string) => void;
 }
 
 export default function ListenStage({
@@ -88,11 +103,18 @@ export default function ListenStage({
   onToggle,
   onReset,
   onAdvance,
+  onSkip,
+  onBack,
+  voiceList,
+  currentVoiceId,
+  onVoiceSelect,
 }: ListenStageProps) {
   const isPreparingAudio = audioStarting && !isPlaying && !isPaused;
   const selectedLabel =
     LISTEN_OPTIONS.find(o => o.value === selectedRepeats)?.label || `${selectedRepeats}x`;
   const [copied, setCopied] = useState(false);
+  const [voicePickerVisible, setVoicePickerVisible] = useState(false);
+  const [voiceSearch, setVoiceSearch] = useState('');
 
   const parsedVerse =
     passageVerses.length > 0 ? passageVerses[0].verseNumber : Number(verseStart) || 1;
@@ -370,6 +392,39 @@ export default function ListenStage({
 
       {!listenComplete ? (
         <>
+          {/* ── Reading Voice + Stage navigation (always available) ─────── */}
+          {voiceList.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setVoicePickerVisible(true)}
+              activeOpacity={0.7}
+              style={[
+                styles.listenVoiceRow,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.listenVoiceIcon,
+                  { backgroundColor: `${colors.accent}18` },
+                ]}
+              >
+                <Volume2 size={17} color={colors.accent} strokeWidth={2.2} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.listenVoiceLabel, { color: colors.muted }]}>
+                  Reading Voice
+                </Text>
+                <Text style={[styles.listenVoiceName, { color: colors.text }]} numberOfLines={1}>
+                  {voiceList.find(v => v.voiceId === currentVoiceId)?.name || 'Select voice'}
+                </Text>
+              </View>
+              <ChevronDown size={16} color={colors.muted} />
+            </TouchableOpacity>
+          )}
+
           {!isPlaying && !audioStarting && (
             <>
               {repeatCount > 0 ? (
@@ -503,6 +558,25 @@ export default function ListenStage({
                     <Text style={{ color: colors.error, fontSize: 13, fontWeight: '700' }}>Reset</Text>
                   </TouchableOpacity>
                 )}
+                {!audioStarting && (
+                  <TouchableOpacity
+                    style={{ height: 44, paddingHorizontal: SPACING.lg, borderRadius: 22, borderWidth: 1.5, borderColor: colors.accent, backgroundColor: `${colors.accent}15`, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
+                    onPress={onSkip}
+                    disabled={saving}
+                    activeOpacity={0.7}
+                  >
+                    {saving ? (
+                      <ActivityIndicator size="small" color={colors.accent} />
+                    ) : (
+                      <>
+                        <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '700' }}>
+                          Skip &amp; Continue
+                        </Text>
+                        <ChevronRight size={16} color={colors.accent} strokeWidth={2.4} />
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
 
               <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '600', marginTop: SPACING.md }}>
@@ -539,8 +613,172 @@ export default function ListenStage({
               </>
             )}
           </TouchableOpacity>
+
+          {/* ── Replay option (re-read the passage) ─────────────────────── */}
+          <TouchableOpacity
+            style={[
+              styles.primaryBtn,
+              {
+                backgroundColor: 'transparent',
+                borderWidth: 1.5,
+                borderColor: colors.accent,
+                marginTop: SPACING.md,
+              },
+            ]}
+            onPress={onStart}
+            disabled={isPreparingAudio}
+            activeOpacity={0.8}
+          >
+            {isPreparingAudio ? (
+              <ActivityIndicator size="small" color={colors.accent} />
+            ) : (
+              <>
+                <Play size={18} color={colors.accent} />
+                <Text style={[styles.primaryBtnText, { color: colors.accent }]}>
+                  Replay the Passage
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onReset}
+            activeOpacity={0.7}
+            style={{ marginTop: SPACING.md }}
+          >
+            <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '700' }}>
+              Change reading times
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
+
+      {/* ── Stage navigation (back to Look / forward to Learn) ──────────── */}
+      <View style={styles.listenStageNav}>
+        <TouchableOpacity
+          onPress={onBack}
+          activeOpacity={0.7}
+          style={[
+            styles.listenStageNavBtn,
+            { borderColor: colors.border, backgroundColor: colors.surface },
+          ]}
+        >
+          <ChevronLeft size={17} color={colors.textSecondary} strokeWidth={2.4} />
+          <Text style={[styles.listenStageNavText, { color: colors.textSecondary }]}>
+            Look
+          </Text>
+        </TouchableOpacity>
+        <Text style={[styles.listenStageNavTitle, { color: colors.muted }]}>
+          Step 2 of {stageOrder.length}
+        </Text>
+        <TouchableOpacity
+          onPress={onSkip}
+          disabled={saving}
+          activeOpacity={0.7}
+          style={[
+            styles.listenStageNavBtn,
+            { borderColor: `${colors.accent}60`, backgroundColor: `${colors.accent}12` },
+          ]}
+        >
+          <Text style={[styles.listenStageNavText, { color: colors.accent }]}>
+            Learn
+          </Text>
+          <ChevronRight size={17} color={colors.accent} strokeWidth={2.4} />
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Voice picker (mirrors the Bible reader's audio bar) ─────────── */}
+      <Modal visible={voicePickerVisible} transparent animationType="slide">
+        <View style={localStyles.overlay}>
+          <View
+            style={[
+              localStyles.sheet,
+              { backgroundColor: colors.surface },
+            ]}
+          >
+            <View style={localStyles.sheetHeader}>
+              <Text style={[localStyles.sheetTitle, { color: colors.text }]}>
+                Select Reading Voice
+              </Text>
+              <TouchableOpacity onPress={() => setVoicePickerVisible(false)}>
+                <Text style={[localStyles.sheetClose, { color: colors.muted }]}>
+                  Done
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View
+              style={[
+                localStyles.searchBox,
+                { backgroundColor: `${colors.muted}15` },
+              ]}
+            >
+              <TextInput
+                style={[localStyles.searchInput, { color: colors.text }]}
+                value={voiceSearch}
+                onChangeText={setVoiceSearch}
+                placeholder="Search voices…"
+                placeholderTextColor={colors.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <FlatList
+              data={voiceSearch.trim()
+                ? voiceList.filter(v =>
+                    v.name.toLowerCase().includes(voiceSearch.toLowerCase()) ||
+                    v.voiceId.toLowerCase().includes(voiceSearch.toLowerCase()),
+                  )
+                : voiceList}
+              keyExtractor={item => item.voiceId}
+              renderItem={({ item }) => {
+                const active = currentVoiceId === item.voiceId;
+                return (
+                  <TouchableOpacity
+                    onPress={() => {
+                      onVoiceSelect?.(item.voiceId);
+                      setVoicePickerVisible(false);
+                      setVoiceSearch('');
+                    }}
+                    style={[
+                      localStyles.item,
+                      {
+                        backgroundColor: active
+                          ? `${colors.accent}14`
+                          : 'transparent',
+                      },
+                    ]}
+                  >
+                    <View style={localStyles.itemContent}>
+                      <Text
+                        style={[
+                          localStyles.itemName,
+                          { color: active ? colors.accent : colors.text },
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text style={[localStyles.itemId, { color: colors.muted }]}>
+                        {item.voiceId}
+                      </Text>
+                    </View>
+                    {active && (
+                      <View
+                        style={[
+                          localStyles.check,
+                          { backgroundColor: colors.accent },
+                        ]}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+              contentContainerStyle={localStyles.list}
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Page Indicator Dots ─────────────────────────────────────────── */}
       <View style={styles.pageIndicator}>
@@ -574,3 +812,72 @@ export default function ListenStage({
     </View>
   );
 }
+
+const localStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sheet: {
+    maxHeight: '68%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 8,
+    paddingBottom: 34,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  sheetTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  sheetClose: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  searchBox: {
+    marginHorizontal: 16,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  searchInput: {
+    fontSize: 15,
+    paddingVertical: 10,
+  },
+  list: {
+    paddingBottom: 8,
+  },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    marginHorizontal: 8,
+    borderRadius: 12,
+  },
+  itemContent: {
+    flex: 1,
+    gap: 2,
+  },
+  itemName: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  itemId: {
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+  check: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+});
