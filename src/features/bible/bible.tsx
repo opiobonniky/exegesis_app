@@ -25,6 +25,7 @@ import {
   useRoute,
   useNavigation,
   useFocusEffect,
+  useIsFocused,
 } from '@react-navigation/native';
 import { route } from '../../component/navigations/routes';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -290,6 +291,8 @@ export default function Bible() {
     onVoiceSelect,
   } = useBible();
 
+  const isScreenFocused = useIsFocused();
+
   const handleScroll = useCallback(
     (event: any) => {
       const currentOffset = event.nativeEvent.contentOffset.y;
@@ -463,6 +466,18 @@ export default function Bible() {
     setLastReadVerse(activeAudioVerse);
     addReadHistory(activeAudioVerse);
   }, [activeAudioVerse, addReadHistory, isGuest]);
+
+  // Fired by VerseList once a verse is read for its content-aware dwell time
+  // (scroll reading). Suppressed for guests and while audio narration is
+  // active (audio already records its own history).
+  const handleVerseRead = useCallback(
+    (verseNumber: number) => {
+      if (isGuest || showAudioPlayer) return;
+      setLastReadVerse(verseNumber);
+      addReadHistory(verseNumber);
+    },
+    [isGuest, showAudioPlayer, addReadHistory],
+  );
 
   // ── One-time long-press hint (first time the reader opens) ────────────────
   // Shown once ever (AsyncStorage flag) so new readers discover that long-
@@ -1017,6 +1032,8 @@ export default function Bible() {
                   onScroll={handleScroll}
                   scrollEventThrottle={16}
                   onVersePress={handleTapVerse}
+                  onVerseRead={handleVerseRead}
+                  isActive={isScreenFocused && !showAudioPlayer}
                   onRemoveHighlight={removeHighlight}
                   onExplain={async vn => {
                     if (isGuest) {
@@ -1098,6 +1115,8 @@ export default function Bible() {
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
                 onVersePress={handleTapVerse}
+                onVerseRead={handleVerseRead}
+                isActive={isScreenFocused && !showAudioPlayer}
                 onRemoveHighlight={removeHighlight}
                 onExplain={async vn => {
                   if (isGuest) {

@@ -9,7 +9,7 @@
  *     in sync. Verse-level glow + scroll give reliable visual feedback.
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -109,6 +109,39 @@ const SKELETON_CONFIGS: string[][] = [
   ['76%', '90%'],
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Content-aware reading tracking.
+// A verse is "read" once it has stayed visible for a duration scaled to its
+// word count. This distinguishes genuine reading from a fast flick to the end
+// (fast scrolls never accumulate enough view time) while letting long verses
+// require proportionally more on-screen time.
+// ─────────────────────────────────────────────────────────────────────────────
+const READ_TICK_MS = 250; // how often we accumulate visible time
+const MS_PER_WORD = 250; // nominal reading time per word (~240wpm)
+const MIN_READ_MS = 1500; // floor for very short verses
+const MAX_READ_MS = 20000; // ceiling for very long verses
+// A verse only counts after it is BOTH mostly on screen AND stays there long
+// enough to genuinely read it. waitForInteraction prevents counting anything
+// before the user actually scrolls (no auto-marking on chapter open).
+const VIEWABILITY_CONFIG = {
+  // A verse counts once it covers a meaningful slice of the viewport. Fully
+  // visible items are always considered viewable (handles short verses), and
+  // tall/long verses still qualify once they cover half the screen.
+  viewAreaCoveragePercentThreshold: 50,
+  waitForInteraction: true,
+  minimumViewTime: 500,
+};
+
+const computeReadThreshold = (words: number): number =>
+  Math.min(MAX_READ_MS, Math.max(MIN_READ_MS, words * MS_PER_WORD));
+
+type ReadProgress = {
+  visible: boolean;
+  accumulated: number;
+  threshold: number;
+  read: boolean;
+};
+
 export function SkeletonLoader({ colors }: { colors: any }) {
   return (
     <View style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm }}>
@@ -157,6 +190,10 @@ export type VerseListProps = {
   onRefresh?: () => void;
   onScroll?: (event: any) => void;
   scrollEventThrottle?: number;
+  /** Fired once a verse has been visibly read for a content-aware dwell time. */
+  onVerseRead?: (verseNumber: number) => void;
+  /** When false, reading-time accumulation is paused (e.g. screen unfocused or audio playing). */
+  isActive?: boolean;
   onVersePress: (verseNumber: number) => void;
   onRemoveHighlight: (verseNumber: number) => void;
   /** When true, the single-verse action card is suppressed (multi-select bar shows instead). */
@@ -233,6 +270,8 @@ export default function VerseList({
   onRefresh,
   onScroll,
   scrollEventThrottle,
+  onVerseRead,
+  isActive = true,
   onVersePress,
   onRemoveHighlight,
   multiSelectMode = false,
@@ -263,6 +302,102 @@ export default function VerseList({
   onOpenFullJournal,
   listFooter,
 }: VerseListProps) {
+  // ── Content-aware reading tracker ─────────────────────────────────────────
+  // Reset per chapter (new verses array => fresh progress map).
+  const readProgressRef = useRef<Record<number, ReadProgress>>({});
+  useEffect(() => {
+    const progress: Record<number, ReadProgress> = {};
+    for (const v of versesArray) {
+      const words = v.text.trim().split(/\s+/).filter(Boolean).length;
+      progress[v.num] = {
+        visible: false,
+        accumulated: 0,
+        threshold: computeReadThreshold(words),
+        read: false,
+      };
+    }
+    readProgressRef.current = progress;
+  }, [versesArray]);
+
+  const onVerseReadRef = useRef(onVerseRead);
+  onVerseReadRef.current = onVerseRead;
+
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
+
+  const lastVerseNumRef = useRef<number | null>(null);
+  lastVerseNumRef.current =
+    versesArray.length > 0
+      ? versesArray[versesArray.length - 1].num
+      : null;
+
+  const fireRead = (cb: ((n: number) => void) | undefined, num: number) => {
+    // Only fire once per verse even if it leaves/re-enters repeatedly.
+    const p = readProgressRef.current[num];
+    if (!p || p.read) return;
+    p.read = true;
+    cb?.(num);
+  };
+
+  // A verse counts as read ONLY when it is scrolled past (leaves the view)
+  // after it has spent at least its content-aware dwell time on screen. This
+  // prevents a stationary screenful of verses from being marked read in
+  // parallel — parking on a chapter no longer inflates the percentage.
+  const viewableRef = useRef<{
+    onViewableItemsChanged: ({ viewableItems }: any) => void;
+  } | null>(null);
+  if (!viewableRef.current) {
+    viewableRef.current = {
+      onViewableItemsChanged: ({ viewableItems }: any) => {
+        const progress = readProgressRef.current;
+        const cb = onVerseReadRef.current;
+        const visible = new Set<number>();
+        for (const v of viewableItems) {
+          if (v?.isViewable && v.item?.num != null) visible.add(v.item.num);
+        }
+        for (const key of Object.keys(progress)) {
+          const num = Number(key);
+          const p = progress[num];
+          if (p.visible && !visible.has(num)) {
+            // Verse left the view — the user scrolled past it. Count it only
+            // if enough time was actually spent dwelling on it, then reset so
+            // a fast re-glance cannot double-count.
+            if (p.accumulated >= p.threshold) {
+              p.read = true;
+              cb?.(num);
+            }
+            p.accumulated = 0; // restart if it comes back into view
+          }
+          p.visible = visible.has(num);
+        }
+      },
+    };
+  }
+
+  // Accumulate view time every tick for verses still on screen. Paused while
+  // the screen is inactive (unfocused or audio) so backgrounding never
+  // inflates the counts. The only verses reported here are those left at the
+  // very bottom of the chapter — the reader finishes and never scrolls past
+  // the last verse, so it is counted once dwelled on.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!isActiveRef.current) return;
+      const progress = readProgressRef.current;
+      const cb = onVerseReadRef.current;
+      const lastNum = lastVerseNumRef.current;
+      for (const key of Object.keys(progress)) {
+        const num = Number(key);
+        const p = progress[num];
+        if (p.read || !p.visible) continue;
+        p.accumulated += READ_TICK_MS;
+        if (p.accumulated >= p.threshold && num === lastNum) {
+          fireRead(cb, num);
+        }
+      }
+    }, READ_TICK_MS);
+    return () => clearInterval(timer);
+  }, []);
+
   const renderVerseItem = ({
     item,
   }: {
@@ -427,6 +562,10 @@ export default function VerseList({
           removeClippedSubviews={false}
           onScroll={onScroll}
           scrollEventThrottle={scrollEventThrottle}
+          viewabilityConfig={VIEWABILITY_CONFIG}
+          onViewableItemsChanged={
+            viewableRef.current?.onViewableItemsChanged
+          }
           onScrollToIndexFailed={info => {
             setTimeout(() => {
               flatListRef.current?.scrollToIndex({

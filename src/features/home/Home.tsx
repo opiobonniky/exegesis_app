@@ -35,7 +35,11 @@ import { route } from '../../component/navigations/routes';
 import { sendPostRequest } from '../../services/api';
 import { getTriviaStats } from '../trivia/services/triviaApi';
 import { useSubscription } from '../../hooks/useSubscription';
-import { formatWhatsAppTime } from '../../utilits/bibleUtils';
+import {
+  canonicalBookName,
+  formatWhatsAppTime,
+  getVersesForChapter,
+} from '../../utilits/bibleUtils';
 import ActionHeader from '../../reusable/ActionHeader';
 import {
   GreetingCard,
@@ -178,14 +182,21 @@ const computeReadingProgress = (pos: {
   chapter: number;
   verseNumber?: number;
   totalVerses?: number;
+  readCount?: number;
 }): number => {
-  // When we know where the user is inside the chapter, report chapter %
-  // (how much of the current chapter has been read).
+  // Prefer the number of distinct verses actually recorded in the DB for this
+  // chapter — it accumulates across sessions and never resets when the
+  // chapter is reopened.
+  if (pos.readCount != null && pos.totalVerses && pos.totalVerses > 0) {
+    const pct = (pos.readCount / pos.totalVerses) * 100;
+    return Math.min(100, Math.max(0, Math.round(pct)));
+  }
+  // Fallback: how far into the chapter the user was last reading.
   if (pos.verseNumber && pos.totalVerses && pos.totalVerses > 0) {
     const pct = (pos.verseNumber / pos.totalVerses) * 100;
     return Math.min(100, Math.max(0, Math.round(pct)));
   }
-  // Fallback: progress across the whole book by chapter.
+  // Last fallback: progress across the whole book by chapter.
   const total = BOOK_CHAPTER_COUNTS[pos.bookName] || 1;
   const pct = (pos.chapter / total) * 100;
   return Math.min(100, Math.max(0, Math.round(pct)));
@@ -218,6 +229,7 @@ export default function Home() {
     chapter: number;
     verseNumber?: number;
     totalVerses?: number;
+    readCount?: number;
   } | null>(null);
   const [todaysVerse, setTodaysVerse] = useState<any | null>(null);
   const [todaysDevotion, setTodaysDevotion] = useState<any | null>(null);
@@ -322,6 +334,45 @@ export default function Home() {
     [language, translation],
   );
 
+
+   const applyOfflineReadProgress = useCallback(async () => {
+     try {
+       const [savedPosRaw, historyRaw] = await Promise.all([
+         AsyncStorage.getItem('bible_last_position'),
+         AsyncStorage.getItem('read_history'),
+       ]);
+       if (!savedPosRaw) return;
+       const pos = JSON.parse(savedPosRaw);
+       if (!pos.bookName || pos.chapter == null) return;
+
+       const entries = historyRaw ? JSON.parse(historyRaw) : [];
+       const readVerses = new Set<number>();
+       for (const e of entries) {
+         if (
+           e &&
+           canonicalBookName(e.bookName) === canonicalBookName(pos.bookName) &&
+           Number(e.chapter) === Number(pos.chapter) &&
+           e.verseNumber != null
+         ) {
+           readVerses.add(Number(e.verseNumber));
+         }
+       }
+
+       const chapterVerses = Object.keys(
+         getVersesForChapter(pos.bookName, Number(pos.chapter)),
+       ).length;
+
+       setLastBiblePosition(prev => ({
+         bookName: pos.bookName,
+         chapter: Number(pos.chapter),
+         verseNumber: pos.verseNumber ? Number(pos.verseNumber) : undefined,
+         totalVerses: prev?.totalVerses || chapterVerses || undefined,
+         readCount: readVerses.size,
+       }));
+     } catch {}
+   }, []);
+
+
   const loadHomeStats = useCallback(async () => {
     try {
       const [statsRes, activityRes, verseRes, devotionRes, triviaRes] =
@@ -343,6 +394,33 @@ export default function Home() {
           planProgress: Number(d.planProgressCount ?? 0),
           trivia: Number(triviaRes?.totalAnswered ?? 0),
         });
+
+        // Drive the Continue Reading chapter % from the DB-recorded read count,
+        // which accumulates across sessions and never resets on re-entry.
+        const lastRead = d.lastRead;
+        if (
+          lastRead?.bookName &&
+          lastRead.chapter != null &&
+          lastRead.versesRead != null
+        ) {
+          const chapterVerses = Object.keys(
+            getVersesForChapter(lastRead.bookName, Number(lastRead.chapter)),
+          ).length;
+          setLastBiblePosition(prev => ({
+            bookName: lastRead.bookName,
+            chapter: Number(lastRead.chapter),
+            verseNumber: Number(lastRead.verseNumber),
+            totalVerses: prev?.totalVerses || chapterVerses || undefined,
+            readCount: Number(lastRead.versesRead),
+          }));
+        } else {
+          // No server read data for the last-read chapter — fall back to local
+          // offline history so Continue Reading still works without a network.
+          await applyOfflineReadProgress();
+        }
+      } else {
+        // Entire stats call failed (offline) — build the chapter % locally.
+        await applyOfflineReadProgress();
       }
 
       if (activityRes?.returnData) {
@@ -422,33 +500,20 @@ export default function Home() {
     } catch (e) {
       console.error('Error loading home stats:', e);
     }
-  }, [formatActivityTime]);
+  }, [formatActivityTime, applyOfflineReadProgress]);
 
-  const loadBiblePosition = useCallback(async () => {
-    try {
-      const saved = await AsyncStorage.getItem('bible_last_position');
-      if (saved) {
-        const pos = JSON.parse(saved);
-        if (pos.bookName && pos.chapter) {
-          setLastBiblePosition({
-            bookName: pos.bookName,
-            chapter: Number(pos.chapter),
-            verseNumber: pos.verseNumber ? Number(pos.verseNumber) : undefined,
-            totalVerses: pos.totalVerses ? Number(pos.totalVerses) : undefined,
-          });
-          return;
-        }
-      }
-      setLastBiblePosition(null);
-    } catch {
-      setLastBiblePosition(null);
-    }
-  }, []);
-
+  // Build the Continue Reading chapter % from locally-saved read history when
+  // there is no network / server data, so the card stays useful offline.
+ 
   // ── Effects ───────────────────────────────────────────────────────────────
   const loadAllHomeData = useCallback(async () => {
-    await Promise.all([loadHomeStats(), loadBiblePosition()]);
-  }, [loadHomeStats, loadBiblePosition]);
+    // Local-first: build the Continue Reading % from the just-read session
+    // (instantly reflected, works offline). Then fetch DB stats so the
+    // server-backed read count (source of truth, never resets) overwrites it
+    // once available.
+    await applyOfflineReadProgress();
+    await loadHomeStats();
+  }, [applyOfflineReadProgress, loadHomeStats]);
 
   useEffect(() => {
     if (userInfo) {

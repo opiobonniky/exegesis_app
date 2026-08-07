@@ -576,31 +576,44 @@ export const useBible = () => {
   // ─── History / Favorites ────────────────────────────────────────────────────
   const addReadHistory = useCallback(
     async (verseNumber: number) => {
+      // Local-first: always record the read against a lightweight read set so
+      // Home's "Continue Reading" percentage updates instantly and offline,
+      // without waiting for the server round-trip or a reconnect sync.
       try {
-        await sendPostRequest('bible', 'add-read-history', {
+        const key = 'read_history';
+        const existingRaw = await AsyncStorage.getItem(key);
+        const history = existingRaw ? JSON.parse(existingRaw) : [];
+        const entry = {
           bookName: currentBook,
           chapter: currentChapter,
           verseNumber,
-        });
+          timestamp: new Date().toISOString(),
+        };
+        await AsyncStorage.setItem(
+          key,
+          JSON.stringify([entry, ...history].slice(0, 500)),
+        );
       } catch {
-        // Offline fallback: save locally
-        try {
-          const key = 'read_history';
-          const existing = await AsyncStorage.getItem(key);
-          const history = existing ? JSON.parse(existing) : [];
-          const entry = {
+        console.warn('Failed to save read history locally');
+      }
+
+      // `offlineQueue: true` makes network failures land in the SQLite
+      // offline_queue, which is flushed to the backend automatically the
+      // moment connectivity is restored (see ConnectivityProvider).
+      try {
+        await sendPostRequest(
+          'bible',
+          'add-read-history',
+          {
             bookName: currentBook,
             chapter: currentChapter,
             verseNumber,
-            timestamp: new Date().toISOString(),
-          };
-          await AsyncStorage.setItem(
-            key,
-            JSON.stringify([entry, ...history].slice(0, 100)),
-          );
-        } catch {
-          console.warn('Failed to save read history');
-        }
+          },
+          true, // suppressSubscriptionGate
+          true, // offlineQueue -> sync on reconnect
+        );
+      } catch {
+        // Non-network failure is already covered by the local write above.
       }
     },
     [currentBook, currentChapter],
