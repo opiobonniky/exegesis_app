@@ -258,6 +258,22 @@ export const useBible = () => {
   // ─── Network ────────────────────────────────────────────────────────────────
   const { isOnline } = useConnectivity();
 
+  // Stop any ongoing TTS narration when the user changes book or chapter.
+  // (Navigating away to another screen is handled separately via useFocusEffect
+  // in the Bible screen.)
+  const prevPositionRef = useRef<{ book: string; chapter: number } | null>(
+    null,
+  );
+  useEffect(() => {
+    const prev = prevPositionRef.current;
+    prevPositionRef.current = { book: currentBook, chapter: currentChapter };
+    if (!prev) return;
+    if (prev.book !== currentBook || prev.chapter !== currentChapter) {
+      handleAudioStop();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBook, currentChapter]);
+
   // ─── Data loading ───────────────────────────────────────────────────────────
   useEffect(() => {
     loadBooks();
